@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.hisp.dhis</groupId>
+    <artifactId>json-tree</artifactId>
+    <packaging>jar</packaging>
+    <name>DHIS JSON Tree</name>
+    <version>0.0.1-SNAPSHOT</version>
+
+    <developers>
+        <developer>
+            <id>jbee</id>
+            <name>Jan Bernitt</name>
+            <email>jbernitt@dhis2.org</email>
+        </developer>
+    </developers>
+
+    <description>
+        This module provides a library to parse and browse JSON documents
+        provided as input string. It is build in particular to extract JSON
+        nodes by path with high performance. This is done by skipping nodes
+        that are not of interest and by only building a cheap low level node
+        representation for those nodes that are extracted.
+    </description>
+
+    <organization>
+        <name>UiO</name>
+        <url>http://www.dhis2.org</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>BSD</name>
+            <url>http://opensource.org/licenses/BSD-2-Clause</url>
+        </license>
+    </licenses>
+
+    <properties>
+        <maven.compiler.source>1.11</maven.compiler.source>
+        <maven.compiler.target>1.11</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <release>11</release>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
