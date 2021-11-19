@@ -1,7 +1,11 @@
 # json-tree
+
+[![main](https://github.com/dhis2/json-tree/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/dhis2/json-tree/actions/workflows/main.yml)
+
 A lazily parsed JSON object tree library
 
 ## Virtual vs Actual Tree
+
 A `JsonResponse` is a **virtual** tree of `JsonValue` nodes:
 
 * `JsonObject`
@@ -61,6 +65,7 @@ JsonWebMessage message = assertWebMessage(....);
 ```
 
 ## Advanced Features
+
 Custom node types:
 ```java
 public interface JsonPasswordValidation extends JsonObject
