@@ -31,6 +31,10 @@
         <url>http://www.dhis2.org</url>
     </organization>
 
+    <scm>
+        <developerConnection>scm:git:https://github.com/dhis2/json-tree.git</developerConnection>
+    </scm>
+
     <licenses>
         <license>
             <name>BSD</name>
