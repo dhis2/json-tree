@@ -32,6 +32,7 @@
     </organization>
 
     <scm>
+        <connection>scm:git:https://github.com/dhis2/json-tree.git</connection>
         <developerConnection>scm:git:https://github.com/dhis2/json-tree.git</developerConnection>
     </scm>
 
@@ -107,6 +108,15 @@
                         </licenseHeader>
                     </java>
                     <lineEndings>UNIX</lineEndings>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>3.0.0-M4</version>
+                <configuration>
+                    <tagNameFormat>v@{project.version}</tagNameFormat>
+                    <scmCommentPrefix>chore:${line.separator}</scmCommentPrefix>
                 </configuration>
             </plugin>
         </plugins>
