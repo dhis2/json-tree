@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
 
 import static java.util.Collections.emptyList;
 
@@ -43,9 +43,9 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Function;
 
-import org.hisp.dhis.webapi.json.JsonDocument.JsonFormatException;
-import org.hisp.dhis.webapi.json.JsonDocument.JsonNodeType;
-import org.hisp.dhis.webapi.json.JsonDocument.JsonPathException;
+import org.hisp.dhis.jsontree.JsonDocument.JsonFormatException;
+import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
+import org.hisp.dhis.jsontree.JsonDocument.JsonPathException;
 
 /**
  * Implements the {@link JsonValue} read-only access abstraction for JSON

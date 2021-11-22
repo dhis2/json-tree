@@ -25,49 +25,37 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
 
 /**
- * Represents a numeric JSON node.
+ * Represents a boolean JSON node.
  *
  * @author Jan Bernitt
  */
-public interface JsonNumber extends JsonPrimitive
+public interface JsonBoolean extends JsonPrimitive
 {
-
     /**
-     * @return numeric value of the property or {@code null} when this property
+     * @return boolean value of the property or {@code null} when this property
      *         is undefined or defined as JSON {@code null}.
      */
-    Number number();
+    Boolean bool();
 
-    default <T extends Number> T number( T orDefault )
+    default boolean booleanValue( boolean orDefault )
     {
-        return exists() ? (T) number() : orDefault;
+        return exists() ? booleanValue() : orDefault;
     }
 
-    default int intValue()
+    /**
+     * Same as {@link #bool()} except that this throws an
+     * {@link java.util.NoSuchElementException} in case the value is not
+     * defined.
+     *
+     * @return true of false, nothing else
+     * @throws java.util.NoSuchElementException when this value is not defined
+     *         in the JSON content or defined JSON {@code null}.
+     */
+    default boolean booleanValue()
     {
-        return mapNonNull( number(), Number::intValue );
-    }
-
-    default int intValue( int orDefault )
-    {
-        return exists() ? intValue() : orDefault;
-    }
-
-    default long longValue()
-    {
-        return mapNonNull( number(), Number::longValue );
-    }
-
-    default float floatValue()
-    {
-        return mapNonNull( number(), Number::floatValue );
-    }
-
-    default double doubleValue()
-    {
-        return mapNonNull( number(), Number::doubleValue );
+        return mapNonNull( bool(), Boolean::booleanValue );
     }
 }

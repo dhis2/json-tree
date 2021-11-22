@@ -25,23 +25,49 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+package org.hisp.dhis.jsontree;
 
 /**
- * A {@link JsonDate} is a {@link JsonString} with a special format.
- *
- * The {@link #date()} utility allows to access the date as
- * {@link LocalDateTime} instead of {@link String}.
+ * Represents a numeric JSON node.
  *
  * @author Jan Bernitt
  */
-public interface JsonDate extends JsonString
+public interface JsonNumber extends JsonPrimitive
 {
-    default LocalDateTime date()
+
+    /**
+     * @return numeric value of the property or {@code null} when this property
+     *         is undefined or defined as JSON {@code null}.
+     */
+    Number number();
+
+    default <T extends Number> T number( T orDefault )
     {
-        return parsed( str -> LocalDateTime.parse( str, DateTimeFormatter.ISO_LOCAL_DATE_TIME ) );
+        return exists() ? (T) number() : orDefault;
+    }
+
+    default int intValue()
+    {
+        return mapNonNull( number(), Number::intValue );
+    }
+
+    default int intValue( int orDefault )
+    {
+        return exists() ? intValue() : orDefault;
+    }
+
+    default long longValue()
+    {
+        return mapNonNull( number(), Number::longValue );
+    }
+
+    default float floatValue()
+    {
+        return mapNonNull( number(), Number::floatValue );
+    }
+
+    default double doubleValue()
+    {
+        return mapNonNull( number(), Number::doubleValue );
     }
 }

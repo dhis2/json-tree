@@ -25,29 +25,28 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
 
-import java.util.function.Function;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * A common base type for the primitive nodes in a JSON tree.
+ * Used to mark members in {@link JsonObject} that are expected to exist.
+ *
+ * This can only be applied to methods without parameters.
  *
  * @author Jan Bernitt
  */
-public interface JsonPrimitive extends JsonValue
+@Target( ElementType.METHOD )
+@Retention( RetentionPolicy.RUNTIME )
+public @interface Expected
 {
     /**
-     * A helper function that converts non-{@code null} values which are assumed
-     * to represent the raw primitive value of this JSON value.
-     *
-     * @param from should represent the raw primitive value of this JSON value
-     * @param to conversion {@link Function} to use
-     * @param <A> input type
-     * @param <B> output type
-     * @return input value of type A converted to type B by using the provided
-     *         {@link Function}
-     * @throws java.util.NoSuchElementException in case input is {@code null}
-     *         (which means this value was not defined)
+     * @return Can be set to {@code true} to allow {@link JsonValue}s either
+     *         being set or being a JSON {@code null} value. Default value is
+     *         {@code false}.
      */
-    <A, B> B mapNonNull( A from, Function<A, B> to );
+    boolean nullable() default false;
 }

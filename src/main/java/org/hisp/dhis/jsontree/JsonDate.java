@@ -25,62 +25,23 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
 
-import java.util.concurrent.Callable;
-import java.util.function.Function;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
- * Represents a string JSON node.
+ * A {@link JsonDate} is a {@link JsonString} with a special format.
+ *
+ * The {@link #date()} utility allows to access the date as
+ * {@link LocalDateTime} instead of {@link String}.
  *
  * @author Jan Bernitt
  */
-public interface JsonString extends JsonPrimitive
+public interface JsonDate extends JsonString
 {
-
-    /**
-     * @return string value of the property or {@code null} when this property
-     *         is undefined or defined as JSON {@code null}.
-     */
-    String string();
-
-    default String string( String orDefault )
+    default LocalDateTime date()
     {
-        return exists() ? string() : orDefault;
-    }
-
-    /**
-     * In contrast to {@link #mapNonNull(Object, Function)} this function simply
-     * returns {@code null} when {@link #string()} is {@code null}. This
-     * includes the case that this value is not defined in the JSON content.
-     *
-     * @param parser function that parses a given {@link String} to the returned
-     *        type.
-     * @param <T> return type
-     * @return {@code null} when {@link #string()} returns {@code null}
-     *         otherwise the result of calling provided parser with result of
-     *         {@link #string()}.
-     */
-    default <T> T parsed( Function<String, T> parser )
-    {
-        String value = string();
-        return value == null ? null : parser.apply( value );
-    }
-
-    default <T> T converted( Callable<T> converter )
-    {
-        try
-        {
-            return converter.call();
-        }
-        catch ( Exception ex )
-        {
-            throw new IllegalArgumentException( ex );
-        }
-    }
-
-    default Class<?> parsedClass()
-    {
-        return converted( () -> Class.forName( string() ) );
+        return parsed( str -> LocalDateTime.parse( str, DateTimeFormatter.ISO_LOCAL_DATE_TIME ) );
     }
 }

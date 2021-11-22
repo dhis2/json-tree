@@ -25,37 +25,29 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
+
+import java.util.function.Function;
 
 /**
- * Represents a boolean JSON node.
+ * A common base type for the primitive nodes in a JSON tree.
  *
  * @author Jan Bernitt
  */
-public interface JsonBoolean extends JsonPrimitive
+public interface JsonPrimitive extends JsonValue
 {
     /**
-     * @return boolean value of the property or {@code null} when this property
-     *         is undefined or defined as JSON {@code null}.
-     */
-    Boolean bool();
-
-    default boolean booleanValue( boolean orDefault )
-    {
-        return exists() ? booleanValue() : orDefault;
-    }
-
-    /**
-     * Same as {@link #bool()} except that this throws an
-     * {@link java.util.NoSuchElementException} in case the value is not
-     * defined.
+     * A helper function that converts non-{@code null} values which are assumed
+     * to represent the raw primitive value of this JSON value.
      *
-     * @return true of false, nothing else
-     * @throws java.util.NoSuchElementException when this value is not defined
-     *         in the JSON content or defined JSON {@code null}.
+     * @param from should represent the raw primitive value of this JSON value
+     * @param to conversion {@link Function} to use
+     * @param <A> input type
+     * @param <B> output type
+     * @return input value of type A converted to type B by using the provided
+     *         {@link Function}
+     * @throws java.util.NoSuchElementException in case input is {@code null}
+     *         (which means this value was not defined)
      */
-    default boolean booleanValue()
-    {
-        return mapNonNull( bool(), Boolean::booleanValue );
-    }
+    <A, B> B mapNonNull( A from, Function<A, B> to );
 }

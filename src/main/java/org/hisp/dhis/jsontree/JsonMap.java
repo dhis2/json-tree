@@ -25,28 +25,39 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.Set;
 
 /**
- * Used to mark members in {@link JsonObject} that are expected to exist.
- *
- * This can only be applied to methods without parameters.
+ * {@link JsonMap}s are a special form of a {@link JsonObject} where all
+ * properties have a common uniform value type.
  *
  * @author Jan Bernitt
+ *
+ * @param <E> type of the uniform map values
  */
-@Target( ElementType.METHOD )
-@Retention( RetentionPolicy.RUNTIME )
-public @interface Expected
+public interface JsonMap<E extends JsonValue> extends JsonCollection
 {
     /**
-     * @return Can be set to {@code true} to allow {@link JsonValue}s either
-     *         being set or being a JSON {@code null} value. Default value is
-     *         {@code false}.
+     * A typed variant of {@link JsonObject#get(String)}, equivalent to
+     * {@link JsonObject#get(String, Class)} where 2nd parameter is the type
+     * parameter E.
+     *
+     * @param key property to access
+     * @return value at the provided property
      */
-    boolean nullable() default false;
+    E get( String key );
+
+    /**
+     * @return The keys of this map.
+     * @throws java.util.NoSuchElementException in case this value does not
+     *         exist in the JSON document
+     * @throws UnsupportedOperationException in case this node does exist but is
+     *         not an object node
+     */
+    default Set<String> keys()
+    {
+        return node().members().keySet();
+    }
 }

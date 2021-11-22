@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
 
 import java.io.Serializable;
 import java.util.List;
@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import org.hisp.dhis.webapi.json.JsonDocument.JsonNodeType;
+import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
 
 /**
  * API of a JSON tree as it actually exist in a HTTP response with a JSON

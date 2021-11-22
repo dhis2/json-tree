@@ -25,39 +25,62 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.webapi.json;
+package org.hisp.dhis.jsontree;
 
-import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 /**
- * {@link JsonMap}s are a special form of a {@link JsonObject} where all
- * properties have a common uniform value type.
+ * Represents a string JSON node.
  *
  * @author Jan Bernitt
- *
- * @param <E> type of the uniform map values
  */
-public interface JsonMap<E extends JsonValue> extends JsonCollection
+public interface JsonString extends JsonPrimitive
 {
-    /**
-     * A typed variant of {@link JsonObject#get(String)}, equivalent to
-     * {@link JsonObject#get(String, Class)} where 2nd parameter is the type
-     * parameter E.
-     *
-     * @param key property to access
-     * @return value at the provided property
-     */
-    E get( String key );
 
     /**
-     * @return The keys of this map.
-     * @throws java.util.NoSuchElementException in case this value does not
-     *         exist in the JSON document
-     * @throws UnsupportedOperationException in case this node does exist but is
-     *         not an object node
+     * @return string value of the property or {@code null} when this property
+     *         is undefined or defined as JSON {@code null}.
      */
-    default Set<String> keys()
+    String string();
+
+    default String string( String orDefault )
     {
-        return node().members().keySet();
+        return exists() ? string() : orDefault;
+    }
+
+    /**
+     * In contrast to {@link #mapNonNull(Object, Function)} this function simply
+     * returns {@code null} when {@link #string()} is {@code null}. This
+     * includes the case that this value is not defined in the JSON content.
+     *
+     * @param parser function that parses a given {@link String} to the returned
+     *        type.
+     * @param <T> return type
+     * @return {@code null} when {@link #string()} returns {@code null}
+     *         otherwise the result of calling provided parser with result of
+     *         {@link #string()}.
+     */
+    default <T> T parsed( Function<String, T> parser )
+    {
+        String value = string();
+        return value == null ? null : parser.apply( value );
+    }
+
+    default <T> T converted( Callable<T> converter )
+    {
+        try
+        {
+            return converter.call();
+        }
+        catch ( Exception ex )
+        {
+            throw new IllegalArgumentException( ex );
+        }
+    }
+
+    default Class<?> parsedClass()
+    {
+        return converted( () -> Class.forName( string() ) );
     }
 }
