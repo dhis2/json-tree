@@ -25,7 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.jsontree.json;
+package org.hisp.dhis.jsontree;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -36,11 +36,9 @@ import static org.junit.Assert.assertThrows;
 import java.util.HashSet;
 import java.util.Map;
 
-import org.hisp.dhis.jsontree.JsonDocument;
 import org.hisp.dhis.jsontree.JsonDocument.JsonFormatException;
 import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
 import org.hisp.dhis.jsontree.JsonDocument.JsonPathException;
-import org.hisp.dhis.jsontree.JsonNode;
 import org.junit.Test;
 
 /**
