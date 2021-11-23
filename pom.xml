@@ -116,7 +116,7 @@
                 <version>3.0.0-M4</version>
                 <configuration>
                     <tagNameFormat>v@{project.version}</tagNameFormat>
-                    <scmCommentPrefix>chore:${line.separator}</scmCommentPrefix>
+                    <scmCommentPrefix>chore(release):</scmCommentPrefix>
                 </configuration>
             </plugin>
         </plugins>
