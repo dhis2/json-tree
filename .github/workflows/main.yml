@@ -23,8 +23,6 @@ jobs:
           cache: maven
       - name: Check formatting
         run: mvn speedy-spotless:check --quiet --batch-mode --no-transfer-progress
-      - name: Build and test
-        run: mvn clean install --batch-mode --no-transfer-progress
       - name: Set up Apache Maven Central
         uses: actions/setup-java@v2
         with: # running setup-java again overwrites the settings.xml
