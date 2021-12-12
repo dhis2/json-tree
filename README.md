@@ -21,14 +21,14 @@ which exposes all node types as `JsonNode`.
 `JsonValue`s are **virtual** 👻:
 * high level abstraction
 * what we believe we got back
-* navigation without requiring existence
-* extendable tree
+* navigation without requiring existence (no exceptions)
+* extendable tree API
 
 `JsonNode`s are **actual** ☠️:
 * low level abstraction
 * what we actually got back
-* navigation demands existence
-* not extendable tree
+* navigation demands existence (otherwise throws exceptions)
+* non-extendable tree API
 
 Tree Navigation
 
