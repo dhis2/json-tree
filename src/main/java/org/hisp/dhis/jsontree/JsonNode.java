@@ -28,8 +28,10 @@
 package org.hisp.dhis.jsontree;
 
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -38,15 +40,15 @@ import java.util.function.Predicate;
 import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
 
 /**
- * API of a JSON tree as it actually exist in a HTTP response with a JSON
+ * API of a JSON tree as it actually exist in an HTTP response with a JSON
  * payload.
  * <p>
  * Operations are lazily evaluated to make working with the JSON tree efficient.
  *
- * Trying use operations that are not supported for the {@link JsonNodeType},
- * like access the {@link #members()} or {@link #elements()} of a node that is
- * not an object or array respectively, will throw an
- * {@link UnsupportedOperationException} error immediately.
+ * Trying to use operations that are not supported for the {@link JsonNodeType},
+ * like accessing the {@link #members()} or {@link #elements()} of a
+ * {@link JsonNode} that is not an object or array respectively, will throw an
+ * {@link UnsupportedOperationException} immediately.
  *
  * @author Jan Bernitt
  */
@@ -105,16 +107,32 @@ public interface JsonNode extends Serializable
      * keys and {@link JsonNode} values</li>
      * </ul>
      *
-     * @return the nodes values as described in the above table
+     * @return the nodes value as described in the above table
      */
     Serializable value();
 
     /**
-     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT})
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      *
      * @return this {@link #value()} as as {@link Map}
      */
     default Map<String, JsonNode> members()
+    {
+        throw new UnsupportedOperationException( getType() + " node has no members property." );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     *
+     * @param keepNodes true, to internally "remember" the members iterated over
+     *        so far, false to only iterate without keeping references to them
+     *        further on so GC can pick em up
+     * @return an iterator to lazily process the members one at a time - mostly
+     *         to avoid materialising all members in memory for large maps.
+     *         Member {@link JsonNode}s that already exist internally will be
+     *         reused and returned by the iterator.
+     */
+    default Iterator<Entry<String, JsonNode>> members( boolean keepNodes )
     {
         throw new UnsupportedOperationException( getType() + " node has no members property." );
     }
@@ -125,6 +143,22 @@ public interface JsonNode extends Serializable
      * @return this {@link #value()} as as {@link List}
      */
     default List<JsonNode> elements()
+    {
+        throw new UnsupportedOperationException( getType() + " node has no elements property." );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
+     *
+     * @param keepNodes true, to internally "remember" the members iterated over
+     *        so far, false to only iterate without keeping references to them
+     *        further on so GC can pick em up
+     * @return an iterator to lazily process the elements one at a time - mostly
+     *         to avoid materialising all elements in memory for large arrays.
+     *         Member {@link JsonNode}s that already exist internally will be
+     *         reused and returned by the iterator.
+     */
+    default Iterator<JsonNode> elements( boolean keepNodes )
     {
         throw new UnsupportedOperationException( getType() + " node has no elements property." );
     }
@@ -149,7 +183,7 @@ public interface JsonNode extends Serializable
     Optional<JsonNode> find( JsonNodeType type, Predicate<JsonNode> test );
 
     /**
-     * Count matching nodes in a the subtree of this node including this node.
+     * Count matching nodes in a subtree of this node including this node.
      *
      * @param type type of node to passed to the visitor
      * @param visitor a {@link Predicate} returning true, to count the provided
