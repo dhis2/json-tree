@@ -34,12 +34,16 @@ import static java.lang.Math.min;
 import static java.util.Objects.requireNonNull;
 
 import java.io.Serializable;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -128,7 +132,7 @@ public final class JsonDocument implements Serializable
      * The "expensive" operations to access the nodes {@link #value()} or find
      * its {@link #endIndex()} are only computed on demand.
      */
-    private abstract static class LazyJsonNode implements JsonNode
+    private abstract static class LazyJsonNode<T extends Serializable> implements JsonNode
     {
         final String path;
 
@@ -138,7 +142,7 @@ public final class JsonDocument implements Serializable
 
         private Integer end;
 
-        private Serializable value;
+        private T value;
 
         LazyJsonNode( String path, char[] json, int start )
         {
@@ -161,17 +165,22 @@ public final class JsonDocument implements Serializable
         }
 
         @Override
-        public final Serializable value()
+        public final T value()
         {
             if ( getType() == JsonNodeType.NULL )
             {
                 return null;
             }
-            if ( value == null )
+            if ( !isParsed() )
             {
                 value = parseValue();
             }
             return value;
+        }
+
+        protected final boolean isParsed()
+        {
+            return value != null;
         }
 
         @Override
@@ -230,7 +239,7 @@ public final class JsonDocument implements Serializable
         /**
          * @return parses the JSON to a value as described by {@link #value()}
          */
-        abstract Serializable parseValue();
+        abstract T parseValue();
 
         @Override
         public final JsonNode replaceWith( String json )
@@ -288,7 +297,7 @@ public final class JsonDocument implements Serializable
         }
     }
 
-    private static final class LazyJsonObject extends LazyJsonNode
+    private static final class LazyJsonObject extends LazyJsonNode<LinkedHashMap<String, JsonNode>>
     {
         private final Map<String, JsonNode> nodesByPath;
 
@@ -304,11 +313,10 @@ public final class JsonDocument implements Serializable
             return JsonNodeType.OBJECT;
         }
 
-        @SuppressWarnings( "unchecked" )
         @Override
         public Map<String, JsonNode> members()
         {
-            return (Map<String, JsonNode>) requireNonNull( value() );
+            return requireNonNull( value() );
         }
 
         @Override
@@ -346,30 +354,70 @@ public final class JsonDocument implements Serializable
         }
 
         @Override
-        Serializable parseValue()
+        LinkedHashMap<String, JsonNode> parseValue()
         {
             LinkedHashMap<String, JsonNode> object = new LinkedHashMap<>();
-            int index = expectChar( json, start, '{' );
-            index = skipWhitespace( json, index );
+            int index = skipWhitespace( json, expectChar( json, start, '{' ) );
             while ( index < json.length && json[index] != '}' )
             {
                 LazyJsonString property = new LazyJsonString( path + ".?", json, index );
-                String fieldName = String.valueOf( property.value() );
-                String fPath = path + "." + fieldName;
+                String name = property.value();
+                String mPath = path + "." + name;
                 index = expectSeparator( json, property.endIndex(), ':' );
-                int fStart = index;
-                JsonNode field = nodesByPath.computeIfAbsent( fPath,
-                    key -> autoDetect( key, json, fStart, nodesByPath ) );
-                object.put( fieldName, field );
-                index = field.endIndex();
-                index = skipSeparator( json, index, ',' );
+                int mStart = index;
+                JsonNode member = nodesByPath.computeIfAbsent( mPath,
+                    key -> autoDetect( key, json, mStart, nodesByPath ) );
+                object.put( name, member );
+                index = skipSeparator( json, member.endIndex(), ',' );
             }
             expectChar( json, index, '}' );
             return object;
         }
+
+        @Override
+        public Iterator<Entry<String, JsonNode>> members( boolean keepNodes )
+        {
+            if ( isParsed() )
+            {
+                return members().entrySet().iterator();
+            }
+            return new Iterator<>()
+            {
+                private int mStart = skipWhitespace( json, expectChar( json, start, '{' ) );
+
+                @Override
+                public boolean hasNext()
+                {
+                    return mStart < json.length && json[mStart] != '}';
+                }
+
+                @Override
+                public Entry<String, JsonNode> next()
+                {
+                    if ( !hasNext() )
+                    {
+                        throw new NoSuchElementException();
+                    }
+                    LazyJsonString property = new LazyJsonString( path + ".?", json, mStart );
+                    String name = property.value();
+                    String mPath = path + "." + name;
+                    int vStart = expectSeparator( json, property.endIndex(), ':' );
+                    JsonNode member = keepNodes
+                        ? nodesByPath.computeIfAbsent( mPath,
+                            key -> autoDetect( key, json, vStart, nodesByPath ) )
+                        : nodesByPath.get( mPath );
+                    if ( member == null )
+                    {
+                        member = autoDetect( mPath, json, vStart, nodesByPath );
+                    }
+                    mStart = skipSeparator( json, member.endIndex(), ',' );
+                    return new SimpleEntry<>( name, member );
+                }
+            };
+        }
     }
 
-    private static final class LazyJsonArray extends LazyJsonNode
+    private static final class LazyJsonArray extends LazyJsonNode<ArrayList<JsonNode>>
     {
         private final Map<String, JsonNode> nodesByPath;
 
@@ -385,11 +433,10 @@ public final class JsonDocument implements Serializable
             return JsonNodeType.ARRAY;
         }
 
-        @SuppressWarnings( "unchecked" )
         @Override
         public List<JsonNode> elements()
         {
-            return (List<JsonNode>) requireNonNull( value() );
+            return requireNonNull( value() );
         }
 
         @Override
@@ -427,11 +474,10 @@ public final class JsonDocument implements Serializable
         }
 
         @Override
-        Serializable parseValue()
+        ArrayList<JsonNode> parseValue()
         {
             ArrayList<JsonNode> array = new ArrayList<>();
-            int index = expectChar( json, start, '[' );
-            index = skipWhitespace( json, index );
+            int index = skipWhitespace( json, expectChar( json, start, '[' ) );
             while ( index < json.length && json[index] != ']' )
             {
                 String ePath = path + '[' + array.size() + "]";
@@ -439,15 +485,57 @@ public final class JsonDocument implements Serializable
                 JsonNode e = nodesByPath.computeIfAbsent( ePath,
                     key -> autoDetect( key, json, eStart, nodesByPath ) );
                 array.add( e );
-                index = e.endIndex();
-                index = skipSeparator( json, index, ',' );
+                index = skipSeparator( json, e.endIndex(), ',' );
             }
             expectChar( json, index, ']' );
             return array;
         }
+
+        @Override
+        public Iterator<JsonNode> elements( boolean keepNodes )
+        {
+            if ( isParsed() )
+            {
+                // no need to parse again, we already paid for it
+                return elements().iterator();
+            }
+            return new Iterator<>()
+            {
+                private int eStart = skipWhitespace( json, expectChar( json, start, '[' ) );
+
+                private int n = 0;
+
+                @Override
+                public boolean hasNext()
+                {
+                    return eStart < json.length && json[eStart] != ']';
+                }
+
+                @Override
+                public JsonNode next()
+                {
+                    if ( !hasNext() )
+                    {
+                        throw new NoSuchElementException();
+                    }
+                    String ePath = path + '[' + n + "]";
+                    JsonNode e = keepNodes
+                        ? nodesByPath.computeIfAbsent( ePath,
+                            key -> autoDetect( key, json, eStart, nodesByPath ) )
+                        : nodesByPath.get( ePath );
+                    if ( e == null )
+                    {
+                        e = autoDetect( ePath, json, eStart, nodesByPath );
+                    }
+                    n++;
+                    eStart = skipSeparator( json, e.endIndex(), ',' );
+                    return e;
+                }
+            };
+        }
     }
 
-    private static final class LazyJsonNumber extends LazyJsonNode
+    private static final class LazyJsonNumber extends LazyJsonNode<Number>
     {
 
         LazyJsonNumber( String path, char[] json, int start )
@@ -480,7 +568,7 @@ public final class JsonDocument implements Serializable
 
     }
 
-    private static final class LazyJsonString extends LazyJsonNode
+    private static final class LazyJsonString extends LazyJsonNode<String>
     {
 
         LazyJsonString( String path, char[] json, int start )
@@ -556,7 +644,7 @@ public final class JsonDocument implements Serializable
         }
     }
 
-    private static final class LazyJsonBoolean extends LazyJsonNode
+    private static final class LazyJsonBoolean extends LazyJsonNode<Boolean>
     {
 
         LazyJsonBoolean( String path, char[] json, int start )
@@ -578,7 +666,7 @@ public final class JsonDocument implements Serializable
 
     }
 
-    private static final class LazyJsonNull extends LazyJsonNode
+    private static final class LazyJsonNull extends LazyJsonNode<Serializable>
     {
 
         LazyJsonNull( String path, char[] json, int start )

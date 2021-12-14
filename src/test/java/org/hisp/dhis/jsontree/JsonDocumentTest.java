@@ -28,13 +28,20 @@
 package org.hisp.dhis.jsontree;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 
 import org.hisp.dhis.jsontree.JsonDocument.JsonFormatException;
 import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
@@ -214,6 +221,36 @@ public class JsonDocumentTest
     }
 
     @Test
+    public void testArray_IterateElements()
+    {
+        JsonDocument doc = new JsonDocument( "[ 1,2 , true , false, \"hello\",{},[]]" );
+
+        JsonNode root = doc.get( "$" );
+
+        Iterator<JsonNode> elements = root.elements( false );
+        JsonNode e0 = elements.next();
+        JsonNode e1 = elements.next();
+        JsonNode e2 = elements.next();
+        JsonNode e3 = elements.next();
+        JsonNode e4 = elements.next();
+        JsonNode e5 = elements.next();
+        JsonNode e6 = elements.next();
+        assertFalse( elements.hasNext() );
+        assertThrows( NoSuchElementException.class, elements::next );
+        assertEquals( 1, e0.value() );
+        assertEquals( 2, e1.value() );
+        assertEquals( true, e2.value() );
+        assertEquals( false, e3.value() );
+        assertEquals( "hello", e4.value() );
+        assertEquals( emptyMap(), e5.value() );
+        assertEquals( emptyList(), e6.value() );
+
+        JsonNode e0kept = root.elements( true ).next();
+        assertNotSame( e0, e0kept );
+        assertSame( e0kept, root.elements( false ).next() );
+    }
+
+    @Test
     public void testObject_Flat()
     {
         JsonNode root = new JsonDocument( "{\"a\":1, \"bb\":true , \"ccc\":null }" ).get( "$" );
@@ -282,6 +319,34 @@ public class JsonDocumentTest
         JsonNode ab1 = doc.get( "$.a.b[1]" );
         assertEquals( JsonNodeType.BOOLEAN, ab1.getType() );
         assertEquals( false, ab1.value() );
+    }
+
+    @Test
+    public void testObject_IterateMembers()
+    {
+        JsonDocument doc = new JsonDocument( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
+
+        JsonNode root = doc.get( "$" );
+
+        Iterator<Entry<String, JsonNode>> members = root.members( false );
+        Entry<String, JsonNode> m1 = members.next();
+        Entry<String, JsonNode> m2 = members.next();
+        Entry<String, JsonNode> m3 = members.next();
+        Entry<String, JsonNode> m4 = members.next();
+        assertFalse( members.hasNext() );
+        assertThrows( NoSuchElementException.class, members::next );
+        assertEquals( "a", m1.getKey() );
+        assertEquals( 1, m1.getValue().value() );
+        assertEquals( "b", m2.getKey() );
+        assertEquals( 2, m2.getValue().value() );
+        assertEquals( "c", m3.getKey() );
+        assertEquals( true, m3.getValue().value() );
+        assertEquals( "d", m4.getKey() );
+        assertEquals( false, m4.getValue().value() );
+
+        JsonNode m1kept = root.members( true ).next().getValue();
+        assertNotSame( m1.getValue(), m1kept );
+        assertSame( m1kept, root.members( true ).next().getValue() );
     }
 
     @Test
