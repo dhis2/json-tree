@@ -50,7 +50,7 @@ public interface JsonArray extends JsonCollection
      *
      * Note that this will neither check index nor element type.
      *
-     * @param index index to access (>= 0)
+     * @param index index to access (0 and above)
      * @param as assumed type of the element
      * @param <T> type of the returned element
      * @return element at the given index

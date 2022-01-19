@@ -156,6 +156,12 @@ public interface JsonObject extends JsonCollection
     }
 
     /**
+     * "Cast" and check against provided object shape.
+     *
+     * @param type expected object type
+     * @param <T> type check and of the result
+     * @return this node as the provided object type
+     *
      * @see #asObject(Class, boolean, String)
      */
     default <T extends JsonObject> T asObject( Class<T> type )
@@ -164,12 +170,16 @@ public interface JsonObject extends JsonCollection
     }
 
     /**
+     * "Cast" and check against provided object shape.
+     *
      * In contrast to {@link #as(Class)} this method does check that this object
      * {@link #exists()}, that it is indeed an object node and that it has all
      * {@link Expected} values expected for the provided object type.
      *
      * @param type expected object type
      * @param recursive true to apply the check to nested {@link JsonObject}s
+     * @param path currently checked root object (for recursion, start with
+     *        empty)
      * @param <T> type check and of the result
      * @return this node as the provided object type
      * @throws NoSuchElementException when this does not exist, is not an object
