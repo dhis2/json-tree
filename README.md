@@ -26,6 +26,13 @@ which exposes all node types as `JsonNode`.
 | navigation without requiring existence (no exceptions) | navigation demands existence (otherwise throws exceptions) |
 | extendable tree API | non-extendable tree API |
 
+"Casting" to Node Types
+
+* `JsonValue   as(Class<T extends JsonValue> type)`
+* `JsonList<T> asList(Class<T extends JsonValue> type)`
+* `JsonMap<V>  asMap(Class<V extends JsonValue> type)`
+* and more of similar kind...
+
 Tree Navigation
 
 * `JsonValue  get(String path)`
@@ -34,7 +41,7 @@ Tree Navigation
 * `JsonNumber getNumber(String path)`
 * `JsonBoolean getBoolean(String path)`
 * `JsonValue  get(int index)`
-* and more...
+* and more of similar kind...
 
 Drilling down...
 ```java
@@ -44,7 +51,6 @@ JsonString str = root.getString("a.b[3]")
 ```
 
 Assertions using standard JUnit asserts
-
 ```java
 JsonObject settings = GET( "/me/settings" ).content( HttpStatus.OK );
 
@@ -55,6 +61,11 @@ assertEquals( "en", settings.getString( "keyUiLocale" ).string() );
 ```
 Virtual tree: no exceptions before assert 🤩 
 
+Asserting a Schema or Shape
+```java
+assertTrue ( settings.isA( JsonSettings.class) );
+```
+Recursivly checks that all `@Expected` members of `JsonSettings` interface are present.
 
 ## Advanced Features
 
