@@ -18,17 +18,13 @@ A `JsonResponse` is a **virtual** tree of `JsonValue` nodes:
 Underlying implementation of the actual JSON document is the `JsonDocument`
 which exposes all node types as `JsonNode`.
 
-`JsonValue`s are **virtual** 👻:
-* high level abstraction
-* what we believe we got back
-* navigation without requiring existence (no exceptions)
-* extendable tree API
-
-`JsonNode`s are **actual** ☠️:
-* low level abstraction
-* what we actually got back
-* navigation demands existence (otherwise throws exceptions)
-* non-extendable tree API
+| `JsonValue` API | `JsonNode` API |
+| --------------- | -------------- |
+| **virtual** 👻  | **actual** ☠️   |
+| high level abstraction | low level abstraction |
+| what we expect we got back | what we actually got back |
+| navigation without requiring existence (no exceptions) | navigation demands existence (otherwise throws exceptions) |
+| extendable tree API | non-extendable tree API |
 
 Tree Navigation
 
@@ -38,11 +34,12 @@ Tree Navigation
 * `JsonNumber getNumber(String path)`
 * `JsonBoolean getBoolean(String path)`
 * `JsonValue  get(int index)`
-* and some more...
+* and more...
 
 Drilling down...
 ```java
 JsonString str = root.getObject("a").getArray("b").getString(3)
+// or
 JsonString str = root.getString("a.b[3]")
 ```
 
@@ -58,15 +55,10 @@ assertEquals( "en", settings.getString( "keyUiLocale" ).string() );
 ```
 Virtual tree: no exceptions before assert 🤩 
 
-Special asserts:
-```java
-String userId = assertStatus(HttpStatus.CREATED, POST("/users/", userJson));
-JsonWebMessage message = assertWebMessage(....);
-```
 
 ## Advanced Features
 
-Custom node types:
+**Custom node types**
 ```java
 public interface JsonPasswordValidation extends JsonObject
 {
@@ -88,7 +80,8 @@ assertTrue( result.isValidPassword() );
 assertNull( result.getErrorMessage() );
 ```
 
-Asserting Structure
+**Asserting Structure**
+
 Annotate getters with `@Expected`
 ```java
 JsonObject result = POST( "/me/validatePassword", "text/plain:$ecrEt42" ).content()
