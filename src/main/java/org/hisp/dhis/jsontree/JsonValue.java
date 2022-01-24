@@ -38,7 +38,7 @@ package org.hisp.dhis.jsontree;
  * <li>{@link JsonNumber}</li>
  * <li>{@link JsonBoolean}</li>
  * </ul>
- * In addition there is {@link JsonCollection} as a common base type of
+ * In addition, there is {@link JsonCollection} as a common base type of
  * {@link JsonObject} and {@link JsonArray} and {@link JsonPrimitive} as common
  * base type of {@link JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
  *
@@ -64,6 +64,28 @@ package org.hisp.dhis.jsontree;
  */
 public interface JsonValue
 {
+    /**
+     * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
+     *
+     * @param node non null
+     * @return the provided {@link JsonNode} as virtual {@link JsonValue}
+     */
+    static JsonValue of( JsonNode node )
+    {
+        return node == null ? JsonResponse.NULL : of( node.getDeclaration() );
+    }
+
+    /**
+     * View the provided JSON string as virtual lazy evaluated tree.
+     *
+     * @param json JSON string
+     * @return virtual JSON tree root {@link JsonValue}
+     */
+    static JsonValue of( String json )
+    {
+        return new JsonResponse( json );
+    }
+
     /**
      * A property exists when it is part of the JSON response. This means it can
      * be declared JSON {@code null}. Only a path that does not exist returns
@@ -110,8 +132,8 @@ public interface JsonValue
      * switched to any other type. Types here are just what we believe to be
      * true. They are only here to guide us, not assert existence.
      *
-     * Whether or not assumptions are actually true is determined when leaf
-     * values are accessed.
+     * Whether assumptions are actually true is determined when leaf values are
+     * accessed.
      *
      * @param as assumed value type
      * @param <T> value type returned
