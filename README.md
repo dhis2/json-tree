@@ -44,74 +44,85 @@ Tree Navigation
 * and more of similar kind...
 
 Drilling down...
-```java
-JsonString str = root.getObject("a").getArray("b").getString(3)
-// or
-JsonString str = root.getString("a.b[3]")
-```
 
-Assertions using standard JUnit asserts
-```java
-JsonObject settings = GET( "/me/settings" ).content( HttpStatus.OK );
-
-assertTrue( settings.isObject() );
-assertFalse( settings.isEmpty() );
-assertTrue( settings.get( "keyMessageSmsNotification" ).exists() );
-assertEquals( "en", settings.getString( "keyUiLocale" ).string() );
-```
-Virtual tree: no exceptions before assert 🤩 
-
-Asserting a Schema or Shape
-```java
-assertTrue ( settings.isA( JsonSettings.class) );
-```
-Recursivly checks that all `@Expected` members of `JsonSettings` interface are present.
-
-## Advanced Features
-
-**Custom node types**
-```java
-public interface JsonPasswordValidation extends JsonObject
-{
-	default boolean isValidPassword()
-	{
-		return getBoolean( "isValidPassword" ).booleanValue();
-	}
-
-	default String getErrorMessage()
-	{
-		return getString( "errorMessage" ).string();
-	}
-}
-```
-```java
-JsonPasswordValidation result = POST( "/me/validatePassword", "text/plain:$ecrEt42" )
-    .content().as( JsonPasswordValidation.class );
-assertTrue( result.isValidPassword() );
-assertNull( result.getErrorMessage() );
-```
-
-**Asserting Structure**
-
-Annotate getters with `@Expected`
-```java
-JsonObject result = POST( "/me/validatePassword", "text/plain:$ecrEt42" ).content()
-assertTrue(result.isA(JsonPasswordValidation.class));
-// or
-JsonPasswordValidation result = POST( "/me/validatePassword", "text/plain:$ecrEt42" )
-    .content().asObject( JsonPasswordValidation.class );
-```
+    JsonString str=root.getObject("a").getArray("b").getString(3)
+    // or
+    JsonString str=root.getString("a.b[3]")
 
 Traversing actual tree to find nodes or manipulate it
+
 * `JsonValue#node()`: from virtual to actual JSON tree 🗱
 * `JsonObect#find`: return first matching `JsonValue`
 * `JsonNode#visit`: visit matching nodes
 * `JsonNode#find`: return first matching `JsonNode`
 * `JsonNode#count`: count matching nodes
 
+Assertions using standard JUnit asserts
+
+    JsonObject settings = GET("/me/settings").content(HttpStatus.OK);
+    
+    assertTrue(settings.isObject());
+    assertFalse(settings.isEmpty());
+    assertTrue(settings.get("keyMessageSmsNotification").exists());
+    assertEquals("en",settings.getString("keyUiLocale").string());
+
+Virtual tree: no exceptions before assert 🤩
+
+## Custom Node Types
+
+The `JsonValue` API can easily be extended with user defined types by simply declaring an interface with `default`
+methods.
+
 ```java
-JsonWebMessage message = assertWebMessage(...);
-JsonErrorReport error = message.find( JsonErrorReport.class,
-            report -> report.getErrorCode() == ErrorCode.E4031 );
-assertEquals("expected message", error.getMessage() );
+public interface JsonPasswordValidation extends JsonObject
+{
+    default boolean isValidPassword()
+    {
+        return getBoolean( "isValidPassword" ).booleanValue();
+    }
+
+    default String getErrorMessage()
+    {
+        return getString( "errorMessage" ).string();
+    }
+}
 ```
+
+Use `as` or `asObject` to "cast" a `JsonValue` to a custom type:
+
+    JsonValue jsonValue = fetchPasswordValidation();
+    JsonPasswordValidation result = jsonValue.as(JsonPasswordValidation.class );
+    assertTrue(result.isValidPassword());
+    assertNull(result.getErrorMessage());
+
+Asserting a Schema or Structure
+
+    assertTrue(settings.isA(JsonPasswordValidation.class));
+
+Recursively checks that all primitive members or members annotated with `@Expected` as defined by the `JsonSettings`
+interface are present.
+
+When `asObject` is used instead of `as` the structural check is done implicitly and fails with an exception should the
+actual JSON not match the expectations defined by the provided user defined interface.
+
+## Building or Streaming JSON
+
+The `JsonBuilder` API is used to:
+
+* create a `JsonNode` document (and from there a JSON `String`)
+* directly stream JSON to an output stream while it is built
+
+While it is an "append-only" API to support true streaming its use of lambda function arguments allows to compose the
+output in a convenient and flexible way.
+
+Ad-hoc creation of `JsonNode`:
+
+    JsonNode obj = JsonBuilder.createObject(
+        obj -> obj.addString( "name","value" ));
+    
+    String json = obj.getDeclaration();
+
+Directly writing JSON to an output stream:
+
+    JsonBuilder.streamObject( out, 
+        obj -> obj.addString( "name", "value" ) );

@@ -77,7 +77,7 @@ public interface JsonNode extends Serializable
     }
 
     /**
-     * Whether or not an array or object has no elements or members.
+     * Whether an array or object has no elements or members.
      *
      * This is preferable to calling {@link #value()} or {@link #members()} or
      * {@link #elements()} when emptiness is only property of interest as it

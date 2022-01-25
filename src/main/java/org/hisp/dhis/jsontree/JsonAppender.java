@@ -125,22 +125,28 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
     }
 
     @Override
-    public JsonNode toObject( Consumer<JsonObjectBuilder> value )
+    public JsonNode toObject( Consumer<JsonObjectBuilder> obj )
     {
         beginLevel( '{' );
-        value.accept( this );
+        obj.accept( this );
         endLevel( '}' );
-        return new JsonDocument( toStr.get() ).get( "$" );
+        return toNode();
 
     }
 
     @Override
-    public JsonNode toArray( Consumer<JsonArrayBuilder> value )
+    public JsonNode toArray( Consumer<JsonArrayBuilder> arr )
     {
         beginLevel( '[' );
-        value.accept( this );
+        arr.accept( this );
         endLevel( ']' );
-        return new JsonDocument( toStr.get() ).get( "$" );
+        return toNode();
+    }
+
+    private JsonNode toNode()
+    {
+        String json = toStr.get();
+        return json == null ? null : new JsonDocument( json ).get( "$" );
     }
 
     /*
