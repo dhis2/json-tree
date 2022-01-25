@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -44,10 +46,81 @@ import java.util.stream.Stream;
  * JSON in a streaming scenario or when programmatically declaring a JSON
  * structure.
  *
+ * This can be used to write JSON directly to some type of output stream or to
+ * create {@link JsonNode}s or to ad-hoc create a {@link JsonNode}.
+ *
+ * This is not an API to build and later manipulate a JSON tree. While this can
+ * be done by first creating {@link JsonNode} which then is manipulated using
+ * {@link JsonNode#addMember(String, String)} or
+ * {@link JsonNode#replaceWith(String)} this is not a good way to process
+ * complex JSON trees.
+ *
  * @author Jan Bernitt
  */
 public interface JsonBuilder
 {
+    /**
+     * Convenience method for ad-hoc creation of JSON object {@link JsonNode}.
+     * Use {@link JsonNode#getDeclaration()} to get the JSON {@link String}.
+     *
+     * @param obj builder to add members of the created JSON object
+     * @return created JSON object {@link JsonNode}
+     *
+     * @since 0.2
+     */
+    static JsonNode createObject( Consumer<JsonObjectBuilder> obj )
+    {
+        return new JsonAppender( new StringBuilder() ).toObject( obj );
+    }
+
+    /**
+     * Convenience method for ad-hoc creation of JSON arrays {@link JsonNode}.
+     * Use {@link JsonNode#getDeclaration()} to get the JSON {@link String}.
+     *
+     * @param arr builder to add elements of the created JSON array
+     * @return created JSON array {@link JsonNode}
+     *
+     * @since 0.2
+     */
+    static JsonNode createArray( Consumer<JsonArrayBuilder> arr )
+    {
+        return new JsonAppender( new StringBuilder() ).toArray( arr );
+    }
+
+    /**
+     * Convenience method to directly write an object to the provided
+     * {@link OutputStream}.
+     *
+     * @param out target, not null
+     * @param obj builder to create the written object
+     *
+     * @since 0.2
+     */
+    static void streamObject( OutputStream out, Consumer<JsonObjectBuilder> obj )
+    {
+        try ( PrintStream jsonStream = new PrintStream( out ) )
+        {
+            new JsonAppender( jsonStream ).toObject( obj );
+        }
+    }
+
+    /**
+     * Convenience method to directly write an array to the provided
+     * {@link OutputStream}.
+     *
+     * @param out target, not null
+     * @param arr builder to create the written array
+     *
+     * @since 0.2
+     */
+    static void streamArray( OutputStream out, Consumer<JsonArrayBuilder> arr )
+    {
+        try ( PrintStream jsonStream = new PrintStream( out ) )
+        {
+            new JsonAppender( jsonStream ).toArray( arr );
+        }
+    }
+
     /**
      * Like a {@link BiConsumer} but with 3 inputs.
      */
@@ -59,22 +132,22 @@ public interface JsonBuilder
     /**
      * Define a {@link JsonNode} that is a {@link JsonObject}.
      *
-     * @param value fluent API to define the members of the JSON object created
+     * @param obj fluent API to define the members of the JSON object created
      * @return the {@link JsonNode} representing the created object, might
      *         return {@code null} in case the content is only written to an
      *         output stream and cannot be accessed as {@link JsonNode} value
      */
-    JsonNode toObject( Consumer<JsonObjectBuilder> value );
+    JsonNode toObject( Consumer<JsonObjectBuilder> obj );
 
     /**
      * Define a {@link JsonNode} that is a {@link JsonArray}.
      *
-     * @param value fluent API to define the elements of the JSON array created
+     * @param arr fluent API to define the elements of the JSON array created
      * @return the {@link JsonNode} representing the created array, might return
      *         {@code null} in case the content is only written to an output
      *         stream and cannot be accessed as {@link JsonNode} value
      */
-    JsonNode toArray( Consumer<JsonArrayBuilder> value );
+    JsonNode toArray( Consumer<JsonArrayBuilder> arr );
 
     default JsonNode toObject( Object pojo, JsonMapper mapper )
     {
