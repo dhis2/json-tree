@@ -126,3 +126,11 @@ Directly writing JSON to an output stream:
 
     JsonBuilder.streamObject( out, 
         obj -> obj.addString( "name", "value" ) );
+
+## Deploy to Maven Repository
+
+This library can be deployed as an artefact to the Sonatype OSS Maven repository. The deployment plugins are defined in
+a separate profile to avoid performing GPG key signing during regular build processes. To deploy invoke:
+
+	mvn clean deploy -P deploy
+
