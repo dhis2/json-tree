@@ -28,6 +28,7 @@
 package org.hisp.dhis.jsontree;
 
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * {@link JsonMap}s are a special form of a {@link JsonObject} where all
@@ -59,5 +60,34 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection
     default Set<String> keys()
     {
         return node().members().keySet();
+    }
+
+    /**
+     * Maps this map's entry values to a lazy transformed map view where each
+     * entry value of the original map is transformed by the given function when
+     * accessed.
+     * <p>
+     * This means the returned map always has same size as the original map.
+     *
+     * @param memberToX transformer function
+     * @param <V> type of the transformer output, entries of the map view
+     * @return a lazily transformed map view of this map
+     */
+    default <V extends JsonValue> JsonMap<V> viewAsMap( Function<E, V> memberToX )
+    {
+        final class JsonMapView extends CollectionView<JsonMap<E>> implements JsonMap<V>
+        {
+            private JsonMapView( JsonMap<E> viewed )
+            {
+                super( viewed );
+            }
+
+            @Override
+            public V get( String key )
+            {
+                return memberToX.apply( viewed.get( key ) );
+            }
+        }
+        return new JsonMapView( this );
     }
 }

@@ -36,15 +36,14 @@ import java.util.function.Function;
  * Represents a JSON array node.
  *
  * As all nodes are mere views or virtual index access will never throw an
- * {@link ArrayIndexOutOfBoundsException}. Whether or not an element at an index
- * exists is determined first when {@link JsonValue#exists()} or other value
- * accessing operations are performed on a node.
+ * {@link ArrayIndexOutOfBoundsException}. Whether an element at an index exists
+ * is determined first when {@link JsonValue#exists()} or other value accessing
+ * operations are performed on a node.
  *
  * @author Jan Bernitt
  */
 public interface JsonArray extends JsonCollection
 {
-
     /**
      * Index access to the array.
      *
@@ -52,10 +51,10 @@ public interface JsonArray extends JsonCollection
      *
      * @param index index to access (0 and above)
      * @param as assumed type of the element
-     * @param <T> type of the returned element
+     * @param <E> type of the returned element
      * @return element at the given index
      */
-    <T extends JsonValue> T get( int index, Class<T> as );
+    <E extends JsonValue> E get( int index, Class<E> as );
 
     /**
      * @return the array elements as a uniform list of {@link String}
@@ -126,5 +125,33 @@ public interface JsonArray extends JsonCollection
     default <E extends JsonValue> JsonMultiMap<E> getMultiMap( int index, Class<E> as )
     {
         return JsonCollection.asMultiMap( getObject( index ), as );
+    }
+
+    /**
+     * Maps this array to a lazy transformed list view where each element of the
+     * original array is transformed by the given function when accessed.
+     *
+     * This means the returned list always has same size as the original array.
+     *
+     * @param elementToX transformer function
+     * @param <V> type of the transformer output, elements of the list view
+     * @return a lazily transformed list view of this array
+     */
+    default <V extends JsonValue> JsonList<V> viewAsList( Function<JsonValue, V> elementToX )
+    {
+        final class JsonArrayView extends CollectionView<JsonArray> implements JsonList<V>
+        {
+            private JsonArrayView( JsonArray self )
+            {
+                super( self );
+            }
+
+            @Override
+            public V get( int index )
+            {
+                return elementToX.apply( viewed.get( index ) );
+            }
+        }
+        return new JsonArrayView( this );
     }
 }

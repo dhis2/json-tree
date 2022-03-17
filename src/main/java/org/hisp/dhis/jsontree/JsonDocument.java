@@ -202,7 +202,7 @@ public final class JsonDocument implements Serializable
         @Override
         public final void visit( JsonNodeType type, Consumer<JsonNode> visitor )
         {
-            if ( type == getType() )
+            if ( type == null || type == getType() )
             {
                 visitor.accept( this );
             }

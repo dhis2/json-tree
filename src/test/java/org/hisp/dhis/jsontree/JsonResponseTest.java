@@ -35,6 +35,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import org.junit.Test;
 
@@ -177,6 +178,27 @@ public class JsonResponseTest
     }
 
     @Test
+    public void testArrayValuesMappedView()
+    {
+        JsonArray arr = createJSON( "[{'a':'x'},{'a':'y'},{'a':'z','b':1}]" );
+        JsonList<JsonString> view = arr.viewAsList( e -> e.asObject().getString( "a" ) );
+        assertEquals( asList( "x", "y", "z" ), view.toList( JsonString::string ) );
+    }
+
+    @Test
+    public void testListValuesMappedView()
+    {
+        JsonList<JsonObject> list = createJSON( "[{'a':'x','b':1},{'a':'y'},{'a':'z','b':3}]" )
+            .asList( JsonObject.class );
+        assertEquals( asList( "x", "y", "z" ),
+            list.viewAsList( e -> e.getString( "a" ) ).toList( JsonString::string ) );
+        assertEquals( asList( 1, null, 3 ),
+            list.viewAsList( e -> e.getNumber( "b" ) ).toList( JsonNumber::intValue, null ) );
+        assertEquals( asList( 1, 3 ),
+            list.viewAsList( e -> e.getNumber( "b" ) ).toListOfElementsThatExists( JsonNumber::intValue ) );
+    }
+
+    @Test
     public void testIsNull()
     {
         JsonObject response = createJSON( "{'optional': null }" );
@@ -241,6 +263,42 @@ public class JsonResponseTest
     {
         JsonObject response = createJSON( "{'a': ['hello, again', 12] }" );
         assertEquals( "{\"a\": [\"hello, again\", 12] }", response.node().getDeclaration() );
+    }
+
+    @Test
+    public void testListContainsAll()
+    {
+        JsonList<JsonString> list = createJSON( "[{'a':'x'}, {'a':'y'}]" ).as( JsonArray.class )
+            .viewAsList( e -> e.asObject().getString( "a" ) );
+        assertTrue( list.containsAll( JsonString::string, "y", "x" ) );
+    }
+
+    @Test
+    public void testListContains()
+    {
+        JsonList<JsonString> list = createJSON( "[{'a':'x'}, {'a':'y'}]" ).as( JsonArray.class )
+            .viewAsList( e -> e.asObject().getString( "a" ) );
+        assertTrue( list.contains( JsonString::string, "y"::equals ) );
+        assertFalse( list.contains( JsonString::string, "z"::equals ) );
+    }
+
+    @Test
+    public void testListContainsUnique()
+    {
+        JsonList<JsonString> list = createJSON( "[{'a':'x'}, {'a':'y'}, {'a':'y'}]" ).as( JsonArray.class )
+            .viewAsList( e -> e.asObject().getString( "a" ) );
+        assertTrue( list.containsUnique( JsonString::string, "x"::equals ) );
+        assertFalse( list.containsUnique( JsonString::string, "y"::equals ) );
+    }
+
+    @Test
+    public void testListFirst()
+    {
+        JsonList<JsonObject> list = createJSON( "[{'a':'x'}, {'a':'y','b':1}, {'a':'y','b':2}]" )
+            .asList( JsonObject.class );
+        assertEquals( 1, list.first( e -> Objects.equals( "y", e.getString( "a" ).string() ) )
+            .asObject().getNumber( "b" ).intValue() );
+        assertFalse( list.first( e -> e.has( "c" ) ).exists() );
     }
 
     @Test

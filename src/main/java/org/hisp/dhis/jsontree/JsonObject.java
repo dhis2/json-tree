@@ -35,6 +35,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
@@ -73,7 +74,10 @@ public interface JsonObject extends JsonCollection
      * @throws UnsupportedOperationException in case this value is not an JSON
      *         object
      */
-    boolean has( String... names );
+    default boolean has( String... names )
+    {
+        return stream( names ).allMatch( name -> get( name ).exists() );
+    }
 
     /**
      * Lists JSON object member names in order of declaration.
@@ -259,5 +263,35 @@ public interface JsonObject extends JsonCollection
         return !match.isPresent()
             ? JsonResponse.NULL.as( type )
             : new JsonResponse( match.get().getDeclaration() ).asObject( type );
+    }
+
+    /**
+     * Maps this object's members to a lazy transformed object view where each
+     * member value of the original object is transformed by the given function
+     * when accessed.
+     * <p>
+     * This means the returned object always has the same number of members as
+     * the original object.
+     *
+     * @param memberToX transformer function
+     * @param <V> type of the transformer output, members of the object view
+     * @return a lazily transformed object view of this object
+     */
+    default <V extends JsonValue> JsonObject viewAsObject( Function<JsonValue, V> memberToX )
+    {
+        final class JsonObjectView extends CollectionView<JsonObject> implements JsonObject
+        {
+            private JsonObjectView( JsonObject viewed )
+            {
+                super( viewed );
+            }
+
+            @Override
+            public <T extends JsonValue> T get( String name, Class<T> as )
+            {
+                return memberToX.apply( viewed.get( name ) ).as( as );
+            }
+        }
+        return new JsonObjectView( this );
     }
 }
