@@ -94,4 +94,35 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>>
         }
         return res;
     }
+
+    /**
+     * Maps this multimap list elements to a lazy transformed view where each
+     * entry value of the original map is transformed by the given function when
+     * accessed.
+     * <p>
+     * This means the returned multimap always has same size as the original
+     * map.
+     *
+     * @param memberToX transformer function
+     * @param <V> type of the transformer output for list elements of each of
+     *        the map entry lists
+     * @return a lazily transformed multimap view of this multimap
+     */
+    default <V extends JsonValue> JsonMultiMap<V> viewAsMultiMap( Function<E, V> memberToX )
+    {
+        final class JsonMapView extends CollectionView<JsonMultiMap<E>> implements JsonMultiMap<V>
+        {
+            private JsonMapView( JsonMultiMap<E> viewed )
+            {
+                super( viewed );
+            }
+
+            @Override
+            public JsonList<V> get( String key )
+            {
+                return viewed.get( key ).viewAsList( memberToX );
+            }
+        }
+        return new JsonMapView( this );
+    }
 }

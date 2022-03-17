@@ -173,6 +173,17 @@ public interface JsonNode extends Serializable
     void visit( JsonNodeType type, Consumer<JsonNode> visitor );
 
     /**
+     * Visit subtree of this node including this node.
+     *
+     * @param visitor consumes all nodes in the subtree of this node (including
+     *        this node)
+     */
+    default void visit( Consumer<JsonNode> visitor )
+    {
+        visit( null, visitor );
+    }
+
+    /**
      * Searches for a node in this subtree that matches type and returns true
      * from the provided test.
      *

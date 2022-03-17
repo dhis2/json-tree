@@ -194,9 +194,9 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     @Override
     public boolean has( String... names )
     {
-        return value( JsonNodeType.OBJECT,
+        return Boolean.TRUE.equals( value( JsonNodeType.OBJECT,
             node -> node.members().keySet().containsAll( Arrays.asList( names ) ),
-            ex -> false );
+            ex -> false ) );
     }
 
     @Override

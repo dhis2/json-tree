@@ -83,7 +83,7 @@ public interface JsonValue
      */
     static JsonValue of( String json )
     {
-        return new JsonResponse( json );
+        return json == null || "null".equals( json ) ? JsonResponse.NULL : new JsonResponse( json );
     }
 
     /**
@@ -141,6 +141,15 @@ public interface JsonValue
      *         wrapped as the provided type or literally cast.
      */
     <T extends JsonValue> T as( Class<T> as );
+
+    /**
+     * @return This value as {@link JsonObject} (same as
+     *         {@code as(JsonObject.class)})
+     */
+    default JsonObject asObject()
+    {
+        return as( JsonObject.class );
+    }
 
     /**
      * This value as a list of uniform elements (view on JSON array).
