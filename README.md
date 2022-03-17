@@ -239,3 +239,11 @@ changed by this, just the view on top of it is transformed.
 
 Such transformation can be especially useful in combination with `toList` to
 extract a list of the values that can be compared to an expected list. 
+
+
+## Deploy to Maven Repository
+
+This library can be deployed as an artefact to the Sonatype OSS Maven repository. The deployment plugins are defined in
+a separate profile to avoid performing GPG key signing during regular build processes. To deploy invoke:
+
+	mvn clean deploy -P deploy
