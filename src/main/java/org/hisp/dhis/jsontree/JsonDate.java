@@ -27,7 +27,9 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -43,5 +45,15 @@ public interface JsonDate extends JsonString
     default LocalDateTime date()
     {
         return parsed( str -> LocalDateTime.parse( str, DateTimeFormatter.ISO_LOCAL_DATE_TIME ) );
+    }
+
+    default LocalDate dateOnly()
+    {
+        return parsed( str -> LocalDate.parse( str, DateTimeFormatter.ISO_LOCAL_DATE ) );
+    }
+
+    default LocalTime timeOnly()
+    {
+        return parsed( str -> LocalTime.parse( str, DateTimeFormatter.ISO_LOCAL_TIME ) );
     }
 }

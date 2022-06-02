@@ -52,7 +52,6 @@ import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
  */
 public interface JsonObject extends JsonCollection
 {
-
     /**
      * Name access to object fields.
      *

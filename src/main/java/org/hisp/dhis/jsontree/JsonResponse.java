@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static java.lang.Character.isUpperCase;
+import static java.lang.Character.toLowerCase;
 import static java.util.Collections.emptyList;
 
 import java.io.Serializable;
@@ -35,7 +37,9 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -46,6 +50,7 @@ import java.util.function.Function;
 import org.hisp.dhis.jsontree.JsonDocument.JsonFormatException;
 import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
 import org.hisp.dhis.jsontree.JsonDocument.JsonPathException;
+import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
 
 /**
  * Implements the {@link JsonValue} read-only access abstraction for JSON
@@ -63,8 +68,8 @@ import org.hisp.dhis.jsontree.JsonDocument.JsonPathException;
  *
  * It is crucial to understand that the complete JSON object model is purely a
  * typed convenience layer expressing what could or is expected to exist.
- * Whether or not something actually exist is first evaluated when leaf values
- * are accessed or existence is explicitly checked using {@link #exists()}.
+ * Whether something actually exist is first evaluated when leaf values are
+ * accessed or existence is explicitly checked using {@link #exists()}.
  *
  * This also means specific {@link JsonObject}s are modelled by extending the
  * interface and implementing {@code default} methods. No other implementation
@@ -74,22 +79,29 @@ import org.hisp.dhis.jsontree.JsonDocument.JsonPathException;
  */
 public final class JsonResponse implements JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean, Serializable
 {
-
-    public static final JsonResponse NULL = new JsonResponse( new JsonDocument( "null" ), "$" );
+    public static final JsonResponse NULL = new JsonResponse( new JsonDocument( "null" ), "$", JsonTypedAccess.GLOBAL );
 
     private final JsonDocument content;
 
     private final String path;
 
+    private final JsonTypedAccessStore store;
+
     public JsonResponse( String content )
     {
-        this( new JsonDocument( content.isEmpty() ? "{}" : content ), "$" );
+        this( content, JsonTypedAccess.GLOBAL );
     }
 
-    private JsonResponse( JsonDocument content, String path )
+    public JsonResponse( String content, JsonTypedAccessStore store )
+    {
+        this( new JsonDocument( content.isEmpty() ? "{}" : content ), "$", store );
+    }
+
+    private JsonResponse( JsonDocument content, String path, JsonTypedAccessStore store )
     {
         this.content = content;
         this.path = path;
+        this.store = store;
     }
 
     public JsonDocument getJsonDocument()
@@ -141,13 +153,13 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     @Override
     public <T extends JsonValue> T get( int index, Class<T> as )
     {
-        return asType( as, new JsonResponse( content, path + "[" + index + "]" ) );
+        return asType( as, new JsonResponse( content, path + "[" + index + "]", store ) );
     }
 
     @Override
     public <T extends JsonValue> T get( String name, Class<T> as )
     {
-        return asType( as, new JsonResponse( content, path + "." + name ) );
+        return asType( as, new JsonResponse( content, path + "." + name, store ) );
     }
 
     @Override
@@ -325,44 +337,96 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     @SuppressWarnings( "unchecked" )
-    private static <E extends JsonValue> E createProxy( Class<E> as, JsonValue inner )
+    private <E extends JsonValue> E createProxy( Class<E> as, JsonValue inner )
     {
         return (E) Proxy.newProxyInstance(
             Thread.currentThread().getContextClassLoader(), new Class[] { as },
             ( proxy, method, args ) -> {
                 // are we dealing with a default method in the extending class?
                 Class<?> declaringClass = method.getDeclaringClass();
-                if ( method.isDefault() && isExtended( declaringClass ) )
+                if ( isExtended( declaringClass ) )
                 {
-                    // call the default method of the proxied type itself
-                    if ( !isJava8() )
+                    if ( method.isDefault() )
                     {
-                        return MethodHandles.lookup()
-                            .findSpecial( declaringClass, method.getName(),
-                                MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
-                                declaringClass )
-                            .bindTo( proxy ).invokeWithArguments();
+                        // call the default method of the proxied type itself
+                        return callDefaultMethod( proxy, method, declaringClass );
                     }
-                    Constructor<Lookup> constructor = Lookup.class
-                        .getDeclaredConstructor( Class.class );
-                    constructor.setAccessible( true );
-                    return constructor.newInstance( declaringClass )
-                        .in( declaringClass )
-                        .unreflectSpecial( method, declaringClass )
-                        .bindTo( proxy )
-                        .invokeWithArguments();
+                    // abstract extending interface method?
+                    return callAbstractMethod( inner, method, args );
                 }
                 // call the same method on the wrapped object (assuming it has
                 // it)
-                try
-                {
-                    return method.invoke( inner, args );
-                }
-                catch ( InvocationTargetException ex )
-                {
-                    throw ex.getTargetException();
-                }
+                return callCoreApiMethod( inner, method, args );
             } );
+    }
+
+    /**
+     * Any default methods implemented by an extension of the {@link JsonValue}
+     * class tree is run by calling the default as defined in the interface.
+     * This is sadly not as straight forward as it might sound.
+     */
+    private static Object callDefaultMethod( Object proxy, Method method, Class<?> declaringClass )
+        throws Throwable
+    {
+        if ( !isJava8() )
+        {
+            return MethodHandles.lookup()
+                .findSpecial( declaringClass, method.getName(),
+                    MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
+                    declaringClass )
+                .bindTo( proxy ).invokeWithArguments();
+        }
+        Constructor<Lookup> constructor = Lookup.class
+            .getDeclaredConstructor( Class.class );
+        constructor.trySetAccessible();
+        return constructor.newInstance( declaringClass )
+            .in( declaringClass )
+            .unreflectSpecial( method, declaringClass )
+            .bindTo( proxy )
+            .invokeWithArguments();
+    }
+
+    /**
+     * Abstract interface methods are "implemented" by deriving an
+     * {@link JsonGenericTypedAccessor} from the method's return type and have
+     * the accessor extract the value by using solely the underlying
+     * {@link JsonValue} API.
+     */
+    private Object callAbstractMethod( JsonValue inner, Method method, Object[] args )
+    {
+        JsonObject obj = inner.asObject();
+        Class<?> resType = method.getReturnType();
+        String name = stripGetterPrefix( method );
+        boolean hasDefault = method.getParameterCount() == 1 && method.getParameterTypes()[0] == resType;
+        if ( obj.get( name ).isUndefined() && hasDefault )
+        {
+            return args[0];
+        }
+        Type genericType = method.getGenericReturnType();
+        JsonGenericTypedAccessor<?> accessor = store.accessor( resType );
+        if ( accessor != null )
+        {
+            return accessor.access( obj, name, genericType, store );
+        }
+        throw new UnsupportedOperationException( "No accessor registered for type: " + genericType );
+    }
+
+    /**
+     * All methods by the core API of the general JSON tree represented as
+     * {@link JsonValue}s (and the general subclasses) are implemented by the
+     * {@link JsonResponse} wrapper so they can be called directly.
+     */
+    private static Object callCoreApiMethod( JsonValue inner, Method method, Object[] args )
+        throws Throwable
+    {
+        try
+        {
+            return method.invoke( inner, args );
+        }
+        catch ( InvocationTargetException ex )
+        {
+            throw ex.getTargetException();
+        }
     }
 
     private static boolean isExtended( Class<?> declaringClass )
@@ -375,5 +439,19 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
         String javaVersion = System.getProperty( "java.version" );
         boolean javaVersionIsBlank = javaVersion.trim().isEmpty();
         return !javaVersionIsBlank && javaVersion.startsWith( "1.8" );
+    }
+
+    private static String stripGetterPrefix( Method method )
+    {
+        String name = method.getName();
+        if ( name.startsWith( "is" ) && name.length() > 2 && isUpperCase( name.charAt( 2 ) ) )
+        {
+            return toLowerCase( name.charAt( 2 ) ) + name.substring( 3 );
+        }
+        if ( name.startsWith( "get" ) && name.length() > 3 && isUpperCase( name.charAt( 3 ) ) )
+        {
+            return toLowerCase( name.charAt( 3 ) ) + name.substring( 4 );
+        }
+        return name;
     }
 }

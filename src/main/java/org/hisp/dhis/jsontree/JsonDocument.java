@@ -259,7 +259,7 @@ public final class JsonDocument implements Serializable
         }
 
         @Override
-        public JsonNode addMember( String name, String value )
+        public final JsonNode addMember( String name, String value )
         {
             if ( getType() != JsonNodeType.OBJECT )
             {
