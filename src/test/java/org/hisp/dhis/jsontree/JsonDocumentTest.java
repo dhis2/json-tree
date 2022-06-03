@@ -59,7 +59,7 @@ public class JsonDocumentTest
     @Test
     public void testStringNode()
     {
-        JsonNode node = new JsonDocument( "\"hello\"" ).get( "$" );
+        JsonNode node = JsonNode.of( "\"hello\"" );
         assertEquals( JsonNodeType.STRING, node.getType() );
         assertEquals( "hello", node.value() );
         assertEquals( 0, node.startIndex() );
@@ -80,14 +80,14 @@ public class JsonDocumentTest
     @Test
     public void testStringNode_EscapedChars()
     {
-        JsonNode node = new JsonDocument( "\"\\\\\\/\\t\\r\\n\\f\\b\\\"\"" ).get( "$" );
+        JsonNode node = JsonNode.of( "\"\\\\\\/\\t\\r\\n\\f\\b\\\"\"" );
         assertEquals( "\\/\t\r\n\f\b\"", node.value() );
     }
 
     @Test
     public void testStringNode_Unsupported()
     {
-        JsonNode node = new JsonDocument( "\"hello\"" ).get( "$" );
+        JsonNode node = JsonNode.of( "\"hello\"" );
         Exception ex = assertThrows( UnsupportedOperationException.class, node::isEmpty );
         assertEquals( "STRING node has no empty property.", ex.getMessage() );
         ex = assertThrows( UnsupportedOperationException.class, node::size );
@@ -101,7 +101,7 @@ public class JsonDocumentTest
     @Test
     public void testStringNode_EOI()
     {
-        JsonNode node = new JsonDocument( "\"hello" ).get( "$" );
+        JsonNode node = JsonNode.of( "\"hello" );
         JsonFormatException ex = assertThrows( JsonFormatException.class, node::value );
         assertEquals( "Expected \" but reach EOI: \"hello", ex.getMessage() );
     }
@@ -109,7 +109,7 @@ public class JsonDocumentTest
     @Test
     public void testNumberNode_Integer()
     {
-        JsonNode node = new JsonDocument( "123" ).get( "$" );
+        JsonNode node = JsonNode.of( "123" );
         assertEquals( JsonNodeType.NUMBER, node.getType() );
         assertEquals( 123, node.value() );
     }
@@ -117,7 +117,7 @@ public class JsonDocumentTest
     @Test
     public void testNumberNode_Unsupported()
     {
-        JsonNode node = new JsonDocument( "1e-2" ).get( "$" );
+        JsonNode node = JsonNode.of( "1e-2" );
         Exception ex = assertThrows( UnsupportedOperationException.class, node::isEmpty );
         assertEquals( "NUMBER node has no empty property.", ex.getMessage() );
         ex = assertThrows( UnsupportedOperationException.class, node::size );
@@ -131,7 +131,7 @@ public class JsonDocumentTest
     @Test
     public void testNumberNode_EOI()
     {
-        JsonNode node = new JsonDocument( "-" ).get( "$" );
+        JsonNode node = JsonNode.of( "-" );
         JsonFormatException ex = assertThrows( JsonFormatException.class, node::value );
         assertEquals( "Expected character but reached EOI: -", ex.getMessage() );
     }
@@ -139,7 +139,7 @@ public class JsonDocumentTest
     @Test
     public void testNumberNode_Long()
     {
-        JsonNode node = new JsonDocument( "2147483648" ).get( "$" );
+        JsonNode node = JsonNode.of( "2147483648" );
         assertEquals( JsonNodeType.NUMBER, node.getType() );
         assertEquals( 2147483648L, node.value() );
     }
@@ -147,7 +147,7 @@ public class JsonDocumentTest
     @Test
     public void testBooleanNode_True()
     {
-        JsonNode node = new JsonDocument( "true" ).get( "$" );
+        JsonNode node = JsonNode.of( "true" );
         assertEquals( JsonNodeType.BOOLEAN, node.getType() );
         assertEquals( true, node.value() );
     }
@@ -155,7 +155,7 @@ public class JsonDocumentTest
     @Test
     public void testBooleanNode_Unsupported()
     {
-        JsonNode node = new JsonDocument( "false" ).get( "$" );
+        JsonNode node = JsonNode.of( "false" );
         Exception ex = assertThrows( UnsupportedOperationException.class, node::isEmpty );
         assertEquals( "BOOLEAN node has no empty property.", ex.getMessage() );
         ex = assertThrows( UnsupportedOperationException.class, node::size );
@@ -169,7 +169,7 @@ public class JsonDocumentTest
     @Test
     public void testBooleanNode_False()
     {
-        JsonNode node = new JsonDocument( "false" ).get( "$" );
+        JsonNode node = JsonNode.of( "false" );
         assertEquals( JsonNodeType.BOOLEAN, node.getType() );
         assertEquals( false, node.value() );
     }
@@ -177,7 +177,7 @@ public class JsonDocumentTest
     @Test
     public void testNullNode()
     {
-        JsonNode node = new JsonDocument( "null" ).get( "$" );
+        JsonNode node = JsonNode.of( "null" );
         assertEquals( JsonNodeType.NULL, node.getType() );
         assertNull( node.value() );
     }
@@ -185,7 +185,7 @@ public class JsonDocumentTest
     @Test
     public void testNullNode_Unsupported()
     {
-        JsonNode node = new JsonDocument( "null" ).get( "$" );
+        JsonNode node = JsonNode.of( "null" );
         Exception ex = assertThrows( UnsupportedOperationException.class, node::isEmpty );
         assertEquals( "NULL node has no empty property.", ex.getMessage() );
         ex = assertThrows( UnsupportedOperationException.class, node::size );
@@ -206,7 +206,7 @@ public class JsonDocumentTest
     @Test
     public void testArray_Numbers()
     {
-        JsonNode node = new JsonDocument( "[1, 2 ,3]" ).get( "$" );
+        JsonNode node = JsonNode.of( "[1, 2 ,3]" );
         assertEquals( JsonNodeType.ARRAY, node.getType() );
         assertFalse( node.isEmpty() );
         assertEquals( 3, node.size() );
@@ -215,7 +215,7 @@ public class JsonDocumentTest
     @Test
     public void testArray_Unsupported()
     {
-        JsonNode node = new JsonDocument( "[]" ).get( "$" );
+        JsonNode node = JsonNode.of( "[]" );
         Exception ex = assertThrows( UnsupportedOperationException.class, node::members );
         assertEquals( "ARRAY node has no members property.", ex.getMessage() );
     }
@@ -253,7 +253,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_Flat()
     {
-        JsonNode root = new JsonDocument( "{\"a\":1, \"bb\":true , \"ccc\":null }" ).get( "$" );
+        JsonNode root = JsonNode.of( "{\"a\":1, \"bb\":true , \"ccc\":null }" );
         assertEquals( JsonNodeType.OBJECT, root.getType() );
         assertFalse( root.isEmpty() );
         assertEquals( 3, root.size() );
@@ -352,7 +352,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_Unsupported()
     {
-        JsonNode node = new JsonDocument( "{}" ).get( "$" );
+        JsonNode node = JsonNode.of( "{}" );
         Exception ex = assertThrows( UnsupportedOperationException.class, node::elements );
         assertEquals( "OBJECT node has no elements property.", ex.getMessage() );
     }
@@ -412,7 +412,7 @@ public class JsonDocumentTest
     @Test
     public void testNull()
     {
-        JsonNode node = new JsonDocument( "null" ).get( "$" );
+        JsonNode node = JsonNode.of( "null" );
         assertEquals( JsonNodeType.NULL, node.getType() );
         assertNull( node.value() );
     }

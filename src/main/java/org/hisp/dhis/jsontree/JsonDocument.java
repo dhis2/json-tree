@@ -255,7 +255,7 @@ public final class JsonDocument implements Serializable
             {
                 newJson.append( this.json, endIndex, this.json.length - endIndex );
             }
-            return new JsonDocument( newJson.toString() ).get( "$" );
+            return JsonNode.of( newJson.toString() );
         }
 
         @Override
@@ -266,9 +266,9 @@ public final class JsonDocument implements Serializable
                 throw new IllegalStateException( "`add` only allowed for objects but was: " + getType() );
             }
             int endIndex = endIndex() - 1;
-            return new JsonDocument(
+            return JsonNode.of(
                 String.valueOf( json, 0, endIndex ) + ", \"" + name + "\":" + value
-                    + String.valueOf( json, endIndex, json.length - endIndex ) ).get( "$" );
+                    + String.valueOf( json, endIndex, json.length - endIndex ) );
         }
 
         static JsonNode autoDetect( String path, char[] json, int atIndex, Map<String, JsonNode> nodesByPath )

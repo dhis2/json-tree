@@ -76,12 +76,16 @@ public final class JsonTypedAccess implements JsonTypedAccessStore
     public <T> JsonGenericTypedAccessor<T> accessor( Class<T> type )
     {
         JsonGenericTypedAccessor<T> res = (JsonGenericTypedAccessor<T>) byResultType.get( type );
+        if ( res != null )
+        {
+            return res;
+        }
         if ( type.isEnum() )
         {
             // automatically provide enum mapping
             return (JsonGenericTypedAccessor<T>) byResultType.get( Enum.class );
         }
-        if ( res == null && JsonValue.class.isAssignableFrom( type ) )
+        if ( JsonValue.class.isAssignableFrom( type ) )
         {
             // automatically provide JsonValue subtype mapping
             return (JsonGenericTypedAccessor<T>) byResultType.get( JsonValue.class );

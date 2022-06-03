@@ -146,7 +146,7 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
     private JsonNode toNode()
     {
         String json = toStr.get();
-        return json == null ? null : new JsonDocument( json ).get( "$" );
+        return json == null ? null : JsonNode.of( json );
     }
 
     /*

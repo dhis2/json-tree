@@ -54,6 +54,11 @@ import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
  */
 public interface JsonNode extends Serializable
 {
+    static JsonNode of( String json )
+    {
+        return new JsonDocument( json ).get( "$" );
+    }
+
     /**
      * @return the type of the node as derived from the node beginning
      */
@@ -262,7 +267,7 @@ public interface JsonNode extends Serializable
      */
     default JsonNode extract()
     {
-        return new JsonDocument( getDeclaration() ).get( "$" );
+        return of( getDeclaration() );
     }
 
     /**
