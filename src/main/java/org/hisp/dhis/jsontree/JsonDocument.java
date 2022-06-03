@@ -314,6 +314,12 @@ public final class JsonDocument implements Serializable
         }
 
         @Override
+        public JsonNode get( String path )
+        {
+            return JsonDocument.get( this.path.isEmpty() ? "$." + path : this.path + "." + path, nodesByPath );
+        }
+
+        @Override
         public Map<String, JsonNode> members()
         {
             return requireNonNull( value() );
@@ -425,6 +431,12 @@ public final class JsonDocument implements Serializable
         {
             super( path, json, start );
             this.nodesByPath = nodesByPath;
+        }
+
+        @Override
+        public JsonNode get( String path )
+        {
+            return JsonDocument.get( this.path + path, nodesByPath );
         }
 
         @Override
@@ -717,6 +729,11 @@ public final class JsonDocument implements Serializable
      */
     public JsonNode get( String path )
     {
+        return get( path, nodesByPath );
+    }
+
+    private static JsonNode get( String path, Map<String, JsonNode> nodesByPath )
+    {
         if ( path.startsWith( "$" ) )
         {
             path = path.substring( 1 );
@@ -726,7 +743,7 @@ public final class JsonDocument implements Serializable
         {
             return node;
         }
-        JsonNode parent = getClosestIndexedParent( path );
+        JsonNode parent = getClosestIndexedParent( path, nodesByPath );
         String pathToGo = path.substring( parent.getPath().length() );
         while ( !pathToGo.isEmpty() )
         {
@@ -756,7 +773,7 @@ public final class JsonDocument implements Serializable
         return parent;
     }
 
-    private String getHeadProperty( String path )
+    private static String getHeadProperty( String path )
     {
         int index = 1;
         while ( index < path.length() && path.charAt( index ) != '.' && path.charAt( index ) != '[' )
@@ -766,7 +783,7 @@ public final class JsonDocument implements Serializable
         return path.substring( 1, index );
     }
 
-    private void checkFieldExists( JsonNode parent, Map<String, JsonNode> object, String property, String path )
+    private static void checkFieldExists( JsonNode parent, Map<String, JsonNode> object, String property, String path )
     {
         if ( !object.containsKey( property ) )
         {
@@ -776,7 +793,7 @@ public final class JsonDocument implements Serializable
         }
     }
 
-    private void checkIndexExists( JsonNode parent, List<JsonNode> array, int index, String path )
+    private static void checkIndexExists( JsonNode parent, List<JsonNode> array, int index, String path )
     {
         if ( index >= array.size() )
         {
@@ -786,7 +803,7 @@ public final class JsonDocument implements Serializable
         }
     }
 
-    private void checkNodeIs( JsonNode parent, JsonNodeType expected, String path )
+    private static void checkNodeIs( JsonNode parent, JsonNodeType expected, String path )
     {
         if ( parent.getType() != expected )
         {
@@ -805,7 +822,7 @@ public final class JsonDocument implements Serializable
         }
     }
 
-    private JsonNode getClosestIndexedParent( String path )
+    private static JsonNode getClosestIndexedParent( String path, Map<String, JsonNode> nodesByPath )
     {
         String parentPath = getParentPath( path );
         JsonNode parent = nodesByPath.get( parentPath );
@@ -813,10 +830,10 @@ public final class JsonDocument implements Serializable
         {
             return parent;
         }
-        return getClosestIndexedParent( parentPath );
+        return getClosestIndexedParent( parentPath, nodesByPath );
     }
 
-    private String getParentPath( String path )
+    private static String getParentPath( String path )
     {
         if ( path.endsWith( "]" ) )
         {

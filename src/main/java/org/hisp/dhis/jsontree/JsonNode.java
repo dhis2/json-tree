@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static java.lang.String.format;
+
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.List;
@@ -54,6 +56,14 @@ import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
  */
 public interface JsonNode extends Serializable
 {
+    /**
+     * Create a new lazily parsed {@link JsonNode} document.
+     *
+     * @param json a JSON value/document
+     * @return given document as {@link JsonNode} API
+     *
+     * @since 0.4
+     */
     static JsonNode of( String json )
     {
         return new JsonDocument( json ).get( "$" );
@@ -63,6 +73,12 @@ public interface JsonNode extends Serializable
      * @return the type of the node as derived from the node beginning
      */
     JsonNodeType getType();
+
+    default JsonNode get( String path )
+    {
+        throw new JsonDocument.JsonPathException(
+            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+    }
 
     /**
      * Size of an array of number of object members.
