@@ -69,10 +69,10 @@ public class JsonDocumentTest
     public void testStringNode_Unicode()
     {
         // use an array to see that unicode skipping works as well
-        JsonNode node0 = new JsonDocument( "[\"Star \\uD83D\\uDE80 ship\", 12]" ).get( "$[0]" );
+        JsonNode node0 = JsonNode.of( "[\"Star \\uD83D\\uDE80 ship\", 12]" ).get( "[0]" );
         assertEquals( JsonNodeType.STRING, node0.getType() );
         assertEquals( "Star \uD83D\uDE80 ship", node0.value() );
-        JsonNode node1 = new JsonDocument( "[\"Star \\uD83D\\uDE80 ship\", 12]" ).get( "$[1]" );
+        JsonNode node1 = JsonNode.of( "[\"Star \\uD83D\\uDE80 ship\", 12]" ).get( "[1]" );
         assertEquals( JsonNodeType.NUMBER, node1.getType() );
         assertEquals( 12, node1.value() );
     }
@@ -199,8 +199,8 @@ public class JsonDocumentTest
     @Test
     public void testArray_IndexOutOfBounds()
     {
-        JsonDocument doc = new JsonDocument( "[]" );
-        assertThrows( JsonPathException.class, () -> doc.get( "$[0]" ) );
+        JsonNode doc = JsonNode.of( "[]" );
+        assertThrows( JsonPathException.class, () -> doc.get( "[0]" ) );
     }
 
     @Test
@@ -223,9 +223,7 @@ public class JsonDocumentTest
     @Test
     public void testArray_IterateElements()
     {
-        JsonDocument doc = new JsonDocument( "[ 1,2 , true , false, \"hello\",{},[]]" );
-
-        JsonNode root = doc.get( "$" );
+        JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
         Iterator<JsonNode> elements = root.elements( false );
         JsonNode e0 = elements.next();
@@ -264,7 +262,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_Deep()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : [12, false] } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonNode root = doc.get( "$" );
         assertEquals( JsonNodeType.OBJECT, root.getType() );
@@ -301,7 +299,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_DeepAccess()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : [12, false] } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonNode root = doc.get( "$" );
         assertEquals( JsonNodeType.OBJECT, root.getType() );
@@ -324,7 +322,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_IterateMembers()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
+        JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
         JsonNode root = doc.get( "$" );
 
@@ -360,7 +358,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_NoSuchProperty()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : [12, false] } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.notFound" ) );
         assertEquals( "Path `.a.notFound` does not exist, object `.a` does not have a property `notFound`",
@@ -370,7 +368,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_NoSuchIndex()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : [12, false] } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.b[3]" ) );
         assertEquals( "Path `.a.b[3]` does not exist, array `.a.b` has only `2` elements.",
@@ -380,7 +378,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_WrongNodeTypeArray()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : 42 } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : 42 } }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.b[1]" ) );
         assertEquals( "Path `.a.b[1]` does not exist, parent `.a.b` is not an ARRAY but a NUMBER node.",
@@ -390,7 +388,7 @@ public class JsonDocumentTest
     @Test
     public void testObject_WrongNodeTypeObject()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": 42 }" );
+        JsonNode doc = JsonNode.of( "{\"a\": 42 }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.b.[1]" ) );
         assertEquals( "Path `.a.b.[1]` does not exist, parent `.a` is not an OBJECT but a NUMBER node.",
@@ -400,7 +398,7 @@ public class JsonDocumentTest
     @Test
     public void testString_MissingQuotes()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": hello }" );
+        JsonNode doc = JsonNode.of( "{\"a\": hello }" );
 
         JsonFormatException ex = assertThrows( JsonFormatException.class, () -> doc.get( ".a" ) );
         assertEquals(
@@ -420,7 +418,7 @@ public class JsonDocumentTest
     @Test
     public void testExtractAndReplace()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : [12, false] } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
         JsonNode onlyA = doc.get( "$.a" ).extract();
         assertEquals( "{ \"b\" : [12, false] }", onlyA.toString() );
         assertEquals( "{ \"b\" : [42, false] }",
@@ -430,7 +428,7 @@ public class JsonDocumentTest
     @Test
     public void testAdd()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : [12, false] } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
         assertEquals( "{\"a\": { \"b\" : [12, false] , \"c\":{}} }",
             doc.get( ".a" ).addMember( "c", "{}" ).toString() );
     }
@@ -438,7 +436,7 @@ public class JsonDocumentTest
     @Test
     public void testVisit()
     {
-        JsonDocument doc = new JsonDocument( "{\"a\": { \"b\" : [12, false, \"hello\"] } }" );
+        JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false, \"hello\"] } }" );
         JsonNode root = doc.get( "$" );
         assertEquals( 2, root.count( JsonNodeType.OBJECT ) );
         assertEquals( 1, root.count( JsonNodeType.NUMBER ) );

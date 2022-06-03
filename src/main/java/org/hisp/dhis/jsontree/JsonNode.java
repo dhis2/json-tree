@@ -76,6 +76,10 @@ public interface JsonNode extends Serializable
 
     default JsonNode get( String path )
     {
+        if ( path.isEmpty() || "$".equals( path ) )
+        {
+            return this;
+        }
         throw new JsonDocument.JsonPathException(
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }

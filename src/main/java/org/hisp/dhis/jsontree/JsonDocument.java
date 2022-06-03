@@ -316,7 +316,13 @@ public final class JsonDocument implements Serializable
         @Override
         public JsonNode get( String path )
         {
-            return JsonDocument.get( this.path.isEmpty() ? "$." + path : this.path + "." + path, nodesByPath );
+            if ( path.isEmpty() || "$".equals( path ) )
+            {
+                return this;
+            }
+            // trim any leading $. or . of the relative path
+            String absolutePath = this.path + "." + path.replaceFirst( "^\\$?\\.", "" );
+            return JsonDocument.get( absolutePath, nodesByPath );
         }
 
         @Override

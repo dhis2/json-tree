@@ -79,9 +79,9 @@ import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
  */
 public final class JsonResponse implements JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean, Serializable
 {
-    public static final JsonResponse NULL = new JsonResponse( new JsonDocument( "null" ), "$", JsonTypedAccess.GLOBAL );
+    public static final JsonResponse NULL = new JsonResponse( JsonNode.of( "null" ), "$", JsonTypedAccess.GLOBAL );
 
-    private final JsonDocument content;
+    private final JsonNode content;
 
     private final String path;
 
@@ -94,19 +94,14 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
 
     public JsonResponse( String content, JsonTypedAccessStore store )
     {
-        this( new JsonDocument( content.isEmpty() ? "{}" : content ), "$", store );
+        this( JsonNode.of( content.isEmpty() ? "{}" : content ), "$", store );
     }
 
-    private JsonResponse( JsonDocument content, String path, JsonTypedAccessStore store )
+    private JsonResponse( JsonNode content, String path, JsonTypedAccessStore store )
     {
         this.content = content;
         this.path = path;
         this.store = store;
-    }
-
-    public JsonDocument getJsonDocument()
-    {
-        return this.content;
     }
 
     private <T> T value( JsonNodeType expected, Function<JsonNode, T> get, Function<JsonPathException, T> orElse )
