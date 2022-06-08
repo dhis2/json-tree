@@ -83,7 +83,12 @@ public interface JsonValue
      */
     static JsonValue of( String json )
     {
-        return json == null || "null".equals( json ) ? JsonResponse.NULL : new JsonResponse( json );
+        return of( json, JsonTypedAccess.GLOBAL );
+    }
+
+    static JsonValue of( String json, JsonTypedAccessStore store )
+    {
+        return json == null || "null".equals( json ) ? JsonResponse.NULL : new JsonResponse( json, store );
     }
 
     /**

@@ -44,9 +44,9 @@ import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
  * Represents a JSON object node.
  *
  * As all nodes are mere views or virtual field access will never throw a
- * {@link java.util.NoSuchElementException}. Whether or not a field with a given
- * name exists is determined first when {@link JsonValue#exists()} or other
- * value accessing operations are performed on a node.
+ * {@link java.util.NoSuchElementException}. Whether a field with a given name
+ * exists is determined first when {@link JsonValue#exists()} or other value
+ * accessing operations are performed on a node.
  *
  * @author Jan Bernitt
  */
