@@ -106,6 +106,50 @@ interface are present.
 When `asObject` is used instead of `as` the structural check is done implicitly and fails with an exception should the
 actual JSON not match the expectations defined by the provided user defined interface.
 
+### Mapping to POJO-like objects
+Mapping to actual POJO objects defined as `class` would negate many of the key benefits of the on demand 
+parsing and accessing the virtual tree API provides. This is why the mapping feature is slightly different
+in this library. 
+
+Again, the target types are defined as interfaces, but this time with abstract methods, for example:
+
+```java
+interface Account extends JsonValue
+{
+  boolean isEnabled();
+  String getUsername();
+  List<Membership> mberships();
+}
+interface Membership extends JsonValue
+{
+   String getGroup();
+   Date getJoinDate();
+}
+```
+This would match JSON of the structure:
+```json
+{
+  "enabled": true,
+  "username": "TomTraubert",
+  "memberships": [{ "group": "BigTimers", "joinDate": "1973-02-05" }]
+}
+```
+The return types of the abstract methods support most common JDK types 
+such as primitives and their wrappers, strings, dates and collections.
+Further types can be added to the default "mapper" using `JsonTypedAccess.GLOBAL.add`. 
+
+A complete custom mapping can be created via `new JsonTypedAccess()` and using `init()` and `add(...)` 
+or by writing your own implementation of a `JsonTypedAccessStore`.
+A custom store is then used by creating your root via `JsonValue.of(json, myStore)`.
+
+Note that the mapping to target types defined by abstract interface method can be mixed 
+with using default methods and lazily mapped collection types such as the `JsonList`.
+
+A POJO-like interace can extend any of the `JsonValue` tree types. 
+It makes most sense to either chose `JsonValue` to inherit as little further methods,
+or to extends `JsonObject` to also allow use of the generic object accessor methods
+on the POJO-like data type.
+
 ## Building or Streaming JSON
 
 The `JsonBuilder` API is used to:
