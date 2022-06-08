@@ -603,6 +603,7 @@ public class JsonTypedAccessTest
 
         NestedBean obj2 = createJSON( "{'list':[{'b':{},'a':5}]}" ).withAccessCached().as( NestedBean.class );
         assertSame( obj2.list(), obj2.list() );
+        assertTrue( obj2.isAccessCached() );
         assertSame( obj2.list().get( 0 ).getB(), obj2.list().get( 0 ).getB() );
         assertTrue( obj2.list().get( 0 ).isAccessCached() );
     }
