@@ -252,7 +252,7 @@ public interface JsonObject extends JsonCollection
         Optional<JsonNode> match = node().find( JsonNodeType.OBJECT, node -> {
             try
             {
-                return test.test( new JsonResponse( node.getDeclaration() ).asObject( type ) );
+                return test.test( JsonValue.of( node.getDeclaration() ).asObject().asObject( type ) );
             }
             catch ( RuntimeException ex )
             {
@@ -260,8 +260,8 @@ public interface JsonObject extends JsonCollection
             }
         } );
         return !match.isPresent()
-            ? JsonResponse.NULL.as( type )
-            : new JsonResponse( match.get().getDeclaration() ).asObject( type );
+            ? JsonValue.NULL.as( type )
+            : JsonValue.of( match.get().getDeclaration() ).asObject().asObject( type );
     }
 
     /**

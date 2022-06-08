@@ -221,6 +221,6 @@ public class JsonExpectedTest
 
     private static JsonResponse createJSON( String content )
     {
-        return new JsonResponse( content.replace( '\'', '"' ) );
+        return new JsonResponse( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

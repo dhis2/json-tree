@@ -38,14 +38,19 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.hisp.dhis.jsontree.JsonDocument.JsonFormatException;
 import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
@@ -79,29 +84,41 @@ import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
  */
 public final class JsonResponse implements JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean, Serializable
 {
-    public static final JsonResponse NULL = new JsonResponse( JsonNode.of( "null" ), "$", JsonTypedAccess.GLOBAL );
+    public static final JsonResponse NULL = new JsonResponse( JsonNode.of( "null" ), "$", JsonTypedAccess.GLOBAL,
+        null );
 
     private final JsonNode content;
 
     private final String path;
 
-    private final JsonTypedAccessStore store;
+    private final transient JsonTypedAccessStore store;
 
-    public JsonResponse( String content )
-    {
-        this( content, JsonTypedAccess.GLOBAL );
-    }
+    private final transient ConcurrentMap<String, Object> accessCache;
 
     public JsonResponse( String content, JsonTypedAccessStore store )
     {
-        this( JsonNode.of( content.isEmpty() ? "{}" : content ), "$", store );
+        this( JsonNode.of( content.isEmpty() ? "{}" : content ), "$", store, null );
     }
 
-    private JsonResponse( JsonNode content, String path, JsonTypedAccessStore store )
+    private JsonResponse( JsonNode content, String path, JsonTypedAccessStore store,
+        ConcurrentMap<String, Object> accessCache )
     {
         this.content = content;
         this.path = path;
         this.store = store;
+        this.accessCache = accessCache;
+    }
+
+    @Override
+    public boolean isAccessCached()
+    {
+        return accessCache != null;
+    }
+
+    @Override
+    public JsonResponse withAccessCached()
+    {
+        return isAccessCached() ? this : new JsonResponse( content, path, store, new ConcurrentHashMap<>() );
     }
 
     private <T> T value( JsonNodeType expected, Function<JsonNode, T> get, Function<JsonPathException, T> orElse )
@@ -148,13 +165,13 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     @Override
     public <T extends JsonValue> T get( int index, Class<T> as )
     {
-        return asType( as, new JsonResponse( content, path + "[" + index + "]", store ) );
+        return asType( as, new JsonResponse( content, path + "[" + index + "]", store, accessCache ) );
     }
 
     @Override
     public <T extends JsonValue> T get( String name, Class<T> as )
     {
-        return asType( as, new JsonResponse( content, path + "." + name, store ) );
+        return asType( as, new JsonResponse( content, path + "." + name, store, accessCache ) );
     }
 
     @Override
@@ -164,7 +181,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     @SuppressWarnings( "unchecked" )
-    private <T extends JsonValue> T asType( Class<T> as, JsonValue res )
+    private <T extends JsonValue> T asType( Class<T> as, JsonResponse res )
     {
         return isExtended( as ) ? createProxy( as, res ) : (T) res;
     }
@@ -332,7 +349,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     @SuppressWarnings( "unchecked" )
-    private <E extends JsonValue> E createProxy( Class<E> as, JsonValue inner )
+    private <E extends JsonValue> E createProxy( Class<E> as, JsonResponse inner )
     {
         return (E) Proxy.newProxyInstance(
             Thread.currentThread().getContextClassLoader(), new Class[] { as },
@@ -387,7 +404,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
      * the accessor extract the value by using solely the underlying
      * {@link JsonValue} API.
      */
-    private Object callAbstractMethod( JsonValue inner, Method method, Object[] args )
+    private Object callAbstractMethod( JsonResponse inner, Method method, Object[] args )
     {
         JsonObject obj = inner.asObject();
         Class<?> resType = method.getReturnType();
@@ -397,11 +414,22 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
         {
             return args[0];
         }
+        if ( accessCache != null && isCacheable( resType ) )
+        {
+            String keyId = inner.path + "." + name + ":" + toSignature( method.getGenericReturnType() );
+            return accessCache.computeIfAbsent( keyId, key -> access( method, obj, name ) );
+        }
+        return access( method, obj, name );
+    }
+
+    private Object access( Method method, JsonObject obj, String name )
+    {
         Type genericType = method.getGenericReturnType();
-        JsonGenericTypedAccessor<?> accessor = store.accessor( resType );
+        JsonTypedAccessStore accessStore = store == null ? JsonTypedAccess.GLOBAL : store;
+        JsonGenericTypedAccessor<?> accessor = accessStore.accessor( method.getReturnType() );
         if ( accessor != null )
         {
-            return accessor.access( obj, name, genericType, store );
+            return accessor.access( obj, name, genericType, accessStore );
         }
         throw new UnsupportedOperationException( "No accessor registered for type: " + genericType );
     }
@@ -422,6 +450,22 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
         {
             throw ex.getTargetException();
         }
+    }
+
+    /**
+     * This is twofold: Concepts like {@link Stream} and {@link Iterator} should
+     * not be cached to work correctly.
+     *
+     * For all other types this is about reaching a balance between memory usage
+     * and CPU usage. Simple objects are recomputed whereas complex objects are
+     * not.
+     */
+    private boolean isCacheable( Class<?> resType )
+    {
+        return resType.isInterface()
+            && !Stream.class.isAssignableFrom( resType )
+            && !Iterator.class.isAssignableFrom( resType )
+            && !JsonPrimitive.class.isAssignableFrom( resType );
     }
 
     private static boolean isExtended( Class<?> declaringClass )
@@ -448,5 +492,44 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
             return toLowerCase( name.charAt( 3 ) ) + name.substring( 4 );
         }
         return name;
+    }
+
+    private String toSignature( Type type )
+    {
+        if ( type instanceof Class<?> )
+        {
+            return ((Class<?>) type).getCanonicalName();
+        }
+        if ( type instanceof ParameterizedType )
+        {
+            StringBuilder str = new StringBuilder();
+            toSignature( type, str );
+            return str.toString();
+        }
+        return "?";
+    }
+
+    private void toSignature( Type type, StringBuilder str )
+    {
+        if ( type instanceof Class<?> )
+        {
+            str.append( ((Class<?>) type).getCanonicalName() );
+            return;
+        }
+        if ( type instanceof ParameterizedType )
+        {
+            ParameterizedType pt = (ParameterizedType) type;
+            toSignature( pt.getRawType(), str );
+            str.append( '<' );
+            for ( Type ata : pt.getActualTypeArguments() )
+            {
+                str.append( toSignature( ata ) );
+            }
+            str.append( '>' );
+        }
+        else
+        {
+            str.append( '?' );
+        }
     }
 }

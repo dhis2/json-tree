@@ -138,9 +138,11 @@ public final class JsonTypedAccess implements JsonTypedAccessStore
 
             // JDK generic types
             .add( List.class, JsonTypedAccess::accessList )
+            .add( Iterable.class, JsonTypedAccess::accessList )
             .add( Set.class, JsonTypedAccess::accessSet )
             .add( Map.class, JsonTypedAccess::accessMap )
             .add( Stream.class, JsonTypedAccess::accessStream )
+            .add( Iterator.class, JsonTypedAccess::accessIterator )
             .add( Optional.class, JsonTypedAccess::accessOptional )
 
             // type-sets
@@ -258,10 +260,21 @@ public final class JsonTypedAccess implements JsonTypedAccessStore
         {
             return Stream.empty();
         }
+        Iterator<?> iter = accessIterator( from, path, to, store );
+        return StreamSupport.stream( spliteratorUnknownSize( iter, Spliterator.ORDERED ), false );
+    }
+
+    public static Iterator<?> accessIterator( JsonObject from, String path, Type to, JsonTypedAccessStore store )
+    {
+        JsonList<?> seq = from.getList( path, JsonValue.class );
+        if ( seq.isUndefined() )
+        {
+            return List.of().listIterator();
+        }
         int size = seq.size();
         Type elementType = extractTypeParameter( to, 0 );
         JsonGenericTypedAccessor<?> elementAccess = store.accessor( getRawType( elementType ) );
-        Iterator<?> iter = new Iterator<Object>()
+        return new Iterator<>()
         {
             int i = 0;
 
@@ -283,7 +296,6 @@ public final class JsonTypedAccess implements JsonTypedAccessStore
                 return value;
             }
         };
-        return StreamSupport.stream( spliteratorUnknownSize( iter, Spliterator.ORDERED ), false );
     }
 
     /**
