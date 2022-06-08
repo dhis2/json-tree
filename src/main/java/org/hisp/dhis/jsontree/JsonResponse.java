@@ -52,9 +52,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import org.hisp.dhis.jsontree.JsonDocument.JsonFormatException;
 import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
-import org.hisp.dhis.jsontree.JsonDocument.JsonPathException;
 import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
 
 /**
@@ -139,7 +137,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
             }
             return get.apply( node );
         }
-        catch ( JsonDocument.JsonPathException ex )
+        catch ( JsonPathException ex )
         {
             return orElse.apply( ex );
         }
@@ -171,7 +169,8 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     @Override
     public <T extends JsonValue> T get( String name, Class<T> as )
     {
-        return asType( as, new JsonResponse( content, path + "." + name, store, accessCache ) );
+        String p = name.startsWith( "{" ) ? path + name : path + "." + name;
+        return asType( as, new JsonResponse( content, p, store, accessCache ) );
     }
 
     @Override

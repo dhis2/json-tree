@@ -74,13 +74,22 @@ public interface JsonNode extends Serializable
      */
     JsonNodeType getType();
 
+    /**
+     * Access the node at the given path in the subtree of this node.
+     *
+     * @param path a simple or nested path relative to this node as root
+     * @return the node at the given path
+     * @throws JsonPathException when no such node exists in the subtree of this
+     *         node
+     */
     default JsonNode get( String path )
+        throws JsonPathException
     {
         if ( path.isEmpty() || "$".equals( path ) )
         {
             return this;
         }
-        throw new JsonDocument.JsonPathException(
+        throw new JsonPathException(
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 
@@ -139,6 +148,19 @@ public interface JsonNode extends Serializable
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      *
+     * @param name name of the member to access
+     * @return the member with the given name
+     * @throws JsonPathException when no such member exists
+     */
+    default JsonNode member( String name )
+        throws JsonPathException
+    {
+        throw new UnsupportedOperationException( getType() + " node has no member property" );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     *
      * @return this {@link #value()} as as {@link Map}
      */
     default Map<String, JsonNode> members()
@@ -160,6 +182,19 @@ public interface JsonNode extends Serializable
     default Iterator<Entry<String, JsonNode>> members( boolean keepNodes )
     {
         throw new UnsupportedOperationException( getType() + " node has no members property." );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
+     *
+     * @param index index of the element to access
+     * @return the node at the given array index
+     * @throws JsonPathException when no such element exists
+     */
+    default JsonNode element( int index )
+        throws JsonPathException
+    {
+        throw new UnsupportedOperationException( getType() + " node has no element property." );
     }
 
     /**

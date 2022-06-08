@@ -30,7 +30,6 @@ package org.hisp.dhis.jsontree;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
-import org.hisp.dhis.jsontree.JsonDocument.JsonPathException;
 import org.junit.Test;
 
 /**

@@ -266,6 +266,15 @@ public class JsonResponseTest
     }
 
     @Test
+    public void testObjectGet()
+    {
+        JsonObject obj = createJSON( "{'x':{'a':[1], 'b':2, 'c':3}}" );
+        assertEquals( 1, obj.getNumber( "x{a}[0]" ).intValue() );
+        assertEquals( 1, obj.getObject( "x" ).getArray( "{a}" ).getNumber( 0 ).intValue() );
+        assertEquals( 1, obj.getObject( "x" ).node().get( "{a}" ).get( "[0]" ).value() );
+    }
+
+    @Test
     public void testListContainsAll()
     {
         JsonList<JsonString> list = createJSON( "[{'a':'x'}, {'a':'y'}]" ).as( JsonArray.class )

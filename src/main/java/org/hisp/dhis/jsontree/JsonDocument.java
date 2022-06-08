@@ -31,12 +31,12 @@ import static java.lang.Character.toChars;
 import static java.lang.Integer.parseInt;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 import java.io.Serializable;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -46,6 +46,7 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import java.util.function.Predicate;
 
 /**
@@ -71,47 +72,6 @@ import java.util.function.Predicate;
  */
 public final class JsonDocument implements Serializable
 {
-    /**
-     * Thrown when the JSON content turns out to be invalid JSON.
-     */
-    public static class JsonFormatException extends IllegalArgumentException
-    {
-        public JsonFormatException( String message )
-        {
-            super( message );
-        }
-
-        public JsonFormatException( char[] json, int index, char expected )
-        {
-            this( createParseErrorMessage( json, index, expected ) );
-        }
-
-        private static String createParseErrorMessage( char[] json, int index, char expected )
-        {
-            int start = max( 0, index - 20 );
-            int length = min( json.length - start, 40 );
-            String section = new String( json, start, length );
-            char[] pointer = new char[index - start + 1];
-            Arrays.fill( pointer, ' ' );
-            pointer[pointer.length - 1] = '^';
-            String expectedText = expected == '~' ? "start of value" : "`" + expected + "`";
-            return String.format( "Unexpected character at position %d,%n%s%n%s expected %s",
-                index, section, new String( pointer ), expectedText );
-        }
-    }
-
-    /**
-     * Exception thrown when the path given to {@link JsonDocument#get(String)}
-     * does not exist.
-     */
-    public static class JsonPathException extends IllegalArgumentException
-    {
-        public JsonPathException( String s )
-        {
-            super( s );
-        }
-    }
-
     /**
      * Possible types of JSON nodes in {@link JsonNode} tree.
      */
@@ -320,6 +280,10 @@ public final class JsonDocument implements Serializable
             {
                 return this;
             }
+            if ( path.startsWith( "{" ) )
+            {
+                return JsonDocument.get( this.path + path, nodesByPath );
+            }
             // trim any leading $. or . of the relative path
             String absolutePath = this.path + "." + path.replaceFirst( "^\\$?\\.", "" );
             return JsonDocument.get( absolutePath, nodesByPath );
@@ -384,6 +348,45 @@ public final class JsonDocument implements Serializable
             }
             expectChar( json, index, '}' );
             return object;
+        }
+
+        @Override
+        public JsonNode member( String name )
+            throws JsonPathException
+        {
+            String mPath = path + "." + name;
+            JsonNode member = nodesByPath.get( mPath );
+            if ( member != null )
+            {
+                return member;
+            }
+            if ( isParsed() )
+            {
+                // most likely member does not exist but could just be added
+                // since we done the get
+                checkFieldExists( this, members(), name, mPath );
+                return nodesByPath.get( mPath );
+            }
+            int index = skipWhitespace( json, expectChar( json, start, '{' ) );
+            while ( index < json.length && json[index] != '}' )
+            {
+                LazyJsonString property = new LazyJsonString( path + ".?", json, index );
+                index = expectSeparator( json, property.endIndex(), ':' );
+                if ( name.equals( property.value() ) )
+                {
+                    int mStart = index;
+                    return nodesByPath.computeIfAbsent( mPath,
+                        key -> autoDetect( key, json, mStart, nodesByPath ) );
+                }
+                else
+                {
+                    index = skipNodeAutodetect( json, index );
+                    index = skipSeparator( json, index, ',' );
+                }
+            }
+            checkFieldExists( this, Map.of(), name, mPath );
+            // we know it does not - this line is never reached
+            return null;
         }
 
         @Override
@@ -507,6 +510,26 @@ public final class JsonDocument implements Serializable
             }
             expectChar( json, index, ']' );
             return array;
+        }
+
+        @Override
+        public JsonNode element( int index )
+            throws JsonPathException
+        {
+            if ( index < 0 )
+            {
+                throw new JsonPathException(
+                    format( "Path `%s` does not exist, array index is negative: %d", path, index ) );
+            }
+            JsonNode predecessor = index == 0 ? null : nodesByPath.get( path + '[' + (index - 1) + ']' );
+            int s = predecessor != null
+                ? skipWhitespace( json, skipSeparator( json, predecessor.endIndex(), ',' ) )
+                : skipWhitespace( json, expectChar( json, start, '[' ) );
+            int skipN = predecessor != null ? 0 : index;
+            int startIndex = predecessor == null ? 0 : index - 1;
+            return nodesByPath.computeIfAbsent( path + '[' + index + ']',
+                key -> autoDetect( key, json, skipWhitespace( json, skipElements( json, s, skipN,
+                    skipped -> checkIndexExists( this, skipped + startIndex, key ) ) ), nodesByPath ) );
         }
 
         @Override
@@ -756,24 +779,31 @@ public final class JsonDocument implements Serializable
             if ( pathToGo.startsWith( "[" ) )
             {
                 checkNodeIs( parent, JsonNodeType.ARRAY, path );
-                List<JsonNode> elements = parent.elements();
                 int index = parseInt( pathToGo.substring( 1, pathToGo.indexOf( ']' ) ) );
-                checkIndexExists( parent, elements, index, path );
-                parent = elements.get( index );
+                parent = parent.element( index );
                 pathToGo = pathToGo.substring( pathToGo.indexOf( ']' ) + 1 );
             }
             else if ( pathToGo.startsWith( "." ) )
             {
                 checkNodeIs( parent, JsonNodeType.OBJECT, path );
-                Map<String, JsonNode> members = parent.members();
                 String property = getHeadProperty( pathToGo );
+                Map<String, JsonNode> members = parent.members();
                 checkFieldExists( parent, members, property, path );
                 parent = members.get( property );
                 pathToGo = pathToGo.substring( 1 + property.length() );
             }
+            else if ( pathToGo.startsWith( "{" ) )
+            {
+                // map access syntax: {property}
+                checkNodeIs( parent, JsonNodeType.OBJECT, path );
+                String property = pathToGo.substring( 1, pathToGo.indexOf( '}' ) );
+                parent = parent.member( property );
+                pathToGo = pathToGo.substring( 2 + property.length() );
+
+            }
             else
             {
-                throw new JsonPathException( String.format( "Malformed path %s at %s.", path, pathToGo ) );
+                throw new JsonPathException( format( "Malformed path %s at %s.", path, pathToGo ) );
             }
         }
         return parent;
@@ -782,7 +812,8 @@ public final class JsonDocument implements Serializable
     private static String getHeadProperty( String path )
     {
         int index = 1;
-        while ( index < path.length() && path.charAt( index ) != '.' && path.charAt( index ) != '[' )
+        while ( index < path.length()
+            && path.charAt( index ) != '.' && path.charAt( index ) != '[' && path.charAt( index ) != '{' )
         {
             index++;
         }
@@ -794,19 +825,15 @@ public final class JsonDocument implements Serializable
         if ( !object.containsKey( property ) )
         {
             throw new JsonPathException(
-                String.format( "Path `%s` does not exist, object `%s` does not have a property `%s`", path,
+                format( "Path `%s` does not exist, object `%s` does not have a property `%s`", path,
                     parent.getPath(), property ) );
         }
     }
 
-    private static void checkIndexExists( JsonNode parent, List<JsonNode> array, int index, String path )
+    private static void checkIndexExists( JsonNode parent, int length, String path )
     {
-        if ( index >= array.size() )
-        {
-            throw new JsonPathException(
-                String.format( "Path `%s` does not exist, array `%s` has only `%d` elements.", path, parent.getPath(),
-                    array.size() ) );
-        }
+        throw new JsonPathException(
+            format( "Path `%s` does not exist, array `%s` has only `%d` elements.", path, parent.getPath(), length ) );
     }
 
     private static void checkNodeIs( JsonNode parent, JsonNodeType expected, String path )
@@ -814,7 +841,7 @@ public final class JsonDocument implements Serializable
         if ( parent.getType() != expected )
         {
             throw new JsonPathException(
-                String.format( "Path `%s` does not exist, parent `%s` is not an %s but a %s node.", path,
+                format( "Path `%s` does not exist, parent `%s` is not an %s but a %s node.", path,
                     parent.getPath(), expected, parent.getType() ) );
         }
     }
@@ -905,6 +932,23 @@ public final class JsonDocument implements Serializable
             index = skipSeparator( json, index, ',' );
         }
         return expectChar( json, index, ']' );
+    }
+
+    private static int skipElements( char[] json, int index, int skipN, IntConsumer onEndOfArray )
+    {
+        int elementsToSkip = skipN;
+        while ( elementsToSkip > 0 && index < json.length && json[index] != ']' )
+        {
+            index = skipWhitespace( json, index );
+            index = skipNodeAutodetect( json, index );
+            index = skipSeparator( json, index, ',' );
+            elementsToSkip--;
+        }
+        if ( json[index] == ']' )
+        {
+            onEndOfArray.accept( skipN - elementsToSkip );
+        }
+        return index;
     }
 
     private static int expectSeparator( char[] json, int index, char separator )
