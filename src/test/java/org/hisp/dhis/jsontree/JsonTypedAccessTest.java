@@ -604,6 +604,7 @@ public class JsonTypedAccessTest
         NestedBean obj2 = createJSON( "{'list':[{'b':{},'a':5}]}" ).withAccessCached().as( NestedBean.class );
         assertSame( obj2.list(), obj2.list() );
         assertSame( obj2.list().get( 0 ).getB(), obj2.list().get( 0 ).getB() );
+        assertTrue( obj2.list().get( 0 ).isAccessCached() );
     }
 
     @Test
@@ -645,17 +646,12 @@ public class JsonTypedAccessTest
 
         // in contrast:
         assertSame( obj.list(), obj.list() );
-        assertNotSame( obj.list().get( 0 ), obj.list().get( 0 ) ); // JsonList
-                                                                   // is still
-                                                                   // lazy =>
-                                                                   // not cached
+        // JsonList is still lazy => not cached
+        assertNotSame( obj.list().get( 0 ), obj.list().get( 0 ) );
 
         assertSame( obj.list2(), obj.list2() );
-        assertSame( obj.list2().get( 0 ), obj.list2().get( 0 ) ); // List is not
-                                                                  // lazy,
-                                                                  // elements
-                                                                  // are part of
-                                                                  // the List
+        // List is not lazy, elements are part of the cached List
+        assertSame( obj.list2().get( 0 ), obj.list2().get( 0 ) );
     }
 
     private static JsonResponse createJSON( String content )
