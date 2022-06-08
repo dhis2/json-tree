@@ -82,6 +82,10 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>>
      */
     default <T> Map<String, List<T>> toMap( Function<E, T> mapper, Comparator<T> order )
     {
+        if ( isUndefined() )
+        {
+            return Map.of();
+        }
         Map<String, List<T>> res = new LinkedHashMap<>();
         for ( String key : keys() )
         {
