@@ -44,9 +44,9 @@ import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
  * Represents a JSON object node.
  *
  * As all nodes are mere views or virtual field access will never throw a
- * {@link java.util.NoSuchElementException}. Whether or not a field with a given
- * name exists is determined first when {@link JsonValue#exists()} or other
- * value accessing operations are performed on a node.
+ * {@link java.util.NoSuchElementException}. Whether a field with a given name
+ * exists is determined first when {@link JsonValue#exists()} or other value
+ * accessing operations are performed on a node.
  *
  * @author Jan Bernitt
  */
@@ -252,7 +252,7 @@ public interface JsonObject extends JsonCollection
         Optional<JsonNode> match = node().find( JsonNodeType.OBJECT, node -> {
             try
             {
-                return test.test( new JsonResponse( node.getDeclaration() ).asObject( type ) );
+                return test.test( JsonValue.of( node.getDeclaration() ).asObject().asObject( type ) );
             }
             catch ( RuntimeException ex )
             {
@@ -260,8 +260,8 @@ public interface JsonObject extends JsonCollection
             }
         } );
         return !match.isPresent()
-            ? JsonResponse.NULL.as( type )
-            : new JsonResponse( match.get().getDeclaration() ).asObject( type );
+            ? JsonValue.NULL.as( type )
+            : JsonValue.of( match.get().getDeclaration() ).asObject().asObject( type );
     }
 
     /**

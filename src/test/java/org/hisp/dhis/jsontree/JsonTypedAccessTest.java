@@ -29,7 +29,10 @@ package org.hisp.dhis.jsontree;
 
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -37,7 +40,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -304,31 +309,31 @@ public class JsonTypedAccessTest
     @Test
     public void testAccess_DateNode()
     {
-        DateBean bean = createJSON( "{'aNode':'2000-01-01T00:00'}" ).as( DateBean.class );
-        assertEquals( LocalDate.of( 2000, 1, 1 ).atStartOfDay(), bean.aNode().date() );
+        DateBean obj = createJSON( "{'aNode':'2000-01-01T00:00'}" ).as( DateBean.class );
+        assertEquals( LocalDate.of( 2000, 1, 1 ).atStartOfDay(), obj.aNode().date() );
     }
 
     @Test
     public void testAccess_DateLocalDateTime()
     {
-        DateBean bean = createJSON( "{'aLocalDateTime':'2000-01-01T00:00'}" ).as( DateBean.class );
-        assertEquals( LocalDate.of( 2000, 1, 1 ).atStartOfDay(), bean.aLocalDateTime() );
+        DateBean obj = createJSON( "{'aLocalDateTime':'2000-01-01T00:00'}" ).as( DateBean.class );
+        assertEquals( LocalDate.of( 2000, 1, 1 ).atStartOfDay(), obj.aLocalDateTime() );
     }
 
     @Test
     public void testAccess_Date()
     {
-        DateBean bean = createJSON( "{'aDate':'2000-01-01T00:00'}" ).as( DateBean.class );
+        DateBean obj = createJSON( "{'aDate':'2000-01-01T00:00'}" ).as( DateBean.class );
         Date expected = Date.from( LocalDate.of( 2000, 1, 1 ).atStartOfDay().toInstant( ZoneOffset.UTC ) );
-        assertEquals( expected, bean.aDate() );
+        assertEquals( expected, obj.aDate() );
     }
 
     @Test
     public void testAccess_DateTimestamp()
     {
-        DateBean bean = createJSON( "{'aDate':946684800000}" ).as( DateBean.class );
+        DateBean obj = createJSON( "{'aDate':946684800000}" ).as( DateBean.class );
         Date expected = Date.from( LocalDate.of( 2000, 1, 1 ).atStartOfDay().toInstant( ZoneOffset.UTC ) );
-        assertEquals( expected, bean.aDate() );
+        assertEquals( expected, obj.aDate() );
     }
 
     interface ListBean extends JsonObject
@@ -342,6 +347,8 @@ public class JsonTypedAccessTest
         List<List<Boolean>> flags();
 
         List<ListBean> recursive();
+
+        Iterable<Integer> numbers();
     }
 
     @Test
@@ -373,19 +380,26 @@ public class JsonTypedAccessTest
     @Test
     public void testAccess_ListListBoolean()
     {
-        ListBean bean = createJSON( "{'flags':[[true, false],[true]]}" ).as( ListBean.class );
-        assertEquals( List.of( List.of( true, false ), List.of( true ) ), bean.flags() );
+        ListBean obj = createJSON( "{'flags':[[true, false],[true]]}" ).as( ListBean.class );
+        assertEquals( List.of( List.of( true, false ), List.of( true ) ), obj.flags() );
     }
 
     @Test
     public void testAccess_ListExtendedObject()
     {
-        ListBean bean = createJSON( "{'ages':[1,2,3],"
+        ListBean obj = createJSON( "{'ages':[1,2,3],"
             + "'flags':[[true, false],[true]],"
             + "'recursive': [{'names': ['x','y']}]"
             + "}" ).as( ListBean.class );
-        assertEquals( 1, bean.recursive().size() );
-        assertEquals( List.of( "x", "y" ), bean.recursive().get( 0 ).names() );
+        assertEquals( 1, obj.recursive().size() );
+        assertEquals( List.of( "x", "y" ), obj.recursive().get( 0 ).names() );
+    }
+
+    @Test
+    public void testAccess_IteratorIsList()
+    {
+        ListBean obj = createJSON( "{'numbers':[1,2,3]}" ).as( ListBean.class );
+        assertEquals( List.of( 1, 2, 3 ), obj.numbers() );
     }
 
     interface SetBean extends JsonObject
@@ -458,15 +472,15 @@ public class JsonTypedAccessTest
     @Test
     public void testAccess_MapEnumValues()
     {
-        MapBean bean = createJSON( "{'styles': {'a': 'FULL', 'b': 'SHORT'}}" ).as( MapBean.class );
-        assertEquals( Map.of( "a", TextStyle.FULL, "b", TextStyle.SHORT ), bean.styles() );
+        MapBean obj = createJSON( "{'styles': {'a': 'FULL', 'b': 'SHORT'}}" ).as( MapBean.class );
+        assertEquals( Map.of( "a", TextStyle.FULL, "b", TextStyle.SHORT ), obj.styles() );
     }
 
     @Test
     public void testAccess_MapMapStringValues()
     {
-        MapBean bean = createJSON( "{'messages': {'a':{'hello':'world'}, 'b':{}}}" ).as( MapBean.class );
-        assertEquals( Map.of( "a", Map.of( "hello", "world" ), "b", Map.of() ), bean.messages() );
+        MapBean obj = createJSON( "{'messages': {'a':{'hello':'world'}, 'b':{}}}" ).as( MapBean.class );
+        assertEquals( Map.of( "a", Map.of( "hello", "world" ), "b", Map.of() ), obj.messages() );
     }
 
     @Test
@@ -497,12 +511,14 @@ public class JsonTypedAccessTest
         assertEquals( Map.of( "a", 'A' ), two.recursive().get( 3 ).digits() );
     }
 
-    interface StreamBean extends JsonObject
+    interface StreamBean extends JsonValue
     {
 
         Stream<Integer> numbers();
 
         Stream<List<String>> lists();
+
+        Iterator<String> names();
     }
 
     @Test
@@ -517,6 +533,15 @@ public class JsonTypedAccessTest
     {
         StreamBean obj = createJSON( "{'lists':[['a','b'],['1','2']]}" ).as( StreamBean.class );
         assertEquals( List.of( List.of( "a", "b" ), List.of( "1", "2" ) ), obj.lists().collect( toList() ) );
+    }
+
+    @Test
+    public void testAccess_IteratorOfStrings()
+    {
+        StreamBean obj = createJSON( "{'names': ['Tom', 'Mary']}" ).as( StreamBean.class );
+        List<String> actual = new ArrayList<>();
+        obj.names().forEachRemaining( actual::add );
+        assertEquals( List.of( "Tom", "Mary" ), actual );
     }
 
     interface OptionalBean extends JsonValue
@@ -548,8 +573,90 @@ public class JsonTypedAccessTest
         assertEquals( List.of( "hello" ), obj.maybeList().orElse( List.of() ) );
     }
 
+    @Test
+    public void testAccess_ListsAreCached()
+    {
+        ListBean obj = createJSON( "{"
+            + "'names':['John', 'Paul', 'Ringo'],"
+            + "'ages':[1,2,3],"
+            + "'flags':[[true],[false]]"
+            + "}" ).as( ListBean.class );
+
+        assertFalse( obj.isAccessCached() );
+        assertNotSame( obj.names(), obj.names() );
+        ListBean cached = obj.withAccessCached().as( ListBean.class );
+        assertTrue( cached.isAccessCached() );
+        assertSame( cached.names(), cached.names() );
+        assertEquals( List.of( "John", "Paul", "Ringo" ), cached.names() );
+        // some more tests of the same
+        assertSame( cached.ages(), cached.ages() );
+        assertSame( cached.flags(), cached.flags() );
+        assertSame( cached.flags().get( 0 ), cached.flags().get( 0 ) );
+    }
+
+    @Test
+    public void testAccess_ObjectsAreCached()
+    {
+        SetBean obj = createJSON( "{'recursive': [{'ages':[1,2,3]}]}" ).withAccessCached().as( SetBean.class );
+        assertTrue( obj.isAccessCached() );
+        assertSame( obj.recursive().iterator().next().ages(), obj.recursive().iterator().next().ages() );
+
+        NestedBean obj2 = createJSON( "{'list':[{'b':{},'a':5}]}" ).withAccessCached().as( NestedBean.class );
+        assertSame( obj2.list(), obj2.list() );
+        assertTrue( obj2.isAccessCached() );
+        assertSame( obj2.list().get( 0 ).getB(), obj2.list().get( 0 ).getB() );
+        assertTrue( obj2.list().get( 0 ).isAccessCached() );
+    }
+
+    @Test
+    public void testAccess_StreamsAreNeverCached()
+    {
+        StreamBean obj = createJSON( "{'numbers':[1,2,3], 'names':['Tim', 'Tom']}" ).withAccessCached()
+            .as( StreamBean.class );
+
+        assertTrue( obj.isAccessCached() );
+        assertNotSame( obj.numbers(), obj.numbers() );
+        assertNotSame( obj.names(), obj.names() );
+    }
+
+    interface UncachedBean extends JsonPrimitive
+    {
+
+        JsonNumber n();
+
+        Long time();
+
+        UncachedBean next();
+
+        JsonList<UncachedBean> list();
+
+        List<UncachedBean> list2();
+    }
+
+    @Test
+    public void testAccess_PrimitivesAreNeverCached()
+    {
+        UncachedBean obj = createJSON(
+            "{'n':42, 'time': 123456789, 'next':{'n':2}, 'list':[{'n':3}], 'list2':[{'n':4}]}" )
+                .withAccessCached().as( UncachedBean.class );
+
+        assertTrue( obj.isAccessCached() );
+        assertNotSame( obj.n(), obj.n() );
+        assertNotSame( obj.time(), obj.time() );
+        assertNotSame( obj.next(), obj.next() );
+
+        // in contrast:
+        assertSame( obj.list(), obj.list() );
+        // JsonList is still lazy => not cached
+        assertNotSame( obj.list().get( 0 ), obj.list().get( 0 ) );
+
+        assertSame( obj.list2(), obj.list2() );
+        // List is not lazy, elements are part of the cached List
+        assertSame( obj.list2().get( 0 ), obj.list2().get( 0 ) );
+    }
+
     private static JsonResponse createJSON( String content )
     {
-        return new JsonResponse( content.replace( '\'', '"' ) );
+        return new JsonResponse( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

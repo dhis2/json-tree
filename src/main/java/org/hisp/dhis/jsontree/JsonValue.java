@@ -65,6 +65,11 @@ package org.hisp.dhis.jsontree;
 public interface JsonValue
 {
     /**
+     * Constant for JSON {@code null} value.
+     */
+    JsonValue NULL = JsonResponse.NULL;
+
+    /**
      * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
      *
      * @param node non null
@@ -72,7 +77,7 @@ public interface JsonValue
      */
     static JsonValue of( JsonNode node )
     {
-        return node == null ? JsonResponse.NULL : of( node.getDeclaration() );
+        return node == null ? NULL : of( node.getDeclaration() );
     }
 
     /**
@@ -83,7 +88,23 @@ public interface JsonValue
      */
     static JsonValue of( String json )
     {
-        return json == null || "null".equals( json ) ? JsonResponse.NULL : new JsonResponse( json );
+        return of( json, JsonTypedAccess.GLOBAL );
+    }
+
+    /**
+     * View the provided JSON string as virtual lazy evaluated tree using the
+     * provided {@link JsonTypedAccessStore} for mapping to Java method return
+     * types.
+     *
+     * @param json a JSON string
+     * @param store mapping used to map JSON values to the Java method return
+     *        types of abstract methods, when {@code null} default mapping is
+     *        used
+     * @return virtual JSON tree root {@link JsonValue}
+     */
+    static JsonValue of( String json, JsonTypedAccessStore store )
+    {
+        return json == null || "null".equals( json ) ? NULL : new JsonResponse( json, store );
     }
 
     /**
@@ -201,4 +222,24 @@ public interface JsonValue
      *         exist in the JSON document
      */
     JsonNode node();
+
+    /**
+     * @return true, if results of JSON to Java method return types mapping via
+     *         {@link JsonTypedAccessStore} are cached so that complex return
+     *         values are only computed once. Any interface return type is
+     *         considered a complex type.
+     */
+    default boolean isAccessCached()
+    {
+        return false;
+    }
+
+    /**
+     * @return This value but with typed access cached if supported. Check using
+     *         {@link #isAccessCached()} on result.
+     */
+    default JsonValue withAccessCached()
+    {
+        return this;
+    }
 }

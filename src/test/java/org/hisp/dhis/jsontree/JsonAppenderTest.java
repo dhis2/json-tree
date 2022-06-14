@@ -285,14 +285,14 @@ public class JsonAppenderTest
     public void testObject_JsonNode()
     {
         assertJson( "{'node':['a','b']}", builder.toObject( obj -> obj
-            .addMember( "node", new JsonDocument( "[\"a\",\"b\"]" ).get( "$" ) ) ) );
+            .addMember( "node", JsonNode.of( "[\"a\",\"b\"]" ) ) ) );
     }
 
     @Test
     public void testArray_JsonNode()
     {
         assertJson( "[['a','b']]", builder.toArray( arr -> arr
-            .addElement( new JsonDocument( "[\"a\",\"b\"]" ).get( "$" ) ) ) );
+            .addElement( JsonNode.of( "[\"a\",\"b\"]" ) ) ) );
     }
 
     private static void assertJson( String expected, JsonNode actual )

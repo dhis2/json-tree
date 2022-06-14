@@ -172,6 +172,12 @@ public interface JsonCollection extends JsonValue
         }
 
         @Override
+        public final boolean isAccessCached()
+        {
+            return viewed.isAccessCached();
+        }
+
+        @Override
         public final <V extends JsonValue> V as( Class<V> as )
         {
             return viewed.as( as );

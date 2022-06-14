@@ -192,11 +192,12 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
     }
 
     /**
-     * @return this list as a {@link Stream}
+     * @return this list as a {@link Stream}, if this node does not exist or is
+     *         JSON {@code null} the stream is empty
      */
     default Stream<E> stream()
     {
-        return StreamSupport.stream( spliterator(), false );
+        return isUndefined() ? Stream.empty() : StreamSupport.stream( spliterator(), false );
     }
 
     /**
@@ -208,7 +209,8 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
      * @param <T> type of result list elements
      * @return this list mapped to a {@link List} of elements mapped by the
      *         provided mapper function from the {@link JsonValue}s of this
-     *         {@link JsonList}.
+     *         {@link JsonList}. Undefined or JSON null is mapped to an empty
+     *         list.
      * @throws java.util.NoSuchElementException in case a source element
      *         {@link JsonValue} does not exist
      *
@@ -228,7 +230,8 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
      *        {@link JsonValue#exists()}
      * @param <T> type of result list elements
      * @return mapped list using the default in case a {@link JsonValue} in this
-     *         list does not exist
+     *         list does not exist. Undefined or JSON null is mapped to an empty
+     *         list.
      */
     default <T> List<T> toList( Function<E, T> toValue, T whenNotExists )
     {
@@ -243,14 +246,18 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
      * @param toValue maps from {@link JsonValue} to plain value
      * @param <T> type of result list elements
      * @return existing elements of this list mapped by the provided toValue
-     *         function
+     *         function. Undefined or JSON null is mapped to an empty list.
      */
     default <T> List<T> toListOfElementsThatExists( Function<E, T> toValue )
     {
+        if ( isUndefined() )
+        {
+            return List.of();
+        }
         ArrayList<T> list = new ArrayList<>( size() );
         for ( E e : this )
         {
-            if ( e.exists() )
+            if ( !e.isUndefined() )
             {
                 list.add( toValue.apply( e ) );
             }
