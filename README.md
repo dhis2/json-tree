@@ -287,7 +287,8 @@ extract a list of the values that can be compared to an expected list.
 
 ## Deploy to Maven Repository
 
-This library can be deployed as an artefact to the Sonatype OSS Maven repository. The deployment plugins are defined in
-a separate profile to avoid performing GPG key signing during regular build processes. To deploy invoke:
-
-	mvn clean deploy -P deploy
+This library can be deployed as an artefact to the Sonatype OSS Maven repository. 
+The deployment happens automatically when a PR is merged. 
+Therefore, it is important to make sure that the current version is either a
+snapshot version or is bumped to the next snapshot version directly after
+the release PR has been made with a stable version.
