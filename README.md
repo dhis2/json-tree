@@ -118,7 +118,7 @@ interface Account extends JsonValue
 {
   boolean isEnabled();
   String getUsername();
-  List<Membership> mberships();
+  List<Membership> memberships();
 }
 interface Membership extends JsonValue
 {
