@@ -49,7 +49,17 @@ public class JsonFormatException extends IllegalArgumentException
         this( createParseErrorMessage( json, index, expected ) );
     }
 
+    public JsonFormatException( char[] json, int index, String expected )
+    {
+        this( createParseErrorMessage( json, index, expected ) );
+    }
+
     private static String createParseErrorMessage( char[] json, int index, char expected )
+    {
+        return createParseErrorMessage( json, index, expected == '~' ? "start of value" : "`" + expected + "`" );
+    }
+
+    private static String createParseErrorMessage( char[] json, int index, String expected )
     {
         int start = max( 0, index - 20 );
         int length = min( json.length - start, 40 );
@@ -57,8 +67,7 @@ public class JsonFormatException extends IllegalArgumentException
         char[] pointer = new char[index - start + 1];
         Arrays.fill( pointer, ' ' );
         pointer[pointer.length - 1] = '^';
-        String expectedText = expected == '~' ? "start of value" : "`" + expected + "`";
         return String.format( "Unexpected character at position %d,%n%s%n%s expected %s",
-            index, section, new String( pointer ), expectedText );
+            index, section, new String( pointer ), expected );
     }
 }

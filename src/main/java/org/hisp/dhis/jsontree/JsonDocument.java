@@ -100,7 +100,7 @@ public final class JsonDocument implements Serializable
 
         final int start;
 
-        private Integer end;
+        protected Integer end;
 
         private T value;
 
@@ -129,13 +129,27 @@ public final class JsonDocument implements Serializable
         {
             if ( getType() == JsonNodeType.NULL )
             {
+                checkNoTrailingTrash();
                 return null;
             }
             if ( !isParsed() )
             {
                 value = parseValue();
+                checkNoTrailingTrash();
             }
             return value;
+        }
+
+        private void checkNoTrailingTrash()
+        {
+            if ( !path.isEmpty() )
+                return;
+            int end = skipWhitespace( json, endIndex() );
+            if ( json.length > end )
+            {
+                throw new JsonFormatException(
+                    "Unexpected input after end of root value: " + getEndSection( json, end ) );
+            }
         }
 
         protected final boolean isParsed()
@@ -238,7 +252,12 @@ public final class JsonDocument implements Serializable
             {
                 return node;
             }
-            switch ( json[atIndex] )
+            if ( atIndex >= json.length )
+            {
+                throw new JsonFormatException( json, atIndex, "a JSON value but found EOI" );
+            }
+            char c = json[atIndex];
+            switch ( c )
             {
             case '{': // object node
                 return new LazyJsonObject( path, json, atIndex, nodesByPath );
@@ -252,6 +271,10 @@ public final class JsonDocument implements Serializable
             case 'n': // null node
                 return new LazyJsonNull( path, json, atIndex );
             default: // must be number node then...
+                if ( !isDigit( c ) && c != '-' )
+                {
+                    throw new JsonFormatException( json, atIndex, "start of a JSON value but found: `" + c + "`" );
+                }
                 return new LazyJsonNumber( path, json, atIndex );
             }
         }
@@ -341,12 +364,20 @@ public final class JsonDocument implements Serializable
                 String mPath = path + "." + name;
                 index = expectSeparator( json, property.endIndex(), ':' );
                 int mStart = index;
-                JsonNode member = nodesByPath.computeIfAbsent( mPath,
-                    key -> autoDetect( key, json, mStart, nodesByPath ) );
-                object.put( name, member );
-                index = skipSeparator( json, member.endIndex(), ',' );
+                if ( nodesByPath.containsKey( mPath ) )
+                {
+                    index = skipNodeAutodetect( json, mStart );
+                    index = expectSeparatorOrEnd( json, index, ',', '}' );
+                }
+                else
+                {
+                    JsonNode member = autoDetect( mPath, json, mStart, nodesByPath );
+                    nodesByPath.put( mPath, member );
+                    object.put( name, member );
+                    index = expectSeparatorOrEnd( json, member.endIndex(), ',', '}' );
+                }
             }
-            expectChar( json, index, '}' );
+            end = expectChar( json, index, '}' );
             return object;
         }
 
@@ -381,7 +412,7 @@ public final class JsonDocument implements Serializable
                 else
                 {
                     index = skipNodeAutodetect( json, index );
-                    index = skipSeparator( json, index, ',' );
+                    index = expectSeparatorOrEnd( json, index, ',', '}' );
                 }
             }
             checkFieldExists( this, Map.of(), name, mPath );
@@ -425,7 +456,7 @@ public final class JsonDocument implements Serializable
                     {
                         member = autoDetect( mPath, json, vStart, nodesByPath );
                     }
-                    mStart = skipSeparator( json, member.endIndex(), ',' );
+                    mStart = expectSeparatorOrEnd( json, member.endIndex(), ',', '}' );
                     return new SimpleEntry<>( name, member );
                 }
             };
@@ -506,9 +537,9 @@ public final class JsonDocument implements Serializable
                 JsonNode e = nodesByPath.computeIfAbsent( ePath,
                     key -> autoDetect( key, json, eStart, nodesByPath ) );
                 array.add( e );
-                index = skipSeparator( json, e.endIndex(), ',' );
+                index = expectSeparatorOrEnd( json, e.endIndex(), ',', ']' );
             }
-            expectChar( json, index, ']' );
+            end = expectChar( json, index, ']' );
             return array;
         }
 
@@ -523,7 +554,7 @@ public final class JsonDocument implements Serializable
             }
             JsonNode predecessor = index == 0 ? null : nodesByPath.get( path + '[' + (index - 1) + ']' );
             int s = predecessor != null
-                ? skipWhitespace( json, skipSeparator( json, predecessor.endIndex(), ',' ) )
+                ? skipWhitespace( json, expectSeparatorOrEnd( json, predecessor.endIndex(), ',', ']' ) )
                 : skipWhitespace( json, expectChar( json, start, '[' ) );
             int skipN = predecessor != null ? 0 : index;
             int startIndex = predecessor == null ? 0 : index - 1;
@@ -569,7 +600,7 @@ public final class JsonDocument implements Serializable
                         e = autoDetect( ePath, json, eStart, nodesByPath );
                     }
                     n++;
-                    eStart = skipSeparator( json, e.endIndex(), ',' );
+                    eStart = expectSeparatorOrEnd( json, e.endIndex(), ',', ']' );
                     return e;
                 }
             };
@@ -593,7 +624,7 @@ public final class JsonDocument implements Serializable
         @Override
         Number parseValue()
         {
-            int end = skipNumber( json, start );
+            end = skipNumber( json, start );
             double number = Double.parseDouble( new String( json, start, end - start ) );
             if ( number % 1 == 0d )
             {
@@ -635,11 +666,13 @@ public final class JsonDocument implements Serializable
                 if ( c == '"' )
                 {
                     // found the end (if escaped we would have hopped over)
+                    end = index; // ++ already advanced after closing quotes
                     return str.toString();
                 }
                 if ( c == '\\' )
                 {
                     checkEscapedCharExists( json, index );
+                    checkValidEscapedChar( json, index );
                     switch ( json[index++] )
                     {
                     case 'u': // unicode uXXXX
@@ -674,6 +707,11 @@ public final class JsonDocument implements Serializable
                         throw new JsonFormatException( json, index, '?' );
                     }
                 }
+                else if ( c < ' ' )
+                {
+                    throw new JsonFormatException( json, index - 1,
+                        "Control code character is not allowed in JSON string but found: " + (int) c );
+                }
                 else
                 {
                     str.append( c );
@@ -702,7 +740,8 @@ public final class JsonDocument implements Serializable
         @Override
         Boolean parseValue()
         {
-            return skipBoolean( json, start ) == start + 4; // the it was true
+            end = skipBoolean( json, start );
+            return end == start + 4; // the it was true
         }
 
     }
@@ -724,7 +763,7 @@ public final class JsonDocument implements Serializable
         @Override
         Serializable parseValue()
         {
-            skipNull( json, start );
+            end = skipNull( json, start );
             return null;
         }
     }
@@ -855,6 +894,14 @@ public final class JsonDocument implements Serializable
         }
     }
 
+    private static void checkValidEscapedChar( char[] json, int index )
+    {
+        if ( !isEscapableLetter( json[index] ) )
+        {
+            throw new JsonFormatException( json, index, "Illegal escaped string character: " + json[index] );
+        }
+    }
+
     private static JsonNode getClosestIndexedParent( String path, Map<String, JsonNode> nodesByPath )
     {
         String parentPath = getParentPath( path );
@@ -916,7 +963,7 @@ public final class JsonDocument implements Serializable
             index = skipString( json, index );
             index = expectSeparator( json, index, ':' );
             index = skipNodeAutodetect( json, index );
-            index = skipSeparator( json, index, ',' );
+            index = expectSeparatorOrEnd( json, index, ',', '}' );
         }
         return expectChar( json, index, '}' );
     }
@@ -929,7 +976,7 @@ public final class JsonDocument implements Serializable
         while ( index < json.length && json[index] != ']' )
         {
             index = skipNodeAutodetect( json, index );
-            index = skipSeparator( json, index, ',' );
+            index = expectSeparatorOrEnd( json, index, ',', ']' );
         }
         return expectChar( json, index, ']' );
     }
@@ -941,7 +988,7 @@ public final class JsonDocument implements Serializable
         {
             index = skipWhitespace( json, index );
             index = skipNodeAutodetect( json, index );
-            index = skipSeparator( json, index, ',' );
+            index = expectSeparatorOrEnd( json, index, ',', ']' );
             elementsToSkip--;
         }
         if ( json[index] == ']' )
@@ -956,12 +1003,18 @@ public final class JsonDocument implements Serializable
         return skipWhitespace( json, expectChar( json, skipWhitespace( json, index ), separator ) );
     }
 
-    private static int skipSeparator( char[] json, int index, char separator )
+    private static int expectSeparatorOrEnd( char[] json, int index, char separator, char end )
     {
         index = skipWhitespace( json, index );
-        return index >= json.length
-            ? index
-            : json[index] == separator ? skipWhitespace( json, index + 1 ) : index;
+        if ( json[index] == separator )
+        {
+            return skipWhitespace( json, index + 1 );
+        }
+        if ( json[index] != end )
+        {
+            return expectChar( json, index, end ); // cause fail
+        }
+        return index; // found end, return index pointing to it
     }
 
     private static int skipBoolean( char[] json, int fromIndex )
@@ -986,11 +1039,17 @@ public final class JsonDocument implements Serializable
                 // found the end (if escaped we would have hopped over)
                 return index;
             }
-            if ( c == '\\' )
+            else if ( c == '\\' )
             {
                 checkEscapedCharExists( json, index );
+                checkValidEscapedChar( json, index );
                 // hop over escaped char or unicode
                 index += json[index] == 'u' ? 5 : 1;
+            }
+            else if ( c < ' ' )
+            {
+                throw new JsonFormatException( json, index - 1,
+                    "Control code character is not allowed in JSON string but found: " + (int) c );
             }
         }
         return expectChar( json, index, '"' );
@@ -1002,10 +1061,19 @@ public final class JsonDocument implements Serializable
         index = skipChar( json, index, '-' );
         index = expectChar( json, index, JsonDocument::isDigit );
         index = skipDigits( json, index );
+        int before = index;
         index = skipChar( json, index, '.' );
-        index = skipDigits( json, index );
+        if ( index > before )
+        {
+            index = expectChar( json, index, JsonDocument::isDigit );
+            index = skipDigits( json, index );
+        }
+        before = index;
         index = skipChar( json, index, 'e', 'E' );
+        if ( index == before )
+            return index;
         index = skipChar( json, index, '+', '-' );
+        index = expectChar( json, index, JsonDocument::isDigit );
         return skipDigits( json, index );
     }
 
@@ -1033,6 +1101,12 @@ public final class JsonDocument implements Serializable
     private static boolean isWhitespace( char c )
     {
         return c == ' ' || c == '\n' || c == '\t' || c == '\r';
+    }
+
+    private static boolean isEscapableLetter( char c )
+    {
+        return c == '"' || c == '\\' || c == '/' || c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't'
+            || c == 'u';
     }
 
     private static int skipWhile( char[] json, int fromIndex, CharPredicate whileTrue )
