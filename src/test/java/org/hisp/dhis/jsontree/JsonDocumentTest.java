@@ -487,7 +487,7 @@ public class JsonDocumentTest
         String nl = System.getProperty( "line.separator" );
         assertEquals(
             "Unexpected character at position 6," + nl + "{\"a\": hello }"
-                + nl + "      ^ expected start of value",
+                + nl + "      ^ expected start of a JSON value but found: `h`",
             ex.getMessage() );
     }
 
