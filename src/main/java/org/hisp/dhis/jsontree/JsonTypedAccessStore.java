@@ -32,47 +32,39 @@ import java.lang.reflect.Type;
 
 /**
  * The {@link JsonTypedAccessStore} is a registry for accessor functions.
- *
- * These come in a simple form {@link JsonTypedAccessor} for non-generic types,
- * and a generic form {@link JsonGenericTypedAccessor} for more complicated
- * types.
- *
- * Conceptually accessors are the POJO "mappers" of this library. Just that
- * instead of using POJOs data structures are defined by their "getters" in an
- * interface. The accessors then bridge the gap between the view the generic
- * JSON tree provided in form of {@link JsonValue}s and the non-JSON java types
- * returned by getters.
- *
- * While they "map" values this mapping takes place on access only. Everything
- * before that is just as virtual (a view) as the {@link JsonValue} tree.
- *
- * One could also think of accessors as "automatic" implementation of an
- * abstract method as if it became a default method in an interface. The
- * "implementation" here is derived from the return type of the method. Each
- * accessor knows how to access and map to a particular java tye. The store then
- * contains the set of known java target types and their way to access them
- * given a {@link JsonValue} tree.
+ * <p>
+ * These come in a simple form {@link JsonTypedAccessor} for non-generic types, and a generic form
+ * {@link JsonGenericTypedAccessor} for more complicated types.
+ * <p>
+ * Conceptually accessors are the POJO "mappers" of this library. Just that instead of using POJOs data structures are
+ * defined by their "getters" in an interface. The accessors then bridge the gap between the view the generic JSON tree
+ * provided in form of {@link JsonValue}s and the non-JSON java types returned by getters.
+ * <p>
+ * While they "map" values this mapping takes place on access only. Everything before that is just as virtual (a view)
+ * as the {@link JsonValue} tree.
+ * <p>
+ * One could also think of accessors as "automatic" implementation of an abstract method as if it became a default
+ * method in an interface. The "implementation" here is derived from the return type of the method. Each accessor knows
+ * how to access and map to a particular java tye. The store then contains the set of known java target types and their
+ * way to access them given a {@link JsonValue} tree.
  *
  * @author Jan Bernitt
  * @since 0.4
  */
-public interface JsonTypedAccessStore
-{
+public interface JsonTypedAccessStore {
     /**
-     * A function that given a parent object knows how to access a value at a
-     * certain path as a certain type.
+     * A function that given a parent object knows how to access a value at a certain path as a certain type.
      *
      * @param <T> the result type
      */
     @FunctionalInterface
-    interface JsonGenericTypedAccessor<T>
-    {
+    interface JsonGenericTypedAccessor<T> {
         /**
          * Accesses value the path as the target type.
          *
-         * @param from the parent object containing the value at path
-         * @param path path to access the value
-         * @param to fully generic target type for the value of type {@code T}
+         * @param from  the parent object containing the value at path
+         * @param path  path to access the value
+         * @param to    fully generic target type for the value of type {@code T}
          * @param store in case further conversions are needed
          * @return the value at path converted to target type
          */
@@ -80,31 +72,25 @@ public interface JsonTypedAccessStore
     }
 
     /**
-     * A simplified version of a {@link JsonGenericTypedAccessor} that only
-     * requires a parent and a path.
-     *
-     * This usually is sufficient for simple Java types like strings, numbers
-     * and so forth.
+     * A simplified version of a {@link JsonGenericTypedAccessor} that only requires a parent and a path.
+     * <p>
+     * This usually is sufficient for simple Java types like strings, numbers and so forth.
      *
      * @param <T> the result type
      */
     @FunctionalInterface
-    interface JsonTypedAccessor<T> extends JsonGenericTypedAccessor<T>
-    {
+    interface JsonTypedAccessor<T> extends JsonGenericTypedAccessor<T> {
         /**
-         * Accesses value the path as the type implicitly assumed by this
-         * accessor.
+         * Accesses value the path as the type implicitly assumed by this accessor.
          *
          * @param from the parent object containing that value at path
          * @param path path to access the value
-         * @return the value at path with the type implicitly assumed by this
-         *         accessor.
+         * @return the value at path with the type implicitly assumed by this accessor.
          */
         T access( JsonObject from, String path );
 
         @Override
-        default T access( JsonObject from, String path, Type to, JsonTypedAccessStore store )
-        {
+        default T access( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
             return access( from, path );
         }
     }
@@ -112,11 +98,10 @@ public interface JsonTypedAccessStore
     /**
      * Yields the accessor to use for the provided raw type.
      *
-     * @param type the target type of access, if generic {@link Type} is a
-     *        {@link ParameterizedType} this should be the raw type
-     * @return the accessor to use, or {@code null} if no accessor is known for
-     *         the given type
-     * @param <T> type of the value provided by the returned accessor
+     * @param type the target type of access, if generic {@link Type} is a {@link ParameterizedType} this should be the
+     *             raw type
+     * @param <T>  type of the value provided by the returned accessor
+     * @return the accessor to use, or {@code null} if no accessor is known for the given type
      */
     <T> JsonGenericTypedAccessor<T> accessor( Class<T> type );
 

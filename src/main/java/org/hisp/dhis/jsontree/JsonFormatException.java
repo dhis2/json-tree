@@ -27,40 +27,34 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.util.Arrays;
+
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-
-import java.util.Arrays;
 
 /**
  * Thrown when the JSON content turns out to be invalid JSON.
  *
  * @author Jan Bernitt
  */
-public class JsonFormatException extends IllegalArgumentException
-{
-    public JsonFormatException( String message )
-    {
+public class JsonFormatException extends IllegalArgumentException {
+    public JsonFormatException( String message ) {
         super( message );
     }
 
-    public JsonFormatException( char[] json, int index, char expected )
-    {
+    public JsonFormatException( char[] json, int index, char expected ) {
         this( createParseErrorMessage( json, index, expected ) );
     }
 
-    public JsonFormatException( char[] json, int index, String expected )
-    {
+    public JsonFormatException( char[] json, int index, String expected ) {
         this( createParseErrorMessage( json, index, expected ) );
     }
 
-    private static String createParseErrorMessage( char[] json, int index, char expected )
-    {
+    private static String createParseErrorMessage( char[] json, int index, char expected ) {
         return createParseErrorMessage( json, index, expected == '~' ? "start of value" : "`" + expected + "`" );
     }
 
-    private static String createParseErrorMessage( char[] json, int index, String expected )
-    {
+    private static String createParseErrorMessage( char[] json, int index, String expected ) {
         int start = max( 0, index - 20 );
         int length = min( json.length - start, 40 );
         String section = new String( json, start, length );

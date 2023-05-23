@@ -27,99 +27,86 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static java.util.stream.Collectors.toList;
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 import java.util.List;
 
-import org.junit.Test;
+import static java.util.stream.Collectors.toList;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Tests the additional utility methods of the {@link JsonList} interface.
  *
  * @author Jan Bernitt
  */
-public class JsonListTest
-{
+public class JsonListTest {
     @Test
-    public void testList_stream_Undefined()
-    {
+    public void testList_stream_Undefined() {
         JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
-    public void testList_stream_Null()
-    {
+    public void testList_stream_Null() {
         JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
-    public void testList_stream_Empty()
-    {
+    public void testList_stream_Empty() {
         JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
-    public void testList_toList_Undefined()
-    {
+    public void testList_toList_Undefined() {
         JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toList_Null()
-    {
+    public void testList_toList_Null() {
         JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toList_Empty()
-    {
+    public void testList_toList_Empty() {
         JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Undefined()
-    {
+    public void testList_toListOfElementsThatExists_Undefined() {
         JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Null()
-    {
+    public void testList_toListOfElementsThatExists_Null() {
         JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Empty()
-    {
+    public void testList_toListOfElementsThatExists_Empty() {
         JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_OnlyNulls()
-    {
+    public void testList_toListOfElementsThatExists_OnlyNulls() {
         JsonList<JsonNumber> list = createJSON( "[null,null]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Mixed()
-    {
+    public void testList_toListOfElementsThatExists_Mixed() {
         JsonList<JsonNumber> list = createJSON( "[null,1,2,null,3]" ).asList( JsonNumber.class );
         assertEquals( List.of( 1, 2, 3 ), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
-    private static JsonResponse createJSON( String content )
-    {
+    private static JsonResponse createJSON( String content ) {
         return new JsonResponse( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

@@ -35,52 +35,42 @@ import java.util.function.Function;
  *
  * @author Jan Bernitt
  */
-public interface JsonString extends JsonPrimitive
-{
+public interface JsonString extends JsonPrimitive {
 
     /**
-     * @return string value of the property or {@code null} when this property
-     *         is undefined or defined as JSON {@code null}.
+     * @return string value of the property or {@code null} when this property is undefined or defined as JSON
+     * {@code null}.
      */
     String string();
 
-    default String string( String orDefault )
-    {
+    default String string( String orDefault ) {
         return exists() ? string() : orDefault;
     }
 
     /**
-     * In contrast to {@link #mapNonNull(Object, Function)} this function simply
-     * returns {@code null} when {@link #string()} is {@code null}. This
-     * includes the case that this value is not defined in the JSON content.
+     * In contrast to {@link #mapNonNull(Object, Function)} this function simply returns {@code null} when
+     * {@link #string()} is {@code null}. This includes the case that this value is not defined in the JSON content.
      *
-     * @param parser function that parses a given {@link String} to the returned
-     *        type.
-     * @param <T> return type
-     * @return {@code null} when {@link #string()} returns {@code null}
-     *         otherwise the result of calling provided parser with result of
-     *         {@link #string()}.
+     * @param parser function that parses a given {@link String} to the returned type.
+     * @param <T>    return type
+     * @return {@code null} when {@link #string()} returns {@code null} otherwise the result of calling provided parser
+     * with result of {@link #string()}.
      */
-    default <T> T parsed( Function<String, T> parser )
-    {
+    default <T> T parsed( Function<String, T> parser ) {
         String value = string();
         return value == null ? null : parser.apply( value );
     }
 
-    default <T> T converted( Callable<T> converter )
-    {
-        try
-        {
+    default <T> T converted( Callable<T> converter ) {
+        try {
             return converter.call();
         }
-        catch ( Exception ex )
-        {
+        catch ( Exception ex ) {
             throw new IllegalArgumentException( ex );
         }
     }
 
-    default Class<?> parsedClass()
-    {
+    default Class<?> parsedClass() {
         return converted( () -> Class.forName( string() ) );
     }
 }

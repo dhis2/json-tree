@@ -27,21 +27,19 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-
-import org.junit.Test;
 
 /**
  * Tests the static helpers of {@link JsonValue}.
  *
  * @author Jan Bernitt
  */
-public class JsonValueTest
-{
+public class JsonValueTest {
     @Test
-    public void testOfJsonNode()
-    {
+    public void testOfJsonNode() {
         JsonValue value = JsonValue.of( JsonBuilder.createObject( obj -> obj.addString( "foo", "bar" ) ) );
         assertNotNull( value );
         assertEquals( "{\"foo\":\"bar\"}", value.toString() );
