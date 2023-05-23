@@ -27,128 +27,109 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static java.util.stream.Collectors.toList;
-
 import java.util.List;
 import java.util.function.Function;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * Represents a JSON array node.
- *
- * As all nodes are mere views or virtual index access will never throw an
- * {@link ArrayIndexOutOfBoundsException}. Whether an element at an index exists
- * is determined first when {@link JsonValue#exists()} or other value accessing
+ * <p>
+ * As all nodes are mere views or virtual index access will never throw an {@link ArrayIndexOutOfBoundsException}.
+ * Whether an element at an index exists is determined first when {@link JsonValue#exists()} or other value accessing
  * operations are performed on a node.
  *
  * @author Jan Bernitt
  */
-public interface JsonArray extends JsonCollection
-{
+public interface JsonArray extends JsonCollection {
     /**
      * Index access to the array.
-     *
+     * <p>
      * Note that this will neither check index nor element type.
      *
      * @param index index to access (0 and above)
-     * @param as assumed type of the element
-     * @param <E> type of the returned element
+     * @param as    assumed type of the element
+     * @param <E>   type of the returned element
      * @return element at the given index
      */
     <E extends JsonValue> E get( int index, Class<E> as );
 
     /**
      * @return the array elements as a uniform list of {@link String}
-     * @throws IllegalArgumentException in case the node is not an array or the
-     *         array has mixed elements
+     * @throws IllegalArgumentException in case the node is not an array or the array has mixed elements
      */
     List<String> stringValues();
 
     /**
      * @return the array elements as a uniform list of {@link Number}
-     * @throws IllegalArgumentException in case the node is not an array or the
-     *         array has mixed elements
+     * @throws IllegalArgumentException in case the node is not an array or the array has mixed elements
      */
     List<Number> numberValues();
 
     /**
      * @return the array elements as a uniform list of {@link Boolean}
-     * @throws IllegalArgumentException in case the node is not an array or the
-     *         array has mixed elements
+     * @throws IllegalArgumentException in case the node is not an array or the array has mixed elements
      */
     List<Boolean> boolValues();
 
-    default <E> List<E> values( Function<String, E> mapper )
-    {
+    default <E> List<E> values( Function<String, E> mapper ) {
         return stringValues().stream().map( mapper ).collect( toList() );
     }
 
-    default JsonValue get( int index )
-    {
+    default JsonValue get( int index ) {
         return get( index, JsonValue.class );
     }
 
-    default JsonNumber getNumber( int index )
-    {
+    default JsonNumber getNumber( int index ) {
         return get( index, JsonNumber.class );
     }
 
-    default JsonArray getArray( int index )
-    {
+    default JsonArray getArray( int index ) {
         return get( index, JsonArray.class );
     }
 
-    default JsonString getString( int index )
-    {
+    default JsonString getString( int index ) {
         return get( index, JsonString.class );
     }
 
-    default JsonBoolean getBoolean( int index )
-    {
+    default JsonBoolean getBoolean( int index ) {
         return get( index, JsonBoolean.class );
     }
 
-    default JsonObject getObject( int index )
-    {
+    default JsonObject getObject( int index ) {
         return get( index, JsonObject.class );
     }
 
-    default <E extends JsonValue> JsonList<E> getList( int index, Class<E> as )
-    {
+    default <E extends JsonValue> JsonList<E> getList( int index, Class<E> as ) {
         return JsonCollection.asList( getArray( index ), as );
     }
 
-    default <E extends JsonValue> JsonMap<E> getMap( int index, Class<E> as )
-    {
+    default <E extends JsonValue> JsonMap<E> getMap( int index, Class<E> as ) {
         return JsonCollection.asMap( getObject( index ), as );
     }
 
-    default <E extends JsonValue> JsonMultiMap<E> getMultiMap( int index, Class<E> as )
-    {
+    default <E extends JsonValue> JsonMultiMap<E> getMultiMap( int index, Class<E> as ) {
         return JsonCollection.asMultiMap( getObject( index ), as );
     }
 
     /**
-     * Maps this array to a lazy transformed list view where each element of the
-     * original array is transformed by the given function when accessed.
-     *
+     * Maps this array to a lazy transformed list view where each element of the original array is transformed by the
+     * given function when accessed.
+     * <p>
      * This means the returned list always has same size as the original array.
      *
      * @param elementToX transformer function
-     * @param <V> type of the transformer output, elements of the list view
+     * @param <V>        type of the transformer output, elements of the list view
      * @return a lazily transformed list view of this array
      */
-    default <V extends JsonValue> JsonList<V> viewAsList( Function<JsonValue, V> elementToX )
-    {
-        final class JsonArrayView extends CollectionView<JsonArray> implements JsonList<V>
-        {
-            private JsonArrayView( JsonArray self )
-            {
+    default <V extends JsonValue> JsonList<V> viewAsList( Function<JsonValue, V> elementToX ) {
+        final class JsonArrayView extends CollectionView<JsonArray> implements JsonList<V> {
+            private JsonArrayView( JsonArray self ) {
                 super( self );
             }
 
             @Override
-            public V get( int index )
-            {
+            public V get( int index ) {
                 return elementToX.apply( viewed.get( index ) );
             }
         }

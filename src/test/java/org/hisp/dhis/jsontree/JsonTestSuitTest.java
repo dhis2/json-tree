@@ -27,105 +27,90 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
-
-import org.junit.Test;
 
 /**
  * Test scenarios taken from the
  * <a href="https://github.com/nst/JSONTestSuite">JSONTestSuite</a>.
- *
+ * <p>
  * Test method names are same as the test input file names of the suite.
  *
  * @author Jan Bernitt
  */
-public class JsonTestSuitTest
-{
+public class JsonTestSuitTest {
     @Test
-    public void y_object_duplicated_key()
-    {
+    public void y_object_duplicated_key() {
         JsonValue value = assert_y( "{\"a\":\"b\",\"a\":\"c\"}" );
         assertEquals( "b", value.asObject().getString( "a" ).string() );
     }
 
     @Test
-    public void y_object_duplicated_key_and_value()
-    {
+    public void y_object_duplicated_key_and_value() {
         JsonValue value = assert_y( "{\"a\":\"b\",\"a\":\"b\"}" );
         assertEquals( "b", value.asObject().getString( "a" ).string() );
     }
 
     @Test
-    public void y_array_with_trailing_space()
-    {
+    public void y_array_with_trailing_space() {
         assert_y( "[2] " );
     }
 
     @Test
-    public void y_number_double_close_to_zero()
-    {
+    public void y_number_double_close_to_zero() {
         assert_y( "[-0.000000000000000000000000000000000000000000000000000000000000000000000000000001]" );
     }
 
     @Test
-    public void y_structure_whitespace_array()
-    {
+    public void y_structure_whitespace_array() {
         assert_y( " []" );
     }
 
     @Test
-    public void n_object_trailing_comment_slash_open()
-    {
+    public void n_object_trailing_comment_slash_open() {
         assert_n( "{\"a\":\"b\"}//" );
     }
 
     @Test
-    public void n_array_1_true_without_comma()
-    {
+    public void n_array_1_true_without_comma() {
         assert_n( "[1 true]" );
     }
 
     @Test
-    public void n_array_comma_after_close()
-    {
+    public void n_array_comma_after_close() {
         assert_n( "[\"\"]," );
     }
 
     @Test
-    public void n_number_0e()
-    {
+    public void n_number_0e() {
         assert_n( "[0e]" );
     }
 
     @Test
-    public void n_number_expression()
-    {
+    public void n_number_expression() {
         assert_n( "[1+2]" );
     }
 
     @Test
-    public void n_number_2_e3()
-    {
+    public void n_number_2_e3() {
         assert_n( "[2.e3]" );
     }
 
     @Test
-    public void n_structure_no_data()
-    {
+    public void n_structure_no_data() {
         assertThrows( JsonFormatException.class, () -> JsonNode.of( "" ) );
     }
 
     @Test
-    public void n_structure_single_star()
-    {
+    public void n_structure_single_star() {
         assertThrows( JsonFormatException.class, () -> JsonNode.of( "*" ) );
         assert_n( "[*]" );
     }
 
     @Test
-    public void n_string_single_doublequote()
-    {
+    public void n_string_single_doublequote() {
         JsonNode node = JsonNode.of( "\"" );
         assertThrows( JsonFormatException.class, node::value );
     }
@@ -134,31 +119,26 @@ public class JsonTestSuitTest
      * Helpers
      */
 
-    private JsonValue assert_y( String json )
-    {
+    private JsonValue assert_y( String json ) {
         JsonValue value = JsonValue.of( json );
         assert_y( value );
         return value;
     }
 
-    private void assert_y( JsonValue value )
-    {
+    private void assert_y( JsonValue value ) {
         value.node().visit( n -> {
         } );
     }
 
-    private void assert_n( String json )
-    {
+    private void assert_n( String json ) {
         assert_n( JsonValue.of( json ) );
     }
 
-    private void assert_n( JsonValue value )
-    {
+    private void assert_n( JsonValue value ) {
         assert_n( value.node() );
     }
 
-    private void assert_n( JsonNode node )
-    {
+    private void assert_n( JsonNode node ) {
         assertThrows( JsonFormatException.class, () -> node.visit( n -> {
         } ) );
     }

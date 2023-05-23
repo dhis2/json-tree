@@ -28,15 +28,12 @@
 package org.hisp.dhis.jsontree;
 
 /**
- * Exception thrown when the path given to {@link JsonDocument#get(String)} does
- * not exist.
+ * Exception thrown when the path given to {@link JsonTree#get(String)} does not exist.
  *
  * @author Jan Bernitt
  */
-public class JsonPathException extends IllegalArgumentException
-{
-    public JsonPathException( String s )
-    {
+public class JsonPathException extends IllegalArgumentException {
+    public JsonPathException( String s ) {
         super( s );
     }
 }

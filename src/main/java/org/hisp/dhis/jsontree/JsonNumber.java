@@ -32,42 +32,35 @@ package org.hisp.dhis.jsontree;
  *
  * @author Jan Bernitt
  */
-public interface JsonNumber extends JsonPrimitive
-{
+public interface JsonNumber extends JsonPrimitive {
 
     /**
-     * @return numeric value of the property or {@code null} when this property
-     *         is undefined or defined as JSON {@code null}.
+     * @return numeric value of the property or {@code null} when this property is undefined or defined as JSON
+     * {@code null}.
      */
     Number number();
 
-    default <T extends Number> T number( T orDefault )
-    {
+    default <T extends Number> T number( T orDefault ) {
         return exists() ? (T) number() : orDefault;
     }
 
-    default int intValue()
-    {
+    default int intValue() {
         return mapNonNull( number(), Number::intValue );
     }
 
-    default int intValue( int orDefault )
-    {
+    default int intValue( int orDefault ) {
         return exists() ? intValue() : orDefault;
     }
 
-    default long longValue()
-    {
+    default long longValue() {
         return mapNonNull( number(), Number::longValue );
     }
 
-    default float floatValue()
-    {
+    default float floatValue() {
         return mapNonNull( number(), Number::floatValue );
     }
 
-    default double doubleValue()
-    {
+    default double doubleValue() {
         return mapNonNull( number(), Number::doubleValue );
     }
 }
