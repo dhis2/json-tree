@@ -35,63 +35,50 @@ import java.util.function.Function;
 
 /**
  * A {@link JsonMap} with {@link JsonList} of elements.
- *
- * This needs a dedicated type as we cannot pass a {@link JsonMap} {@link Class}
- * with the generics of a {@link JsonList} of the element type otherwise.
- *
- * @author Jan Bernitt
+ * <p>
+ * This needs a dedicated type as we cannot pass a {@link JsonMap} {@link Class} with the generics of a {@link JsonList}
+ * of the element type otherwise.
  *
  * @param <E> type of the map list elements
+ * @author Jan Bernitt
  */
-public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>>
-{
+public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> {
 
     /**
-     * Convert this {@link JsonMultiMap} to a {@link Map} of {@link List} values
-     * where the list elements are mapped from {@link JsonValue} by the provided
-     * mapping {@link Function}.
-     *
+     * Convert this {@link JsonMultiMap} to a {@link Map} of {@link List} values where the list elements are mapped from
+     * {@link JsonValue} by the provided mapping {@link Function}.
+     * <p>
      * The order of the elements in the list are kept.
      *
      * @param mapper maps map list elements
-     * @param <T> type of map value list elements
+     * @param <T>    type of map value list elements
      * @return this {@link JsonMultiMap} as {@link Map}
-     * @throws java.util.NoSuchElementException in case this value does not
-     *         exist in the JSON document
-     * @throws UnsupportedOperationException in case this node does exist but is
-     *         not an object node
+     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws UnsupportedOperationException    in case this node does exist but is not an object node
      */
-    default <T> Map<String, List<T>> toMap( Function<E, T> mapper )
-    {
+    default <T> Map<String, List<T>> toMap( Function<E, T> mapper ) {
         return toMap( mapper, null );
     }
 
     /**
-     * Same as {@link #toMap(Function)} but the order of the elements in a
-     * {@link List} is sorted by the provided order.
+     * Same as {@link #toMap(Function)} but the order of the elements in a {@link List} is sorted by the provided
+     * order.
      *
      * @param mapper maps map list elements
-     * @param order comparison used to sort the lists representing the map
-     *        values
-     * @param <T> type of map value list elements
+     * @param order  comparison used to sort the lists representing the map values
+     * @param <T>    type of map value list elements
      * @return this {@link JsonMultiMap} as {@link Map}
-     * @throws java.util.NoSuchElementException in case this value does not
-     *         exist in the JSON document
-     * @throws UnsupportedOperationException in case this node does exist but is
-     *         not an object node
+     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws UnsupportedOperationException    in case this node does exist but is not an object node
      */
-    default <T> Map<String, List<T>> toMap( Function<E, T> mapper, Comparator<T> order )
-    {
-        if ( isUndefined() )
-        {
+    default <T> Map<String, List<T>> toMap( Function<E, T> mapper, Comparator<T> order ) {
+        if ( isUndefined() ) {
             return Map.of();
         }
         Map<String, List<T>> res = new LinkedHashMap<>();
-        for ( String key : keys() )
-        {
+        for ( String key : keys() ) {
             List<T> list = get( key ).toList( mapper );
-            if ( order != null )
-            {
+            if ( order != null ) {
                 list.sort( order );
             }
             res.put( key, list );
@@ -100,30 +87,23 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>>
     }
 
     /**
-     * Maps this multimap list elements to a lazy transformed view where each
-     * entry value of the original map is transformed by the given function when
-     * accessed.
+     * Maps this multimap list elements to a lazy transformed view where each entry value of the original map is
+     * transformed by the given function when accessed.
      * <p>
-     * This means the returned multimap always has same size as the original
-     * map.
+     * This means the returned multimap always has same size as the original map.
      *
      * @param memberToX transformer function
-     * @param <V> type of the transformer output for list elements of each of
-     *        the map entry lists
+     * @param <V>       type of the transformer output for list elements of each of the map entry lists
      * @return a lazily transformed multimap view of this multimap
      */
-    default <V extends JsonValue> JsonMultiMap<V> viewAsMultiMap( Function<E, V> memberToX )
-    {
-        final class JsonMapView extends CollectionView<JsonMultiMap<E>> implements JsonMultiMap<V>
-        {
-            private JsonMapView( JsonMultiMap<E> viewed )
-            {
+    default <V extends JsonValue> JsonMultiMap<V> viewAsMultiMap( Function<E, V> memberToX ) {
+        final class JsonMapView extends CollectionView<JsonMultiMap<E>> implements JsonMultiMap<V> {
+            private JsonMapView( JsonMultiMap<E> viewed ) {
                 super( viewed );
             }
 
             @Override
-            public JsonList<V> get( String key )
-            {
+            public JsonList<V> get( String key ) {
                 return viewed.get( key ).viewAsList( memberToX );
             }
         }

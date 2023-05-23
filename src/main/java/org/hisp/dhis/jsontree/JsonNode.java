@@ -27,46 +27,63 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static java.lang.String.format;
-
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import org.hisp.dhis.jsontree.JsonDocument.JsonNodeType;
+import static java.lang.Math.min;
+import static java.lang.String.format;
+import static java.util.function.Predicate.not;
+import static java.util.stream.IntStream.range;
 
 /**
- * API of a JSON tree as it actually exist in an HTTP response with a JSON
- * payload.
+ * API of a JSON tree as it actually exist in an HTTP response with a JSON payload.
  * <p>
  * Operations are lazily evaluated to make working with the JSON tree efficient.
- *
- * Trying to use operations that are not supported for the {@link JsonNodeType},
- * like accessing the {@link #members()} or {@link #elements()} of a
- * {@link JsonNode} that is not an object or array respectively, will throw an
- * {@link UnsupportedOperationException} immediately.
+ * <p>
+ * Trying to use operations that are not supported for the {@link JsonNodeType}, like accessing the {@link #members()}
+ * or {@link #elements()} of a {@link JsonNode} that is not an object or array respectively, will throw an
+ * {@link JsonTreeException} immediately.
+ * <p>
+ * Likewise, trying to resolve nodes in the tree that do not exist results in a {@link JsonPathException} immediately.
  *
  * @author Jan Bernitt
  */
-public interface JsonNode extends Serializable
-{
+public interface JsonNode extends Serializable {
+    /**
+     * @since 0.6.0
+     * JSON {@code null} as root of a tree
+     */
+    JsonNode NULL = JsonNode.of( "null" );
+
+    /**
+     * @since 0.6.0
+     * JSON {@code {}} as a root of a tree
+     */
+    JsonNode EMPTY_OBJECT = JsonNode.of( "{}" );
+
+    /**
+     * @since 0.6.0
+     * JSON {@code []} as a root of a tree
+     */
+    JsonNode EMPTY_ARRAY = JsonNode.of( "[]" );
+
     /**
      * Create a new lazily parsed {@link JsonNode} document.
      *
      * @param json a JSON value/document
      * @return given document as {@link JsonNode} API
-     *
      * @since 0.4
      */
-    static JsonNode of( String json )
-    {
-        return new JsonDocument( json ).get( "$" );
+    static JsonNode of( String json ) {
+        return new JsonTree( json ).get( "$" );
     }
 
     /**
@@ -75,56 +92,101 @@ public interface JsonNode extends Serializable
     JsonNodeType getType();
 
     /**
+     * @return The root of this JSON document independent of which node in the tree it is called on
+     * @since 0.6.0
+     */
+    JsonNode getRoot();
+
+    /**
+     * @return The parent of this node or the root itself if this node is the root
+     * @since 0.6.0
+     */
+    default JsonNode getParent() {
+        return isRoot() ? this : getRoot().get( parentPath( getPath() ) );
+    }
+
+    /**
      * Access the node at the given path in the subtree of this node.
      *
-     * @param path a simple or nested path relative to this node as root
+     * @param path a simple or nested path relative to this node. A path starting with {@code $} is relative to the root
+     *             node of this node, in other words it is an absolute path
      * @return the node at the given path
-     * @throws JsonPathException when no such node exists in the subtree of this
-     *         node
+     * @throws JsonPathException when no such node exists in the subtree of this node
      */
     default JsonNode get( String path )
-        throws JsonPathException
-    {
-        if ( path.isEmpty() || "$".equals( path ) )
-        {
-            return this;
-        }
+        throws JsonPathException {
+        if ( path.isEmpty() ) return this;
+        if ( "$".equals( path ) ) return getRoot();
+        if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
         throw new JsonPathException(
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 
     /**
      * Size of an array of number of object members.
+     * <p>
+     * This is preferable to calling {@link #value()} or {@link #members()} or {@link #elements()} when size is only
+     * property of interest as it might have better performance.
      *
-     * This is preferable to calling {@link #value()} or {@link #members()} or
-     * {@link #elements()} when size is only property of interest as it might
-     * have better performance.
-     *
-     * @return number of elements in an array or number of fields in an object,
-     *         otherwise undefined
-     * @throws UnsupportedOperationException when this node in neither an array
-     *         nor an object
+     * @return number of elements in an array or number of fields in an object, otherwise undefined
+     * @throws JsonTreeException when this node in neither an array nor an object
      */
-    default int size()
-    {
-        throw new UnsupportedOperationException( getType() + " node has no size property." );
+    default int size() {
+        throw new JsonTreeException( getType() + " node has no size property." );
     }
 
     /**
      * Whether an array or object has no elements or members.
+     * <p>
+     * This is preferable to calling {@link #value()} or {@link #members()} or {@link #elements()} when emptiness is
+     * only property of interest as it might have better performance.
      *
-     * This is preferable to calling {@link #value()} or {@link #members()} or
-     * {@link #elements()} when emptiness is only property of interest as it
-     * might have better performance.
-     *
-     * @return true if an array or object has no elements/fields, otherwise
-     *         undefined
-     * @throws UnsupportedOperationException when this node in neither an array
-     *         nor an object
+     * @return true if an array or object has no elements/fields, otherwise undefined
+     * @throws JsonTreeException when this node in neither an array nor an object
      */
-    default boolean isEmpty()
-    {
-        throw new UnsupportedOperationException( getType() + " node has no empty property." );
+    default boolean isEmpty() {
+        throw new JsonTreeException( getType() + " node has no empty property." );
+    }
+
+    /**
+     * @return true if this node is the root of the tree, false otherwise
+     * @since 0.6.0
+     */
+    default boolean isRoot() {
+        return getPath().isEmpty();
+    }
+
+    /**
+     * Check for member existence.
+     *
+     * @param name of the member in this object node
+     * @return true, if the member exists, false otherwise
+     * @throws JsonTreeException if this is not an object node
+     * @since 0.6.0
+     */
+    default boolean isMember( String name ) {
+        try {
+            return member( name ) != null;
+        }
+        catch ( JsonPathException ex ) {
+            return false;
+        }
+    }
+
+    /**
+     * Check for element existence.
+     *
+     * @param index array index greater than 0 and less than {@link #size()}
+     * @return true, if this array node as an element at the provided index, false otherwise
+     * @throws JsonTreeException if this is not an array node
+     */
+    default boolean isElement( int index ) {
+        try {
+            return element( index ) != null;
+        }
+        catch ( JsonPathException ex ) {
+            return false;
+        }
     }
 
     /**
@@ -137,7 +199,7 @@ public interface JsonNode extends Serializable
      * {@link Long} or {@link Double}</li>
      * <li>{@link JsonNodeType#ARRAY} returns an {@link java.util.List} of
      * {@link JsonNode}</li>
-     * <li>{@link JsonNodeType#ARRAY} returns a {@link Map} or {@link String}
+     * <li>{@link JsonNodeType#OBJECT} returns a {@link Map} with {@link String}
      * keys and {@link JsonNode} values</li>
      * </ul>
      *
@@ -151,37 +213,35 @@ public interface JsonNode extends Serializable
      * @param name name of the member to access
      * @return the member with the given name
      * @throws JsonPathException when no such member exists
+     * @throws JsonTreeException if this node is not an object node that could have members
      */
     default JsonNode member( String name )
-        throws JsonPathException
-    {
-        throw new UnsupportedOperationException( getType() + " node has no member property" );
+        throws JsonPathException {
+        throw new JsonTreeException( getType() + " node has no member property" );
     }
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      *
      * @return this {@link #value()} as as {@link Map}
+     * @throws JsonTreeException if this node is not an object node that could have members
      */
-    default Map<String, JsonNode> members()
-    {
-        throw new UnsupportedOperationException( getType() + " node has no members property." );
+    default Map<String, JsonNode> members() {
+        throw new JsonTreeException( getType() + " node has no members property." );
     }
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      *
-     * @param keepNodes true, to internally "remember" the members iterated over
-     *        so far, false to only iterate without keeping references to them
-     *        further on so GC can pick em up
-     * @return an iterator to lazily process the members one at a time - mostly
-     *         to avoid materialising all members in memory for large maps.
-     *         Member {@link JsonNode}s that already exist internally will be
-     *         reused and returned by the iterator.
+     * @param keepNodes true, to internally "remember" the members iterated over so far, false to only iterate without
+     *                  keeping references to them further on so GC can pick em up
+     * @return an iterator to lazily process the members one at a time - mostly to avoid materialising all members in
+     * memory for large maps. Member {@link JsonNode}s that already exist internally will be reused and returned by the
+     * iterator.
+     * @throws JsonTreeException if this node is not an object node that could have members
      */
-    default Iterator<Entry<String, JsonNode>> members( boolean keepNodes )
-    {
-        throw new UnsupportedOperationException( getType() + " node has no members property." );
+    default Iterator<Entry<String, JsonNode>> members( boolean keepNodes ) {
+        throw new JsonTreeException( getType() + " node has no members property." );
     }
 
     /**
@@ -190,62 +250,57 @@ public interface JsonNode extends Serializable
      * @param index index of the element to access
      * @return the node at the given array index
      * @throws JsonPathException when no such element exists
+     * @throws JsonTreeException if this node is not an array node that could have elements
      */
     default JsonNode element( int index )
-        throws JsonPathException
-    {
-        throw new UnsupportedOperationException( getType() + " node has no element property." );
+        throws JsonPathException {
+        throw new JsonTreeException( getType() + " node has no element property." );
     }
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
      *
      * @return this {@link #value()} as as {@link List}
+     * @throws JsonTreeException if this node is not an array node that could have elements
      */
-    default List<JsonNode> elements()
-    {
-        throw new UnsupportedOperationException( getType() + " node has no elements property." );
+    default List<JsonNode> elements() {
+        throw new JsonTreeException( getType() + " node has no elements property." );
     }
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
      *
-     * @param keepNodes true, to internally "remember" the members iterated over
-     *        so far, false to only iterate without keeping references to them
-     *        further on so GC can pick em up
-     * @return an iterator to lazily process the elements one at a time - mostly
-     *         to avoid materialising all elements in memory for large arrays.
-     *         Member {@link JsonNode}s that already exist internally will be
-     *         reused and returned by the iterator.
+     * @param keepNodes true, to internally "remember" the members iterated over so far, false to only iterate without
+     *                  keeping references to them further on so GC can pick em up
+     * @return an iterator to lazily process the elements one at a time - mostly to avoid materialising all elements in
+     * memory for large arrays. Member {@link JsonNode}s that already exist internally will be reused and returned by
+     * the iterator.
+     * @throws JsonTreeException if this node is not an array node that could have elements
      */
-    default Iterator<JsonNode> elements( boolean keepNodes )
-    {
-        throw new UnsupportedOperationException( getType() + " node has no elements property." );
+    default Iterator<JsonNode> elements( boolean keepNodes ) {
+        throw new JsonTreeException( getType() + " node has no elements property." );
     }
 
     /**
      * Visit subtree of this node including this node.
      *
-     * @param type type of nodes to visitor accepts
-     * @param visitor consumes all nodes in the subtree of this node (including
-     *        this node) that are of the provided type in root first order.
+     * @param type    type of nodes to visitor accepts
+     * @param visitor consumes all nodes in the subtree of this node (including this node) that are of the provided type
+     *                in root first order.
      */
     void visit( JsonNodeType type, Consumer<JsonNode> visitor );
 
     /**
      * Visit subtree of this node including this node.
      *
-     * @param visitor consumes all nodes in the subtree of this node (including
-     *        this node)
+     * @param visitor consumes all nodes in the subtree of this node (including this node)
      */
-    default void visit( Consumer<JsonNode> visitor )
-    {
+    default void visit( Consumer<JsonNode> visitor ) {
         visit( null, visitor );
     }
 
     /**
-     * Searches for a node in this subtree that matches type and returns true
-     * from the provided test.
+     * Searches for a node in this subtree that matches type and returns true from the provided test.
      *
      * @param type node type tested
      * @param test test performed, returns true when node is found
@@ -256,18 +311,14 @@ public interface JsonNode extends Serializable
     /**
      * Count matching nodes in a subtree of this node including this node.
      *
-     * @param type type of node to passed to the visitor
-     * @param visitor a {@link Predicate} returning true, to count the provided
-     *        node, false to not count it.
-     * @return total number of nodes in the subtree of this node for which the
-     *         visitor returned true
+     * @param type    type of node to passed to the visitor
+     * @param visitor a {@link Predicate} returning true, to count the provided node, false to not count it.
+     * @return total number of nodes in the subtree of this node for which the visitor returned true
      */
-    default int count( JsonNodeType type, Predicate<JsonNode> visitor )
-    {
+    default int count( JsonNodeType type, Predicate<JsonNode> visitor ) {
         AtomicInteger count = new AtomicInteger();
         visit( type, node -> {
-            if ( visitor.test( node ) )
-            {
+            if ( visitor.test( node ) ) {
                 count.incrementAndGet();
             }
         } );
@@ -275,14 +326,12 @@ public interface JsonNode extends Serializable
     }
 
     /**
-     * Returns the number of notes of the given type in the entire subtree
-     * including this node.
+     * Returns the number of notes of the given type in the entire subtree including this node.
      *
      * @param type type of node to count
      * @return number of nodes in subtree
      */
-    default int count( JsonNodeType type )
-    {
+    default int count( JsonNodeType type ) {
         return count( type, node -> true );
     }
 
@@ -301,49 +350,247 @@ public interface JsonNode extends Serializable
     String getDeclaration();
 
     /**
-     * @return offset or index in the overall content where this node starts
-     *         (inclusive, points to first index that belongs to the node)
+     * @return offset or index in the overall content where this node starts (inclusive, points to first index that
+     * belongs to the node)
      */
     int startIndex();
 
     /**
-     * @return offset or index in the overall content where this node ends
-     *         (exclusive, points to first index after the node)
+     * @return offset or index in the overall content where this node ends (exclusive, points to first index after the
+     * node)
      */
     int endIndex();
 
     /*
-     * API about using this node to create new documents
+     * API about using this node to create new trees.
+     *
+     * All such operations always leave the input JsonNodes unchanged and produce new independent trees.
      */
 
     /**
-     * @return This node as a new independent JSON document where this node is
-     *         the new root of that document.
+     * @return This node as a new independent JSON document where this node is the new root of that document.
      */
-    default JsonNode extract()
-    {
+    default JsonNode extract() {
         return of( getDeclaration() );
     }
 
     /**
-     * Replace this node and return the root of the document where this node got
-     * replaced.
+     * Replace this node and return the root of the document where this node got replaced.
      *
-     * @param json The JSON used instead of the on this node represents
-     * @return A new document root where this node got replaced with the
-     *         provided JSON
+     * @param json The JSON used instead of the on this node represents. Note that the provided JSON is not check to be
+     *             valid JSON immediately.
+     * @return A new document root where this node got replaced with the provided JSON
      */
     JsonNode replaceWith( String json );
 
     /**
-     * Adds a property to this node assuming this node represents a
-     * {@link JsonNodeType#OBJECT}.
+     * @see #replaceWith(String)
+     * @since 0.6.0
+     */
+    default JsonNode replaceWith( JsonNode node ) {
+        return isRoot() ? node : replaceWith( node.getDeclaration() );
+    }
+
+    /**
+     * @see #replaceWith(String)
+     * @since 0.6.0
+     */
+    default JsonNode replaceWith( String path, JsonNode node ) {
+        return get( path ).replaceWith( node );
+    }
+
+    /**
+     * Adds a property to this node assuming this node represents a {@link JsonNodeType#OBJECT}.
      *
      * @param name a JSON object property name
-     * @param value a JSON value
-     * @return a new document root where this node got another property with the
-     *         provided name and value
+     * @param json a JSON value. The value provided is assumed to be valid JSON. To avoid adding malformed JSON prefer
+     *             use of {@link #addMembers(Consumer)}.
+     * @return a new tree where this node member of the provided name is either added or replaced with the provided
+     * value
+     * @throws JsonTreeException when the operation is applied to a non object node
+     * @deprecated Avoid use as the provided json is not guaranteed to be valid JSON
      */
-    JsonNode addMember( String name, String value );
+    @Deprecated( since = "0.6.0" )
+    default JsonNode addMember( String name, String json ) {
+        return addMembers( JsonNode.of( "{\"" + name + "\":" + json + "}" ) );
+    }
 
+    /**
+     * @see #addMembers(JsonNode)
+     * @since 0.6.0
+     */
+    default JsonNode addMembers( Consumer<JsonBuilder.JsonObjectBuilder> obj ) {
+        return addMembers( JsonBuilder.createObject( obj ) );
+    }
+
+    /**
+     * @see #addMembers(JsonNode)
+     * @since 0.6.0
+     */
+    default JsonNode addMembers( String path, Consumer<JsonBuilder.JsonObjectBuilder> obj ) {
+        return get( path ).addMembers( obj );
+    }
+
+    /**
+     * @see #addMembers(JsonNode)
+     * @since 0.6.0
+     */
+    default JsonNode addMembers( String path, JsonNode obj ) {
+        return get( path ).addMembers( obj );
+    }
+
+    /**
+     * Merges this object node with the provided object node.
+     * <p>
+     * Members keep their order, first all members of this node, then all members of the provided node.
+     * <p>
+     * If a member is present in both nodes the member of the provided argument overrides the member in this node. There
+     * is no guarantee which of the two possible positions in the order the resulting override node has.
+     *
+     * @param obj another object node
+     * @return A new tree where this node is replaced with an object node which has all members of this object node and
+     * the provided object node
+     * @throws JsonTreeException if either this or the provided node aren't object nodes
+     * @since 0.6.0
+     */
+    default JsonNode addMembers( JsonNode obj ) {
+        checkType( JsonNodeType.OBJECT, getType(), "addMembers" );
+        checkType( JsonNodeType.OBJECT, obj.getType(), "addMembers" );
+        if ( obj.isEmpty() ) return getRoot();
+        if ( isEmpty() && isRoot() ) return obj;
+        return replaceWith( JsonBuilder.createObject( merged -> {
+            merged.addMembers( members(), not( obj::isMember ), JsonBuilder.JsonObjectBuilder::addMember );
+            merged.addMembers( obj.members(), JsonBuilder.JsonObjectBuilder::addMember );
+        } ) );
+    }
+
+    /**
+     * @see #removeMembers(Set)
+     * @since 0.6.0
+     */
+    default JsonNode removeMembers( String path, Set<String> names ) {
+        return get( path ).removeMembers( names );
+    }
+
+    /**
+     * Removes the given set of members from this node should they exist.
+     *
+     * @param names names of the members to remove
+     * @return A new tree where this node is stripped of any members whose name is in the provided set of names
+     * @throws JsonTreeException if this node is not an object node
+     */
+    default JsonNode removeMembers( Set<String> names ) {
+        checkType( JsonNodeType.OBJECT, getType(), "removeMembers" );
+        if ( isEmpty() || names.isEmpty() ) return getRoot();
+        return replaceWith( JsonBuilder.createObject(
+            obj -> obj.addMembers( members(), not( names::contains ), JsonBuilder.JsonObjectBuilder::addMember ) ) );
+    }
+
+    /**
+     * @see #addElements(JsonNode)
+     * @since 0.6.0
+     */
+    default JsonNode addElements( Consumer<JsonBuilder.JsonArrayBuilder> array ) {
+        return addElements( JsonBuilder.createArray( array ) );
+    }
+
+    /**
+     * @see #addElements(JsonNode)
+     * @since 0.6.0
+     */
+    default JsonNode addElements( String path, Consumer<JsonBuilder.JsonArrayBuilder> array ) {
+        return get( path ).addElements( array );
+    }
+
+    /**
+     * @see #addElements(JsonNode)
+     * @since 0.6.0
+     */
+    default JsonNode addElements( String path, JsonNode array ) {
+        return get( path ).addElements( array );
+    }
+
+    /**
+     * Appends the provided array node's elements to this array node.
+     *
+     * @param array another array node whose elements to append to this array node
+     * @return A new tree where this node is replaced with an array node which has all elements of this array node and
+     * the provided array node
+     * @throws JsonTreeException if either this or the provided node aren't array nodes
+     * @since 0.6.0
+     */
+    default JsonNode addElements( JsonNode array ) {
+        checkType( JsonNodeType.ARRAY, getType(), "addElements" );
+        checkType( JsonNodeType.ARRAY, array.getType(), "addElements" );
+        if ( array.isEmpty() ) return getRoot();
+        if ( isEmpty() && isRoot() ) return array;
+        return replaceWith( JsonBuilder.createArray( merged -> {
+            merged.addElements( elements(), JsonBuilder.JsonArrayBuilder::addElement );
+            merged.addElements( array.elements(), JsonBuilder.JsonArrayBuilder::addElement );
+        } ) );
+    }
+
+    /**
+     * @see #putElements(int, JsonNode)
+     * @since 0.6.0
+     */
+    default JsonNode putElements( int index, Consumer<JsonBuilder.JsonArrayBuilder> array ) {
+        return putElements( index, JsonBuilder.createArray( array ) );
+    }
+
+    /**
+     * Inserts the provided array node's elements into this array node at the provided index.
+     *
+     * @param index at which to insert the elements
+     * @param array the array with the elements to insert
+     * @return A new tree where this node is replaced with an array node which has all elements of the provided array
+     * inserted into its own elements at the provided index
+     * @throws JsonTreeException if either this or the provided node aren't array nodes
+     */
+    default JsonNode putElements( int index, JsonNode array ) {
+        checkType( JsonNodeType.ARRAY, getType(), "putElements" );
+        checkType( JsonNodeType.ARRAY, array.getType(), "putElements" );
+        if ( array.isEmpty() ) return getRoot();
+        return replaceWith( JsonBuilder.createArray( merged -> {
+            int size = size();
+            if ( index > 0 && size > 0 )
+                range( 0, min( index, size ) ).forEach( i -> merged.addElement( element( i ) ) );
+            if ( index > size )
+                range( size, index ).forEach( i -> merged.addElement( JsonNode.NULL ) );
+            array.elements().forEach( merged::addElement );
+            if ( size > index )
+                range( index, size ).forEach( i -> merged.addElement( element( i ) ) );
+        } ) );
+    }
+
+    default JsonNode removeElements( int from ) {
+        return removeElements( from, Integer.MAX_VALUE );
+    }
+
+    default JsonNode removeElements( int from, int to ) {
+        checkType( JsonNodeType.ARRAY, getType(), "removeElements" );
+        if ( isEmpty() ) return getRoot();
+        int size = size();
+        if ( from >= size ) return getRoot();
+        return replaceWith( JsonBuilder.createArray( array -> {
+            if ( from > 0 )
+                range( 0, from ).forEach( i -> array.addElement( element( i ) ) );
+            if ( to < size )
+                range( to, size ).forEach( i -> array.addElement( element( i ) ) );
+        } ) );
+    }
+
+    private void checkType( JsonNodeType expected, JsonNodeType actual, String operation ) {
+        if ( actual != expected )
+            throw new JsonTreeException(
+                format( "`%s` only allowed for %s but was: %s", operation, expected, actual ) );
+    }
+
+    static String parentPath( String path ) {
+        if ( path.endsWith( "]" ) ) {
+            return path.substring( 0, path.lastIndexOf( '[' ) );
+        }
+        int end = path.lastIndexOf( '.' );
+        return end < 0 ? "" : path.substring( 0, end );
+    }
 }

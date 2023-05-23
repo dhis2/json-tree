@@ -31,19 +31,15 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
- * {@link JsonMap}s are a special form of a {@link JsonObject} where all
- * properties have a common uniform value type.
- *
- * @author Jan Bernitt
+ * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.
  *
  * @param <E> type of the uniform map values
+ * @author Jan Bernitt
  */
-public interface JsonMap<E extends JsonValue> extends JsonCollection
-{
+public interface JsonMap<E extends JsonValue> extends JsonCollection {
     /**
-     * A typed variant of {@link JsonObject#get(String)}, equivalent to
-     * {@link JsonObject#get(String, Class)} where 2nd parameter is the type
-     * parameter E.
+     * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd
+     * parameter is the type parameter E.
      *
      * @param key property to access
      * @return value at the provided property
@@ -52,39 +48,31 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection
 
     /**
      * @return The keys of this map.
-     * @throws java.util.NoSuchElementException in case this value does not
-     *         exist in the JSON document
-     * @throws UnsupportedOperationException in case this node does exist but is
-     *         not an object node
+     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws UnsupportedOperationException    in case this node does exist but is not an object node
      */
-    default Set<String> keys()
-    {
+    default Set<String> keys() {
         return node().members().keySet();
     }
 
     /**
-     * Maps this map's entry values to a lazy transformed map view where each
-     * entry value of the original map is transformed by the given function when
-     * accessed.
+     * Maps this map's entry values to a lazy transformed map view where each entry value of the original map is
+     * transformed by the given function when accessed.
      * <p>
      * This means the returned map always has same size as the original map.
      *
      * @param memberToX transformer function
-     * @param <V> type of the transformer output, entries of the map view
+     * @param <V>       type of the transformer output, entries of the map view
      * @return a lazily transformed map view of this map
      */
-    default <V extends JsonValue> JsonMap<V> viewAsMap( Function<E, V> memberToX )
-    {
-        final class JsonMapView extends CollectionView<JsonMap<E>> implements JsonMap<V>
-        {
-            private JsonMapView( JsonMap<E> viewed )
-            {
+    default <V extends JsonValue> JsonMap<V> viewAsMap( Function<E, V> memberToX ) {
+        final class JsonMapView extends CollectionView<JsonMap<E>> implements JsonMap<V> {
+            private JsonMapView( JsonMap<E> viewed ) {
                 super( viewed );
             }
 
             @Override
-            public V get( String key )
-            {
+            public V get( String key ) {
                 return memberToX.apply( viewed.get( key ) );
             }
         }
