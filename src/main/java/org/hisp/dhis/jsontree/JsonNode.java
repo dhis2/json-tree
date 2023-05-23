@@ -176,7 +176,7 @@ public interface JsonNode extends Serializable {
     /**
      * Check for element existence.
      *
-     * @param index array index >= 0 < {@link #size()}
+     * @param index array index greater than 0 and less than {@link #size()}
      * @return true, if this array node as an element at the provided index, false otherwise
      * @throws JsonTreeException if this is not an array node
      */
