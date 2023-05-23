@@ -27,7 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -40,23 +40,23 @@ import java.util.Set;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the fundamental properties of the {@link JsonTree} JSON path extractor.
  *
  * @author Jan Bernitt
  */
-public class JsonTreeTest {
+class JsonTreeTest {
     @Test
-    public void testStringNode() {
+    void testStringNode() {
         JsonNode node = JsonNode.of( "\"hello\"" );
         assertEquals( JsonNodeType.STRING, node.getType() );
         assertEquals( "hello", node.value() );
@@ -66,7 +66,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testStringNode_Unicode() {
+    void testStringNode_Unicode() {
         // use an array to see that unicode skipping works as well
         JsonNode node0 = JsonNode.of( "[\"Star \\uD83D\\uDE80 ship\", 12]" ).get( "[0]" );
         assertEquals( JsonNodeType.STRING, node0.getType() );
@@ -77,13 +77,13 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testStringNode_EscapedChars() {
+    void testStringNode_EscapedChars() {
         JsonNode node = JsonNode.of( "\"\\\\\\/\\t\\r\\n\\f\\b\\\"\"" );
         assertEquals( "\\/\t\r\n\f\b\"", node.value() );
     }
 
     @Test
-    public void testStringNode_Unsupported() {
+    void testStringNode_Unsupported() {
         JsonNode node = JsonNode.of( "\"hello\"" );
         Exception ex = assertThrows( JsonTreeException.class, node::isEmpty );
         assertEquals( "STRING node has no empty property.", ex.getMessage() );
@@ -96,14 +96,14 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testStringNode_EOI() {
+    void testStringNode_EOI() {
         JsonNode node = JsonNode.of( "\"hello" );
         JsonFormatException ex = assertThrows( JsonFormatException.class, node::value );
         assertEquals( "Expected \" but reach EOI: \"hello", ex.getMessage() );
     }
 
     @Test
-    public void testNumberNode_Integer() {
+    void testNumberNode_Integer() {
         JsonNode node = JsonNode.of( "123" );
         assertEquals( JsonNodeType.NUMBER, node.getType() );
         assertEquals( 123, node.value() );
@@ -112,7 +112,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testNumberNode_Unsupported() {
+    void testNumberNode_Unsupported() {
         JsonNode node = JsonNode.of( "1e-2" );
         Exception ex = assertThrows( JsonTreeException.class, node::isEmpty );
         assertEquals( "NUMBER node has no empty property.", ex.getMessage() );
@@ -125,21 +125,21 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testNumberNode_EOI() {
+    void testNumberNode_EOI() {
         JsonNode node = JsonNode.of( "-" );
         JsonFormatException ex = assertThrows( JsonFormatException.class, node::value );
         assertEquals( "Expected character but reached EOI: -", ex.getMessage() );
     }
 
     @Test
-    public void testNumberNode_Long() {
+    void testNumberNode_Long() {
         JsonNode node = JsonNode.of( "2147483648" );
         assertEquals( JsonNodeType.NUMBER, node.getType() );
         assertEquals( 2147483648L, node.value() );
     }
 
     @Test
-    public void testBooleanNode_True() {
+    void testBooleanNode_True() {
         JsonNode node = JsonNode.of( "true" );
         assertEquals( JsonNodeType.BOOLEAN, node.getType() );
         assertEquals( true, node.value() );
@@ -148,7 +148,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testBooleanNode_Unsupported() {
+    void testBooleanNode_Unsupported() {
         JsonNode node = JsonNode.of( "false" );
         Exception ex = assertThrows( JsonTreeException.class, node::isEmpty );
         assertEquals( "BOOLEAN node has no empty property.", ex.getMessage() );
@@ -161,14 +161,14 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testBooleanNode_False() {
+    void testBooleanNode_False() {
         JsonNode node = JsonNode.of( "false" );
         assertEquals( JsonNodeType.BOOLEAN, node.getType() );
         assertEquals( false, node.value() );
     }
 
     @Test
-    public void testNullNode() {
+    void testNullNode() {
         JsonNode node = JsonNode.of( "null" );
         assertEquals( JsonNodeType.NULL, node.getType() );
         assertNull( node.value() );
@@ -177,7 +177,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testNullNode_Unsupported() {
+    void testNullNode_Unsupported() {
         JsonNode node = JsonNode.of( "null" );
         Exception ex = assertThrows( JsonTreeException.class, node::isEmpty );
         assertEquals( "NULL node has no empty property.", ex.getMessage() );
@@ -190,13 +190,13 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testArray_IndexOutOfBounds() {
+    void testArray_IndexOutOfBounds() {
         JsonNode doc = JsonNode.of( "[]" );
         assertThrows( JsonPathException.class, () -> doc.get( "[0]" ) );
     }
 
     @Test
-    public void testArray_Numbers() {
+    void testArray_Numbers() {
         JsonNode node = JsonNode.of( "[1, 2 ,3]" );
         assertEquals( JsonNodeType.ARRAY, node.getType() );
         assertFalse( node.isEmpty() );
@@ -208,14 +208,14 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testArray_Unsupported() {
+    void testArray_Unsupported() {
         JsonNode node = JsonNode.of( "[]" );
         Exception ex = assertThrows( JsonTreeException.class, node::members );
         assertEquals( "ARRAY node has no members property.", ex.getMessage() );
     }
 
     @Test
-    public void testArray_IterateElements() {
+    void testArray_IterateElements() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
         Iterator<JsonNode> elements = root.elements( false );
@@ -242,7 +242,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testArray_IndexAccessElements() {
+    void testArray_IndexAccessElements() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
         assertEquals( 1, root.element( 0 ).value() );
@@ -255,7 +255,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testArray_IndexAccessElementsReverseOrder() {
+    void testArray_IndexAccessElementsReverseOrder() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
         assertEquals( List.of(), root.element( 6 ).value() );
@@ -268,7 +268,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testArray_IndexAccessElementsRandomOrder() {
+    void testArray_IndexAccessElementsRandomOrder() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
         assertEquals( "hello", root.element( 4 ).value() );
@@ -281,7 +281,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_Flat() {
+    void testObject_Flat() {
         JsonNode root = JsonNode.of( "{\"a\":1, \"bb\":true , \"ccc\":null }" );
         assertEquals( JsonNodeType.OBJECT, root.getType() );
         assertFalse( root.isEmpty() );
@@ -295,7 +295,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_Deep() {
+    void testObject_Deep() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonNode root = doc.get( "$" );
@@ -333,7 +333,7 @@ public class JsonTreeTest {
      * the internal map but would need to be resolved by going the path backwards.
      */
     @Test
-    public void testObject_DeepAccess() {
+    void testObject_DeepAccess() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonNode root = doc.get( "$" );
@@ -355,7 +355,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_IterateMembers() {
+    void testObject_IterateMembers() {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
         JsonNode root = doc.get( "$" );
@@ -382,7 +382,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_Member() {
+    void testObject_Member() {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
         assertEquals( 1, doc.member( "a" ).value() );
@@ -392,7 +392,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_MemberDoesNotExist() {
+    void testObject_MemberDoesNotExist() {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.member( "missing" ) );
@@ -400,7 +400,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_MemberDoesNotExist2() {
+    void testObject_MemberDoesNotExist2() {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
         doc.members(); // make sure value is set
@@ -411,14 +411,14 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_Unsupported() {
+    void testObject_Unsupported() {
         JsonNode node = JsonNode.of( "{}" );
         Exception ex = assertThrows( JsonTreeException.class, node::elements );
         assertEquals( "OBJECT node has no elements property.", ex.getMessage() );
     }
 
     @Test
-    public void testObject_NoSuchProperty() {
+    void testObject_NoSuchProperty() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.notFound" ) );
@@ -427,7 +427,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testArray_NoSuchIndex() {
+    void testArray_NoSuchIndex() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.b[3]" ) );
@@ -436,7 +436,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testArray_NegativeIndex() {
+    void testArray_NegativeIndex() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.b[-1]" ) );
         assertEquals( "Path `.a.b` does not exist, array index is negative: -1",
@@ -444,7 +444,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_WrongNodeTypeArray() {
+    void testObject_WrongNodeTypeArray() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : 42 } }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.b[1]" ) );
@@ -453,7 +453,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testObject_WrongNodeTypeObject() {
+    void testObject_WrongNodeTypeObject() {
         JsonNode doc = JsonNode.of( "{\"a\": 42 }" );
 
         JsonPathException ex = assertThrows( JsonPathException.class, () -> doc.get( ".a.b.[1]" ) );
@@ -462,7 +462,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testString_MissingQuotes() {
+    void testString_MissingQuotes() {
         JsonNode doc = JsonNode.of( "{\"a\": hello }" );
 
         JsonFormatException ex = assertThrows( JsonFormatException.class, () -> doc.get( ".a" ) );
@@ -474,14 +474,14 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testNull() {
+    void testNull() {
         JsonNode node = JsonNode.of( "null" );
         assertEquals( JsonNodeType.NULL, node.getType() );
         assertNull( node.value() );
     }
 
     @Test
-    public void testExtractAndReplace() {
+    void testExtractAndReplace() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
         JsonNode onlyA = doc.get( "$.a" ).extract();
         assertEquals( "{ \"b\" : [12, false] }", onlyA.toString() );
@@ -490,7 +490,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testAddMembers_Empty() {
+    void testAddMembers_Empty() {
         JsonNode num = JsonNode.of( "{}" ).addMember( "num", "1" );
         assertEquals( "{\"num\":1}", num.getDeclaration() );
         assertSame( num, num.addMembers( JsonNode.of( "{}" ) ) );
@@ -501,20 +501,20 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testAddMembers_Multiple() {
+    void testAddMembers_Multiple() {
         assertEquals( "{\"num\":1,\"str\":\"hello\"}", JsonNode.of( "{}" ).addMembers( obj -> obj
             .addNumber( "num", 1 )
             .addString( "str", "hello" ) ).getDeclaration() );
     }
 
     @Test
-    public void testAddMembers_Replace() {
+    void testAddMembers_Replace() {
         assertEquals( "{\"num\":2}", JsonNode.of( "{\"num\":1}" ).addMembers(
             obj -> obj.addNumber( "num", 2 ) ).getDeclaration() );
     }
 
     @Test
-    public void testAddMembers_ReplaceMixed() {
+    void testAddMembers_ReplaceMixed() {
         JsonNode before = JsonNode.EMPTY_OBJECT.addMembers( obj ->
             obj.addNumber( "num", 1 ).addString( "str", "hello" ).addBoolean( "bo", true ) );
         assertEquals( "{\"num\":1,\"bo\":true,\"str\":\"world\",\"pi\":3.1415}", before.addMembers(
@@ -522,7 +522,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testAddMember_Nested() {
+    void testAddMember_Nested() {
         //language=JSON
         String json = """
             {"a":{"b":[12,false]}}""";
@@ -535,13 +535,13 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testAddMember_WrongNodeTypes() {
+    void testAddMember_WrongNodeTypes() {
         assertThrows( JsonTreeException.class, () -> JsonNode.EMPTY_OBJECT.addMembers( JsonNode.NULL ) );
         assertThrows( JsonTreeException.class, () -> JsonNode.EMPTY_ARRAY.addMembers( JsonNode.EMPTY_OBJECT ) );
     }
 
     @Test
-    public void testRemoveMembers() {
+    void testRemoveMembers() {
         JsonNode root = JsonBuilder.createObject( obj -> obj
             .addNumber( "num", 1 )
             .addString( "str", "zZZZ" )
@@ -553,12 +553,12 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testRemoveMembers_WrongNodeTypes() {
+    void testRemoveMembers_WrongNodeTypes() {
         assertThrows( JsonTreeException.class, () -> JsonNode.NULL.removeMembers( Set.of() ) );
     }
 
     @Test
-    public void testAddElements_Empty() {
+    void testAddElements_Empty() {
         assertEquals( "[2,\"tree\"]", JsonNode.EMPTY_ARRAY.addElements( arr -> arr
             .addNumber( 2 ).addString( "tree" ) ).getDeclaration() );
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 42 ) );
@@ -567,7 +567,7 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testAddElements_Nested() {
+    void testAddElements_Nested() {
         JsonNode root = JsonBuilder.createObject( obj -> obj
             .addArray( "a", arr -> arr.addNumber( 42 ) ) );
         assertEquals( "{\"a\":[42,2]}", root.addElements( "a", arr -> arr.addNumber( 2 ) ).getDeclaration() );
@@ -575,25 +575,25 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testAddElements_WrongNodeTypes() {
+    void testAddElements_WrongNodeTypes() {
         assertThrows( JsonTreeException.class, () -> JsonNode.EMPTY_OBJECT.addElements( JsonNode.EMPTY_ARRAY ) );
         assertThrows( JsonTreeException.class, () -> JsonNode.EMPTY_ARRAY.addElements( JsonNode.EMPTY_OBJECT ) );
     }
 
     @Test
-    public void testPutElements_Empty() {
+    void testPutElements_Empty() {
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 42 ) );
         assertSame( array, array.putElements( 0, JsonNode.EMPTY_ARRAY ) );
     }
 
     @Test
-    public void testPutElements_Flat() {
+    void testPutElements_Flat() {
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 42 ) );
         assertEquals( "[42,null,555]", array.putElements( 2, arr -> arr.addNumber( 555 ) ).getDeclaration() );
     }
 
     @Test
-    public void testPutElements_Nested() {
+    void testPutElements_Nested() {
         JsonNode root = JsonBuilder.createObject( obj -> obj.addArray( "arr", arr -> arr.addNumber( 42 ) ) );
         assertEquals( "{\"arr\":[\"hello\",42]}",
             root.get( "arr" ).putElements( 0, arr -> arr.addString( "hello" ) ).getDeclaration() );
@@ -601,13 +601,13 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testPutElements_WrongNodeTypes() {
+    void testPutElements_WrongNodeTypes() {
         assertThrows( JsonTreeException.class, () -> JsonNode.EMPTY_OBJECT.putElements( 0, JsonNode.EMPTY_ARRAY ) );
         assertThrows( JsonTreeException.class, () -> JsonNode.EMPTY_ARRAY.putElements( 0, JsonNode.EMPTY_OBJECT ) );
     }
 
     @Test
-    public void testRemoveElements_Empty() {
+    void testRemoveElements_Empty() {
         assertSame( JsonNode.EMPTY_ARRAY, JsonNode.EMPTY_ARRAY.removeElements( 0 ) );
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 1 ).addNumber( 2 ).addNumber( 3 ) );
         assertSame( array, array.removeElements( 3 ) );
@@ -618,17 +618,17 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testRemoveElements_WrongNodeType() {
+    void testRemoveElements_WrongNodeType() {
         assertThrows( JsonTreeException.class, () -> JsonNode.NULL.removeElements( 5 ) );
     }
 
     @Test
-    public void testIsElement_Empty() {
+    void testIsElement_Empty() {
         assertFalse( JsonNode.EMPTY_ARRAY.isElement( 0 ) );
     }
 
     @Test
-    public void testIsElement_Simple() {
+    void testIsElement_Simple() {
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 42 ) );
         assertTrue( array.isElement( 0 ) );
         assertFalse( array.isElement( 1 ) );
@@ -636,12 +636,12 @@ public class JsonTreeTest {
     }
 
     @Test
-    public void testIsElement_WrongNodeType() {
+    void testIsElement_WrongNodeType() {
         assertThrows( JsonTreeException.class, () -> JsonNode.NULL.isElement( 0 ) );
     }
 
     @Test
-    public void testVisit() {
+    void testVisit() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false, \"hello\"] } }" );
         JsonNode root = doc.get( "$" );
         assertEquals( 2, root.count( JsonNodeType.OBJECT ) );

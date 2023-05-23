@@ -27,11 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the static methods of the {@link JsonBuilder}.
@@ -41,30 +41,30 @@ import static org.junit.Assert.assertEquals;
  *
  * @author Jan Bernitt
  */
-public class JsonBuilderTest {
+class JsonBuilderTest {
     @Test
-    public void testCreateObject() {
+    void testCreateObject() {
         assertEquals( "{\"foo\":[\"bar\"]}",
             JsonBuilder.createObject( obj -> obj.addArray( "foo", "bar" ) )
                 .getDeclaration() );
     }
 
     @Test
-    public void testCreateArray() {
+    void testCreateArray() {
         assertEquals( "[42,\"42\",true]",
             JsonBuilder.createArray( arr -> arr.addNumber( 42 ).addString( "42" ).addBoolean( true ) )
                 .getDeclaration() );
     }
 
     @Test
-    public void testStreamObject() {
+    void testStreamObject() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         JsonBuilder.streamObject( out, obj -> obj.addArray( "foo", "bar" ) );
         assertEquals( "{\"foo\":[\"bar\"]}", out.toString() );
     }
 
     @Test
-    public void testStreamArray() {
+    void testStreamArray() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         JsonBuilder.streamArray( out, arr -> arr.addNumber( 42 ).addString( "42" ).addBoolean( true ) );
         assertEquals( "[42,\"42\",true]", out.toString() );

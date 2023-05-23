@@ -83,7 +83,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
             // automatically provide JsonValue subtype mapping
             return (JsonGenericTypedAccessor<T>) byResultType.get( JsonValue.class );
         }
-        return res;
+        return null;
     }
 
     public <T> JsonTypedAccess add( Class<T> returnType, JsonTypedAccessor<T> accessor ) {

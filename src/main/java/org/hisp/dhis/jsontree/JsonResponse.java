@@ -288,9 +288,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     private NoSuchElementException noSuchElement( RuntimeException cause ) {
-        NoSuchElementException ex = new NoSuchElementException();
-        ex.initCause( cause );
-        return ex;
+        return new NoSuchElementException(cause);
     }
 
     @SuppressWarnings( "unchecked" )
