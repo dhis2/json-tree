@@ -15,7 +15,7 @@ A `JsonResponse` is a **virtual** tree of `JsonValue` nodes:
 * `JsonBoolean`
 * `JsonNull`
 
-Underlying implementation of the actual JSON document is the `JsonDocument`
+Underlying implementation of the actual JSON document is the `JsonTree`
 which exposes all node types as `JsonNode`.
 
 | `JsonValue` API | `JsonNode` API |

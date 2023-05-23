@@ -7,7 +7,7 @@ package org.hisp.dhis.jsontree;
  *
  * @author Jan Bernitt
  */
-public class JsonTreeException extends IllegalStateException {
+public class JsonTreeException extends UnsupportedOperationException {
     public JsonTreeException( String message ) {
         super( message );
     }
