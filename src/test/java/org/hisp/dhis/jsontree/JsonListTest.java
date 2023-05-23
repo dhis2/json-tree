@@ -27,81 +27,82 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 
 /**
  * Tests the additional utility methods of the {@link JsonList} interface.
  *
  * @author Jan Bernitt
  */
-public class JsonListTest {
+class JsonListTest {
     @Test
-    public void testList_stream_Undefined() {
+    void testList_stream_Undefined() {
         JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
-    public void testList_stream_Null() {
+    void testList_stream_Null() {
         JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
-    public void testList_stream_Empty() {
+    void testList_stream_Empty() {
         JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
-    public void testList_toList_Undefined() {
+    void testList_toList_Undefined() {
         JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toList_Null() {
+    void testList_toList_Null() {
         JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toList_Empty() {
+    void testList_toList_Empty() {
         JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Undefined() {
+    void testList_toListOfElementsThatExists_Undefined() {
         JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Null() {
+    void testList_toListOfElementsThatExists_Null() {
         JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Empty() {
+    void testList_toListOfElementsThatExists_Empty() {
         JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_OnlyNulls() {
+    void testList_toListOfElementsThatExists_OnlyNulls() {
         JsonList<JsonNumber> list = createJSON( "[null,null]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
-    public void testList_toListOfElementsThatExists_Mixed() {
+    void testList_toListOfElementsThatExists_Mixed() {
         JsonList<JsonNumber> list = createJSON( "[null,1,2,null,3]" ).asList( JsonNumber.class );
         assertEquals( List.of( 1, 2, 3 ), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }

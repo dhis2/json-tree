@@ -27,43 +27,44 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 
 /**
  * Tests {@link JsonNode} specific aspects of the {@link JsonTree} implementation of the interface.
  *
  * @author Jan Bernitt
  */
-public class JsonNodeTest {
+class JsonNodeTest {
     @Test
-    public void testGet_String() {
+    void testGet_String() {
         assertGetThrowsJsonPathException( "\"hello\"",
             "This is a leaf node of type STRING that does not have any children at path: foo" );
     }
 
     @Test
-    public void testGet_Number() {
+    void testGet_Number() {
         assertGetThrowsJsonPathException( "42",
             "This is a leaf node of type NUMBER that does not have any children at path: foo" );
     }
 
     @Test
-    public void testGet_Boolean() {
+    void testGet_Boolean() {
         assertGetThrowsJsonPathException( "true",
             "This is a leaf node of type BOOLEAN that does not have any children at path: foo" );
     }
 
     @Test
-    public void testGet_Null() {
+    void testGet_Null() {
         assertGetThrowsJsonPathException( "null",
             "This is a leaf node of type NULL that does not have any children at path: foo" );
     }
 
     @Test
-    public void testGet_Object() {
+    void testGet_Object() {
         JsonNode root = JsonNode.of( "{\"a\":{\"b\":{\"c\":42}}}" );
         assertEquals( 42, root.get( "a.b.c" ).value() );
         JsonNode b = root.get( "a.b" );
@@ -71,7 +72,7 @@ public class JsonNodeTest {
     }
 
     @Test
-    public void testGet_Object_NoValueAtPath() {
+    void testGet_Object_NoValueAtPath() {
         assertGetThrowsJsonPathException( "{\"a\":{\"b\":{\"c\":42}}}", "b",
             "Path `.b` does not exist, object `` does not have a property `b`" );
         assertGetThrowsJsonPathException( "{\"a\":{\"b\":{\"c\":42}}}", "a.c",
@@ -79,7 +80,7 @@ public class JsonNodeTest {
     }
 
     @Test
-    public void testGet_Array() {
+    void testGet_Array() {
         JsonNode root = JsonNode.of( "[[1,2],[3,4],{\"a\":5}]" );
         assertEquals( 1, root.get( "[0][0]" ).value() );
         JsonNode arr1 = root.get( "[1]" );
@@ -89,7 +90,7 @@ public class JsonNodeTest {
     }
 
     @Test
-    public void testGet_Array_NoValueAtPath() {
+    void testGet_Array_NoValueAtPath() {
         assertGetThrowsJsonPathException( "[1,2]", "a", "Malformed path a at a." );
         assertGetThrowsJsonPathException( "[[1,2],[]]", "[1][0]",
             "Path `[1][0]` does not exist, array `[1]` has only `0` elements." );

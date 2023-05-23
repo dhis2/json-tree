@@ -177,23 +177,22 @@ public interface JsonObject extends JsonCollection {
             .filter( m -> m.getParameterCount() == 0 && m.isAnnotationPresent( Expected.class ) )
             .sorted( Comparator.comparing( Method::getName ) )
             .forEach( m -> {
-                Object member = null;
                 try {
-                    member = m.invoke( obj );
+                    Object member = m.invoke( obj );
+                    if ( member == null || member instanceof JsonValue value && (!value.exists()
+                        || !m.getAnnotation( Expected.class ).nullable() && value.isNull()) ) {
+                        throw new NoSuchElementException( String.format( "Expected %s node member %s was not defined",
+                            type.getSimpleName(), parent + m.getName() ) );
+                    }
+                    if ( recursive && member instanceof JsonObject value && !value.isNull() ) {
+                        @SuppressWarnings( "unchecked" )
+                        Class<? extends JsonObject> memberType = (Class<? extends JsonObject>) m.getReturnType();
+                        ((JsonObject) member).asObject( memberType, true, parent + m.getName() );
+                    }
                 }
-                catch ( Exception e ) {
+                catch ( ReflectiveOperationException ex ) {
                     throw new NoSuchElementException( String.format( "Expected %s node member %s had invalid value: %s",
-                        type.getSimpleName(), parent + m.getName(), e.getMessage() ) );
-                }
-                if ( member == null || member instanceof JsonValue && (!((JsonValue) member).exists()
-                    || !m.getAnnotation( Expected.class ).nullable() && ((JsonValue) member).isNull()) ) {
-                    throw new NoSuchElementException( String.format( "Expected %s node member %s was not defined",
-                        type.getSimpleName(), parent + m.getName() ) );
-                }
-                if ( recursive && member instanceof JsonObject && !((JsonObject) member).isNull() ) {
-                    @SuppressWarnings( "unchecked" )
-                    Class<? extends JsonObject> memberType = (Class<? extends JsonObject>) m.getReturnType();
-                    ((JsonObject) member).asObject( memberType, true, parent + m.getName() );
+                        type.getSimpleName(), parent + m.getName(), ex.getMessage() ) );
                 }
             } );
         return obj;
@@ -219,7 +218,7 @@ public interface JsonObject extends JsonCollection {
                 return false;
             }
         } );
-        return !match.isPresent()
+        return match.isEmpty()
             ? JsonValue.NULL.as( type )
             : JsonValue.of( match.get().getDeclaration() ).asObject().asObject( type );
     }

@@ -29,7 +29,7 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.RetentionPolicy;
 import java.math.BigInteger;
@@ -37,19 +37,19 @@ import java.util.List;
 
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link JsonAppender} implementation of a {@link JsonBuilder}.
  *
  * @author Jan Bernitt
  */
-public class JsonAppenderTest {
+class JsonAppenderTest {
 
     private final JsonBuilder builder = new JsonAppender( new StringBuilder() );
 
     @Test
-    public void testObject_Boolean() {
+    void testObject_Boolean() {
         assertJson( "{'a':true,'b':false,'c':null}", builder.toObject( obj -> obj
             .addBoolean( "a", true )
             .addBoolean( "b", false )
@@ -57,7 +57,7 @@ public class JsonAppenderTest {
     }
 
     @Test
-    public void testArray_Boolean() {
+    void testArray_Boolean() {
         assertJson( "[true,false,null]", builder.toArray( arr -> arr
             .addBoolean( true )
             .addBoolean( false )
@@ -65,133 +65,133 @@ public class JsonAppenderTest {
     }
 
     @Test
-    public void testObject_Int() {
+    void testObject_Int() {
         assertJson( "{'int':42}", builder.toObject( obj -> obj
             .addNumber( "int", 42 ) ) );
     }
 
     @Test
-    public void testArray_Int() {
+    void testArray_Int() {
         assertJson( "[42]", builder.toArray( arr -> arr
             .addNumber( 42 ) ) );
     }
 
     @Test
-    public void testObject_Double() {
+    void testObject_Double() {
         assertJson( "{'double':42.42}", builder.toObject( obj -> obj
             .addNumber( "double", 42.42 ) ) );
     }
 
     @Test
-    public void testArray_Double() {
+    void testArray_Double() {
         assertJson( "[42.42]", builder.toArray( arr -> arr
             .addNumber( 42.42 ) ) );
     }
 
     @Test
-    public void testObject_Long() {
+    void testObject_Long() {
         assertJson( "{'long':" + Long.MAX_VALUE + "}", builder.toObject( obj -> obj
             .addNumber( "long", Long.MAX_VALUE ) ) );
     }
 
     @Test
-    public void testArray_Long() {
+    void testArray_Long() {
         assertJson( "[" + Long.MAX_VALUE + "]", builder.toArray( arr -> arr
             .addNumber( Long.MAX_VALUE ) ) );
     }
 
     @Test
-    public void testObject_BigInteger() {
+    void testObject_BigInteger() {
         assertJson( "{'bint':42}", builder.toObject( obj -> obj
             .addNumber( "bint", BigInteger.valueOf( 42L ) ) ) );
     }
 
     @Test
-    public void testArray_BigInteger() {
+    void testArray_BigInteger() {
         assertJson( "[42]", builder.toArray( arr -> arr
             .addNumber( BigInteger.valueOf( 42L ) ) ) );
     }
 
     @Test
-    public void testObject_String() {
+    void testObject_String() {
         assertJson( "{'s':'hello'}", builder.toObject( obj -> obj
             .addString( "s", "hello" ) ) );
     }
 
     @Test
-    public void testArray_String() {
+    void testArray_String() {
         assertJson( "['hello']", builder.toArray( arr -> arr
             .addString( "hello" ) ) );
     }
 
     @Test
-    public void testObject_IntArray() {
+    void testObject_IntArray() {
         assertJson( "{'array':[1,2]}", builder.toObject( obj -> obj
             .addArray( "array", 1, 2 ) ) );
     }
 
     @Test
-    public void testArray_IntArray() {
+    void testArray_IntArray() {
         assertJson( "[[1,2]]", builder.toArray( arr -> arr
             .addArray( 1, 2 ) ) );
     }
 
     @Test
-    public void testObject_DoubleArray() {
+    void testObject_DoubleArray() {
         assertJson( "{'array':[1.5,2.5]}", builder.toObject( obj -> obj
             .addArray( "array", 1.5d, 2.5d ) ) );
     }
 
     @Test
-    public void testArray_DoubleArray() {
+    void testArray_DoubleArray() {
         assertJson( "[[1.5,2.5]]", builder.toArray( arr -> arr
             .addArray( 1.5d, 2.5d ) ) );
     }
 
     @Test
-    public void testObject_LongArray() {
+    void testObject_LongArray() {
         assertJson( "{'array':[" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "]}", builder.toObject( obj -> obj
             .addArray( "array", Long.MIN_VALUE, Long.MAX_VALUE ) ) );
     }
 
     @Test
-    public void testArray_LongArray() {
+    void testArray_LongArray() {
         assertJson( "[[" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "]]", builder.toArray( arr -> arr
             .addArray( Long.MIN_VALUE, Long.MAX_VALUE ) ) );
     }
 
     @Test
-    public void testObject_StringArray() {
+    void testObject_StringArray() {
         assertJson( "{'array':['a','b']}", builder.toObject( obj -> obj
             .addArray( "array", "a", "b" ) ) );
     }
 
     @Test
-    public void testArray_StringArray() {
+    void testArray_StringArray() {
         assertJson( "[['a','b']]", builder.toArray( arr -> arr
             .addArray( "a", "b" ) ) );
     }
 
     @Test
-    public void testObject_OtherArray() {
+    void testObject_OtherArray() {
         assertJson( "{'array':['SOURCE','CLASS','RUNTIME']}", builder.toObject( obj -> obj
             .addArray( "array", RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) );
     }
 
     @Test
-    public void testArray_OtherArray() {
+    void testArray_OtherArray() {
         assertJson( "[['SOURCE','CLASS','RUNTIME']]", builder.toArray( arr -> arr
             .addArray( RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) );
     }
 
     @Test
-    public void testArray_OtherCollection() {
+    void testArray_OtherCollection() {
         assertJson( "[['SOURCE','CLASS','RUNTIME']]", builder.toArray( arr -> arr
             .addArray( List.of( RetentionPolicy.values() ), JsonArrayBuilder::addString, RetentionPolicy::name ) ) );
     }
 
     @Test
-    public void testObject_StreamArray() {
+    void testObject_StreamArray() {
         assertJson( "{'a2':[['a'],['b','c']]}", builder.toObject( obj -> obj
             .addArray( "a2", List.of( "a", "bc" ),
                 ( arr, e ) -> arr.addArray( e.codePoints().boxed(),
@@ -199,7 +199,7 @@ public class JsonAppenderTest {
     }
 
     @Test
-    public void testArray_StreamArray() {
+    void testArray_StreamArray() {
         assertJson( "[[['a'],['b','c']]]", builder.toArray( arr -> arr
             .addArray( List.of( "a", "bc" ),
                 ( arr2, e ) -> arr2.addArray( e.codePoints().boxed(),
@@ -207,55 +207,55 @@ public class JsonAppenderTest {
     }
 
     @Test
-    public void testObject_ObjectBuilder() {
+    void testObject_ObjectBuilder() {
         assertJson( "{'obj':{'inner':42}}", builder.toObject( outer -> outer
             .addObject( "obj", obj -> obj.addNumber( "inner", 42 ) ) ) );
     }
 
     @Test
-    public void testArray_ObjectBuilder() {
+    void testArray_ObjectBuilder() {
         assertJson( "[[42,14]]", builder.toArray( arr -> arr
             .addArray( arr2 -> arr2.addNumber( 42 ).addNumber( 14 ) ) ) );
     }
 
     @Test
-    public void testArray_ArrayBuilder() {
+    void testArray_ArrayBuilder() {
         assertJson( "[{'inner':42}]", builder.toArray( arr -> arr
             .addObject( obj -> obj.addNumber( "inner", 42 ) ) ) );
     }
 
     @Test
-    public void testObject_ObjectMap() {
+    void testObject_ObjectMap() {
         assertJson( "{'obj':{'field':42}}", builder.toObject( outer -> outer
             .addObject( "obj", singletonMap( "field", 42 ), JsonObjectBuilder::addNumber ) ) );
     }
 
     @Test
-    public void testArray_ObjectMap() {
+    void testArray_ObjectMap() {
         assertJson( "[{'field':42}]", builder.toArray( arr -> arr
             .addObject( singletonMap( "field", 42 ), JsonObjectBuilder::addNumber ) ) );
     }
 
     @Test
-    public void testObject_MembersMap() {
+    void testObject_MembersMap() {
         assertJson( "{'field':42}", builder.toObject( outer -> outer
             .addMembers( singletonMap( "field", 42 ), JsonObjectBuilder::addNumber ) ) );
     }
 
     @Test
-    public void testArray_ElementsCollection() {
+    void testArray_ElementsCollection() {
         assertJson( "[[42]]", builder.toArray( arr -> arr
             .addArray( singletonList( 42 ), JsonArrayBuilder::addNumber ) ) );
     }
 
     @Test
-    public void testObject_JsonNode() {
+    void testObject_JsonNode() {
         assertJson( "{'node':['a','b']}", builder.toObject( obj -> obj
             .addMember( "node", JsonNode.of( "[\"a\",\"b\"]" ) ) ) );
     }
 
     @Test
-    public void testArray_JsonNode() {
+    void testArray_JsonNode() {
         assertJson( "[['a','b']]", builder.toArray( arr -> arr
             .addElement( JsonNode.of( "[\"a\",\"b\"]" ) ) ) );
     }

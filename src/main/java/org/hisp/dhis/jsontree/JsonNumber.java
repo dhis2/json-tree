@@ -40,6 +40,7 @@ public interface JsonNumber extends JsonPrimitive {
      */
     Number number();
 
+    @SuppressWarnings( "unchecked" )
     default <T extends Number> T number( T orDefault ) {
         return exists() ? (T) number() : orDefault;
     }

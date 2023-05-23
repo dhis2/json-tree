@@ -4,6 +4,8 @@
 
 A lazily parsed JSON object tree library
 
+See [CONTRIBUTING.md]() for information about contributing and maintaining this project.
+
 ## Virtual vs Actual Tree
 
 A `JsonResponse` is a **virtual** tree of `JsonValue` nodes:
@@ -282,13 +284,4 @@ would result in an effective value of `[1,2]`. Again, the underlying tree is not
 changed by this, just the view on top of it is transformed.
 
 Such transformation can be especially useful in combination with `toList` to
-extract a list of the values that can be compared to an expected list. 
-
-
-## Deploy to Maven Repository
-
-This library can be deployed as an artefact to the Sonatype OSS Maven repository. 
-The deployment happens automatically when a PR is merged. 
-Therefore, it is important to make sure that the current version is either a
-snapshot version or is bumped to the next snapshot version directly after
-the release PR has been made with a stable version.
+extract a list of the values that can be compared to an expected list.
