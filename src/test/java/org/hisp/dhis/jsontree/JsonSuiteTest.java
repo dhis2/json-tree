@@ -393,11 +393,9 @@ class JsonSuiteTest {
             String json = new String( bytes );
             JsonNode.of( json ).visit( JsonNode::value );
             return true;
-        }
-        catch ( RuntimeException e ) {
+        } catch ( RuntimeException e ) {
             return false;
-        }
-        catch ( IOException ex ) {
+        } catch ( IOException ex ) {
             throw new UncheckedIOException( ex );
         }
     }

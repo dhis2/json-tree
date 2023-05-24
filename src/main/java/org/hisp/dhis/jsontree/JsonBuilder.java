@@ -42,6 +42,8 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
+import static java.util.stream.StreamSupport.stream;
+
 /**
  * A {@link JsonNode} builder API that mostly is designed to efficiently create JSON in a streaming scenario or when
  * programmatically declaring a JSON structure.
@@ -57,6 +59,11 @@ import java.util.stream.Stream;
  * @author Jan Bernitt
  */
 public interface JsonBuilder {
+
+    PrettyPrint MINIMIZED = new PrettyPrint( 0, 0, false, true );
+
+    record PrettyPrint(int indentSpaces, int indentTabs, boolean spaceAfterColon, boolean retainOriginalDeclaration) {}
+
     /**
      * Convenience method for ad-hoc creation of JSON object {@link JsonNode}. Use {@link JsonNode#getDeclaration()} to
      * get the JSON {@link String}.
@@ -66,7 +73,14 @@ public interface JsonBuilder {
      * @since 0.2
      */
     static JsonNode createObject( Consumer<JsonObjectBuilder> obj ) {
-        return new JsonAppender( new StringBuilder() ).toObject( obj );
+        return createObject( MINIMIZED, obj );
+    }
+
+    /**
+     * @since 0.7
+     */
+    static JsonNode createObject( PrettyPrint config, Consumer<JsonObjectBuilder> obj ) {
+        return new JsonAppender( config, new StringBuilder() ).toObject( obj );
     }
 
     /**
@@ -78,7 +92,14 @@ public interface JsonBuilder {
      * @since 0.2
      */
     static JsonNode createArray( Consumer<JsonArrayBuilder> arr ) {
-        return new JsonAppender( new StringBuilder() ).toArray( arr );
+        return createArray( MINIMIZED, arr );
+    }
+
+    /**
+     * @since 0.7
+     */
+    static JsonNode createArray( PrettyPrint config, Consumer<JsonArrayBuilder> arr ) {
+        return new JsonAppender( config, new StringBuilder() ).toArray( arr );
     }
 
     /**
@@ -89,8 +110,15 @@ public interface JsonBuilder {
      * @since 0.2
      */
     static void streamObject( OutputStream out, Consumer<JsonObjectBuilder> obj ) {
+        streamObject( MINIMIZED, out, obj );
+    }
+
+    /**
+     * @since 0.7
+     */
+    static void streamObject( PrettyPrint config, OutputStream out, Consumer<JsonObjectBuilder> obj ) {
         try ( PrintStream jsonStream = new PrintStream( out ) ) {
-            new JsonAppender( jsonStream ).toObject( obj );
+            new JsonAppender( config, jsonStream ).toObject( obj );
         }
     }
 
@@ -102,8 +130,15 @@ public interface JsonBuilder {
      * @since 0.2
      */
     static void streamArray( OutputStream out, Consumer<JsonArrayBuilder> arr ) {
+        streamArray( MINIMIZED, out, arr );
+    }
+
+    /**
+     * @since 0.7
+     */
+    static void streamArray( PrettyPrint config, OutputStream out, Consumer<JsonArrayBuilder> arr ) {
         try ( PrintStream jsonStream = new PrintStream( out ) ) {
-            new JsonAppender( jsonStream ).toArray( arr );
+            new JsonAppender( config, jsonStream ).toArray( arr );
         }
     }
 
@@ -111,6 +146,7 @@ public interface JsonBuilder {
      * Like a {@link BiConsumer} but with 3 inputs.
      */
     interface TriConsumer<A, B, C> {
+
         void accept( A a, B b, C c );
     }
 
@@ -174,6 +210,7 @@ public interface JsonBuilder {
      * @author Jan Bernitt
      */
     interface JsonObjectBuilder {
+
         JsonObjectBuilder addMember( String name, JsonNode value );
 
         JsonObjectBuilder addBoolean( String name, boolean value );
@@ -194,10 +231,10 @@ public interface JsonBuilder {
 
         JsonObjectBuilder addObject( String name, Consumer<JsonObjectBuilder> value );
 
-        <K, V> JsonObjectBuilder addObject( String name, Map<K, V> value,
+        <K, V> JsonObjectBuilder addObject( String name, Iterable<Map.Entry<K, V>> value,
             TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember );
 
-        default <K, V> JsonObjectBuilder addObject( String name, Map<K, V> value,
+        default <K, V> JsonObjectBuilder addObject( String name, Iterable<Map.Entry<K, V>> value,
             Predicate<? super K> filter,
             TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
             return addObject( name, value, ( builder, k, v ) -> {
@@ -211,12 +248,12 @@ public interface JsonBuilder {
             return addMember( null, pojo, mapper );
         }
 
-        default <K, V> JsonObjectBuilder addMembers( Map<K, V> value,
+        default <K, V> JsonObjectBuilder addMembers( Iterable<Map.Entry<K, V>> value,
             TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
             return addObject( null, value, toMember );
         }
 
-        default <K, V> JsonObjectBuilder addMembers( Map<K, V> value,
+        default <K, V> JsonObjectBuilder addMembers( Iterable<Map.Entry<K, V>> value,
             Predicate<? super K> filter,
             TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
             return addObject( null, value, filter, toMember );
@@ -266,6 +303,7 @@ public interface JsonBuilder {
      * @author Jan Bernitt
      */
     interface JsonArrayBuilder {
+
         JsonArrayBuilder addElement( JsonNode value );
 
         JsonArrayBuilder addBoolean( boolean value );
@@ -332,6 +370,11 @@ public interface JsonBuilder {
         default <E, X> JsonArrayBuilder addArray( Collection<E> values, BiConsumer<JsonArrayBuilder, X> add,
             Function<? super E, X> toElement ) {
             return addArray( values, ( arr, v ) -> add.accept( arr, toElement.apply( v ) ) );
+        }
+
+        default <E> JsonArrayBuilder addElements( Iterable<E> values,
+            BiConsumer<JsonArrayBuilder, ? super E> toElement ) {
+            return addElements( stream( values.spliterator(), false ), toElement );
         }
 
         default <E> JsonArrayBuilder addElements( Collection<E> values,

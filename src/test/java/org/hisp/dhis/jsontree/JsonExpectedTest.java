@@ -43,7 +43,9 @@ import static org.junit.jupiter.api.Assertions.fail;
  * @author Jan Bernitt
  */
 class JsonExpectedTest {
+
     private interface JsonFoo extends JsonObject {
+
         @Expected
         default String getBar() {
             return getString( "bar" ).string();
@@ -51,6 +53,7 @@ class JsonExpectedTest {
     }
 
     private interface JsonEntry extends JsonObject {
+
         @Expected
         default String getKey() {
             return getString( "key" ).string();
@@ -176,8 +179,7 @@ class JsonExpectedTest {
     private static void assertAsObjectThrows( Runnable test, String expectedMessage ) {
         try {
             test.run();
-        }
-        catch ( NoSuchElementException ex ) {
+        } catch ( NoSuchElementException ex ) {
             assertEquals( expectedMessage, ex.getMessage() );
             return;
         }

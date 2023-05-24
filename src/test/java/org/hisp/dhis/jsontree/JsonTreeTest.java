@@ -29,17 +29,12 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -55,6 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author Jan Bernitt
  */
 class JsonTreeTest {
+
     @Test
     void testStringNode() {
         JsonNode node = JsonNode.of( "\"hello\"" );
@@ -233,8 +229,8 @@ class JsonTreeTest {
         assertEquals( true, e2.value() );
         assertEquals( false, e3.value() );
         assertEquals( "hello", e4.value() );
-        assertEquals( emptyMap(), e5.value() );
-        assertEquals( emptyList(), e6.value() );
+        assertEquals( "{}", e5.getDeclaration() );
+        assertEquals( "[]", e6.getDeclaration() );
 
         JsonNode e0kept = root.elements( true ).next();
         assertNotSame( e0, e0kept );
@@ -250,16 +246,16 @@ class JsonTreeTest {
         assertEquals( true, root.element( 2 ).value() );
         assertEquals( false, root.element( 3 ).value() );
         assertEquals( "hello", root.element( 4 ).value() );
-        assertEquals( Map.of(), root.element( 5 ).value() );
-        assertEquals( List.of(), root.element( 6 ).value() );
+        assertEquals( "{}", root.element( 5 ).getDeclaration() );
+        assertEquals( "[]", root.element( 6 ).getDeclaration() );
     }
 
     @Test
     void testArray_IndexAccessElementsReverseOrder() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
-        assertEquals( List.of(), root.element( 6 ).value() );
-        assertEquals( Map.of(), root.element( 5 ).value() );
+        assertEquals( "[]", root.element( 6 ).getDeclaration() );
+        assertEquals( "{}", root.element( 5 ).getDeclaration() );
         assertEquals( "hello", root.element( 4 ).value() );
         assertEquals( false, root.element( 3 ).value() );
         assertEquals( true, root.element( 2 ).value() );
@@ -272,8 +268,8 @@ class JsonTreeTest {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
         assertEquals( "hello", root.element( 4 ).value() );
-        assertEquals( List.of(), root.element( 6 ).value() );
-        assertEquals( Map.of(), root.element( 5 ).value() );
+        assertEquals( "[]", root.element( 6 ).getDeclaration() );
+        assertEquals( "{}", root.element( 5 ).getDeclaration() );
         assertEquals( 2, root.element( 1 ).value() );
         assertEquals( false, root.element( 3 ).value() );
         assertEquals( true, root.element( 2 ).value() );
@@ -286,8 +282,7 @@ class JsonTreeTest {
         assertEquals( JsonNodeType.OBJECT, root.getType() );
         assertFalse( root.isEmpty() );
         assertEquals( 3, root.size() );
-        Map<String, JsonNode> members = root.members();
-        assertEquals( new HashSet<>( asList( "a", "bb", "ccc" ) ), members.keySet() );
+        assertEquals( List.of( "a", "bb", "ccc" ), JsonValue.of( root ).asObject().names() );
         assertSame( root, root.getParent() );
         assertSame( root, root.getRoot() );
         assertSame( root, root.get( "a" ).getParent() );
@@ -486,7 +481,7 @@ class JsonTreeTest {
         JsonNode onlyA = doc.get( "$.a" ).extract();
         assertEquals( "{ \"b\" : [12, false] }", onlyA.toString() );
         assertEquals( "{ \"b\" : [42, false] }",
-            onlyA.members().get( "b" ).elements().get( 0 ).replaceWith( "42" ).toString() );
+            onlyA.member( "b" ).element( 0 ).replaceWith( "42" ).toString() );
     }
 
     @Test

@@ -40,7 +40,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -52,7 +51,6 @@ import java.util.stream.Stream;
 
 import static java.lang.Character.isUpperCase;
 import static java.lang.Character.toLowerCase;
-import static java.util.Collections.emptyList;
 
 /**
  * Implements the {@link JsonValue} read-only access abstraction for JSON responses.
@@ -74,6 +72,7 @@ import static java.util.Collections.emptyList;
  * @author Jan Bernitt
  */
 public final class JsonResponse implements JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean, Serializable {
+
     public static final JsonResponse NULL = new JsonResponse( JsonNode.of( "null" ), "$", JsonTypedAccess.GLOBAL,
         null );
 
@@ -120,8 +119,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
                         path, expected, actualType, node ) );
             }
             return get.apply( node );
-        }
-        catch ( JsonPathException ex ) {
+        } catch ( JsonPathException ex ) {
             return orElse.apply( ex );
         }
     }
@@ -129,8 +127,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     private <T> T value( Function<JsonNode, T> get ) {
         try {
             return get.apply( content.get( path ) );
-        }
-        catch ( JsonPathException | JsonFormatException ex ) {
+        } catch ( JsonPathException | JsonFormatException ex ) {
             throw noSuchElement( ex );
         }
     }
@@ -165,8 +162,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
         if ( from == null ) {
             try {
                 content.get( path );
-            }
-            catch ( JsonPathException ex ) {
+            } catch ( JsonPathException ex ) {
                 throw noSuchElement( ex );
             }
         }
@@ -186,7 +182,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     @Override
     public boolean has( String... names ) {
         return Boolean.TRUE.equals( value( JsonNodeType.OBJECT,
-            node -> node.members().keySet().containsAll( Arrays.asList( names ) ),
+            node -> Stream.of( names ).allMatch( node::isMember ),
             ex -> false ) );
     }
 
@@ -217,7 +213,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
                 res.add( (T) value );
             }
             return res;
-        }, ex -> emptyList() );
+        }, ex -> List.of() );
     }
 
     @Override
@@ -254,8 +250,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     public boolean exists() {
         try {
             return content.get( path ) != null;
-        }
-        catch ( JsonPathException ex ) {
+        } catch ( JsonPathException ex ) {
             return false;
         }
     }
@@ -281,14 +276,13 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     public String toString() {
         try {
             return content.get( path ).getDeclaration();
-        }
-        catch ( JsonPathException | JsonFormatException ex ) {
+        } catch ( JsonPathException | JsonFormatException ex ) {
             return ex.getMessage();
         }
     }
 
     private NoSuchElementException noSuchElement( RuntimeException cause ) {
-        return new NoSuchElementException(cause);
+        return new NoSuchElementException( cause );
     }
 
     @SuppressWarnings( "unchecked" )
@@ -372,8 +366,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
         throws Throwable {
         try {
             return method.invoke( inner, args );
-        }
-        catch ( InvocationTargetException ex ) {
+        } catch ( InvocationTargetException ex ) {
             throw ex.getTargetException();
         }
     }
@@ -436,8 +429,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
                 str.append( toSignature( ata ) );
             }
             str.append( '>' );
-        }
-        else {
+        } else {
             str.append( '?' );
         }
     }

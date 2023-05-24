@@ -40,6 +40,7 @@ import java.time.format.DateTimeFormatter;
  * @author Jan Bernitt
  */
 public interface JsonDate extends JsonString {
+
     default LocalDateTime date() {
         return parsed( str -> LocalDateTime.parse( str, DateTimeFormatter.ISO_LOCAL_DATE_TIME ) );
     }

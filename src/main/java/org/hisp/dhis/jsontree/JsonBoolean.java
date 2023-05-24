@@ -33,6 +33,7 @@ package org.hisp.dhis.jsontree;
  * @author Jan Bernitt
  */
 public interface JsonBoolean extends JsonPrimitive {
+
     /**
      * @return boolean value of the property or {@code null} when this property is undefined or defined as JSON
      * {@code null}.

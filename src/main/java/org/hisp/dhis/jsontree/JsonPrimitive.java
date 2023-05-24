@@ -35,6 +35,7 @@ import java.util.function.Function;
  * @author Jan Bernitt
  */
 public interface JsonPrimitive extends JsonValue {
+
     /**
      * A helper function that converts non-{@code null} values which are assumed to represent the raw primitive value of
      * this JSON value.

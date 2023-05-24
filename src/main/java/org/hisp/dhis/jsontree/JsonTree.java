@@ -29,11 +29,8 @@ package org.hisp.dhis.jsontree;
 
 import java.io.Serializable;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -41,6 +38,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.Predicate;
+import java.util.stream.StreamSupport;
 
 import static java.lang.Character.toChars;
 import static java.lang.Integer.parseInt;
@@ -70,22 +68,21 @@ import static java.util.Objects.requireNonNull;
  * @author Jan Bernitt
  */
 final class JsonTree implements Serializable {
+
     /**
      * The main idea of lazy nodes is that at creation only the start index and the path the node represents is known.
      * <p>
      * The "expensive" operations to access the nodes {@link #value()} or find its {@link #endIndex()} are only computed
      * on demand.
      */
-    private abstract static class LazyJsonNode<T extends Serializable> implements JsonNode {
+    private abstract static class LazyJsonNode<T> implements JsonNode {
+
         final JsonTree tree;
-
         final String path;
-
         final int start;
 
         protected Integer end;
-
-        private T value;
+        private transient T value;
 
         LazyJsonNode( JsonTree tree, String path, int start ) {
             this.tree = tree;
@@ -200,9 +197,16 @@ final class JsonTree implements Serializable {
         abstract T parseValue();
     }
 
-    private static final class LazyJsonObject extends LazyJsonNode<LinkedHashMap<String, JsonNode>> {
+    private static final class LazyJsonObject extends LazyJsonNode<Iterable<Entry<String, JsonNode>>>
+        implements Iterable<Entry<String, JsonNode>> {
+
         LazyJsonObject( JsonTree tree, String path, int start ) {
             super( tree, path, start );
+        }
+
+        @Override
+        public Iterator<Entry<String, JsonNode>> iterator() {
+            return members( true );
         }
 
         @Override
@@ -221,7 +225,7 @@ final class JsonTree implements Serializable {
         }
 
         @Override
-        public Map<String, JsonNode> members() {
+        public Iterable<Entry<String, JsonNode>> members() {
             return requireNonNull( value() );
         }
 
@@ -234,18 +238,18 @@ final class JsonTree implements Serializable {
         @Override
         public int size() {
             // only compute value when needed
-            return isEmpty() ? 0 : members().size();
+            return isEmpty() ? 0 : (int) StreamSupport.stream( spliterator(), false ).count();
         }
 
         @Override
         void visitChildren( JsonNodeType type, Consumer<JsonNode> visitor ) {
-            members().values().forEach( node -> node.visit( type, visitor ) );
+            members().forEach( e -> e.getValue().visit( type, visitor ) );
         }
 
         @Override
         Optional<JsonNode> findChildren( JsonNodeType type, Predicate<JsonNode> test ) {
-            for ( JsonNode e : members().values() ) {
-                Optional<JsonNode> res = e.find( type, test );
+            for ( Entry<String, JsonNode> e : members() ) {
+                Optional<JsonNode> res = e.getValue().find( type, test );
                 if ( res.isPresent() ) {
                     return res;
                 }
@@ -254,30 +258,8 @@ final class JsonTree implements Serializable {
         }
 
         @Override
-        LinkedHashMap<String, JsonNode> parseValue() {
-            char[] json = tree.json;
-            LinkedHashMap<String, JsonNode> object = new LinkedHashMap<>();
-            int index = skipWhitespace( json, expectChar( json, start, '{' ) );
-            while ( index < json.length && json[index] != '}' ) {
-                LazyJsonString.Span property = LazyJsonString.parseString( json, index );
-                String name = property.value();
-                String mPath = path + "." + name;
-                index = expectColonSeparator( json, property.endIndex() );
-                int mStart = index;
-                if ( tree.nodesByPath.containsKey( mPath ) ) {
-                    index = skipNodeAutodetect( json, mStart );
-                    index = expectCommaSeparatorOrEnd( json, index, '}' );
-                    object.put( name, tree.nodesByPath.get( mPath ) );
-                }
-                else {
-                    JsonNode member = tree.autoDetect( mPath, mStart );
-                    tree.nodesByPath.put( mPath, member );
-                    object.put( name, member );
-                    index = expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
-                }
-            }
-            end = expectChar( json, index, '}' );
-            return object;
+        Iterable<Entry<String, JsonNode>> parseValue() {
+            return this;
         }
 
         @Override
@@ -288,12 +270,6 @@ final class JsonTree implements Serializable {
             if ( member != null ) {
                 return member;
             }
-            if ( isParsed() ) {
-                // most likely member does not exist but could just be added
-                // since we done the get
-                checkFieldExists( this, members(), name, mPath );
-                return tree.nodesByPath.get( mPath );
-            }
             char[] json = tree.json;
             int index = skipWhitespace( json, expectChar( json, start, '{' ) );
             while ( index < json.length && json[index] != '}' ) {
@@ -303,22 +279,17 @@ final class JsonTree implements Serializable {
                     int mStart = index;
                     return tree.nodesByPath.computeIfAbsent( mPath,
                         key -> tree.autoDetect( key, mStart ) );
-                }
-                else {
+                } else {
                     index = skipNodeAutodetect( json, index );
                     index = expectCommaSeparatorOrEnd( json, index, '}' );
                 }
             }
-            checkFieldExists( this, Map.of(), name, mPath );
-            // we know it does not - this line is never reached
-            return null;
+            throw new JsonPathException(
+                format( "Path `%s` does not exist, object `%s` does not have a property `%s`", mPath, path, name ) );
         }
 
         @Override
-        public Iterator<Entry<String, JsonNode>> members( boolean keepNodes ) {
-            if ( isParsed() ) {
-                return members().entrySet().iterator();
-            }
+        public Iterator<Entry<String, JsonNode>> members( boolean cacheNodes ) {
             return new Iterator<>() {
                 private final char[] json = tree.json;
                 private final HashMap<String, JsonNode> nodesByPath = tree.nodesByPath;
@@ -331,19 +302,20 @@ final class JsonTree implements Serializable {
 
                 @Override
                 public Entry<String, JsonNode> next() {
-                    if ( !hasNext() ) {
+                    if ( !hasNext() )
                         throw new NoSuchElementException();
-                    }
                     LazyJsonString.Span property = LazyJsonString.parseString( json, mStart );
                     String name = property.value();
                     String mPath = path + "." + name;
                     int vStart = expectColonSeparator( json, property.endIndex() );
-                    JsonNode member = keepNodes
-                        ? nodesByPath.computeIfAbsent( mPath,
-                        key -> tree.autoDetect( key, vStart ) )
+                    JsonNode member = cacheNodes
+                        ? nodesByPath.computeIfAbsent( mPath, key -> tree.autoDetect( key, vStart ) )
                         : nodesByPath.get( mPath );
                     if ( member == null ) {
                         member = tree.autoDetect( mPath, vStart );
+                    } else if ( member.endIndex() < vStart ) {
+                        mStart = expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, vStart ), '}' );
+                        return new SimpleEntry<>( name, member );
                     }
                     mStart = expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
                     return new SimpleEntry<>( name, member );
@@ -352,15 +324,15 @@ final class JsonTree implements Serializable {
         }
     }
 
-    private static final class LazyJsonArray extends LazyJsonNode<ArrayList<JsonNode>> {
+    private static final class LazyJsonArray extends LazyJsonNode<Iterable<JsonNode>> implements Iterable<JsonNode> {
+
         LazyJsonArray( JsonTree tree, String path, int start ) {
             super( tree, path, start );
         }
 
-        private static void checkIndexExists( JsonNode parent, int length, String path ) {
-            throw new JsonPathException(
-                format( "Path `%s` does not exist, array `%s` has only `%d` elements.", path, parent.getPath(),
-                    length ) );
+        @Override
+        public Iterator<JsonNode> iterator() {
+            return elements( true );
         }
 
         @Override
@@ -377,7 +349,7 @@ final class JsonTree implements Serializable {
         }
 
         @Override
-        public List<JsonNode> elements() {
+        public Iterable<JsonNode> elements() {
             return requireNonNull( value() );
         }
 
@@ -390,7 +362,7 @@ final class JsonTree implements Serializable {
         @Override
         public int size() {
             // only compute value when needed
-            return isEmpty() ? 0 : elements().size();
+            return isEmpty() ? 0 : (int) StreamSupport.stream( spliterator(), false ).count();
         }
 
         @Override
@@ -400,7 +372,9 @@ final class JsonTree implements Serializable {
 
         @Override
         Optional<JsonNode> findChildren( JsonNodeType type, Predicate<JsonNode> test ) {
-            for ( JsonNode e : elements() ) {
+            Iterator<JsonNode> iter = elements( false );
+            while ( iter.hasNext() ) {
+                JsonNode e = iter.next();
                 Optional<JsonNode> res = e.find( type, test );
                 if ( res.isPresent() ) {
                     return res;
@@ -410,20 +384,8 @@ final class JsonTree implements Serializable {
         }
 
         @Override
-        ArrayList<JsonNode> parseValue() {
-            char[] json = tree.json;
-            ArrayList<JsonNode> array = new ArrayList<>();
-            int index = skipWhitespace( json, expectChar( json, start, '[' ) );
-            while ( index < json.length && json[index] != ']' ) {
-                String ePath = path + '[' + array.size() + "]";
-                int eStart = index;
-                JsonNode e = tree.nodesByPath.computeIfAbsent( ePath,
-                    key -> tree.autoDetect( key, eStart ) );
-                array.add( e );
-                index = expectCommaSeparatorOrEnd( json, e.endIndex(), ']' );
-            }
-            end = expectChar( json, index, ']' );
-            return array;
+        Iterable<JsonNode> parseValue() {
+            return this;
         }
 
         @Override
@@ -445,17 +407,19 @@ final class JsonTree implements Serializable {
                     skipped -> checkIndexExists( this, skipped + startIndex, key ) ) ) ) );
         }
 
+        private static void checkIndexExists( JsonNode parent, int length, String path ) {
+            throw new JsonPathException(
+                format( "Path `%s` does not exist, array `%s` has only `%d` elements.", path, parent.getPath(),
+                    length ) );
+        }
+
         @Override
-        public Iterator<JsonNode> elements( boolean keepNodes ) {
-            if ( isParsed() ) {
-                // no need to parse again, we already paid for it
-                return elements().iterator();
-            }
+        public Iterator<JsonNode> elements( boolean cacheNodes ) {
             return new Iterator<>() {
                 private final char[] json = tree.json;
                 private final HashMap<String, JsonNode> nodesByPath = tree.nodesByPath;
-                private int eStart = skipWhitespace( json, expectChar( json, start, '[' ) );
 
+                private int eStart = skipWhitespace( json, expectChar( json, start, '[' ) );
                 private int n = 0;
 
                 @Override
@@ -469,7 +433,7 @@ final class JsonTree implements Serializable {
                         throw new NoSuchElementException();
                     }
                     String ePath = path + '[' + n + "]";
-                    JsonNode e = keepNodes
+                    JsonNode e = cacheNodes
                         ? nodesByPath.computeIfAbsent( ePath,
                         key -> tree.autoDetect( key, eStart ) )
                         : nodesByPath.get( ePath );
@@ -508,10 +472,10 @@ final class JsonTree implements Serializable {
             }
             return number;
         }
-
     }
 
     private static final class LazyJsonString extends LazyJsonNode<String> {
+
         LazyJsonString( JsonTree tree, String path, int start ) {
             super( tree, path, start );
         }
@@ -545,26 +509,24 @@ final class JsonTree implements Serializable {
                     checkEscapedCharExists( json, index );
                     checkValidEscapedChar( json, index );
                     switch ( json[index++] ) {
-                    case 'u' -> { // unicode uXXXX
-                        str.append( toChars( parseInt( new String( json, index, 4 ), 16 ) ) );
-                        index += 4; // u we already skipped
+                        case 'u' -> { // unicode uXXXX
+                            str.append( toChars( parseInt( new String( json, index, 4 ), 16 ) ) );
+                            index += 4; // u we already skipped
+                        }
+                        case '\\' -> str.append( '\\' );
+                        case '/' -> str.append( '/' );
+                        case 'b' -> str.append( '\b' );
+                        case 'f' -> str.append( '\f' );
+                        case 'n' -> str.append( '\n' );
+                        case 'r' -> str.append( '\r' );
+                        case 't' -> str.append( '\t' );
+                        case '"' -> str.append( '"' );
+                        default -> throw new JsonFormatException( json, index, '?' );
                     }
-                    case '\\' -> str.append( '\\' );
-                    case '/' -> str.append( '/' );
-                    case 'b' -> str.append( '\b' );
-                    case 'f' -> str.append( '\f' );
-                    case 'n' -> str.append( '\n' );
-                    case 'r' -> str.append( '\r' );
-                    case 't' -> str.append( '\t' );
-                    case '"' -> str.append( '"' );
-                    default -> throw new JsonFormatException( json, index, '?' );
-                    }
-                }
-                else if ( c < ' ' ) {
+                } else if ( c < ' ' ) {
                     throw new JsonFormatException( json, index - 1,
                         "Control code character is not allowed in JSON string but found: " + (int) c );
-                }
-                else {
+                } else {
                     str.append( c );
                 }
             }
@@ -588,7 +550,7 @@ final class JsonTree implements Serializable {
         @Override
         Boolean parseValue() {
             end = skipBoolean( tree.json, start );
-            return end == start + 4; // the it was true
+            return end == start + 4; // then it was true
         }
 
     }
@@ -650,24 +612,18 @@ final class JsonTree implements Serializable {
                 int index = parseInt( pathToGo.substring( 1, pathToGo.indexOf( ']' ) ) );
                 parent = parent.element( index );
                 pathToGo = pathToGo.substring( pathToGo.indexOf( ']' ) + 1 );
-            }
-            else if ( pathToGo.startsWith( "." ) ) {
+            } else if ( pathToGo.startsWith( "." ) ) {
                 checkNodeIs( parent, JsonNodeType.OBJECT, path );
                 String property = getHeadProperty( pathToGo );
-                Map<String, JsonNode> members = parent.members();
-                checkFieldExists( parent, members, property, path );
-                parent = members.get( property );
+                parent = parent.member( property );
                 pathToGo = pathToGo.substring( 1 + property.length() );
-            }
-            else if ( pathToGo.startsWith( "{" ) ) {
+            } else if ( pathToGo.startsWith( "{" ) ) {
                 // map access syntax: {property}
                 checkNodeIs( parent, JsonNodeType.OBJECT, path );
                 String property = pathToGo.substring( 1, pathToGo.indexOf( '}' ) );
                 parent = parent.member( property );
                 pathToGo = pathToGo.substring( 2 + property.length() );
-
-            }
-            else {
+            } else {
                 throw new JsonPathException( format( "Malformed path %s at %s.", path, pathToGo ) );
             }
         }
@@ -693,36 +649,25 @@ final class JsonTree implements Serializable {
         }
         char c = json[atIndex];
         switch ( c ) {
-        case '{' -> {
-            return new LazyJsonObject( this, path, atIndex ); // object node
-        }
-        case '[' -> {
-            return new LazyJsonArray( this, path, atIndex );
-        }
-        case '"' -> {
-            return new LazyJsonString( this, path, atIndex );
-        }
-        case 't', 'f' -> {
-            return new LazyJsonBoolean( this, path, atIndex );
-        }
-        case 'n' -> {
-            return new LazyJsonNull( this, path, atIndex );
-        }
-        default -> { // must be number node then...
-            if ( !isDigit( c ) && c != '-' ) {
-                throw new JsonFormatException( json, atIndex, "start of a JSON value but found: `" + c + "`" );
+            case '{' -> {
+                return new LazyJsonObject( this, path, atIndex );
             }
-            return new LazyJsonNumber( this, path, atIndex );
-        }
-        }
-    }
-
-    private static void checkFieldExists( JsonNode parent, Map<String, JsonNode> object, String property,
-        String path ) {
-        if ( !object.containsKey( property ) ) {
-            throw new JsonPathException(
-                format( "Path `%s` does not exist, object `%s` does not have a property `%s`", path,
-                    parent.getPath(), property ) );
+            case '[' -> {
+                return new LazyJsonArray( this, path, atIndex );
+            }
+            case '"' -> {
+                return new LazyJsonString( this, path, atIndex );
+            }
+            case 't', 'f' -> {
+                return new LazyJsonBoolean( this, path, atIndex );
+            }
+            case 'n' -> {
+                return new LazyJsonNull( this, path, atIndex );
+            }
+            case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {
+                return new LazyJsonNumber( this, path, atIndex );
+            }
+            default -> throw new JsonFormatException( json, atIndex, "start of a JSON value but found: `" + c + "`" );
         }
     }
 
@@ -762,6 +707,7 @@ final class JsonTree implements Serializable {
 
     @FunctionalInterface
     interface CharPredicate {
+
         boolean test( char c );
     }
 
@@ -851,14 +797,12 @@ final class JsonTree implements Serializable {
             if ( c == '"' ) {
                 // found the end (if escaped we would have hopped over)
                 return index;
-            }
-            else if ( c == '\\' ) {
+            } else if ( c == '\\' ) {
                 checkEscapedCharExists( json, index );
                 checkValidEscapedChar( json, index );
                 // hop over escaped char or unicode
                 index += json[index] == 'u' ? 5 : 1;
-            }
-            else if ( c < ' ' ) {
+            } else if ( c < ' ' ) {
                 throw new JsonFormatException( json, index - 1,
                     "Control code character is not allowed in JSON string but found: " + (int) c );
             }

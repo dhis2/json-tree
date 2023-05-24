@@ -46,6 +46,7 @@ import java.util.stream.StreamSupport;
  * @author Jan Bernitt
  */
 public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<E> {
+
     /**
      * A typed variant of {@link JsonArray#get(int)}, equivalent to {@link JsonArray#get(int, Class)} where 2nd
      * parameter is the type parameter E.
@@ -235,6 +236,7 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
      */
     default <V extends JsonValue> JsonList<V> viewAsList( Function<E, V> elementToX ) {
         final class JsonListView extends CollectionView<JsonList<E>> implements JsonList<V> {
+
             private JsonListView( JsonList<E> self ) {
                 super( self );
             }

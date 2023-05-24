@@ -64,8 +64,7 @@ public interface JsonString extends JsonPrimitive {
     default <T> T converted( Callable<T> converter ) {
         try {
             return converter.call();
-        }
-        catch ( Exception ex ) {
+        } catch ( Exception ex ) {
             throw new IllegalArgumentException( ex );
         }
     }

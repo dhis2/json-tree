@@ -52,6 +52,7 @@ import java.lang.reflect.Type;
  * @since 0.4
  */
 public interface JsonTypedAccessStore {
+
     /**
      * A function that given a parent object knows how to access a value at a certain path as a certain type.
      *
@@ -59,6 +60,7 @@ public interface JsonTypedAccessStore {
      */
     @FunctionalInterface
     interface JsonGenericTypedAccessor<T> {
+
         /**
          * Accesses value the path as the target type.
          *
@@ -80,6 +82,7 @@ public interface JsonTypedAccessStore {
      */
     @FunctionalInterface
     interface JsonTypedAccessor<T> extends JsonGenericTypedAccessor<T> {
+
         /**
          * Accesses value the path as the type implicitly assumed by this accessor.
          *

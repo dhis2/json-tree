@@ -63,6 +63,7 @@ package org.hisp.dhis.jsontree;
  * @author Jan Bernitt
  */
 public interface JsonValue {
+
     /**
      * Constant for JSON {@code null} value.
      */

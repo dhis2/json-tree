@@ -62,6 +62,7 @@ public interface JsonCollection extends JsonValue {
 
     static <E extends JsonValue> JsonList<E> asList( JsonArray array, Class<E> as ) {
         class ListView extends CollectionView<JsonArray> implements JsonList<E> {
+
             ListView( JsonArray viewed ) {
                 super( viewed );
             }
@@ -76,6 +77,7 @@ public interface JsonCollection extends JsonValue {
 
     static <E extends JsonValue> JsonMap<E> asMap( JsonObject object, Class<E> as ) {
         class MapView extends CollectionView<JsonObject> implements JsonMap<E> {
+
             MapView( JsonObject viewed ) {
                 super( viewed );
             }
@@ -90,6 +92,7 @@ public interface JsonCollection extends JsonValue {
 
     static <E extends JsonValue> JsonMultiMap<E> asMultiMap( JsonObject object, Class<E> as ) {
         class MultiMapView extends CollectionView<JsonObject> implements JsonMultiMap<E> {
+
             MultiMapView( JsonObject viewed ) {
                 super( viewed );
             }
@@ -103,6 +106,7 @@ public interface JsonCollection extends JsonValue {
     }
 
     abstract class CollectionView<T extends JsonCollection> implements JsonCollection {
+
         protected final T viewed;
 
         protected CollectionView( T viewed ) {

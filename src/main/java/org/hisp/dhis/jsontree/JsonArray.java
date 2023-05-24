@@ -42,6 +42,7 @@ import static java.util.stream.Collectors.toList;
  * @author Jan Bernitt
  */
 public interface JsonArray extends JsonCollection {
+
     /**
      * Index access to the array.
      * <p>
@@ -124,6 +125,7 @@ public interface JsonArray extends JsonCollection {
      */
     default <V extends JsonValue> JsonList<V> viewAsList( Function<JsonValue, V> elementToX ) {
         final class JsonArrayView extends CollectionView<JsonArray> implements JsonList<V> {
+
             private JsonArrayView( JsonArray self ) {
                 super( self );
             }
