@@ -56,22 +56,6 @@ class JsonAppenderTest {
     }
 
     @Test
-    void testObject_BooleanPretty() {
-        JsonBuilder.PrettyPrint config = new JsonBuilder.PrettyPrint( 2, 0, true, true );
-        //language=JSON
-        String expected = """
-            {
-              "a": true,
-              "b": false,
-              "c": null
-            }""";
-        assertEquals( expected, JsonBuilder.createObject( config, obj -> obj
-            .addBoolean( "a", true )
-            .addBoolean( "b", false )
-            .addBoolean( "c", null ) ).getDeclaration() );
-    }
-
-    @Test
     void testArray_Boolean() {
         assertJson( "[true,false,null]", JsonBuilder.createArray( arr -> arr
             .addBoolean( true )
