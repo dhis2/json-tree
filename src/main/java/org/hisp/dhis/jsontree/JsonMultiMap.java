@@ -98,6 +98,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> 
      */
     default <V extends JsonValue> JsonMultiMap<V> viewAsMultiMap( Function<E, V> memberToX ) {
         final class JsonMapView extends CollectionView<JsonMultiMap<E>> implements JsonMultiMap<V> {
+
             private JsonMapView( JsonMultiMap<E> viewed ) {
                 super( viewed );
             }

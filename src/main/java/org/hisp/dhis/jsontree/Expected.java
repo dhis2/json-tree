@@ -42,6 +42,7 @@ import java.lang.annotation.Target;
 @Target( ElementType.METHOD )
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Expected {
+
     /**
      * @return Can be set to {@code true} to allow {@link JsonValue}s either being set or being a JSON {@code null}
      * value. Default value is {@code false}.

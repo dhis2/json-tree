@@ -32,13 +32,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-
 /**
  * Tests the static helpers of {@link JsonValue}.
  *
  * @author Jan Bernitt
  */
 class JsonValueTest {
+
     @Test
     void testOfJsonNode() {
         JsonValue value = JsonValue.of( JsonBuilder.createObject( obj -> obj.addString( "foo", "bar" ) ) );

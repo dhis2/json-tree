@@ -34,13 +34,13 @@ import java.util.List;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-
 /**
  * Tests the additional utility methods of the {@link JsonList} interface.
  *
  * @author Jan Bernitt
  */
 class JsonListTest {
+
     @Test
     void testList_stream_Undefined() {
         JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );

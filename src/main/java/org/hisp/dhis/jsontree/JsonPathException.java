@@ -33,6 +33,7 @@ package org.hisp.dhis.jsontree;
  * @author Jan Bernitt
  */
 public class JsonPathException extends IllegalArgumentException {
+
     public JsonPathException( String s ) {
         super( s );
     }

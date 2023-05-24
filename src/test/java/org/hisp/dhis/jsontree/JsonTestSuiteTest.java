@@ -40,7 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  *
  * @author Jan Bernitt
  */
-class JsonTestSuitTest {
+class JsonTestSuiteTest {
+
     @Test
     void y_object_duplicated_key() {
         JsonValue value = assert_y( "{\"a\":\"b\",\"a\":\"c\"}" );

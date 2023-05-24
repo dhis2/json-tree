@@ -29,14 +29,13 @@ package org.hisp.dhis.jsontree;
 
 import java.io.Serializable;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
@@ -57,21 +56,25 @@ import static java.util.stream.IntStream.range;
  * @author Jan Bernitt
  */
 public interface JsonNode extends Serializable {
+
     /**
-     * @since 0.6.0
      * JSON {@code null} as root of a tree
+     *
+     * @since 0.6
      */
     JsonNode NULL = JsonNode.of( "null" );
 
     /**
-     * @since 0.6.0
      * JSON {@code {}} as a root of a tree
+     *
+     * @since 0.6
      */
     JsonNode EMPTY_OBJECT = JsonNode.of( "{}" );
 
     /**
-     * @since 0.6.0
      * JSON {@code []} as a root of a tree
+     *
+     * @since 0.6
      */
     JsonNode EMPTY_ARRAY = JsonNode.of( "[]" );
 
@@ -93,13 +96,13 @@ public interface JsonNode extends Serializable {
 
     /**
      * @return The root of this JSON document independent of which node in the tree it is called on
-     * @since 0.6.0
+     * @since 0.6
      */
     JsonNode getRoot();
 
     /**
      * @return The parent of this node or the root itself if this node is the root
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode getParent() {
         return isRoot() ? this : getRoot().get( parentPath( getPath() ) );
@@ -150,7 +153,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @return true if this node is the root of the tree, false otherwise
-     * @since 0.6.0
+     * @since 0.6
      */
     default boolean isRoot() {
         return getPath().isEmpty();
@@ -162,13 +165,12 @@ public interface JsonNode extends Serializable {
      * @param name of the member in this object node
      * @return true, if the member exists, false otherwise
      * @throws JsonTreeException if this is not an object node
-     * @since 0.6.0
+     * @since 0.6
      */
     default boolean isMember( String name ) {
         try {
             return member( name ) != null;
-        }
-        catch ( JsonPathException ex ) {
+        } catch ( JsonPathException ex ) {
             return false;
         }
     }
@@ -183,8 +185,7 @@ public interface JsonNode extends Serializable {
     default boolean isElement( int index ) {
         try {
             return element( index ) != null;
-        }
-        catch ( JsonPathException ex ) {
+        } catch ( JsonPathException ex ) {
             return false;
         }
     }
@@ -197,15 +198,15 @@ public interface JsonNode extends Serializable {
      * <li>{@link JsonNodeType#STRING} returns {@link String}</li>
      * <li>{@link JsonNodeType#NUMBER} returns either {@link Integer},
      * {@link Long} or {@link Double}</li>
-     * <li>{@link JsonNodeType#ARRAY} returns an {@link java.util.List} of
-     * {@link JsonNode}</li>
-     * <li>{@link JsonNodeType#OBJECT} returns a {@link Map} with {@link String}
-     * keys and {@link JsonNode} values</li>
+     * <li>{@link JsonNodeType#ARRAY} returns an {@link Iterable} of
+     * {@link JsonNode}, same as {@link #elements()}</li>
+     * <li>{@link JsonNodeType#OBJECT} returns a {@link Iterable} of {@link Entry}
+     * with {@link String} keys and {@link JsonNode} values, same as {@link #members()}</li>
      * </ul>
      *
      * @return the nodes value as described in the above table
      */
-    Serializable value();
+    Object value();
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
@@ -223,24 +224,24 @@ public interface JsonNode extends Serializable {
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      *
-     * @return this {@link #value()} as as {@link Map}
+     * @return this {@link #value()} as a sequence of {@link Entry}
      * @throws JsonTreeException if this node is not an object node that could have members
      */
-    default Map<String, JsonNode> members() {
+    default Iterable<Entry<String, JsonNode>> members() {
         throw new JsonTreeException( getType() + " node has no members property." );
     }
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      *
-     * @param keepNodes true, to internally "remember" the members iterated over so far, false to only iterate without
-     *                  keeping references to them further on so GC can pick em up
+     * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
+     *                   keeping references to them further on so GC can pick em up
      * @return an iterator to lazily process the members one at a time - mostly to avoid materialising all members in
      * memory for large maps. Member {@link JsonNode}s that already exist internally will be reused and returned by the
      * iterator.
      * @throws JsonTreeException if this node is not an object node that could have members
      */
-    default Iterator<Entry<String, JsonNode>> members( boolean keepNodes ) {
+    default Iterator<Entry<String, JsonNode>> members( boolean cacheNodes ) {
         throw new JsonTreeException( getType() + " node has no members property." );
     }
 
@@ -260,24 +261,24 @@ public interface JsonNode extends Serializable {
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
      *
-     * @return this {@link #value()} as as {@link List}
+     * @return this {@link #value()} as as {@link Stream}
      * @throws JsonTreeException if this node is not an array node that could have elements
      */
-    default List<JsonNode> elements() {
+    default Iterable<JsonNode> elements() {
         throw new JsonTreeException( getType() + " node has no elements property." );
     }
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
      *
-     * @param keepNodes true, to internally "remember" the members iterated over so far, false to only iterate without
-     *                  keeping references to them further on so GC can pick em up
+     * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
+     *                   keeping references to them further on so GC can pick em up
      * @return an iterator to lazily process the elements one at a time - mostly to avoid materialising all elements in
      * memory for large arrays. Member {@link JsonNode}s that already exist internally will be reused and returned by
      * the iterator.
      * @throws JsonTreeException if this node is not an array node that could have elements
      */
-    default Iterator<JsonNode> elements( boolean keepNodes ) {
+    default Iterator<JsonNode> elements( boolean cacheNodes ) {
         throw new JsonTreeException( getType() + " node has no elements property." );
     }
 
@@ -385,7 +386,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #replaceWith(String)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode replaceWith( JsonNode node ) {
         return isRoot() ? node : replaceWith( node.getDeclaration() );
@@ -393,7 +394,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #replaceWith(String)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode replaceWith( String path, JsonNode node ) {
         return get( path ).replaceWith( node );
@@ -417,7 +418,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #addMembers(JsonNode)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addMembers( Consumer<JsonBuilder.JsonObjectBuilder> obj ) {
         return addMembers( JsonBuilder.createObject( obj ) );
@@ -425,7 +426,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #addMembers(JsonNode)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addMembers( String path, Consumer<JsonBuilder.JsonObjectBuilder> obj ) {
         return get( path ).addMembers( obj );
@@ -433,7 +434,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #addMembers(JsonNode)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addMembers( String path, JsonNode obj ) {
         return get( path ).addMembers( obj );
@@ -451,7 +452,7 @@ public interface JsonNode extends Serializable {
      * @return A new tree where this node is replaced with an object node which has all members of this object node and
      * the provided object node
      * @throws JsonTreeException if either this or the provided node aren't object nodes
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addMembers( JsonNode obj ) {
         checkType( JsonNodeType.OBJECT, getType(), "addMembers" );
@@ -466,7 +467,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #removeMembers(Set)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode removeMembers( String path, Set<String> names ) {
         return get( path ).removeMembers( names );
@@ -488,7 +489,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #addElements(JsonNode)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addElements( Consumer<JsonBuilder.JsonArrayBuilder> array ) {
         return addElements( JsonBuilder.createArray( array ) );
@@ -496,7 +497,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #addElements(JsonNode)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addElements( String path, Consumer<JsonBuilder.JsonArrayBuilder> array ) {
         return get( path ).addElements( array );
@@ -504,7 +505,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #addElements(JsonNode)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addElements( String path, JsonNode array ) {
         return get( path ).addElements( array );
@@ -517,7 +518,7 @@ public interface JsonNode extends Serializable {
      * @return A new tree where this node is replaced with an array node which has all elements of this array node and
      * the provided array node
      * @throws JsonTreeException if either this or the provided node aren't array nodes
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode addElements( JsonNode array ) {
         checkType( JsonNodeType.ARRAY, getType(), "addElements" );
@@ -532,7 +533,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @see #putElements(int, JsonNode)
-     * @since 0.6.0
+     * @since 0.6
      */
     default JsonNode putElements( int index, Consumer<JsonBuilder.JsonArrayBuilder> array ) {
         return putElements( index, JsonBuilder.createArray( array ) );

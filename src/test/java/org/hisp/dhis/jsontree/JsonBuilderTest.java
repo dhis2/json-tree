@@ -42,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * @author Jan Bernitt
  */
 class JsonBuilderTest {
+
     @Test
     void testCreateObject() {
         assertEquals( "{\"foo\":[\"bar\"]}",

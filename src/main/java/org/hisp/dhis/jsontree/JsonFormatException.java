@@ -38,6 +38,7 @@ import static java.lang.Math.min;
  * @author Jan Bernitt
  */
 public class JsonFormatException extends IllegalArgumentException {
+
     public JsonFormatException( String message ) {
         super( message );
     }

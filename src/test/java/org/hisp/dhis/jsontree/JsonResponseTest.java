@@ -46,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author Jan Bernitt
  */
 class JsonResponseTest {
+
     @Test
     void testCustomObjectTypeMultiMap() {
         JsonMultiMap<JsonNumber> multiMap = createJSON( "{'foo':[1,23], 'bar': [34,56]}" )

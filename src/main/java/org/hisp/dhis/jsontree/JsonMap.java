@@ -27,8 +27,12 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+
+import static java.util.stream.Collectors.toUnmodifiableSet;
+import static java.util.stream.StreamSupport.stream;
 
 /**
  * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.
@@ -37,6 +41,7 @@ import java.util.function.Function;
  * @author Jan Bernitt
  */
 public interface JsonMap<E extends JsonValue> extends JsonCollection {
+
     /**
      * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd
      * parameter is the type parameter E.
@@ -52,7 +57,8 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
      * @throws UnsupportedOperationException    in case this node does exist but is not an object node
      */
     default Set<String> keys() {
-        return node().members().keySet();
+        return stream( node().members().spliterator(), false )
+            .map( Map.Entry::getKey ).collect( toUnmodifiableSet() );
     }
 
     /**
@@ -67,6 +73,7 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
      */
     default <V extends JsonValue> JsonMap<V> viewAsMap( Function<E, V> memberToX ) {
         final class JsonMapView extends CollectionView<JsonMap<E>> implements JsonMap<V> {
+
             private JsonMapView( JsonMap<E> viewed ) {
                 super( viewed );
             }

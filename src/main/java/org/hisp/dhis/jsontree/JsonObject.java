@@ -28,13 +28,14 @@
 package org.hisp.dhis.jsontree;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.stream;
 
@@ -48,6 +49,7 @@ import static java.util.Arrays.stream;
  * @author Jan Bernitt
  */
 public interface JsonObject extends JsonCollection {
+
     /**
      * Name access to object fields.
      * <p>
@@ -79,7 +81,7 @@ public interface JsonObject extends JsonCollection {
      * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
      */
     default List<String> names() {
-        return new ArrayList<>( node().members().keySet() );
+        return StreamSupport.stream( node().members().spliterator(), false ).map( Map.Entry::getKey ).toList();
     }
 
     default JsonValue get( String name ) {
@@ -128,8 +130,7 @@ public interface JsonObject extends JsonCollection {
         try {
             asObject( type );
             return true;
-        }
-        catch ( NoSuchElementException ex ) {
+        } catch ( NoSuchElementException ex ) {
             return false;
         }
     }
@@ -189,8 +190,7 @@ public interface JsonObject extends JsonCollection {
                         Class<? extends JsonObject> memberType = (Class<? extends JsonObject>) m.getReturnType();
                         ((JsonObject) member).asObject( memberType, true, parent + m.getName() );
                     }
-                }
-                catch ( ReflectiveOperationException ex ) {
+                } catch ( ReflectiveOperationException ex ) {
                     throw new NoSuchElementException( String.format( "Expected %s node member %s had invalid value: %s",
                         type.getSimpleName(), parent + m.getName(), ex.getMessage() ) );
                 }
@@ -213,8 +213,7 @@ public interface JsonObject extends JsonCollection {
         Optional<JsonNode> match = node().find( JsonNodeType.OBJECT, node -> {
             try {
                 return test.test( JsonValue.of( node.getDeclaration() ).asObject().asObject( type ) );
-            }
-            catch ( RuntimeException ex ) {
+            } catch ( RuntimeException ex ) {
                 return false;
             }
         } );
@@ -235,6 +234,7 @@ public interface JsonObject extends JsonCollection {
      */
     default <V extends JsonValue> JsonObject viewAsObject( Function<JsonValue, V> memberToX ) {
         final class JsonObjectView extends CollectionView<JsonObject> implements JsonObject {
+
             private JsonObjectView( JsonObject viewed ) {
                 super( viewed );
             }

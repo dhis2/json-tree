@@ -52,7 +52,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-
 /**
  * Tests the {@link JsonTypedAccessStore} implementation {@link JsonTypedAccess} by using it via {@link JsonResponse}
  * (it is the default implementation).
@@ -60,7 +59,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author Jan Bernitt
  */
 class JsonTypedAccessTest {
+
     interface PrimitivesBean extends JsonObject {
+
         int aInt();
 
         Integer aBigInteger();
@@ -255,6 +256,7 @@ class JsonTypedAccessTest {
     }
 
     interface NestedBean extends JsonObject {
+
         int a();
 
         NestedBean getB();
@@ -278,6 +280,7 @@ class JsonTypedAccessTest {
     }
 
     interface DateBean extends JsonObject {
+
         JsonDate aNode();
 
         LocalDateTime aLocalDateTime();
@@ -312,6 +315,7 @@ class JsonTypedAccessTest {
     }
 
     interface ListBean extends JsonObject {
+
         List<String> names();
 
         List<String> names( List<String> v );
@@ -370,6 +374,7 @@ class JsonTypedAccessTest {
     }
 
     interface SetBean extends JsonObject {
+
         Set<Integer> ages();
 
         Set<Integer> ages( Set<Integer> v );
@@ -403,6 +408,7 @@ class JsonTypedAccessTest {
     }
 
     interface MapBean extends JsonObject {
+
         Map<String, TextStyle> styles();
 
         Map<String, TextStyle> styles( Map<String, TextStyle> v );

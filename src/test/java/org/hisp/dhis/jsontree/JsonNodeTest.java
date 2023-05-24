@@ -32,13 +32,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-
 /**
  * Tests {@link JsonNode} specific aspects of the {@link JsonTree} implementation of the interface.
  *
  * @author Jan Bernitt
  */
 class JsonNodeTest {
+
     @Test
     void testGet_String() {
         assertGetThrowsJsonPathException( "\"hello\"",

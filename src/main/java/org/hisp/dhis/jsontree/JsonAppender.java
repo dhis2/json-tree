@@ -43,32 +43,40 @@ import java.util.stream.Stream;
  *
  * @author Jan Bernitt
  */
-public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBuilder {
+final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBuilder {
 
     public interface CharConsumer {
 
         void accept( char c );
     }
 
+    private final PrettyPrint config;
+    private final boolean indent;
+    private final String indent1;
+    private final String colon;
+
     private final Consumer<CharSequence> appendStr;
-
     private final CharConsumer appendChar;
-
     private final Supplier<String> toStr;
-
     private final boolean[] addedByLevel = new boolean[128];
 
     private int level = 0;
+    private String indentLevel = "";
 
-    public JsonAppender( PrintStream out ) {
-        this( out::append, out::append, () -> null );
+    public JsonAppender( PrettyPrint config, PrintStream out ) {
+        this( config, out::append, out::append, () -> null );
     }
 
-    public JsonAppender( StringBuilder out ) {
-        this( out::append, out::append, out::toString );
+    public JsonAppender( PrettyPrint config, StringBuilder out ) {
+        this( config, out::append, out::append, out::toString );
     }
 
-    public JsonAppender( Consumer<CharSequence> appendStr, CharConsumer appendChar, Supplier<String> toStr ) {
+    private JsonAppender( PrettyPrint config, Consumer<CharSequence> appendStr, CharConsumer appendChar,
+        Supplier<String> toStr ) {
+        this.config = config;
+        this.indent = config.indentSpaces() > 0 || config.indentTabs() > 0;
+        this.indent1 = " ".repeat( config.indentSpaces() ) + "\t".repeat( config.indentTabs() );
+        this.colon = config.spaceAfterColon() ? ": " : ":";
         this.appendStr = appendStr;
         this.appendChar = appendChar;
         this.toStr = toStr;
@@ -85,10 +93,10 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
     private void appendCommaWhenNeeded() {
         if ( !addedByLevel[level] ) {
             addedByLevel[level] = true;
-        }
-        else {
+        } else {
             append( ',' );
         }
+        if ( indent ) append( indentLevel );
     }
 
     private void appendEscaped( CharSequence str ) {
@@ -101,13 +109,17 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
     }
 
     private void beginLevel( char c ) {
+        if ( indent ) append( indentLevel );
         append( c );
         addedByLevel[++level] = false;
+        indentLevel = "\n" + indent1.repeat( level );
     }
 
     private void endLevel( char c ) {
-        append( c );
         level--;
+        indentLevel = "\n" + indent1.repeat( level );
+        if ( indent ) append( indentLevel );
+        append( c );
     }
 
     @Override
@@ -141,13 +153,14 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
         append( '"' );
         append( name );
         append( '"' );
-        append( ':' );
+        append( colon );
         append( rawValue );
         return this;
     }
 
     @Override
     public JsonObjectBuilder addMember( String name, JsonNode value ) {
+        //FIXME handle pretty print
         return addRawMember( name, value.getDeclaration() );
     }
 
@@ -186,7 +199,9 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
         appendCommaWhenNeeded();
         append( '"' );
         append( name );
-        append( "\":\"" );
+        append( '"' );
+        append( colon );
+        append( '"' );
         appendEscaped( value );
         append( '"' );
         return this;
@@ -198,7 +213,7 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
         append( '"' );
         append( name );
         append( '"' );
-        append( ':' );
+        append( colon );
         beginLevel( '[' );
         value.accept( this );
         endLevel( ']' );
@@ -211,7 +226,7 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
         append( '"' );
         append( name );
         append( '"' );
-        append( ':' );
+        append( colon );
         beginLevel( '{' );
         value.accept( this );
         endLevel( '}' );
@@ -219,19 +234,19 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
     }
 
     @Override
-    public <K, V> JsonObjectBuilder addObject( String name, Map<K, V> value,
+    public <K, V> JsonObjectBuilder addObject( String name, Iterable<Map.Entry<K, V>> value,
         TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
         if ( name == null ) {
-            value.forEach( ( k, v ) -> toMember.accept( this, k, v ) );
+            value.forEach( e -> toMember.accept( this, e.getKey(), e.getValue() ) );
             return this;
         }
         appendCommaWhenNeeded();
         append( '"' );
         append( name );
         append( '"' );
-        append( ':' );
+        append( colon );
         beginLevel( '{' );
-        value.forEach( ( k, v ) -> toMember.accept( this, k, v ) );
+        value.forEach( e -> toMember.accept( this, e.getKey(), e.getValue() ) );
         endLevel( '}' );
         return this;
     }
@@ -254,7 +269,26 @@ public class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBu
 
     @Override
     public JsonArrayBuilder addElement( JsonNode value ) {
-        return addRawElement( value.getDeclaration() );
+        if ( config.retainOriginalDeclaration() )
+            return addRawElement( value.getDeclaration() );
+        appendCommaWhenNeeded();
+        prettyPrint( value );
+        return this;
+    }
+
+    private void prettyPrint( JsonNode value ) {
+        switch ( value.getType() ) {
+            case OBJECT -> {
+                addObject( obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+            }
+            case ARRAY -> {
+                addArray( arr -> value.elements().forEach( arr::addElement ) );
+            }
+            case NUMBER -> {addNumber( (Number) value.value() );}
+            case STRING -> {addString( (String) value.value() );}
+            case BOOLEAN -> {addBoolean( (Boolean) value.value() );}
+            case NULL -> {addRawElement( "null" );}
+        }
     }
 
     @Override

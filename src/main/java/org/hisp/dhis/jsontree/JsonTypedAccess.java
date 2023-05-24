@@ -64,6 +64,7 @@ import static java.util.Spliterators.spliteratorUnknownSize;
  * @since 0.4
  */
 public final class JsonTypedAccess implements JsonTypedAccessStore {
+
     public static final JsonTypedAccess GLOBAL = new JsonTypedAccess().init();
 
     private final Map<Class<?>, JsonGenericTypedAccessor<?>> byResultType = new ConcurrentHashMap<>();
