@@ -126,6 +126,9 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
+                        <configuration>
+                            <additionalOptions>-Xdoclint:-missing</additionalOptions>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
