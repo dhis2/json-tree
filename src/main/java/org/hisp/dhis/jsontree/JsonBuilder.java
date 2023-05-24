@@ -275,6 +275,10 @@ public interface JsonBuilder {
             return addObject( null, value, filter, toMember );
         }
 
+        default JsonObjectBuilder addArray( String name, JsonNode value0) {
+            return addArray( name, Stream.of( value0 ), JsonArrayBuilder::addElement );
+        }
+
         default <V> JsonObjectBuilder addArray( String name, Stream<V> value,
             BiConsumer<JsonArrayBuilder, ? super V> toElement ) {
             return addArray( name, arr -> value.forEachOrdered( v -> toElement.accept( arr, v ) ) );
