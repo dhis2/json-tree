@@ -40,12 +40,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests the basic correctness of {@link JsonResponse} which is the implementation of all core interfaces of the
+ * Tests the basic correctness of {@link JsonVirtualTree} which is the implementation of all core interfaces of the
  * {@link JsonValue} utility.
  *
  * @author Jan Bernitt
  */
-class JsonResponseTest {
+class JsonVirtualTreeTest {
 
     @Test
     void testCustomObjectTypeMultiMap() {
@@ -303,7 +303,7 @@ class JsonResponseTest {
         assertEquals( "Expected \" but reach EOI: {\"a:12}", map.toString() );
     }
 
-    private static JsonResponse createJSON( String content ) {
-        return new JsonResponse( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
+    private static JsonMixed createJSON( String content ) {
+        return JsonMixed.of( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

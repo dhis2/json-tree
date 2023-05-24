@@ -107,7 +107,7 @@ class JsonListTest {
         assertEquals( List.of( 1, 2, 3 ), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
-    private static JsonResponse createJSON( String content ) {
-        return new JsonResponse( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
+    private static JsonMixed createJSON( String content ) {
+        return JsonMixed.of( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

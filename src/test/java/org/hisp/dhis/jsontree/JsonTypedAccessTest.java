@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests the {@link JsonTypedAccessStore} implementation {@link JsonTypedAccess} by using it via {@link JsonResponse}
+ * Tests the {@link JsonTypedAccessStore} implementation {@link JsonTypedAccess} by using it via {@link JsonVirtualTree}
  * (it is the default implementation).
  *
  * @author Jan Bernitt
@@ -602,7 +602,7 @@ class JsonTypedAccessTest {
         assertSame( obj.list2().get( 0 ), obj.list2().get( 0 ) );
     }
 
-    private static JsonResponse createJSON( String content ) {
-        return new JsonResponse( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
+    private static JsonMixed createJSON( String content ) {
+        return JsonMixed.of( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

@@ -56,27 +56,26 @@ import static java.lang.Character.toLowerCase;
  * Implements the {@link JsonValue} read-only access abstraction for JSON responses.
  * <p>
  * The way this works is that internally when navigating the JSON object the {@link #path} is extended. The returned
- * value is always either a {@link JsonResponse} or a {@link Proxy} calling all default methods on the declaring
- * interface and all implemented by {@link JsonResponse} on a "wrapped" {@link JsonResponse} instance.
+ * value is always either a {@link JsonVirtualTree} or a {@link Proxy} calling all default methods on the declaring
+ * interface and all implemented by {@link JsonVirtualTree} on a "wrapped" {@link JsonVirtualTree} instance.
  * <p>
- * When values are accessed the {@link #path} path is extracted from the {@link #content} and eventually converted and
- * checked against expectations. Exceptions are eventually converted to provide a consistent behaviour.
+ * When values are accessed the {@link #path} is extracted from the {@link #root} and eventually converted and checked
+ * against expectations. Exceptions are eventually converted to provide a consistent behaviour.
  * <p>
  * It is crucial to understand that the complete JSON object model is purely a typed convenience layer expressing what
  * could or is expected to exist. Whether something actually exist is first evaluated when leaf values are accessed or
  * existence is explicitly checked using {@link #exists()}.
  * <p>
  * This also means specific {@link JsonObject}s are modelled by extending the interface and implementing {@code default}
- * methods. No other implementation class is ever written except {@link JsonResponse}.
+ * methods. No other implementation {@code class} is ever needed apart from the {@link JsonVirtualTree}.
  *
  * @author Jan Bernitt
  */
-public final class JsonResponse implements JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean, Serializable {
+final class JsonVirtualTree implements JsonMixed, Serializable {
 
-    public static final JsonResponse NULL = new JsonResponse( JsonNode.of( "null" ), "$", JsonTypedAccess.GLOBAL,
-        null );
+    public static final JsonVirtualTree NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonTypedAccess.GLOBAL, null );
 
-    private final JsonNode content;
+    private final JsonNode root;
 
     private final String path;
 
@@ -84,13 +83,17 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
 
     private final transient ConcurrentMap<String, Object> accessCache;
 
-    public JsonResponse( String content, JsonTypedAccessStore store ) {
-        this( JsonNode.of( content.isEmpty() ? "{}" : content ), "$", store, null );
+    public JsonVirtualTree( String json, JsonTypedAccessStore store ) {
+        this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), "$", store, null );
     }
 
-    private JsonResponse( JsonNode content, String path, JsonTypedAccessStore store,
+    public JsonVirtualTree( JsonNode root, JsonTypedAccessStore store ) {
+        this( root, "$", store, null );
+    }
+
+    private JsonVirtualTree( JsonNode root, String path, JsonTypedAccessStore store,
         ConcurrentMap<String, Object> accessCache ) {
-        this.content = content;
+        this.root = root;
         this.path = path;
         this.store = store;
         this.accessCache = accessCache;
@@ -102,13 +105,13 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     @Override
-    public JsonResponse withAccessCached() {
-        return isAccessCached() ? this : new JsonResponse( content, path, store, new ConcurrentHashMap<>() );
+    public JsonVirtualTree withAccessCached() {
+        return isAccessCached() ? this : new JsonVirtualTree( root, path, store, new ConcurrentHashMap<>() );
     }
 
     private <T> T value( JsonNodeType expected, Function<JsonNode, T> get, Function<JsonPathException, T> orElse ) {
         try {
-            JsonNode node = content.get( path );
+            JsonNode node = root.get( path );
             JsonNodeType actualType = node.getType();
             if ( actualType == JsonNodeType.NULL ) {
                 return null;
@@ -126,7 +129,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
 
     private <T> T value( Function<JsonNode, T> get ) {
         try {
-            return get.apply( content.get( path ) );
+            return get.apply( root.get( path ) );
         } catch ( JsonPathException | JsonFormatException ex ) {
             throw noSuchElement( ex );
         }
@@ -138,13 +141,13 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
 
     @Override
     public <T extends JsonValue> T get( int index, Class<T> as ) {
-        return asType( as, new JsonResponse( content, path + "[" + index + "]", store, accessCache ) );
+        return asType( as, new JsonVirtualTree( root, path + "[" + index + "]", store, accessCache ) );
     }
 
     @Override
     public <T extends JsonValue> T get( String name, Class<T> as ) {
         String p = name.startsWith( "{" ) ? path + name : path + "." + name;
-        return asType( as, new JsonResponse( content, p, store, accessCache ) );
+        return asType( as, new JsonVirtualTree( root, p, store, accessCache ) );
     }
 
     @Override
@@ -153,7 +156,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     @SuppressWarnings( "unchecked" )
-    private <T extends JsonValue> T asType( Class<T> as, JsonResponse res ) {
+    private <T extends JsonValue> T asType( Class<T> as, JsonVirtualTree res ) {
         return isExtended( as ) ? createProxy( as, res ) : (T) res;
     }
 
@@ -161,7 +164,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     public <A, B> B mapNonNull( A from, Function<A, B> to ) {
         if ( from == null ) {
             try {
-                content.get( path );
+                root.get( path );
             } catch ( JsonPathException ex ) {
                 throw noSuchElement( ex );
             }
@@ -249,7 +252,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     @Override
     public boolean exists() {
         try {
-            return content.get( path ) != null;
+            return root.get( path ) != null;
         } catch ( JsonPathException ex ) {
             return false;
         }
@@ -262,20 +265,20 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
 
     @Override
     public boolean equals( Object obj ) {
-        return obj instanceof JsonResponse response
+        return obj instanceof JsonVirtualTree response
             && path.equals( response.path )
-            && content.equals( response.content );
+            && root.equals( response.root );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash( content, path );
+        return Objects.hash( root, path );
     }
 
     @Override
     public String toString() {
         try {
-            return content.get( path ).getDeclaration();
+            return root.get( path ).getDeclaration();
         } catch ( JsonPathException | JsonFormatException ex ) {
             return ex.getMessage();
         }
@@ -286,7 +289,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     @SuppressWarnings( "unchecked" )
-    private <E extends JsonValue> E createProxy( Class<E> as, JsonResponse inner ) {
+    private <E extends JsonValue> E createProxy( Class<E> as, JsonVirtualTree inner ) {
         return (E) Proxy.newProxyInstance(
             Thread.currentThread().getContextClassLoader(), new Class[] { as },
             ( proxy, method, args ) -> {
@@ -333,7 +336,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
      * Abstract interface methods are "implemented" by deriving an {@link JsonGenericTypedAccessor} from the method's
      * return type and have the accessor extract the value by using solely the underlying {@link JsonValue} API.
      */
-    private Object callAbstractMethod( JsonResponse inner, Method method, Object[] args ) {
+    private Object callAbstractMethod( JsonVirtualTree inner, Method method, Object[] args ) {
         JsonObject obj = inner.asObject();
         Class<?> resType = method.getReturnType();
         String name = stripGetterPrefix( method );
@@ -360,7 +363,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
 
     /**
      * All methods by the core API of the general JSON tree represented as {@link JsonValue}s (and the general
-     * subclasses) are implemented by the {@link JsonResponse} wrapper so they can be called directly.
+     * subclasses) are implemented by the {@link JsonVirtualTree} wrapper so they can be called directly.
      */
     private static Object callCoreApiMethod( JsonValue inner, Method method, Object[] args )
         throws Throwable {
@@ -385,7 +388,7 @@ public final class JsonResponse implements JsonObject, JsonArray, JsonString, Js
     }
 
     private static boolean isExtended( Class<?> declaringClass ) {
-        return !declaringClass.isAssignableFrom( JsonResponse.class );
+        return !declaringClass.isAssignableFrom( JsonVirtualTree.class );
     }
 
     private static boolean isJava8() {
