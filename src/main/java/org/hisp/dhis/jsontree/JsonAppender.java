@@ -159,11 +159,12 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addMember( String name, JsonNode value ) {
-        if ( config.excludeNullMembers() && value.getType() == JsonNodeType.NULL )
+        JsonNodeType type = value.getType();
+        if ( config.excludeNullMembers() && type == JsonNodeType.NULL )
             return this;
-        if ( config.retainOriginalDeclaration() )
+        if ( config.retainOriginalDeclaration() || type.isSimple() )
             return addRawMember( name, value.getDeclaration() );
-        return switch ( value.getType() ) {
+        return switch ( type ) {
             case OBJECT ->
                 addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
             case ARRAY -> addArray( name, arr -> value.elements().forEach( arr::addElement ) );
@@ -283,9 +284,10 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonArrayBuilder addElement( JsonNode value ) {
-        if ( config.retainOriginalDeclaration() )
+        JsonNodeType type = value.getType();
+        if ( config.retainOriginalDeclaration() || type.isSimple())
             return addRawElement( value.getDeclaration() );
-        return switch ( value.getType() ) {
+        return switch ( type ) {
             case OBJECT ->
                 addObject( obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
             case ARRAY -> addArray( arr -> value.elements().forEach( arr::addElement ) );
