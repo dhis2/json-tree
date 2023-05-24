@@ -58,7 +58,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     private final Consumer<CharSequence> appendStr;
     private final CharConsumer appendChar;
     private final Supplier<String> toStr;
-    private final boolean[] addedByLevel = new boolean[128];
+    private final boolean[] hasChildrenAtLevel = new boolean[128];
 
     private int level = 0;
     private String indentLevel = "";
@@ -91,8 +91,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     private void appendCommaWhenNeeded() {
-        if ( !addedByLevel[level] ) {
-            addedByLevel[level] = true;
+        if ( !hasChildrenAtLevel[level] ) {
+            hasChildrenAtLevel[level] = true;
         } else {
             append( ',' );
         }
@@ -109,16 +109,15 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     private void beginLevel( char c ) {
-        if ( indent ) append( indentLevel );
         append( c );
-        addedByLevel[++level] = false;
+        hasChildrenAtLevel[++level] = false;
         indentLevel = "\n" + indent1.repeat( level );
     }
 
     private void endLevel( char c ) {
         level--;
         indentLevel = "\n" + indent1.repeat( level );
-        if ( indent ) append( indentLevel );
+        if ( indent && hasChildrenAtLevel[level + 1] ) append( indentLevel );
         append( c );
     }
 
@@ -160,8 +159,17 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addMember( String name, JsonNode value ) {
-        //FIXME handle pretty print
-        return addRawMember( name, value.getDeclaration() );
+        if ( config.retainOriginalDeclaration() )
+            return addRawMember( name, value.getDeclaration() );
+        return switch ( value.getType() ) {
+            case OBJECT ->
+                addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+            case ARRAY -> addArray( name, arr -> value.elements().forEach( arr::addElement ) );
+            case NUMBER -> addNumber( name, (Number) value.value() );
+            case STRING -> addString( name, (String) value.value() );
+            case BOOLEAN -> addBoolean( name, (Boolean) value.value() );
+            case NULL -> addBoolean( name, null );
+        };
     }
 
     @Override
@@ -271,24 +279,15 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     public JsonArrayBuilder addElement( JsonNode value ) {
         if ( config.retainOriginalDeclaration() )
             return addRawElement( value.getDeclaration() );
-        appendCommaWhenNeeded();
-        prettyPrint( value );
-        return this;
-    }
-
-    private void prettyPrint( JsonNode value ) {
-        switch ( value.getType() ) {
-            case OBJECT -> {
+        return switch ( value.getType() ) {
+            case OBJECT ->
                 addObject( obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
-            }
-            case ARRAY -> {
-                addArray( arr -> value.elements().forEach( arr::addElement ) );
-            }
-            case NUMBER -> {addNumber( (Number) value.value() );}
-            case STRING -> {addString( (String) value.value() );}
-            case BOOLEAN -> {addBoolean( (Boolean) value.value() );}
-            case NULL -> {addRawElement( "null" );}
-        }
+            case ARRAY -> addArray( arr -> value.elements().forEach( arr::addElement ) );
+            case NUMBER -> addNumber( (Number) value.value() );
+            case STRING -> addString( (String) value.value() );
+            case BOOLEAN -> addBoolean( (Boolean) value.value() );
+            case NULL -> addRawElement( "null" );
+        };
     }
 
     @Override
