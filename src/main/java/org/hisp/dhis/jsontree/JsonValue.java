@@ -67,7 +67,7 @@ public interface JsonValue {
     /**
      * Constant for JSON {@code null} value.
      */
-    JsonValue NULL = JsonResponse.NULL;
+    JsonValue NULL = JsonVirtualTree.NULL;
 
     /**
      * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
@@ -76,7 +76,7 @@ public interface JsonValue {
      * @return the provided {@link JsonNode} as virtual {@link JsonValue}
      */
     static JsonValue of( JsonNode node ) {
-        return node == null ? NULL : of( node.getDeclaration() );
+        return node == null ? NULL : JsonMixed.of( node );
     }
 
     /**
@@ -99,7 +99,7 @@ public interface JsonValue {
      * @return virtual JSON tree root {@link JsonValue}
      */
     static JsonValue of( String json, JsonTypedAccessStore store ) {
-        return json == null || "null".equals( json ) ? NULL : new JsonResponse( json, store );
+        return json == null || "null".equals( json ) ? NULL : JsonMixed.of( json, store );
     }
 
     /**

@@ -118,6 +118,12 @@ class JsonAppenderTest {
     }
 
     @Test
+    void testObject_StringNull() {
+        assertJson( "{'s':null}", JsonBuilder.createObject( obj -> obj
+            .addString( "s", null ) ) );
+    }
+
+    @Test
     void testArray_String() {
         assertJson( "['hello']", JsonBuilder.createArray( arr -> arr
             .addString( "hello" ) ) );
@@ -251,6 +257,12 @@ class JsonAppenderTest {
     void testObject_JsonNode() {
         assertJson( "{'node':['a','b']}", JsonBuilder.createObject( obj -> obj
             .addMember( "node", JsonNode.of( "[\"a\",\"b\"]" ) ) ) );
+    }
+
+    @Test
+    void testObject_JsonNodeNull() {
+        assertJson( "{'node':null}", JsonBuilder.createObject( obj -> obj
+            .addMember( "node", JsonNode.NULL ) ) );
     }
 
     @Test

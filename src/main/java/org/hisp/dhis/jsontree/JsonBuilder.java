@@ -60,9 +60,25 @@ import static java.util.stream.StreamSupport.stream;
  */
 public interface JsonBuilder {
 
-    PrettyPrint MINIMIZED = new PrettyPrint( 0, 0, false, true );
+    PrettyPrint MINIMIZED = new PrettyPrint( 0, 0, false, true, false );
 
-    record PrettyPrint(int indentSpaces, int indentTabs, boolean spaceAfterColon, boolean retainOriginalDeclaration) {}
+    /**
+     * Pretty-printing configuration for the {@link JsonBuilder}.
+     * <p>
+     * If spaces and tabs are used the indent will first have tabs, then spaces.
+     *
+     * @param indentSpaces              number of spaces to use when indenting nested object members or array elements
+     * @param indentTabs                number of tabs to use when indenting nested object members or array elements
+     * @param spaceAfterColon           when true, the colon between member name and value has a space between the colon
+     *                                  and the member value
+     * @param retainOriginalDeclaration when true, elements or members provided as {@link JsonNode}s are kept "as is",
+     *                                  that means their JSON is included as returned by
+     *                                  {@link JsonNode#getDeclaration()}. When false their JSON is reformatted to
+     *                                  adhere to the pretty-printing configuration.
+     * @param excludeNullMembers        when true, null members are ommitted
+     */
+    record PrettyPrint(int indentSpaces, int indentTabs, boolean spaceAfterColon, boolean retainOriginalDeclaration,
+                       boolean excludeNullMembers) {}
 
     /**
      * Convenience method for ad-hoc creation of JSON object {@link JsonNode}. Use {@link JsonNode#getDeclaration()} to

@@ -75,7 +75,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
         Supplier<String> toStr ) {
         this.config = config;
         this.indent = config.indentSpaces() > 0 || config.indentTabs() > 0;
-        this.indent1 = " ".repeat( config.indentSpaces() ) + "\t".repeat( config.indentTabs() );
+        this.indent1 = "\t".repeat( config.indentTabs() ) + " ".repeat( config.indentSpaces() );
         this.colon = config.spaceAfterColon() ? ": " : ":";
         this.appendStr = appendStr;
         this.appendChar = appendChar;
@@ -159,6 +159,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addMember( String name, JsonNode value ) {
+        if ( config.excludeNullMembers() && value.getType() == JsonNodeType.NULL )
+            return this;
         if ( config.retainOriginalDeclaration() )
             return addRawMember( name, value.getDeclaration() );
         return switch ( value.getType() ) {
@@ -179,6 +181,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addBoolean( String name, Boolean value ) {
+        if ( value == null && config.excludeNullMembers() ) return this;
         return addRawMember( name, value == null ? "null" : value ? "true" : "false" );
     }
 
@@ -199,11 +202,14 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addNumber( String name, Number value ) {
+        if ( value == null && config.excludeNullMembers() ) return this;
         return addRawMember( name, value == null ? "null" : value.toString() );
     }
 
     @Override
     public JsonObjectBuilder addString( String name, String value ) {
+        if ( value == null && config.excludeNullMembers() ) return this;
+        if ( value == null ) return addRawMember( name, "null" );
         appendCommaWhenNeeded();
         append( '"' );
         append( name );

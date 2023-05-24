@@ -82,7 +82,7 @@ class JsonExpectedTest {
     void testIsA() {
         assertTrue( createJSON( "{'bar':'x'}" ).isA( JsonFoo.class ) );
         assertTrue( createJSON( "{'key':'x', 'value': 1}" ).isA( JsonEntry.class ) );
-        JsonResponse both = createJSON( "{'key':'x', 'value': 1, 'bar':'y'}" );
+        JsonMixed both = createJSON( "{'key':'x', 'value': 1, 'bar':'y'}" );
         assertTrue( both.isA( JsonFoo.class ) );
         assertTrue( both.isA( JsonEntry.class ) );
     }
@@ -192,7 +192,7 @@ class JsonExpectedTest {
         assertTrue( of.isInstance( obj ) );
     }
 
-    private static JsonResponse createJSON( String content ) {
-        return new JsonResponse( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
+    private static JsonMixed createJSON( String content ) {
+        return JsonMixed.of( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }
