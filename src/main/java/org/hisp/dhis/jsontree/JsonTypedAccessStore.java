@@ -62,7 +62,7 @@ public interface JsonTypedAccessStore {
     interface JsonGenericTypedAccessor<T> {
 
         /**
-         * Accesses value the path as the target type.
+         * Accesses value at the path as the target type.
          *
          * @param from  the parent object containing the value at path
          * @param path  path to access the value

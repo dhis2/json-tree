@@ -61,6 +61,7 @@ package org.hisp.dhis.jsontree;
  * </ul>
  *
  * @author Jan Bernitt
+ * @see JsonMixed
  */
 public interface JsonValue {
 

@@ -8,28 +8,27 @@ See [CONTRIBUTING.md]() for information about contributing and maintaining this 
 
 ## Virtual vs Actual Tree
 
-A `JsonResponse` is a **virtual** tree of `JsonValue` nodes:
-
-* `JsonObject`
-* `JsonArray`
-* `JsonNumber`
-* `JsonString`
-* `JsonBoolean`
-* `JsonNull`
+A `JsonVirtualTree` is a **virtual** tree of `JsonValue` nodes, each type
+with a node type specific interface.
 
 Underlying implementation of the actual JSON document is the `JsonTree`
 which exposes all node types as `JsonNode`.
 
-| `JsonValue` API | `JsonNode` API |
-| --------------- | -------------- |
-| `JsonValue#node()` =>  | <= `JsonValue.of(node)` |
-| **virtual** 👻  | **actual** ☠️   |
-| high level abstraction | low level abstraction |
-| what we expect we got back | what we actually got back |
-| navigation without requiring existence (no exceptions) | navigation demands existence (otherwise throws exceptions) |
-| extendable tree API | non-extendable tree API |
+| `JsonValue` API                                                      | `JsonNode` API                                             |
+|----------------------------------------------------------------------|------------------------------------------------------------|
+| `JsonValue#node()` =>                                                | <= `JsonValue.of(node)`                                    |
+| **virtual** 👻                                                       | **actual** ☠️                                              |
+| high level abstraction                                               | low level abstraction                                      |
+| the JSON assumed                                                     | the actual JSON                                            |
+| navigation without requiring existence (no exceptions)               | navigation demands existence (otherwise throws exceptions) |
+| extendable tree API                                                  | non-extendable tree API                                    |
+| `JsonObject`, `JsonArray`, `JsonNumber`, `JsonString`, `JsonBoolean` | `JsonNode` + `JsonNodeType`                                |
+| `JsonValue` (API all above have in common)                           | `JsonNode`                                                 |
+| `JsonMixed` (API of all above togehter)                              | `JsonNode`                                                 |
+| read-only (with views)                                               | immutable (transformations to new trees)                   |
+| extendable user type mapping (see `JsonTypedAccessStore`)            | build in mapping to JDK types                              |
 
-"Casting" to Node Types
+"Casting" to Node Types (casting does not check that actual document matches the target)
 
 * `JsonValue   as(Class<T extends JsonValue> type)`
 * `JsonList<T> asList(Class<T extends JsonValue> type)`
@@ -52,7 +51,7 @@ Drilling down...
     // or
     JsonString str=root.getString("a.b[3]")
 
-Traversing **actual** tree to find nodes
+Traversing the **actual** tree to find nodes
 
 * `JsonValue#node()`: from virtual to actual JSON tree 🗱
 * `JsonObect#find`: return first matching `JsonValue`
