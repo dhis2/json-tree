@@ -102,7 +102,9 @@ final class JsonTree implements Serializable {
 
         @Override
         public final String getDeclaration() {
-            return new String( tree.json, start, endIndex() - start );
+            return path.isEmpty() // avoid parse caused by endIndex() if root
+                ? new String( tree.json )
+                : new String( tree.json, start, endIndex() - start );
         }
 
         @Override

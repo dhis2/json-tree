@@ -80,6 +80,9 @@ public interface JsonNode extends Serializable {
 
     /**
      * Create a new lazily parsed {@link JsonNode} document.
+     * <p>
+     * JSON format issues are first encountered when the part of the document is accessed or skipped as part of working
+     * with the tree.
      *
      * @param json a JSON value/document
      * @return given document as {@link JsonNode} API
