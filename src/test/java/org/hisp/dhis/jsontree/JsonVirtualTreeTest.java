@@ -300,7 +300,7 @@ class JsonVirtualTreeTest {
     @Test
     void testToString_MalformedJson() {
         JsonMap<JsonNumber> map = createJSON( "{'a:12}" ).asMap( JsonNumber.class );
-        assertEquals( "Expected \" but reach EOI: {\"a:12}", map.toString() );
+        assertEquals( "Expected \" but reach EOI: {\"a:12}", map.get( "a" ).toString() );
     }
 
     private static JsonMixed createJSON( String content ) {
