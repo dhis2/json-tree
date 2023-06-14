@@ -218,7 +218,7 @@ public interface JsonObject extends JsonCollection {
             }
         } );
         return match.isEmpty()
-            ? JsonValue.NULL.as( type )
+            ? JsonVirtualTree.NULL.as( type )
             : JsonValue.of( match.get().getDeclaration() ).asObject().asObject( type );
     }
 

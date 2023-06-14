@@ -66,18 +66,13 @@ package org.hisp.dhis.jsontree;
 public interface JsonValue {
 
     /**
-     * Constant for JSON {@code null} value.
-     */
-    JsonValue NULL = JsonVirtualTree.NULL;
-
-    /**
      * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
      *
      * @param node non null
      * @return the provided {@link JsonNode} as virtual {@link JsonValue}
      */
     static JsonValue of( JsonNode node ) {
-        return node == null ? NULL : JsonMixed.of( node );
+        return node == null ? JsonVirtualTree.NULL : JsonMixed.of( node );
     }
 
     /**
@@ -100,7 +95,7 @@ public interface JsonValue {
      * @return virtual JSON tree root {@link JsonValue}
      */
     static JsonValue of( String json, JsonTypedAccessStore store ) {
-        return json == null || "null".equals( json ) ? NULL : JsonMixed.of( json, store );
+        return json == null || "null".equals( json ) ? JsonVirtualTree.NULL : JsonMixed.of( json, store );
     }
 
     /**
