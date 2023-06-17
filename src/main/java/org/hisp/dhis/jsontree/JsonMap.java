@@ -29,6 +29,7 @@ package org.hisp.dhis.jsontree;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toUnmodifiableSet;
@@ -54,11 +55,21 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
     /**
      * @return The keys of this map.
      * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
-     * @throws UnsupportedOperationException    in case this node does exist but is not an object node
+     * @throws JsonTreeException    in case this node does exist but is not an object node
      */
     default Set<String> keys() {
         return stream( node().members().spliterator(), false )
             .map( Map.Entry::getKey ).collect( toUnmodifiableSet() );
+    }
+
+    /**
+     * @since 0.10
+     * @param action call with each entry in the map in order of their declaration
+     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonTreeException    in case this node does exist but is not an object node
+     */
+    default void forEach( BiConsumer<String, ? super E> action) {
+        keys().forEach( key -> action.accept( key, get( key ) ) );
     }
 
     /**
@@ -81,6 +92,11 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
             @Override
             public V get( String key ) {
                 return memberToX.apply( viewed.get( key ) );
+            }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonMap.class;
             }
         }
         return new JsonMapView( this );

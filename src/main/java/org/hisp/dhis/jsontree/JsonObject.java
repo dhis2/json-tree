@@ -42,7 +42,7 @@ import static java.util.Arrays.stream;
 /**
  * Represents a JSON object node.
  * <p>
- * As all nodes are mere views or virtual field access will never throw a {@link java.util.NoSuchElementException}.
+ * As all nodes are mere views or virtual field access will never throw a {@link NoSuchElementException}.
  * Whether a field with a given name exists is determined first when {@link JsonValue#exists()} or other value accessing
  * operations are performed on a node.
  *
@@ -67,18 +67,30 @@ public interface JsonObject extends JsonCollection {
      *
      * @param names a set of member names that should exist
      * @return true if this object has (at least) all the given names
-     * @throws UnsupportedOperationException in case this value is not an JSON object
+     * @throws JsonTreeException in case this value is not an JSON object
      */
     default boolean has( String... names ) {
-        return stream( names ).allMatch( name -> get( name ).exists() );
+        return has( List.of(names) );
+    }
+
+    /**
+     * Test an object for member names.
+     *
+     * @since 0.10
+     * @param names a set of member names that should exist
+     * @return true if this object has (at least) all the given names
+     * @throws JsonTreeException in case this value is not an JSON object
+     */
+    default boolean has(List<String> names) {
+        return names.stream().allMatch( name -> get( name ).exists() );
     }
 
     /**
      * Lists JSON object member names in order of declaration.
      *
      * @return The list of member names in the order they were defined.
-     * @throws UnsupportedOperationException    in case this value is not an JSON object
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonTreeException    in case this value is not an JSON object
+     * @throws NoSuchElementException in case this value does not exist in the JSON document
      */
     default List<String> names() {
         return StreamSupport.stream( node().members().spliterator(), false ).map( Map.Entry::getKey ).toList();
@@ -242,6 +254,11 @@ public interface JsonObject extends JsonCollection {
             @Override
             public <T extends JsonValue> T get( String name, Class<T> as ) {
                 return memberToX.apply( viewed.get( name ) ).as( as );
+            }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonObject.class;
             }
         }
         return new JsonObjectView( this );

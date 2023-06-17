@@ -35,7 +35,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -163,7 +162,7 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
     }
 
     default Iterable<E> filtered( Predicate<? super E> filter ) {
-        return stream().filter( filter ).collect( Collectors.toList() );
+        return stream().filter( filter ).toList();
     }
 
     /**
@@ -185,7 +184,7 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
      * @see #toList(Function, Object)
      */
     default <T> List<T> toList( Function<E, T> toValue ) {
-        return stream().map( toValue ).collect( Collectors.toList() );
+        return stream().map( toValue ).toList();
     }
 
     /**
@@ -244,6 +243,11 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
             @Override
             public V get( int index ) {
                 return elementToX.apply( viewed.get( index ) );
+            }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonList.class;
             }
         }
         return new JsonListView( this );

@@ -226,6 +226,8 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
+     * The members are iterated in order of declaration in the underlying document.
      *
      * @return this {@link #value()} as a sequence of {@link Entry}
      * @throws JsonTreeException if this node is not an object node that could have members
@@ -236,6 +238,8 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
+     * The members are iterated in order of declaration in the underlying document.
      *
      * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
      *                   keeping references to them further on so GC can pick em up
@@ -263,6 +267,8 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
+     * <p>
+     * The elements are iterated in the order declared in the underlying JSON document.
      *
      * @return this {@link #value()} as as {@link Stream}
      * @throws JsonTreeException if this node is not an array node that could have elements
@@ -273,6 +279,8 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
+     * <p>
+     * The elements are iterated in the order declared in the underlying JSON document.
      *
      * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
      *                   keeping references to them further on so GC can pick em up
@@ -375,7 +383,7 @@ public interface JsonNode extends Serializable {
      * @return This node as a new independent JSON document where this node is the new root of that document.
      */
     default JsonNode extract() {
-        return of( getDeclaration() );
+        return isRoot() ? this : of( getDeclaration() );
     }
 
     /**

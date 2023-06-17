@@ -71,6 +71,11 @@ public interface JsonCollection extends JsonValue {
             public E get( int index ) {
                 return array.get( index, as );
             }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonList.class;
+            }
         }
         return new ListView( array );
     }
@@ -86,6 +91,11 @@ public interface JsonCollection extends JsonValue {
             public E get( String key ) {
                 return viewed.get( key, as );
             }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonMap.class;
+            }
         }
         return new MapView( object );
     }
@@ -100,6 +110,11 @@ public interface JsonCollection extends JsonValue {
             @Override
             public JsonList<E> get( String key ) {
                 return viewed.getList( key, as );
+            }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonMultiMap.class;
             }
         }
         return new MultiMapView( object );

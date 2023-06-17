@@ -40,6 +40,15 @@ public interface JsonNumber extends JsonPrimitive {
      */
     Number number();
 
+    /**
+     * @since 0.10
+     * @return numeric value as integer (potentially dropping any fractions) or {@code null} if this property is
+     * undefined or defined as JSON {@code null}.
+     */
+    default Integer integer() {
+        return exists() ? intValue() : null;
+    }
+
     @SuppressWarnings( "unchecked" )
     default <T extends Number> T number( T orDefault ) {
         return exists() ? (T) number() : orDefault;

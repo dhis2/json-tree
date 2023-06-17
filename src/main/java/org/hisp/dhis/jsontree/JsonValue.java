@@ -99,6 +99,16 @@ public interface JsonValue {
     }
 
     /**
+     * If the {@link JsonValue} is not yet proxied, that means it is the unchanged underlying virtual tree, the returned
+     * type is {@link JsonMixed}.
+     *
+     * @return The type the current proxy represents. OBS! This is not necessarily the type of the actual JSON value in
+     * the document, just the type that was requested programmatically.
+     * @since 0.10
+     */
+    Class<? extends JsonValue> asType();
+
+    /**
      * A property exists when it is part of the JSON response. This means it can be declared JSON {@code null}. Only a
      * path that does not exist returns false.
      *
@@ -123,13 +133,44 @@ public interface JsonValue {
      * @return true if the value exists and is a JSON array node (empty or not) but not JSON {@code null}
      * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
      */
-    boolean isArray();
+    default boolean isArray() {
+        return node().getType() == JsonNodeType.ARRAY;
+    }
 
     /**
      * @return true if the value exists and is an JSON object node (empty or not) but not JSON {@code null}
      * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
      */
-    boolean isObject();
+    default boolean isObject() {
+        return node().getType() == JsonNodeType.OBJECT;
+    }
+
+    /**
+     * @since 0.10
+     * @return true if the value exists and is an JSON number node (not JSON {@code null})
+     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     */
+    default boolean isNumber() {
+        return node().getType() == JsonNodeType.NUMBER;
+    }
+
+    /**
+     * @since 0.10
+     * @return true if the value exists and is an JSON string node (not JSON {@code null})
+     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     */
+    default boolean isString() {
+        return node().getType() == JsonNodeType.STRING;
+    }
+
+    /**
+     * @since 0.10
+     * @return true if the value exists and is an JSON boolean node (not JSON {@code null})
+     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     */
+    default boolean isBoolean() {
+        return node().getType() == JsonNodeType.BOOLEAN;
+    }
 
     /**
      * "Cast" this JSON value to a more specific type. Note that any type can be switched to any other type. Types here

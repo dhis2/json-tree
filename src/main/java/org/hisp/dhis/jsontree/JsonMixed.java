@@ -17,7 +17,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @return the provided {@link JsonNode} as virtual {@link JsonValue}
      */
     static JsonMixed of( JsonNode node ) {
-        return new JsonVirtualTree( node, JsonTypedAccess.GLOBAL );
+        return new JsonVirtualTree( node.extract(), JsonTypedAccess.GLOBAL );
     }
 
     /**

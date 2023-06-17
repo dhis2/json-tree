@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -65,8 +66,8 @@ class JsonVirtualTreeTest {
         assertFalse( response.has( "no-a-member" ) );
         assertFalse( createJSON( "[]" ).getObject( "undefined" ).has( "foo" ) );
         JsonObject bar = response.getObject( "users" ).getObject( "bar" );
-        Exception ex = assertThrows( UnsupportedOperationException.class, () -> bar.has( "is-array" ) );
-        assertEquals( "Path `$.users.bar` does not contain a OBJECT but a(n) ARRAY: []", ex.getMessage() );
+        Exception ex = assertThrowsExactly( JsonTreeException.class, () -> bar.has( "is-array" ) );
+        assertEquals( "Path `$.users.bar` does not contain an OBJECT but a(n) ARRAY: []", ex.getMessage() );
     }
 
     @Test

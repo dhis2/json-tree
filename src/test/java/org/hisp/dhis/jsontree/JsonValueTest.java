@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
- * Tests the static helpers of {@link JsonValue}.
+ * Tests the static helpers of {@link JsonValue} and the basic {@link JsonValue} API methods.
  *
  * @author Jan Bernitt
  */
@@ -47,5 +47,13 @@ class JsonValueTest {
         assertNotNull( value );
         assertEquals( "{\"foo\":\"bar\"}", value.toString() );
         assertSame( node, value.node() );
+    }
+
+    @Test
+    void testAsType() {
+        JsonValue value = JsonMixed.of( "\"http://example.com\"" );
+        assertSame( JsonMixed.class, value.asType() );
+        assertSame( JsonMixed.class, value.as( JsonArray.class ).asType() );
+        assertSame( JsonURL.class, value.as( JsonURL.class ).asType() );
     }
 }
