@@ -67,15 +67,16 @@ public interface JsonBuilder {
      * <p>
      * If spaces and tabs are used the indent will first have tabs, then spaces.
      *
-     * @param indentSpaces              number of spaces to use when indenting nested object members or array elements
-     * @param indentTabs                number of tabs to use when indenting nested object members or array elements
-     * @param spaceAfterColon           when true, the colon between member name and value has a space between the colon
-     *                                  and the member value
-     * @param retainOriginalDeclaration when true, elements or members provided as {@link JsonNode}s are kept "as is",
-     *                                  that means their JSON is included as returned by
+     * @param indentSpaces              number of spaces to use when indenting nested object properties or array
+     *                                  elements
+     * @param indentTabs                number of tabs to use when indenting nested object properties or array elements
+     * @param spaceAfterColon           when true, the colon between property name and value has a space between the
+     *                                  colon and the property value
+     * @param retainOriginalDeclaration when true, elements or properties provided as {@link JsonNode}s are kept "as
+     *                                  is", that means their JSON is included as returned by
      *                                  {@link JsonNode#getDeclaration()}. When false their JSON is reformatted to
      *                                  adhere to the pretty-printing configuration.
-     * @param excludeNullMembers        when true, null members are ommitted
+     * @param excludeNullMembers        when true, null object properties are omitted
      */
     record PrettyPrint(int indentSpaces, int indentTabs, boolean spaceAfterColon, boolean retainOriginalDeclaration,
                        boolean excludeNullMembers) {}
@@ -84,7 +85,7 @@ public interface JsonBuilder {
      * Convenience method for ad-hoc creation of JSON object {@link JsonNode}. Use {@link JsonNode#getDeclaration()} to
      * get the JSON {@link String}.
      *
-     * @param obj builder to add members of the created JSON object
+     * @param obj builder to add properties to the created JSON object
      * @return created JSON object {@link JsonNode}
      * @since 0.2
      */
@@ -169,7 +170,7 @@ public interface JsonBuilder {
     /**
      * Define a {@link JsonNode} that is a {@link JsonObject}.
      *
-     * @param obj fluent API to define the members of the JSON object created
+     * @param obj fluent API to define the properties of the JSON object created
      * @return the {@link JsonNode} representing the created object, might return {@code null} in case the content is
      * only written to an output stream and cannot be accessed as {@link JsonNode} value
      */
@@ -210,18 +211,18 @@ public interface JsonBuilder {
         void addTo( JsonArrayBuilder builder, Object value );
 
         /**
-         * Adds a POJO java object as the currently built object or if a name is provided as a member within that built
-         * object.
+         * Adds a POJO java object as the currently built object or if a name is provided as a property within that
+         * built object.
          *
-         * @param builder to use to append the POJO fields as member field(s)
-         * @param name    name of the field in JSON or {@code null} if the POJO fields should become the member fields
-         * @param value   the POJO to append as an object or member
+         * @param builder to use to append the POJO fields as properties
+         * @param name    name of the field in JSON or {@code null} if the POJO fields should become the properties
+         * @param value   the POJO to append as an object or property
          */
         void addTo( JsonObjectBuilder builder, String name, Object value );
     }
 
     /**
-     * Builder API to add members to JSON object node.
+     * Builder API to add properties to JSON object node.
      *
      * @author Jan Bernitt
      */

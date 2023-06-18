@@ -405,7 +405,7 @@ final class JsonTree implements Serializable {
             int skipN = predecessor != null ? 0 : index;
             int startIndex = predecessor == null ? 0 : index - 1;
             return tree.nodesByPath.computeIfAbsent( path + '[' + index + ']',
-                key -> tree.autoDetect( key, skipWhitespace( json, skipElements( json, s, skipN,
+                key -> tree.autoDetect( key, skipWhitespace( json, skipToElement( skipN, json, s,
                     skipped -> checkIndexExists( this, skipped + startIndex, key ) ) ) ) );
         }
 
@@ -446,6 +446,20 @@ final class JsonTree implements Serializable {
                     return e;
                 }
             };
+        }
+
+        private static int skipToElement( int n, char[] json, int index, IntConsumer onEndOfArray ) {
+            int elementsToSkip = n;
+            while ( elementsToSkip > 0 && index < json.length && json[index] != ']' ) {
+                index = skipWhitespace( json, index );
+                index = skipNodeAutodetect( json, index );
+                index = expectCommaSeparatorOrEnd( json, index, ']' );
+                elementsToSkip--;
+            }
+            if ( json[index] == ']' ) {
+                onEndOfArray.accept( n - elementsToSkip );
+            }
+            return index;
         }
     }
 
@@ -496,6 +510,7 @@ final class JsonTree implements Serializable {
         record Span(String value, int endIndex) {}
 
         static Span parseString( char[] json, int start ) {
+            //TODO make this a shared builder for performance
             StringBuilder str = new StringBuilder();
             int index = start;
             index = expectChar( json, index, '"' );
@@ -578,8 +593,9 @@ final class JsonTree implements Serializable {
 
     private final HashMap<String, JsonNode> nodesByPath = new HashMap<>();
 
-    JsonTree( String json ) {
+    JsonTree( String json, boolean lenient ) {
         this.json = json.toCharArray();
+        if ( lenient ) adjustToStandard();
         nodesByPath.put( "", autoDetect( "", skipWhitespace( this.json, 0 ) ) );
     }
 
@@ -753,20 +769,6 @@ final class JsonTree implements Serializable {
         return expectChar( json, index, ']' );
     }
 
-    private static int skipElements( char[] json, int index, int skipN, IntConsumer onEndOfArray ) {
-        int elementsToSkip = skipN;
-        while ( elementsToSkip > 0 && index < json.length && json[index] != ']' ) {
-            index = skipWhitespace( json, index );
-            index = skipNodeAutodetect( json, index );
-            index = expectCommaSeparatorOrEnd( json, index, ']' );
-            elementsToSkip--;
-        }
-        if ( json[index] == ']' ) {
-            onEndOfArray.accept( skipN - elementsToSkip );
-        }
-        return index;
-    }
-
     private static int expectColonSeparator( char[] json, int index ) {
         return skipWhitespace( json, expectChar( json, skipWhitespace( json, index ), ':' ) );
     }
@@ -914,4 +916,69 @@ final class JsonTree implements Serializable {
         return new String( json, max( 0, min( json.length, index ) - 20 ), min( 20, json.length ) );
     }
 
+    /*
+    Adjusting non-standard conform JSON to standard conform JSON.
+    The actual parser only accepts standard conform JSON input.
+    The lenient parsing is implemented by rewriting the input to be standard conform.
+     */
+
+    /**
+     * Skips through the input and switches single quotes of string values and member names to double quotes.
+     */
+    private void adjustToStandard() {
+        adjustNodeAutodetect( json, 0 );
+    }
+
+    static int adjustNodeAutodetect( char[] json, int atIndex ) {
+        return switch ( json[atIndex] ) {
+            case '{' -> // object node
+                adjustObject( json, atIndex );
+            case '[' -> // array node
+                adjustArray( json, atIndex );
+            case '\'' -> adjustString( json, atIndex );
+            case '"' -> // string node
+                skipString( json, atIndex ); // true => boolean node
+            case 't', 'f' -> // false => boolean node
+                skipBoolean( json, atIndex );
+            case 'n' -> // null node
+                skipNull( json, atIndex );
+            default -> // must be number node then...
+                skipNumber( json, atIndex );
+        };
+    }
+
+    static int adjustObject( char[] json, int fromIndex ) {
+        int index = fromIndex;
+        index = expectChar( json, index, '{' );
+        index = skipWhitespace( json, index );
+        while ( index < json.length && json[index] != '}' ) {
+            index = adjustString( json, index );
+            index = expectColonSeparator( json, index );
+            index = adjustNodeAutodetect( json, index );
+            index = expectCommaSeparatorOrEnd( json, index, '}' );
+        }
+        return expectChar( json, index, '}' );
+    }
+
+    static int adjustArray( char[] json, int fromIndex ) {
+        int index = fromIndex;
+        index = expectChar( json, index, '[' );
+        index = skipWhitespace( json, index );
+        while ( index < json.length && json[index] != ']' ) {
+            index = adjustNodeAutodetect( json, index );
+            index = expectCommaSeparatorOrEnd( json, index, ']' );
+        }
+        return expectChar( json, index, ']' );
+    }
+
+    static int adjustString( char[] json, int fromIndex ) {
+        int index = fromIndex;
+        if ( json[index] == '"' ) return skipString( json, fromIndex );
+        index = expectChar( json, index, '\'' );
+        json[index - 1] = '"';
+        index = skipWhile( json, index, c -> c != '\'' );
+        index = expectChar( json, index, '\'' );
+        json[index - 1] = '"';
+        return index;
+    }
 }

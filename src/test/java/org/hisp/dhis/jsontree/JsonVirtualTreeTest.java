@@ -298,7 +298,14 @@ class JsonVirtualTreeTest {
 
     @Test
     void testToString_MalformedJson() {
-        JsonMap<JsonNumber> map = JsonMixed.ofNonStandard( "{'a:12}" ).asMap( JsonNumber.class );
+        JsonMap<JsonNumber> map = JsonMixed.of( "{\"a:12}" ).asMap( JsonNumber.class );
         assertEquals( "Expected \" but reach EOI: {\"a:12}", map.get( "a" ).toString() );
+    }
+
+    @Test
+    void testToString_MalformedNonStandardJson() {
+        JsonFormatException ex = assertThrowsExactly( JsonFormatException.class,
+            () -> JsonMixed.ofNonStandard( "{'a:12}" ) );
+        assertEquals( "Expected ' but reach EOI: {\"a:12}", ex.getMessage() );
     }
 }

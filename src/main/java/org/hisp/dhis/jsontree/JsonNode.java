@@ -79,17 +79,29 @@ public interface JsonNode extends Serializable {
     JsonNode EMPTY_ARRAY = JsonNode.of( "[]" );
 
     /**
-     * Create a new lazily parsed {@link JsonNode} document.
+     * Create a new lazily parsed {@link JsonNode} tree.
      * <p>
      * JSON format issues are first encountered when the part of the document is accessed or skipped as part of working
      * with the tree.
      *
-     * @param json a JSON value/document
-     * @return given document as {@link JsonNode} API
+     * @param json standard compliant JSON input
+     * @return given JSON input as {@link JsonNode}
      * @since 0.4
      */
     static JsonNode of( String json ) {
-        return new JsonTree( json ).get( "$" );
+        return new JsonTree( json, false ).get( "$" );
+    }
+
+    /**
+     * Create a new lazily parsed {@link JsonNode} tree.
+     * <p>
+     *
+     * @param json JSON input
+     * @return given JSON input as {@link JsonNode}
+     * @since 0.10
+     */
+    static JsonNode ofNonStandard( String json ) {
+        return new JsonTree( json, true ).get( "$" );
     }
 
     /**

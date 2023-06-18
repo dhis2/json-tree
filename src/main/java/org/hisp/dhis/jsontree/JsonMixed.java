@@ -43,6 +43,8 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
     }
 
     /**
+     * Uses a more lenient parser to read the provided JSON input.
+     * <p>
      * Beyond the standard this allows:
      * <ul>
      *     <li>single quoted strings (no escape)</li>
@@ -53,8 +55,6 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @since 0.10
      */
     static JsonMixed ofNonStandard( String json ) {
-        //TODO this simple replacement is quite naive, it would be nice if the parser on Node level
-        // had support for this
-        return JsonMixed.of( json.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
+        return new JsonVirtualTree( JsonNode.ofNonStandard( json ), JsonTypedAccess.GLOBAL );
     }
 }

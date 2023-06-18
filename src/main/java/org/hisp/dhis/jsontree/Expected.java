@@ -33,7 +33,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used to mark members in {@link JsonObject} that are expected to exist.
+ * Used to mark properties in a {@link JsonObject} that are expected to exist.
  * <p>
  * This can only be applied to methods without parameters.
  *
