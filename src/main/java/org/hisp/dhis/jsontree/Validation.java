@@ -15,15 +15,15 @@ import java.lang.annotation.Target;
  * Used on annotation types to define meta annotations for validations, for example a {@code @NonNegativeInteger}
  * annotation which would be annotated {@code @Validation(type=INTEGER, minimum=0)}.
  *
- * @since 0.10
  * @author Jan Bernitt
+ * @since 0.10
  */
 @Inherited
-@Target( {ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE} )
+@Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE } )
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Validation {
 
-    enum NodeType { NULL, BOOLEAN, OBJECT, ARRAY, STRING, NUMBER, INTEGER }
+    enum NodeType {NULL, BOOLEAN, OBJECT, ARRAY, STRING, NUMBER, INTEGER}
 
     /**
      * When annotated on a method this is assumed to be the property specific schema part.
@@ -134,7 +134,6 @@ public @interface Validation {
      * @return all elements in the array value must be unique
      */
     boolean uniqueItems() default false;
-
 
     int minContains() default -1;
 

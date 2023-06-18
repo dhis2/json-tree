@@ -153,9 +153,8 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
 
             @Override
             public E next() {
-                if ( !hasNext() ) {
-                    throw new NoSuchElementException();
-                }
+                if ( !hasNext() )
+                    throw new NoSuchElementException( "next() called without checking hasNext()" );
                 return get( index++ );
             }
         };
@@ -180,7 +179,6 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
      * @param <T>     type of result list elements
      * @return this list mapped to a {@link List} of elements mapped by the provided mapper function from the
      * {@link JsonValue}s of this {@link JsonList}. Undefined or JSON null is mapped to an empty list.
-     * @throws java.util.NoSuchElementException in case a source element {@link JsonValue} does not exist
      * @see #toList(Function, Object)
      */
     default <T> List<T> toList( Function<E, T> toValue ) {

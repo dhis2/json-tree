@@ -53,8 +53,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> 
      * @param mapper maps map list elements
      * @param <T>    type of map value list elements
      * @return this {@link JsonMultiMap} as {@link Map}
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
-     * @throws JsonTreeException    in case this node does exist but is not an object node
+     * @throws JsonTreeException in case this node does exist but is not an object node
      */
     default <T> Map<String, List<T>> toMap( Function<E, T> mapper ) {
         return toMap( mapper, null );
@@ -68,8 +67,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> 
      * @param order  comparison used to sort the lists representing the map values
      * @param <T>    type of map value list elements
      * @return this {@link JsonMultiMap} as {@link Map}
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
-     * @throws JsonTreeException    in case this node does exist but is not an object node
+     * @throws JsonTreeException in case this node does exist but is not an object node
      */
     default <T> Map<String, List<T>> toMap( Function<E, T> mapper, Comparator<T> order ) {
         if ( isUndefined() ) {

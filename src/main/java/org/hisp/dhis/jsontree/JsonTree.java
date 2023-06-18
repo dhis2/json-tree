@@ -305,7 +305,7 @@ final class JsonTree implements Serializable {
                 @Override
                 public Entry<String, JsonNode> next() {
                     if ( !hasNext() )
-                        throw new NoSuchElementException();
+                        throw new NoSuchElementException( "next() called without checking hasNext()" );
                     LazyJsonString.Span property = LazyJsonString.parseString( json, mStart );
                     String name = property.value();
                     String mPath = path + "." + name;
@@ -431,9 +431,8 @@ final class JsonTree implements Serializable {
 
                 @Override
                 public JsonNode next() {
-                    if ( !hasNext() ) {
-                        throw new NoSuchElementException();
-                    }
+                    if ( !hasNext() )
+                        throw new NoSuchElementException( "next() called without checking hasNext()" );
                     String ePath = path + '[' + n + "]";
                     JsonNode e = cacheNodes
                         ? nodesByPath.computeIfAbsent( ePath,

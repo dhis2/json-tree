@@ -31,9 +31,7 @@ import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -42,7 +40,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -132,16 +129,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         }
     }
 
-    private <T> T value( Function<JsonNode, T> get ) {
-        try {
-            return get.apply( root.get( path ) );
-        } catch ( JsonPathException | JsonFormatException ex ) {
-            throw noSuchElement( ex );
-        }
-    }
-
     private JsonNode value() {
-        return value( Function.identity() );
+        return root.get( path );
     }
 
     @Override
@@ -168,11 +157,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     @Override
     public <A, B> B mapNonNull( A from, Function<A, B> to ) {
         if ( from == null ) {
-            try {
-                root.get( path );
-            } catch ( JsonPathException ex ) {
-                throw noSuchElement( ex );
-            }
+            root.get( path ); // cause throw in case node does not exist
         }
         return to.apply( from );
     }
@@ -188,9 +173,9 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
-    public boolean has( String... names ) {
+    public boolean has( List<String> names ) {
         return Boolean.TRUE.equals( value( JsonNodeType.OBJECT,
-            node -> Stream.of( names ).allMatch( node::isMember ),
+            node -> names.stream().allMatch( node::isMember ),
             ex -> false ) );
     }
 
@@ -255,11 +240,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
-    public boolean isNull() {
-        return value().getType() == JsonNodeType.NULL;
-    }
-
-    @Override
     public boolean equals( Object obj ) {
         return obj instanceof JsonVirtualTree response
             && path.equals( response.path )
@@ -280,10 +260,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         }
     }
 
-    private NoSuchElementException noSuchElement( RuntimeException cause ) {
-        return new NoSuchElementException( cause );
-    }
-
     @SuppressWarnings( "unchecked" )
     private <E extends JsonValue> E createProxy( Class<E> as, JsonVirtualTree inner ) {
         return (E) Proxy.newProxyInstance(
@@ -291,7 +267,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             ( proxy, method, args ) -> {
                 // are we dealing with a default method in the extending class?
                 Class<?> declaringClass = method.getDeclaringClass();
-                if (declaringClass == JsonValue.class && "asType".equals( method.getName()) && method.getParameterCount() == 0) {
+                if ( declaringClass == JsonValue.class && "asType".equals( method.getName() )
+                    && method.getParameterCount() == 0 ) {
                     return as;
                 }
                 if ( isExtended( declaringClass ) ) {

@@ -45,7 +45,7 @@ public interface JsonPrimitive extends JsonValue {
      * @param <A>  input type
      * @param <B>  output type
      * @return input value of type A converted to type B by using the provided {@link Function}
-     * @throws java.util.NoSuchElementException in case input is {@code null} (which means this value was not defined)
+     * @throws JsonPathException in case input is {@code null} (which means this value was not defined)
      */
     <A, B> B mapNonNull( A from, Function<A, B> to );
 }

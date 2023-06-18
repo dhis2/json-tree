@@ -48,15 +48,15 @@ public interface JsonCollection extends JsonValue {
 
     /**
      * @return true, in case the collection exists but has no elements and is not {@code null}
-     * @throws java.util.NoSuchElementException in case this value does not exist in the content
-     * @throws IllegalArgumentException         in case the value does exist but is not a collection
+     * @throws JsonPathException in case this value does not exist
+     * @throws JsonTreeException in case the value does exist but is not a collection
      */
     boolean isEmpty();
 
     /**
      * @return the number of elements in the collection
-     * @throws java.util.NoSuchElementException in case this value does not exist in the content
-     * @throws IllegalArgumentException         in case the value does exist but is not a collection
+     * @throws JsonPathException in case this value does not exist
+     * @throws JsonTreeException in case the value does exist but is not a collection
      */
     int size();
 
@@ -146,21 +146,6 @@ public interface JsonCollection extends JsonValue {
         @Override
         public final boolean exists() {
             return viewed.exists();
-        }
-
-        @Override
-        public final boolean isNull() {
-            return viewed.isNull();
-        }
-
-        @Override
-        public final boolean isArray() {
-            return viewed.isArray();
-        }
-
-        @Override
-        public final boolean isObject() {
-            return viewed.isObject();
         }
 
         @Override

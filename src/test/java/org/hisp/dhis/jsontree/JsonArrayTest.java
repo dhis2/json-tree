@@ -58,7 +58,7 @@ class JsonArrayTest {
     @Test
     void testForEach_Empty() {
         JsonMixed array = JsonMixed.of( "[]" );
-        array.forEach( e -> fail("should never be called but was with: "+e) );
+        array.forEach( e -> fail( "should never be called but was with: " + e ) );
     }
 
     @Test
@@ -66,7 +66,7 @@ class JsonArrayTest {
         JsonMixed array = JsonMixed.of( "[1,2]" );
         List<Object> actual = new ArrayList<>();
         array.forEach( e -> actual.add( e.node().value() ) );
-        assertEquals( List.of(1,2), actual );
+        assertEquals( List.of( 1, 2 ), actual );
     }
 
     @Test

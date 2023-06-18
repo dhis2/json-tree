@@ -150,7 +150,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
     private static char accessChar( JsonObject obj, String path ) {
         String str = obj.getString( path ).string();
         if ( str == null || str.isEmpty() ) {
-            throw new NoSuchElementException( "No character for property " + path );
+            throw new JsonPathException( "No character for property " + path );
         }
         return str.charAt( 0 );
     }
@@ -253,9 +253,8 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
 
             @Override
             public Object next() {
-                if ( !hasNext() ) {
-                    throw new NoSuchElementException();
-                }
+                if ( !hasNext() )
+                    throw new NoSuchElementException( "next() called without checking hasNext()" );
                 Object value = elementAccess.access( from, path + "[" + i + "]", elementType, store );
                 i++;
                 return value;

@@ -1,9 +1,5 @@
-package org.hisp.dhis.jsontree.schema;
+package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonNodeType;
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 
 import java.util.Comparator;
@@ -12,7 +8,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Consumer;
 
-public class Validation {
+/**
+ * @author Jan Bernitt
+ * @since 0.10
+ */
+final class SchemaValidation {
 
     enum Type {
         TYPE, ENUM,
@@ -45,7 +45,7 @@ public class Validation {
         /**
          * Adds an error to the provided callback in case the provided value is not valid according to this check.
          *
-         * @param value the value to check
+         * @param value    the value to check
          * @param addError callback to add errors
          */
         void validate( JsonMixed value, Consumer<Error> addError );
@@ -73,8 +73,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            JsonNodeType type = value.node().getType();
-            Validator forType = switch ( type ) {
+            Validator forType = switch ( value.node().getType() ) {
                 case OBJECT -> anyOf.get( NodeType.OBJECT );
                 case ARRAY -> anyOf.get( NodeType.ARRAY );
                 case STRING -> anyOf.get( NodeType.STRING );
@@ -82,9 +81,9 @@ public class Validation {
                 case NULL -> anyOf.get( NodeType.NULL );
                 case NUMBER -> anyOf.get( NodeType.NUMBER );
             };
-            if (forType == null && type == JsonNodeType.NUMBER && value.number().doubleValue() %1d == 0d)
+            if ( forType == null && value.isInteger() )
                 forType = anyOf.get( NodeType.INTEGER );
-            if (forType == null) {
+            if ( forType == null ) {
                 addError.accept( Error.of( Type.TYPE, value, anyOf.keySet() ) );
             } else {
                 forType.validate( value, addError );
@@ -96,8 +95,8 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isObject()) value.asMap( JsonMixed.class ).forEach( (k,v) -> each.validate( v, addError ));
-            if (value.isArray()) value.asList( JsonMixed.class ).forEach( e -> each.validate( e, addError ) );
+            if ( value.isObject() ) value.asMap( JsonMixed.class ).forEach( ( k, v ) -> each.validate( v, addError ) );
+            if ( value.isArray() ) value.asList( JsonMixed.class ).forEach( e -> each.validate( e, addError ) );
         }
     }
 
@@ -105,7 +104,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (!constants.contains( value.node().getDeclaration() ))
+            if ( !constants.contains( value.node().getDeclaration() ) )
                 addError.accept( Error.of( Type.ENUM, value, constants ) );
         }
     }
@@ -114,7 +113,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isString() && !constants.contains( value.string() ))
+            if ( value.isString() && !constants.contains( value.string() ) )
                 addError.accept( Error.of( Type.ENUM, value, constants ) );
         }
     }
@@ -127,7 +126,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isString() && value.string().length() < limit)
+            if ( value.isString() && value.string().length() < limit )
                 addError.accept( Error.of( Type.MIN_LENGTH, value, limit ) );
         }
     }
@@ -136,7 +135,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isString() && value.string().length() > limit)
+            if ( value.isString() && value.string().length() > limit )
                 addError.accept( Error.of( Type.MAX_LENGTH, value, limit ) );
         }
     }
@@ -145,7 +144,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isString() && !value.string().matches( regex ))
+            if ( value.isString() && !value.string().matches( regex ) )
                 addError.accept( Error.of( Type.PATTERN, value, regex ) );
         }
     }
@@ -168,7 +167,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isNumber() && value.number().doubleValue() > limit)
+            if ( value.isNumber() && value.number().doubleValue() > limit )
                 addError.accept( Error.of( Type.MAXIMUM, value, limit ) );
         }
     }
@@ -186,7 +185,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isNumber() && value.number().doubleValue() >= limit)
+            if ( value.isNumber() && value.number().doubleValue() >= limit )
                 addError.accept( Error.of( Type.EXCLUSIVE_MAXIMUM, value, limit ) );
         }
     }
@@ -195,7 +194,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isNumber() && value.number().doubleValue() % n > 0d)
+            if ( value.isNumber() && value.number().doubleValue() % n > 0d )
                 addError.accept( Error.of( Type.MULTIPLE_OF, value, n ) );
         }
     }
@@ -208,8 +207,8 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isArray() && value.size() < count )
-                addError.accept( Error.of(Type.MIN_ITEMS, value, count) );
+            if ( value.isArray() && value.size() < count )
+                addError.accept( Error.of( Type.MIN_ITEMS, value, count ) );
         }
     }
 
@@ -217,7 +216,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isArray() && value.size() > count )
+            if ( value.isArray() && value.size() > count )
                 addError.accept( Error.of( Type.MAX_ITEMS, value, count ) );
         }
     }
@@ -226,11 +225,11 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isArray()) {
+            if ( value.isArray() ) {
                 List<String> elementsAsJson = value.asList( JsonValue.class ).toList( v -> v.node().getDeclaration() );
-                for (int i = 0; i < elementsAsJson.size(); i++) {
+                for ( int i = 0; i < elementsAsJson.size(); i++ ) {
                     int j = elementsAsJson.lastIndexOf( elementsAsJson.get( i ) );
-                    if ( j != i)
+                    if ( j != i )
                         addError.accept( Error.of( Type.UNIQUE_ITEMS, value, elementsAsJson.get( i ), i, j ) );
                 }
             }
@@ -245,7 +244,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isObject() && value.size() < limit)
+            if ( value.isObject() && value.size() < limit )
                 addError.accept( Error.of( Type.MIN_PROPERTIES, value, limit ) );
         }
     }
@@ -254,7 +253,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isObject() && value.size() > limit)
+            if ( value.isObject() && value.size() > limit )
                 addError.accept( Error.of( Type.MAX_PROPERTIES, value, limit ) );
         }
     }
@@ -263,7 +262,7 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isObject() && !value.has( properties ))
+            if ( value.isObject() && !value.has( properties ) )
                 addError.accept( Error.of( Type.REQUIRED, value, properties ) );
         }
     }
@@ -272,26 +271,30 @@ public class Validation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if (value.isObject()) {
-                properties.forEach( (provided, required) -> {
-                    if (value.get( provided ).exists() && !value.has( required ))
+            if ( value.isObject() ) {
+                properties.forEach( ( provided, required ) -> {
+                    if ( value.get( provided ).exists() && !value.has( required ) )
                         addError.accept( Error.of( Type.DEPENDENT_REQUIRED, value, provided, required ) );
                 } );
             }
         }
     }
 
-    private record Entry(Class<? extends JsonValue> type, Map<String, Validator> properties) {}
+    private record Entry(Class<? extends JsonValue> schema, Map<String, Validator> properties) {}
 
     private static final Map<Class<? extends JsonValue>, Entry> VALIDATORS_BY_TYPE = new ConcurrentSkipListMap<>(
-        Comparator.comparing( Class::getCanonicalName ));
+        Comparator.comparing( Class::getCanonicalName ) );
 
-    public static Entry of(Class<? extends JsonValue> type) {
-        return VALIDATORS_BY_TYPE.computeIfAbsent( type, Validation::ofInternal );
+    public static void validate( JsonValue value, Class<? extends JsonValue> schema ) {
+
     }
 
-    private static Entry ofInternal(Class<? extends JsonValue> type) {
-        if ( JsonObject.class.isAssignableFrom( type ) ) {
+    public static Entry of( Class<? extends JsonValue> type ) {
+        return VALIDATORS_BY_TYPE.computeIfAbsent( type, SchemaValidation::analyse );
+    }
+
+    private static Entry analyse( Class<? extends JsonValue> schema ) {
+        if ( JsonObject.class.isAssignableFrom( schema ) ) {
 
         }
         return null;

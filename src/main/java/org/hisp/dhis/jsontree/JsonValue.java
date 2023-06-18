@@ -39,7 +39,7 @@ package org.hisp.dhis.jsontree;
  * <li>{@link JsonBoolean}</li>
  * </ul>
  * In addition, there is {@link JsonCollection} as a common base type of
- * {@link JsonObject} and {@link JsonArray} and {@link JsonPrimitive} as common
+ * {@link JsonObject} and {@link JsonArray}, as well as {@link JsonPrimitive} as common
  * base type of {@link JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
  * <p>
  * In addition {@link JsonList} is a typed JSON array of uniform elements (which
@@ -103,10 +103,27 @@ public interface JsonValue {
      * type is {@link JsonMixed}.
      *
      * @return The type the current proxy represents. OBS! This is not necessarily the type of the actual JSON value in
-     * the document, just the type that was requested programmatically.
+     * the document, just the type it was requested to be programmatically (assumed type).
      * @since 0.10
      */
     Class<? extends JsonValue> asType();
+
+    /**
+     * @throws JsonSchemaException in case this value does not match the schema of {@link #asType()}
+     * @since 0.10
+     */
+    default void validate() {
+        validate( asType() );
+    }
+
+    /**
+     * @param schema the schema to validate against
+     * @throws JsonSchemaException in case this value does not match the given schema
+     * @since 0.10
+     */
+    default void validate( Class<? extends JsonValue> schema ) {
+        SchemaValidation.validate( this, schema );
+    }
 
     /**
      * A property exists when it is part of the JSON response. This means it can be declared JSON {@code null}. Only a
@@ -118,9 +135,11 @@ public interface JsonValue {
 
     /**
      * @return true if the value exists and is defined JSON {@code null}
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonPathException in case this value does not exist in the JSON document
      */
-    boolean isNull();
+    default boolean isNull() {
+        return node().getType() == JsonNodeType.NULL;
+    }
 
     /**
      * @return true if this JSON node either does not exist at all or is defined as JSON {@code null}, otherwise false
@@ -131,7 +150,7 @@ public interface JsonValue {
 
     /**
      * @return true if the value exists and is a JSON array node (empty or not) but not JSON {@code null}
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isArray() {
         return node().getType() == JsonNodeType.ARRAY;
@@ -139,34 +158,43 @@ public interface JsonValue {
 
     /**
      * @return true if the value exists and is an JSON object node (empty or not) but not JSON {@code null}
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isObject() {
         return node().getType() == JsonNodeType.OBJECT;
     }
 
     /**
-     * @since 0.10
      * @return true if the value exists and is an JSON number node (not JSON {@code null})
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonPathException in case this value does not exist in the JSON document
+     * @since 0.10
      */
     default boolean isNumber() {
         return node().getType() == JsonNodeType.NUMBER;
     }
 
     /**
+     * @return true if the value exists and is an JSON number node and has no fraction part or a fraction of zero
+     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
+     */
+    default boolean isInteger() {
+        return isNumber() && ((Number) node().value()).doubleValue() % 1d == 0d;
+    }
+
+    /**
      * @return true if the value exists and is an JSON string node (not JSON {@code null})
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonPathException in case this value does not exist in the JSON document
+     * @since 0.10
      */
     default boolean isString() {
         return node().getType() == JsonNodeType.STRING;
     }
 
     /**
-     * @since 0.10
      * @return true if the value exists and is an JSON boolean node (not JSON {@code null})
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonPathException in case this value does not exist in the JSON document
+     * @since 0.10
      */
     default boolean isBoolean() {
         return node().getType() == JsonNodeType.BOOLEAN;
@@ -231,7 +259,7 @@ public interface JsonValue {
      * This might be useful in test to access the {@link JsonNode#getDeclaration()} to modify and reuse it.
      *
      * @return the underlying {@link JsonNode} in the overall JSON document if it exists
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     JsonNode node();
 

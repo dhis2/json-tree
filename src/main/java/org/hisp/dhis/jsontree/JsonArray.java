@@ -101,9 +101,9 @@ public interface JsonArray extends JsonCollection {
     }
 
     /**
-     * @since 0.10
      * @param action called for each element in the array in order of declaration
      * @throws JsonTreeException if this node is not an array node that could have elements
+     * @since 0.10
      */
     default void forEach( Consumer<JsonValue> action ) {
         node().elements().forEach( n -> action.accept( JsonValue.of( n ) ) );

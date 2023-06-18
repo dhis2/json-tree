@@ -54,8 +54,8 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
 
     /**
      * @return The keys of this map.
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
-     * @throws JsonTreeException    in case this node does exist but is not an object node
+     * @throws JsonPathException in case this value does not exist in the JSON document
+     * @throws JsonTreeException in case this node does exist but is not an object node
      */
     default Set<String> keys() {
         return stream( node().members().spliterator(), false )
@@ -63,12 +63,26 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
     }
 
     /**
+     * @param orDefault returned if this value does not exist
+     * @return the keys of this map object or the given default in case this node does not exist
+     * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.10
-     * @param action call with each entry in the map in order of their declaration
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
-     * @throws JsonTreeException    in case this node does exist but is not an object node
      */
-    default void forEach( BiConsumer<String, ? super E> action) {
+    default Set<String> keys( Set<String> orDefault ) {
+        try {
+            return keys();
+        } catch ( JsonPathException ex ) {
+            return orDefault;
+        }
+    }
+
+    /**
+     * @param action call with each entry in the map in order of their declaration
+     * @throws JsonPathException in case this value does not exist in the JSON document
+     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @since 0.10
+     */
+    default void forEach( BiConsumer<String, ? super E> action ) {
         keys().forEach( key -> action.accept( key, get( key ) ) );
     }
 

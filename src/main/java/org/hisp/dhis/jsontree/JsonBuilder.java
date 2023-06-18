@@ -275,7 +275,7 @@ public interface JsonBuilder {
             return addObject( null, value, filter, toMember );
         }
 
-        default JsonObjectBuilder addArray( String name, JsonNode value0) {
+        default JsonObjectBuilder addArray( String name, JsonNode value0 ) {
             return addArray( name, Stream.of( value0 ), JsonArrayBuilder::addElement );
         }
 

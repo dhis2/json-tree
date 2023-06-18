@@ -30,8 +30,10 @@ package org.hisp.dhis.jsontree;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the static helpers of {@link JsonValue} and the basic {@link JsonValue} API methods.
@@ -55,5 +57,72 @@ class JsonValueTest {
         assertSame( JsonMixed.class, value.asType() );
         assertSame( JsonMixed.class, value.as( JsonArray.class ).asType() );
         assertSame( JsonURL.class, value.as( JsonURL.class ).asType() );
+        assertSame( JsonMixed.class, value.as( JsonURL.class ).as( JsonValue.class ).asType() );
     }
+
+    @Test
+    void testIsObject() {
+        assertFalse( JsonValue.of( "1" ).isObject() );
+        assertFalse( JsonValue.of( "true" ).isObject() );
+        assertFalse( JsonValue.of( "null" ).isObject() );
+        assertFalse( JsonValue.of( "[]" ).isObject() );
+        assertFalse( JsonValue.of( "\"str\"" ).isObject() );
+        assertTrue( JsonValue.of( "{}" ).isObject() );
+    }
+
+    @Test
+    void testIsArray() {
+        assertFalse( JsonValue.of( "1" ).isArray() );
+        assertFalse( JsonValue.of( "true" ).isArray() );
+        assertFalse( JsonValue.of( "null" ).isArray() );
+        assertTrue( JsonValue.of( "[]" ).isArray() );
+        assertFalse( JsonValue.of( "\"str\"" ).isArray() );
+        assertFalse( JsonValue.of( "{}" ).isArray() );
+    }
+
+    @Test
+    void testIsNumber() {
+        assertTrue( JsonValue.of( "1" ).isNumber() );
+        assertFalse( JsonValue.of( "true" ).isNumber() );
+        assertFalse( JsonValue.of( "null" ).isNumber() );
+        assertFalse( JsonValue.of( "[]" ).isNumber() );
+        assertFalse( JsonValue.of( "\"str\"" ).isNumber() );
+        assertFalse( JsonValue.of( "{}" ).isNumber() );
+    }
+
+    @Test
+    void testIsString() {
+        assertFalse( JsonValue.of( "1" ).isString() );
+        assertFalse( JsonValue.of( "true" ).isString() );
+        assertFalse( JsonValue.of( "null" ).isString() );
+        assertFalse( JsonValue.of( "[]" ).isString() );
+        assertTrue( JsonValue.of( "\"str\"" ).isString() );
+        assertFalse( JsonValue.of( "{}" ).isString() );
+    }
+
+    @Test
+    void testIsBoolean() {
+        assertFalse( JsonValue.of( "1" ).isBoolean() );
+        assertTrue( JsonValue.of( "true" ).isBoolean() );
+        assertFalse( JsonValue.of( "null" ).isBoolean() );
+        assertFalse( JsonValue.of( "[]" ).isBoolean() );
+        assertFalse( JsonValue.of( "\"str\"" ).isBoolean() );
+        assertFalse( JsonValue.of( "{}" ).isBoolean() );
+    }
+
+    @Test
+    void testIsInteger() {
+        assertTrue( JsonValue.of( "1" ).isInteger() );
+        assertFalse( JsonValue.of( "true" ).isInteger() );
+        assertFalse( JsonValue.of( "null" ).isInteger() );
+        assertFalse( JsonValue.of( "[]" ).isInteger() );
+        assertFalse( JsonValue.of( "\"str\"" ).isInteger() );
+        assertFalse( JsonValue.of( "{}" ).isInteger() );
+
+        assertTrue( JsonValue.of( "1.0" ).isInteger() );
+        assertTrue( JsonValue.of( "1.00000" ).isInteger() );
+        assertFalse( JsonValue.of( "1.5" ).isInteger() );
+        assertFalse( JsonValue.of( "0.4" ).isInteger() );
+    }
+
 }

@@ -12,8 +12,8 @@ public enum JsonNodeType {
     NULL;
 
     /**
-     * @since 0.9
      * @return true, if the node is neither an object nor an array
+     * @since 0.9
      */
     public boolean isSimple() {
         return this != ARRAY && this != OBJECT;

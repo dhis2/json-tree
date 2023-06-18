@@ -30,7 +30,7 @@ package org.hisp.dhis.jsontree;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 /**
  * Tests {@link JsonNode} specific aspects of the {@link JsonTree} implementation of the interface.
@@ -104,7 +104,7 @@ class JsonNodeTest {
 
     private static void assertGetThrowsJsonPathException( String json, String path, String expected ) {
         JsonNode root = JsonNode.of( json );
-        JsonPathException ex = assertThrows( JsonPathException.class, () -> root.get( path ) );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> root.get( path ) );
         assertEquals( expected, ex.getMessage() );
     }
 }

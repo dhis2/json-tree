@@ -1,4 +1,4 @@
-package org.hisp.dhis.jsontree.schema;
+package org.hisp.dhis.jsontree;
 
 /**
  * Thrown when an JSON input does not match its JSON schema description.
