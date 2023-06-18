@@ -124,7 +124,7 @@ public interface JsonNode extends Serializable {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
         if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
-        throw new JsonPathException(
+        throw new JsonPathException( path,
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 

@@ -150,7 +150,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
     private static char accessChar( JsonObject obj, String path ) {
         String str = obj.getString( path ).string();
         if ( str == null || str.isEmpty() ) {
-            throw new JsonPathException( "No character for property " + path );
+            throw new JsonPathException( path, "No character for property " + path );
         }
         return str.charAt( 0 );
     }

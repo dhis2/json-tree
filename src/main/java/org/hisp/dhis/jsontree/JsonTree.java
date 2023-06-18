@@ -286,7 +286,7 @@ final class JsonTree implements Serializable {
                     index = expectCommaSeparatorOrEnd( json, index, '}' );
                 }
             }
-            throw new JsonPathException(
+            throw new JsonPathException( mPath,
                 format( "Path `%s` does not exist, object `%s` does not have a property `%s`", mPath, path, name ) );
         }
 
@@ -394,7 +394,7 @@ final class JsonTree implements Serializable {
         public JsonNode element( int index )
             throws JsonPathException {
             if ( index < 0 ) {
-                throw new JsonPathException(
+                throw new JsonPathException( path,
                     format( "Path `%s` does not exist, array index is negative: %d", path, index ) );
             }
             char[] json = tree.json;
@@ -410,9 +410,9 @@ final class JsonTree implements Serializable {
         }
 
         private static void checkIndexExists( JsonNode parent, int length, String path ) {
-            throw new JsonPathException(
-                format( "Path `%s` does not exist, array `%s` has only `%d` elements.", path, parent.getPath(),
-                    length ) );
+            throw new JsonPathException( path,
+                format( "Path `%s` does not exist, array `%s` has only `%d` elements.",
+                    path, parent.getPath(), length ) );
         }
 
         @Override
@@ -625,7 +625,7 @@ final class JsonTree implements Serializable {
                 parent = parent.member( property );
                 pathToGo = pathToGo.substring( 2 + property.length() );
             } else {
-                throw new JsonPathException( format( "Malformed path %s at %s.", path, pathToGo ) );
+                throw new JsonPathException( path, format( "Malformed path %s at %s.", path, pathToGo ) );
             }
         }
         return parent;
@@ -674,7 +674,7 @@ final class JsonTree implements Serializable {
 
     private static void checkNodeIs( JsonNode parent, JsonNodeType expected, String path ) {
         if ( parent.getType() != expected ) {
-            throw new JsonPathException(
+            throw new JsonPathException( path,
                 format( "Path `%s` does not exist, parent `%s` is not an %s but a %s node.", path,
                     parent.getPath(), expected, parent.getType() ) );
         }

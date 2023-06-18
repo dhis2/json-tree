@@ -34,11 +34,16 @@ import java.util.NoSuchElementException;
  *
  * @author Jan Bernitt
  */
-public class JsonPathException extends NoSuchElementException {
+public final class JsonPathException extends NoSuchElementException {
 
-    //TODO have a field for the path itself
+    private final String path;
 
-    public JsonPathException( String s ) {
-        super( s );
+    public JsonPathException( String path, String message ) {
+        super( message );
+        this.path = path;
+    }
+
+    public String getPath() {
+        return path;
     }
 }

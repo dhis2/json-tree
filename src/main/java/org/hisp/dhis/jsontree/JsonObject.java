@@ -179,7 +179,7 @@ public interface JsonObject extends JsonCollection {
     default <T extends JsonObject> T asObject( Class<T> type, boolean recursive, String path )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
         if ( !exists() ) {
-            throw new JsonPathException(
+            throw new JsonPathException( path,
                 String.format( "Expected %s %s node does not exist", path, type.getSimpleName() ) );
         }
         if ( !isObject() ) {
