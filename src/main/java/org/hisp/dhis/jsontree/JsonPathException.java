@@ -30,7 +30,7 @@ package org.hisp.dhis.jsontree;
 import java.util.NoSuchElementException;
 
 /**
- * Exception thrown when the path given to {@link JsonTree#get(String)} does not exist.
+ * Exception thrown when a given path does not exist in the {@link JsonTree}.
  *
  * @author Jan Bernitt
  */

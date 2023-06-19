@@ -55,6 +55,6 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @since 0.10
      */
     static JsonMixed ofNonStandard( String json ) {
-        return new JsonVirtualTree( JsonNode.ofNonStandard( json ), JsonTypedAccess.GLOBAL );
+        return of( JsonNode.ofNonStandard( json ) );
     }
 }

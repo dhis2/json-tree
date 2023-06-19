@@ -79,17 +79,31 @@ public interface JsonNode extends Serializable {
     JsonNode EMPTY_ARRAY = JsonNode.of( "[]" );
 
     /**
+     * Allows to observe all path lookups in the tree.
+     *
+     * @since 0.10
+     */
+    @FunctionalInterface
+    interface GetListener {
+
+        /**
+         * @param path absolute path in the tree that is resolved
+         */
+        void accept( String path );
+    }
+
+    /**
      * Create a new lazily parsed {@link JsonNode} tree.
      * <p>
      * JSON format issues are first encountered when the part of the document is accessed or skipped as part of working
      * with the tree.
      *
      * @param json standard compliant JSON input
-     * @return given JSON input as {@link JsonNode}
+     * @return the given JSON input as {@link JsonNode} tree
      * @since 0.4
      */
     static JsonNode of( String json ) {
-        return new JsonTree( json, false ).get( "$" );
+        return of( json, null );
     }
 
     /**
@@ -97,11 +111,23 @@ public interface JsonNode extends Serializable {
      * <p>
      *
      * @param json JSON input
-     * @return given JSON input as {@link JsonNode}
+     * @return the given JSON input as {@link JsonNode} tree
      * @since 0.10
      */
     static JsonNode ofNonStandard( String json ) {
-        return new JsonTree( json, true ).get( "$" );
+        return new JsonTree( json, true, null ).get( "$" );
+    }
+
+    /**
+     * Create a new lazily parsed {@link JsonNode} tree.
+     *
+     * @param json     standard compliant JSON input
+     * @param listener to observe all path lookup in the returned tree, may be null
+     * @return the given JSON input as {@link JsonNode} tree
+     * @since 0.10
+     */
+    static JsonNode of( String json, GetListener listener ) {
+        return new JsonTree( json, false, listener ).get( "$" );
     }
 
     /**
@@ -233,7 +259,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode member( String name )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no member property" );
+        throw new JsonTreeException( getType() + " node has no member property." );
     }
 
     /**
@@ -399,10 +425,10 @@ public interface JsonNode extends Serializable {
     }
 
     /**
-     * Replace this node and return the root of the document where this node got replaced.
+     * Replace this node and returns the root of a new tree where this node got replaced.
      *
-     * @param json The JSON used instead of the on this node represents. Note that the provided JSON is not check to be
-     *             valid JSON immediately.
+     * @param json The JSON used instead of the on this node represents. <br/><b>Note</b> that the provided JSON is not
+     *             check to be valid JSON immediately.
      * @return A new document root where this node got replaced with the provided JSON
      */
     JsonNode replaceWith( String json );

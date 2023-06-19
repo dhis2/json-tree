@@ -43,8 +43,13 @@ public interface JsonString extends JsonPrimitive {
      */
     String string();
 
+    /**
+     * @param orDefault used when this node is either undefined or defined as JSON null
+     * @return this string node string value or the default if undefined or defined null
+     * @throws JsonTreeException in case this node exists but is not a string node (or null)
+     */
     default String string( String orDefault ) {
-        return exists() ? string() : orDefault;
+        return isUndefined() ? orDefault : string();
     }
 
     /**

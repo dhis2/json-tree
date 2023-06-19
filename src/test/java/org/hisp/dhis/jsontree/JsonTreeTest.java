@@ -324,8 +324,8 @@ class JsonTreeTest {
     }
 
     /**
-     * This test might look very much the same as the above but this test avoid accessing the object fields or array
-     * elements before using {@link JsonTree#get(String)} to resolve inner object so that these would not already be in
+     * This test might look very much the same as the above but this test avoids accessing the object fields or array
+     * elements before using {@link JsonNode#get(String)} to resolve inner object so that these would not already be in
      * the internal map but would need to be resolved by going the path backwards.
      */
     @Test

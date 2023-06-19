@@ -510,7 +510,7 @@ final class JsonTree implements Serializable {
         record Span(String value, int endIndex) {}
 
         static Span parseString( char[] json, int start ) {
-            //TODO make this a shared builder for performance
+            //TODO make this a shared builder in JsonTree instance for performance?
             StringBuilder str = new StringBuilder();
             int index = start;
             index = expectChar( json, index, '"' );
@@ -589,11 +589,13 @@ final class JsonTree implements Serializable {
         }
     }
 
+    private final JsonNode.GetListener listener;
     private final char[] json;
 
     private final HashMap<String, JsonNode> nodesByPath = new HashMap<>();
 
-    JsonTree( String json, boolean lenient ) {
+    JsonTree( String json, boolean lenient, JsonNode.GetListener listener ) {
+        this.listener = listener;
         this.json = json.toCharArray();
         if ( lenient ) adjustToStandard();
         nodesByPath.put( "", autoDetect( "", skipWhitespace( this.json, 0 ) ) );
@@ -613,10 +615,11 @@ final class JsonTree implements Serializable {
      *                             given path is not a valid path expression
      * @throws JsonFormatException when this document contains malformed JSON that confuses the parser
      */
-    public JsonNode get( String path ) {
+    JsonNode get( String path ) {
         if ( path.startsWith( "$" ) ) {
             path = path.substring( 1 );
         }
+        if ( listener != null && !path.isEmpty() ) listener.accept( path );
         JsonNode node = nodesByPath.get( path );
         if ( node != null ) {
             return node;

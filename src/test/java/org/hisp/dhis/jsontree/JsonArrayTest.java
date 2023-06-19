@@ -74,4 +74,19 @@ class JsonArrayTest {
         JsonMixed value = JsonMixed.of( "1" );
         assertThrowsExactly( JsonTreeException.class, () -> value.forEach( e -> fail() ) );
     }
+
+    @Test
+    void testValues_Mapped() {
+        //language=json
+        String json = """
+            ["a","b","c"]""";
+        JsonMixed arr = JsonMixed.of( json );
+        assertEquals( List.of( 'a', 'b', 'c' ), arr.values( str -> str.charAt( 0 ) ) );
+    }
+
+    @Test
+    void testGetList_IndexAs() {
+        JsonMixed arr = JsonMixed.of( "[[1,2], [3,4]]" );
+        assertEquals( List.of( 1, 2 ), arr.getList( 0, JsonNumber.class ).toList( JsonNumber::integer ) );
+    }
 }

@@ -88,4 +88,33 @@ class JsonNumberTest {
     void testIntValue_WithDefaultFractionNumber() {
         assertEquals( 42, JsonMixed.of( "42.5" ).intValue( 55 ) );
     }
+
+    @Test
+    void testNumber_WithDefaultUndefined() {
+        JsonNumber x = JsonMixed.of( "{}" ).getNumber( "x" );
+        assertEquals( 42, x.number( 42 ) );
+    }
+
+    @Test
+    void testNumber_WithDefaultNoNumber() {
+        JsonNumber x = JsonMixed.of( "true" );
+        assertThrowsExactly( JsonTreeException.class, () -> x.number( 42 ) );
+    }
+
+    @Test
+    void testNumber_WithDefaultNull() {
+        JsonMixed x = JsonMixed.of( "null" );
+        assertEquals( 42, x.number( 42 ) );
+    }
+
+    @Test
+    void testNumber_WithDefaultNoFractionNumber() {
+        assertEquals( 42, JsonMixed.of( "42" ).number( 55 ) );
+    }
+
+    @Test
+    void testNumber_WithDefaultFractionNumber() {
+        assertEquals( 42.5d, JsonMixed.of( "42.5" ).number( 55d ) );
+    }
+
 }
