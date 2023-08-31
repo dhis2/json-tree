@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -80,6 +81,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> 
         for ( String key : keys() ) {
             List<T> list = get( key ).toList( mapper );
             if ( order != null ) {
+                list = new ArrayList<>( list );
                 list.sort( order );
             }
             res.put( key, list );
