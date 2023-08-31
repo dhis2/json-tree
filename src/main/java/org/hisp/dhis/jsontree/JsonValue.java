@@ -112,6 +112,33 @@ public interface JsonValue {
     Class<? extends JsonValue> asType();
 
     /**
+     * @throws JsonSchemaException in case this value does not match the schema of {@link #asType()}
+     * @since 0.10
+     */
+    default void validate() {
+        validate( asType() );
+    }
+
+    /**
+     * @param schema the schema to validate against
+     * @throws JsonSchemaException      in case this value does not match the given schema
+     * @throws IllegalArgumentException in case the given schema is not an interface
+     * @since 0.10
+     */
+    default void validate( Class<? extends JsonValue> schema ) {
+        JsonSchemaValidation.validate( this, schema );
+    }
+
+    /**
+     * @param schema the schema to validate against
+     * @throws JsonSchemaException in case this value does not match the given schema
+     * @since 0.10
+     */
+    default void validate( JsonSchema schema ) {
+        JsonSchemaValidation.validate( this, schema );
+    }
+
+    /**
      * A property exists when it is part of the JSON response. This means it can be declared JSON {@code null}. Only a
      * path that does not exist returns false.
      *
