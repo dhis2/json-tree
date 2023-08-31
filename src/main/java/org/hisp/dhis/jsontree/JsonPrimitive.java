@@ -29,11 +29,16 @@ package org.hisp.dhis.jsontree;
 
 import java.util.function.Function;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.BOOLEAN;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
+
 /**
  * A common base type for the primitive nodes in a JSON tree.
  *
  * @author Jan Bernitt
  */
+@Validation( type = { BOOLEAN, NUMBER, STRING } )
 public interface JsonPrimitive extends JsonValue {
 
     /**
@@ -45,7 +50,7 @@ public interface JsonPrimitive extends JsonValue {
      * @param <A>  input type
      * @param <B>  output type
      * @return input value of type A converted to type B by using the provided {@link Function}
-     * @throws java.util.NoSuchElementException in case input is {@code null} (which means this value was not defined)
+     * @throws JsonPathException in case input is {@code null} (which means this value was not defined)
      */
     <A, B> B mapNonNull( A from, Function<A, B> to );
 }

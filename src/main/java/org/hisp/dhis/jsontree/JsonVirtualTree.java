@@ -31,10 +31,7 @@ import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
@@ -42,7 +39,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -109,6 +105,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         return isAccessCached() ? this : new JsonVirtualTree( root, path, store, new ConcurrentHashMap<>() );
     }
 
+    @Override
+    public Class<? extends JsonValue> asType() {
+        return JsonMixed.class;
+    }
+
     private <T> T value( JsonNodeType expected, Function<JsonNode, T> get, Function<JsonPathException, T> orElse ) {
         try {
             JsonNode node = root.get( path );
@@ -117,8 +118,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                 return null;
             }
             if ( actualType != expected ) {
-                throw new UnsupportedOperationException(
-                    String.format( "Path `%s` does not contain a %s but a(n) %s: %s",
+                throw new JsonTreeException(
+                    String.format( "Path `%s` does not contain an %s but a(n) %s: %s",
                         path, expected, actualType, node ) );
             }
             return get.apply( node );
@@ -127,16 +128,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         }
     }
 
-    private <T> T value( Function<JsonNode, T> get ) {
-        try {
-            return get.apply( root.get( path ) );
-        } catch ( JsonPathException | JsonFormatException ex ) {
-            throw noSuchElement( ex );
-        }
-    }
-
     private JsonNode value() {
-        return value( Function.identity() );
+        return root.get( path );
     }
 
     @Override
@@ -163,11 +156,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     @Override
     public <A, B> B mapNonNull( A from, Function<A, B> to ) {
         if ( from == null ) {
-            try {
-                root.get( path );
-            } catch ( JsonPathException ex ) {
-                throw noSuchElement( ex );
-            }
+            root.get( path ); // cause throw in case node does not exist
         }
         return to.apply( from );
     }
@@ -183,9 +172,9 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
-    public boolean has( String... names ) {
+    public boolean has( List<String> names ) {
         return Boolean.TRUE.equals( value( JsonNodeType.OBJECT,
-            node -> Stream.of( names ).allMatch( node::isMember ),
+            node -> names.stream().allMatch( node::isMember ),
             ex -> false ) );
     }
 
@@ -211,7 +200,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             for ( JsonNode e : node.elements() ) {
                 Object value = e.value();
                 if ( !elementType.isInstance( value ) ) {
-                    throw new IllegalArgumentException( "element is not a " + elementType );
+                    throw new JsonTreeException(
+                        "Array element is not a " + elementType.getName() + ": " + e.getDeclaration() );
                 }
                 res.add( (T) value );
             }
@@ -222,16 +212,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     @Override
     public int size() {
         return value().size();
-    }
-
-    @Override
-    public boolean isArray() {
-        return value().getType() == JsonNodeType.ARRAY;
-    }
-
-    @Override
-    public boolean isObject() {
-        return value().getType() == JsonNodeType.OBJECT;
     }
 
     @Override
@@ -259,11 +239,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
-    public boolean isNull() {
-        return value().getType() == JsonNodeType.NULL;
-    }
-
-    @Override
     public boolean equals( Object obj ) {
         return obj instanceof JsonVirtualTree response
             && path.equals( response.path )
@@ -284,10 +259,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         }
     }
 
-    private NoSuchElementException noSuchElement( RuntimeException cause ) {
-        return new NoSuchElementException( cause );
-    }
-
     @SuppressWarnings( "unchecked" )
     private <E extends JsonValue> E createProxy( Class<E> as, JsonVirtualTree inner ) {
         return (E) Proxy.newProxyInstance(
@@ -295,6 +266,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             ( proxy, method, args ) -> {
                 // are we dealing with a default method in the extending class?
                 Class<?> declaringClass = method.getDeclaringClass();
+                if ( declaringClass == JsonValue.class && "asType".equals( method.getName() )
+                    && method.getParameterCount() == 0 ) {
+                    return as;
+                }
                 if ( isExtended( declaringClass ) ) {
                     if ( method.isDefault() ) {
                         // call the default method of the proxied type itself
@@ -303,8 +278,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                     // abstract extending interface method?
                     return callAbstractMethod( inner, method, args );
                 }
-                // call the same method on the wrapped object (assuming it has
-                // it)
+                // call the same method on the wrapped object (assuming it has it)
                 return callCoreApiMethod( inner, method, args );
             } );
     }
@@ -315,26 +289,16 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
      */
     private static Object callDefaultMethod( Object proxy, Method method, Class<?> declaringClass )
         throws Throwable {
-        if ( !isJava8() ) {
-            return MethodHandles.lookup()
-                .findSpecial( declaringClass, method.getName(),
-                    MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
-                    declaringClass )
-                .bindTo( proxy ).invokeWithArguments();
-        }
-        Constructor<Lookup> constructor = Lookup.class
-            .getDeclaredConstructor( Class.class );
-        constructor.trySetAccessible();
-        return constructor.newInstance( declaringClass )
-            .in( declaringClass )
-            .unreflectSpecial( method, declaringClass )
-            .bindTo( proxy )
-            .invokeWithArguments();
+        return MethodHandles.lookup()
+            .findSpecial( declaringClass, method.getName(),
+                MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
+                declaringClass )
+            .bindTo( proxy ).invokeWithArguments();
     }
 
     /**
      * Abstract interface methods are "implemented" by deriving an {@link JsonGenericTypedAccessor} from the method's
-     * return type and have the accessor extract the value by using solely the underlying {@link JsonValue} API.
+     * return type and have the accessor extract the value by using the underlying {@link JsonValue} API.
      */
     private Object callAbstractMethod( JsonVirtualTree inner, Method method, Object[] args ) {
         JsonObject obj = inner.asObject();
@@ -363,21 +327,19 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     /**
      * All methods by the core API of the general JSON tree represented as {@link JsonValue}s (and the general
-     * subclasses) are implemented by the {@link JsonVirtualTree} wrapper so they can be called directly.
+     * subclasses) are implemented by the {@link JsonVirtualTree} wrapper, so they can be called directly.
      */
-    private static Object callCoreApiMethod( JsonValue inner, Method method, Object[] args )
+    private static Object callCoreApiMethod( JsonVirtualTree inner, Method method, Object[] args )
         throws Throwable {
-        try {
-            return method.invoke( inner, args );
-        } catch ( InvocationTargetException ex ) {
-            throw ex.getTargetException();
-        }
+        return args == null || args.length == 0
+            ? MethodHandles.lookup().unreflect( method ).invokeWithArguments( inner )
+            : MethodHandles.lookup().unreflect( method ).bindTo( inner ).invokeWithArguments( args );
     }
 
     /**
      * This is twofold: Concepts like {@link Stream} and {@link Iterator} should not be cached to work correctly.
      * <p>
-     * For all other types this is about reaching a balance between memory usage and CPU usage. Simple objects are
+     * For all other type this is about reaching a balance between memory usage and CPU usage. Simple objects are
      * recomputed whereas complex objects are not.
      */
     private boolean isCacheable( Class<?> resType ) {
@@ -389,12 +351,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     private static boolean isExtended( Class<?> declaringClass ) {
         return !declaringClass.isAssignableFrom( JsonVirtualTree.class );
-    }
-
-    private static boolean isJava8() {
-        String javaVersion = System.getProperty( "java.version" );
-        boolean javaVersionIsBlank = javaVersion.trim().isEmpty();
-        return !javaVersionIsBlank && javaVersion.startsWith( "1.8" );
     }
 
     private static String stripGetterPrefix( Method method ) {

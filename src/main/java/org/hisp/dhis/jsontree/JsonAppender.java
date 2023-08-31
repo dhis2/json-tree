@@ -268,7 +268,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addMember( String name, Object pojo, JsonMapper mapper ) {
-        mapper.addTo( this, null, pojo );
+        mapper.addTo( this, name, pojo );
         return this;
     }
 
@@ -285,7 +285,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     @Override
     public JsonArrayBuilder addElement( JsonNode value ) {
         JsonNodeType type = value.getType();
-        if ( config.retainOriginalDeclaration() || type.isSimple())
+        if ( config.retainOriginalDeclaration() || type.isSimple() )
             return addRawElement( value.getDeclaration() );
         return switch ( type ) {
             case OBJECT ->

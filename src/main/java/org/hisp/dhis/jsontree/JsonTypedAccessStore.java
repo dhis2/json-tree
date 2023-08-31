@@ -33,19 +33,19 @@ import java.lang.reflect.Type;
 /**
  * The {@link JsonTypedAccessStore} is a registry for accessor functions.
  * <p>
- * These come in a simple form {@link JsonTypedAccessor} for non-generic types, and a generic form
- * {@link JsonGenericTypedAccessor} for more complicated types.
+ * These come in a simple form {@link JsonTypedAccessor} for non-generic type, and a generic form
+ * {@link JsonGenericTypedAccessor} for more complicated type.
  * <p>
  * Conceptually accessors are the POJO "mappers" of this library. Just that instead of using POJOs data structures are
  * defined by their "getters" in an interface. The accessors then bridge the gap between the view the generic JSON tree
- * provided in form of {@link JsonValue}s and the non-JSON java types returned by getters.
+ * provided in form of {@link JsonValue}s and the non-JSON java type returned by getters.
  * <p>
  * While they "map" values this mapping takes place on access only. Everything before that is just as virtual (a view)
  * as the {@link JsonValue} tree.
  * <p>
  * One could also think of accessors as "automatic" implementation of an abstract method as if it became a default
  * method in an interface. The "implementation" here is derived from the return type of the method. Each accessor knows
- * how to access and map to a particular java tye. The store then contains the set of known java target types and their
+ * how to access and map to a particular java tye. The store then contains the set of known java target type and their
  * way to access them given a {@link JsonValue} tree.
  *
  * @author Jan Bernitt
@@ -74,9 +74,9 @@ public interface JsonTypedAccessStore {
     }
 
     /**
-     * A simplified version of a {@link JsonGenericTypedAccessor} that only requires a parent and a path.
+     * A simplified version of a {@link JsonGenericTypedAccessor} that only dependentRequires a parent and a path.
      * <p>
-     * This usually is sufficient for simple Java types like strings, numbers and so forth.
+     * This usually is sufficient for simple Java type like strings, numbers and so forth.
      *
      * @param <T> the result type
      */

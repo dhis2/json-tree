@@ -29,8 +29,10 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 /**
  * Tests {@link JsonNode} specific aspects of the {@link JsonTree} implementation of the interface.
@@ -98,13 +100,84 @@ class JsonNodeTest {
             "Path `[0].a` does not exist, parent `[0]` is not an OBJECT but a ARRAY node." );
     }
 
+    @Test
+    void testMember_NoObject() {
+        JsonNode val = JsonNode.of( "1" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.member( "a" ) );
+        assertEquals( "NUMBER node has no member property.", ex.getMessage() );
+    }
+
+    @Test
+    void testMembers_NoObject() {
+        JsonNode val = JsonNode.of( "1" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.members( true ) );
+        assertEquals( "NUMBER node has no members property.", ex.getMessage() );
+    }
+
+    @Test
+    void testElements_NoArray() {
+        JsonNode val = JsonNode.of( "1" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.elements( true ) );
+        assertEquals( "NUMBER node has no elements property.", ex.getMessage() );
+    }
+
+    @Test
+    void testReplaceWith_Path() {
+        //language=json
+        String json = """
+            {
+            "a": 1,
+            "b": [2]
+            }""";
+        JsonNode obj = JsonNode.of( json );
+        JsonNode actual = obj.replaceWith( "b[0]", JsonNode.of( "3" ) );
+        assertEquals( """
+            {
+            "a": 1,
+            "b": [3]
+            }""", actual.getDeclaration() );
+    }
+
+    @Test
+    void testAddMembers_Path() {
+        //language=json
+        String json = """
+            {
+            "a": 1,
+            "b": {}
+            }""";
+        JsonNode actual = JsonNode.of( json ).addMembers( "b",
+            obj -> obj.addNumber( "x", 42 ) );
+        assertEquals( """
+            {
+            "a": 1,
+            "b": {"x":42}
+            }""", actual.getDeclaration() );
+    }
+
+    @Test
+    void testRemoveMembers_Path() {
+        //language=json
+        String json = """
+            {
+            "a": 1,
+            "b": {"x": 42, "y": 1, "z": 2}
+            }""";
+        JsonNode actual = JsonNode.of( json ).removeMembers( "b", Set.of( "x", "z" ) );
+        assertEquals( """
+            {
+            "a": 1,
+            "b": {"y":1}
+            }""", actual.getDeclaration() );
+    }
+
     private static void assertGetThrowsJsonPathException( String json, String expected ) {
         assertGetThrowsJsonPathException( json, "foo", expected );
     }
 
     private static void assertGetThrowsJsonPathException( String json, String path, String expected ) {
         JsonNode root = JsonNode.of( json );
-        JsonPathException ex = assertThrows( JsonPathException.class, () -> root.get( path ) );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> root.get( path ) );
         assertEquals( expected, ex.getMessage() );
     }
 }

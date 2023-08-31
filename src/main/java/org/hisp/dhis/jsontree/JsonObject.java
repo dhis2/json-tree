@@ -27,27 +27,31 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonSchemaException.Info;
+
 import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.stream;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
 
 /**
  * Represents a JSON object node.
  * <p>
- * As all nodes are mere views or virtual field access will never throw a {@link java.util.NoSuchElementException}.
+ * As all nodes are mere views or virtual field path access will never throw a {@link JsonPathException}.
+ * <p>
  * Whether a field with a given name exists is determined first when {@link JsonValue#exists()} or other value accessing
  * operations are performed on a node.
  *
  * @author Jan Bernitt
  */
+@Validation( type = OBJECT )
 public interface JsonObject extends JsonCollection {
 
     /**
@@ -63,22 +67,32 @@ public interface JsonObject extends JsonCollection {
     <T extends JsonValue> T get( String name, Class<T> as );
 
     /**
-     * Test an object for member names.
+     * Test an object for property names.
      *
-     * @param names a set of member names that should exist
+     * @param names a set of property names that should exist
      * @return true if this object has (at least) all the given names
-     * @throws UnsupportedOperationException in case this value is not an JSON object
+     * @throws JsonTreeException in case this value is not an JSON object
      */
     default boolean has( String... names ) {
-        return stream( names ).allMatch( name -> get( name ).exists() );
+        return has( List.of( names ) );
     }
 
     /**
-     * Lists JSON object member names in order of declaration.
+     * Test an object for property names.
      *
-     * @return The list of member names in the order they were defined.
-     * @throws UnsupportedOperationException    in case this value is not an JSON object
-     * @throws java.util.NoSuchElementException in case this value does not exist in the JSON document
+     * @param names a set of property names that should exist
+     * @return true if this object has (at least) all the given names
+     * @throws JsonTreeException in case this value is not an JSON object
+     * @since 0.10
+     */
+    boolean has( List<String> names );
+
+    /**
+     * Lists JSON object property names in order of declaration.
+     *
+     * @return The list of property names in the order they were defined.
+     * @throws JsonTreeException in case this value is not an JSON object
+     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default List<String> names() {
         return StreamSupport.stream( node().members().spliterator(), false ).map( Map.Entry::getKey ).toList();
@@ -130,7 +144,7 @@ public interface JsonObject extends JsonCollection {
         try {
             asObject( type );
             return true;
-        } catch ( NoSuchElementException ex ) {
+        } catch ( JsonPathException | JsonTreeException | JsonSchemaException ex ) {
             return false;
         }
     }
@@ -141,9 +155,13 @@ public interface JsonObject extends JsonCollection {
      * @param type expected object type
      * @param <T>  type check and of the result
      * @return this node as the provided object type
+     * @throws JsonPathException   when this node does not exist
+     * @throws JsonTreeException   when this node is not an object
+     * @throws JsonSchemaException when this node does not have all of the {@link Expected} properties present
      * @see #asObject(Class, boolean, String)
      */
-    default <T extends JsonObject> T asObject( Class<T> type ) {
+    default <T extends JsonObject> T asObject( Class<T> type )
+        throws JsonPathException, JsonTreeException, JsonSchemaException {
         return asObject( type, true, "" );
     }
 
@@ -158,17 +176,18 @@ public interface JsonObject extends JsonCollection {
      * @param path      currently checked root object (for recursion, start with empty)
      * @param <T>       type check and of the result
      * @return this node as the provided object type
-     * @throws NoSuchElementException when this does not exist, is not an object node or does not have all of the
-     *                                {@link Expected} members present
+     * @throws JsonPathException   when this node does not exist
+     * @throws JsonTreeException   when this node is not an object
+     * @throws JsonSchemaException when this node does not have all of the {@link Expected} properties present
      */
     default <T extends JsonObject> T asObject( Class<T> type, boolean recursive, String path )
-        throws NoSuchElementException {
+        throws JsonPathException, JsonTreeException, JsonSchemaException {
         if ( !exists() ) {
-            throw new NoSuchElementException(
+            throw new JsonPathException( path,
                 String.format( "Expected %s %s node does not exist", path, type.getSimpleName() ) );
         }
         if ( !isObject() ) {
-            throw new NoSuchElementException(
+            throw new JsonTreeException(
                 String.format( "Expected %s %s node is not an object but a %s", path, type.getSimpleName(),
                     node().getType() ) );
         }
@@ -179,20 +198,22 @@ public interface JsonObject extends JsonCollection {
             .sorted( Comparator.comparing( Method::getName ) )
             .forEach( m -> {
                 try {
-                    Object member = m.invoke( obj );
-                    if ( member == null || member instanceof JsonValue value && (!value.exists()
+                    Object property = m.invoke( obj );
+                    if ( property == null || property instanceof JsonValue value && (!value.exists()
                         || !m.getAnnotation( Expected.class ).nullable() && value.isNull()) ) {
-                        throw new NoSuchElementException( String.format( "Expected %s node member %s was not defined",
-                            type.getSimpleName(), parent + m.getName() ) );
+                        String message = String.format( "Expected %s node property %s was not defined",
+                            type.getSimpleName(), parent + m.getName() );
+                        throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
                     }
-                    if ( recursive && member instanceof JsonObject value && !value.isNull() ) {
+                    if ( recursive && property instanceof JsonObject value && !value.isNull() ) {
                         @SuppressWarnings( "unchecked" )
                         Class<? extends JsonObject> memberType = (Class<? extends JsonObject>) m.getReturnType();
-                        ((JsonObject) member).asObject( memberType, true, parent + m.getName() );
+                        ((JsonObject) property).asObject( memberType, true, parent + m.getName() );
                     }
                 } catch ( ReflectiveOperationException ex ) {
-                    throw new NoSuchElementException( String.format( "Expected %s node member %s had invalid value: %s",
-                        type.getSimpleName(), parent + m.getName(), ex.getMessage() ) );
+                    String message = String.format( "Expected %s node property %s had invalid value: %s",
+                        type.getSimpleName(), parent + m.getName(), ex.getMessage() );
+                    throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
                 }
             } );
         return obj;
@@ -223,7 +244,7 @@ public interface JsonObject extends JsonCollection {
     }
 
     /**
-     * Maps this object's members to a lazy transformed object view where each member value of the original object is
+     * Maps this object's members to a lazy transformed object view where each property value of the original object is
      * transformed by the given function when accessed.
      * <p>
      * This means the returned object always has the same number of members as the original object.
@@ -242,6 +263,16 @@ public interface JsonObject extends JsonCollection {
             @Override
             public <T extends JsonValue> T get( String name, Class<T> as ) {
                 return memberToX.apply( viewed.get( name ) ).as( as );
+            }
+
+            @Override
+            public boolean has( List<String> names ) {
+                return viewed.has( names );
+            }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonObject.class;
             }
         }
         return new JsonObjectView( this );

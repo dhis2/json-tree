@@ -79,17 +79,55 @@ public interface JsonNode extends Serializable {
     JsonNode EMPTY_ARRAY = JsonNode.of( "[]" );
 
     /**
-     * Create a new lazily parsed {@link JsonNode} document.
+     * Allows to observe all path lookups in the tree.
+     *
+     * @since 0.10
+     */
+    @FunctionalInterface
+    interface GetListener {
+
+        /**
+         * @param path absolute path in the tree that is resolved
+         */
+        void accept( String path );
+    }
+
+    /**
+     * Create a new lazily parsed {@link JsonNode} tree.
      * <p>
      * JSON format issues are first encountered when the part of the document is accessed or skipped as part of working
      * with the tree.
      *
-     * @param json a JSON value/document
-     * @return given document as {@link JsonNode} API
+     * @param json standard compliant JSON input
+     * @return the given JSON input as {@link JsonNode} tree
      * @since 0.4
      */
     static JsonNode of( String json ) {
-        return new JsonTree( json ).get( "$" );
+        return of( json, null );
+    }
+
+    /**
+     * Create a new lazily parsed {@link JsonNode} tree.
+     * <p>
+     *
+     * @param json JSON input
+     * @return the given JSON input as {@link JsonNode} tree
+     * @since 0.10
+     */
+    static JsonNode ofNonStandard( String json ) {
+        return new JsonTree( json, true, null ).get( "$" );
+    }
+
+    /**
+     * Create a new lazily parsed {@link JsonNode} tree.
+     *
+     * @param json     standard compliant JSON input
+     * @param listener to observe all path lookup in the returned tree, may be null
+     * @return the given JSON input as {@link JsonNode} tree
+     * @since 0.10
+     */
+    static JsonNode of( String json, GetListener listener ) {
+        return new JsonTree( json, false, listener ).get( "$" );
     }
 
     /**
@@ -124,7 +162,7 @@ public interface JsonNode extends Serializable {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
         if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
-        throw new JsonPathException(
+        throw new JsonPathException( path,
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 
@@ -221,11 +259,13 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode member( String name )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no member property" );
+        throw new JsonTreeException( getType() + " node has no member property." );
     }
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
+     * The members are iterated in order of declaration in the underlying document.
      *
      * @return this {@link #value()} as a sequence of {@link Entry}
      * @throws JsonTreeException if this node is not an object node that could have members
@@ -236,6 +276,8 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
+     * The members are iterated in order of declaration in the underlying document.
      *
      * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
      *                   keeping references to them further on so GC can pick em up
@@ -263,6 +305,8 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
+     * <p>
+     * The elements are iterated in the order declared in the underlying JSON document.
      *
      * @return this {@link #value()} as as {@link Stream}
      * @throws JsonTreeException if this node is not an array node that could have elements
@@ -273,6 +317,8 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
+     * <p>
+     * The elements are iterated in the order declared in the underlying JSON document.
      *
      * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
      *                   keeping references to them further on so GC can pick em up
@@ -375,14 +421,14 @@ public interface JsonNode extends Serializable {
      * @return This node as a new independent JSON document where this node is the new root of that document.
      */
     default JsonNode extract() {
-        return of( getDeclaration() );
+        return isRoot() ? this : of( getDeclaration() );
     }
 
     /**
-     * Replace this node and return the root of the document where this node got replaced.
+     * Replace this node and returns the root of a new tree where this node got replaced.
      *
-     * @param json The JSON used instead of the on this node represents. Note that the provided JSON is not check to be
-     *             valid JSON immediately.
+     * @param json The JSON used instead of the on this node represents. <br/><b>Note</b> that the provided JSON is not
+     *             check to be valid JSON immediately.
      * @return A new document root where this node got replaced with the provided JSON
      */
     JsonNode replaceWith( String json );

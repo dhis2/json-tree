@@ -35,9 +35,10 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
 
 /**
  * A {@link JsonList} is nothing else then a {@link JsonArray} with "typed" uniform elements.
@@ -45,6 +46,7 @@ import java.util.stream.StreamSupport;
  * @param <E> type of the list elements
  * @author Jan Bernitt
  */
+@Validation( type = ARRAY )
 public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<E> {
 
     /**
@@ -154,16 +156,15 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
 
             @Override
             public E next() {
-                if ( !hasNext() ) {
-                    throw new NoSuchElementException();
-                }
+                if ( !hasNext() )
+                    throw new NoSuchElementException( "next() called without checking hasNext()" );
                 return get( index++ );
             }
         };
     }
 
     default Iterable<E> filtered( Predicate<? super E> filter ) {
-        return stream().filter( filter ).collect( Collectors.toList() );
+        return stream().filter( filter ).toList();
     }
 
     /**
@@ -181,11 +182,10 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
      * @param <T>     type of result list elements
      * @return this list mapped to a {@link List} of elements mapped by the provided mapper function from the
      * {@link JsonValue}s of this {@link JsonList}. Undefined or JSON null is mapped to an empty list.
-     * @throws java.util.NoSuchElementException in case a source element {@link JsonValue} does not exist
      * @see #toList(Function, Object)
      */
     default <T> List<T> toList( Function<E, T> toValue ) {
-        return stream().map( toValue ).collect( Collectors.toList() );
+        return stream().map( toValue ).toList();
     }
 
     /**
@@ -244,6 +244,11 @@ public interface JsonList<E extends JsonValue> extends JsonCollection, Iterable<
             @Override
             public V get( int index ) {
                 return elementToX.apply( viewed.get( index ) );
+            }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonList.class;
             }
         }
         return new JsonListView( this );

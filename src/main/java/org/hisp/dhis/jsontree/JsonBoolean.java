@@ -27,11 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.BOOLEAN;
+
 /**
  * Represents a boolean JSON node.
  *
  * @author Jan Bernitt
  */
+@Validation( type = BOOLEAN )
 public interface JsonBoolean extends JsonPrimitive {
 
     /**
@@ -40,17 +43,20 @@ public interface JsonBoolean extends JsonPrimitive {
      */
     Boolean bool();
 
+    /**
+     * @param orDefault to use if this node is undefined or defined null
+     * @return the boolean value of this node or the default if it is undefined or null
+     * @throws JsonTreeException in case this node exist but is not a boolean node (or null)
+     */
     default boolean booleanValue( boolean orDefault ) {
-        return exists() ? booleanValue() : orDefault;
+        return isUndefined() ? orDefault : booleanValue();
     }
 
     /**
-     * Same as {@link #bool()} except that this throws an {@link java.util.NoSuchElementException} in case the value is
-     * not defined.
+     * Same as {@link #bool()} except that this throws an {@link JsonPathException} in case the value is not defined.
      *
      * @return true of false, nothing else
-     * @throws java.util.NoSuchElementException when this value is not defined in the JSON content or defined JSON
-     *                                          {@code null}.
+     * @throws JsonPathException when this value is not defined in the JSON content or defined JSON {@code null}.
      */
     default boolean booleanValue() {
         return mapNonNull( bool(), Boolean::booleanValue );

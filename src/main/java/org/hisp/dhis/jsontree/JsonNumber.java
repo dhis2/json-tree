@@ -27,11 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.NUMBER;
+
 /**
  * Represents a numeric JSON node.
  *
  * @author Jan Bernitt
  */
+@Validation( type = NUMBER )
 public interface JsonNumber extends JsonPrimitive {
 
     /**
@@ -40,27 +43,72 @@ public interface JsonNumber extends JsonPrimitive {
      */
     Number number();
 
-    @SuppressWarnings( "unchecked" )
-    default <T extends Number> T number( T orDefault ) {
-        return exists() ? (T) number() : orDefault;
+    /**
+     * @return numeric value as integer (potentially dropping any fractions) or {@code null} if this property is
+     * undefined or defined as JSON {@code null}.
+     * @since 0.10
+     */
+    default Integer integer() {
+        return isUndefined() ? null : intValue();
     }
 
+    /**
+     * @param orDefault value to use if this node is undefined or defined null
+     * @return the value of this number node as the type of the provided default
+     * @throws JsonTreeException  in case this node is not a number node
+     * @throws ClassCastException in case the value is not of the default type
+     */
+    @SuppressWarnings( "unchecked" )
+    default <T extends Number> T number( T orDefault ) {
+        return isUndefined() ? orDefault : (T) number();
+    }
+
+    /**
+     * @return this number node's value as an integer
+     * @throws JsonPathException    in case this node does not exist
+     * @throws JsonTreeException    in case this node is not a number node
+     * @throws NullPointerException in case this node is defined as JSON null
+     * @see #intValue(int)
+     */
     default int intValue() {
         return mapNonNull( number(), Number::intValue );
     }
 
+    /**
+     * @param orDefault when the node in undefined (including defined as null)
+     * @return this number node's value as an integer or the given default if it is undefined
+     * @throws JsonTreeException in case this node is not a number node
+     */
     default int intValue( int orDefault ) {
-        return exists() ? intValue() : orDefault;
+        return isUndefined() ? orDefault : intValue();
     }
 
+    /**
+     * @return this number node's value as a long
+     * @throws JsonPathException    in case this node does not exist
+     * @throws JsonTreeException    in case this node is not a number node
+     * @throws NullPointerException in case this node is defined as JSON null
+     */
     default long longValue() {
         return mapNonNull( number(), Number::longValue );
     }
 
+    /**
+     * @return this number node's value as a float
+     * @throws JsonPathException    in case this node does not exist
+     * @throws JsonTreeException    in case this node is not a number node
+     * @throws NullPointerException in case this node is defined as JSON null
+     */
     default float floatValue() {
         return mapNonNull( number(), Number::floatValue );
     }
 
+    /**
+     * @return this number node's value as a double
+     * @throws JsonPathException    in case this node does not exist
+     * @throws JsonTreeException    in case this node is not a number node
+     * @throws NullPointerException in case this node is defined as JSON null
+     */
     default double doubleValue() {
         return mapNonNull( number(), Number::doubleValue );
     }

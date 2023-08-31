@@ -119,7 +119,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
             .add( LocalTime.class, ( obj, name ) -> obj.get( name, JsonDate.class ).timeOnly() )
             .add( Date.class, JsonTypedAccess::accessDate )
 
-            // JSON generic types
+            // JSON generic type
             .add( JsonList.class,
                 ( obj, name, to, store ) -> obj.getList( name, extractJsonValueTypeParameter( to, 0 ) ) )
             .add( JsonMap.class,
@@ -127,7 +127,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
             .add( JsonMultiMap.class,
                 ( obj, name, to, store ) -> obj.getMultiMap( name, extractJsonValueTypeParameter( to, 0 ) ) )
 
-            // JDK generic types
+            // JDK generic type
             .add( List.class, JsonTypedAccess::accessList )
             .add( Iterable.class, JsonTypedAccess::accessList )
             .add( Set.class, JsonTypedAccess::accessSet )
@@ -150,7 +150,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
     private static char accessChar( JsonObject obj, String path ) {
         String str = obj.getString( path ).string();
         if ( str == null || str.isEmpty() ) {
-            throw new NoSuchElementException( "No character for property " + path );
+            throw new JsonPathException( path, "No character for property " + path );
         }
         return str.charAt( 0 );
     }
@@ -253,9 +253,8 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
 
             @Override
             public Object next() {
-                if ( !hasNext() ) {
-                    throw new NoSuchElementException();
-                }
+                if ( !hasNext() )
+                    throw new NoSuchElementException( "next() called without checking hasNext()" );
                 Object value = elementAccess.access( from, path + "[" + i + "]", elementType, store );
                 i++;
                 return value;
@@ -265,7 +264,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
 
     /**
      * Map keys are really object member names and as such not values so accessors cannot be used to map them.
-     * Therefore, a handful of types are supported explicitly.
+     * Therefore, a handful of type are supported explicitly.
      */
     private static Function<String, Object> getKeyMapper( Class<?> rawKeyType ) {
         if ( rawKeyType.isEnum() ) {

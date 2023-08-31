@@ -43,71 +43,67 @@ class JsonListTest {
 
     @Test
     void testList_stream_Undefined() {
-        JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
     void testList_stream_Null() {
-        JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
     void testList_stream_Empty() {
-        JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.stream().map( JsonNumber::intValue ).collect( toList() ) );
     }
 
     @Test
     void testList_toList_Undefined() {
-        JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toList_Null() {
-        JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toList_Empty() {
-        JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toList( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_Undefined() {
-        JsonList<JsonNumber> list = createJSON( "{}" ).getList( "missing", JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "{}" ).getList( "missing", JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_Null() {
-        JsonList<JsonNumber> list = createJSON( "null" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "null" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_Empty() {
-        JsonList<JsonNumber> list = createJSON( "[]" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "[]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_OnlyNulls() {
-        JsonList<JsonNumber> list = createJSON( "[null,null]" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "[null,null]" ).asList( JsonNumber.class );
         assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_Mixed() {
-        JsonList<JsonNumber> list = createJSON( "[null,1,2,null,3]" ).asList( JsonNumber.class );
+        JsonList<JsonNumber> list = JsonMixed.of( "[null,1,2,null,3]" ).asList( JsonNumber.class );
         assertEquals( List.of( 1, 2, 3 ), list.toListOfElementsThatExists( JsonNumber::intValue ) );
-    }
-
-    private static JsonMixed createJSON( String content ) {
-        return JsonMixed.of( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

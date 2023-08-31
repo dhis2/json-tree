@@ -30,7 +30,7 @@ package org.hisp.dhis.jsontree;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 /**
  * Test scenarios taken from the
@@ -101,19 +101,19 @@ class JsonTestSuiteTest {
 
     @Test
     void n_structure_no_data() {
-        assertThrows( JsonFormatException.class, () -> JsonNode.of( "" ) );
+        assertThrowsExactly( JsonFormatException.class, () -> JsonNode.of( "" ) );
     }
 
     @Test
     void n_structure_single_star() {
-        assertThrows( JsonFormatException.class, () -> JsonNode.of( "*" ) );
+        assertThrowsExactly( JsonFormatException.class, () -> JsonNode.of( "*" ) );
         assert_n( "[*]" );
     }
 
     @Test
     void n_string_single_doublequote() {
         JsonNode node = JsonNode.of( "\"" );
-        assertThrows( JsonFormatException.class, node::value );
+        assertThrowsExactly( JsonFormatException.class, node::value );
     }
 
     /*
@@ -140,7 +140,7 @@ class JsonTestSuiteTest {
     }
 
     private void assert_n( JsonNode node ) {
-        assertThrows( JsonFormatException.class, () -> node.visit( n -> {
+        assertThrowsExactly( JsonFormatException.class, () -> node.visit( n -> {
         } ) );
     }
 }

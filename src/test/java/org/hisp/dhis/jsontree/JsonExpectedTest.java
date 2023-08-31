@@ -29,13 +29,11 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.NoSuchElementException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link Expected} annotation feature.
@@ -80,32 +78,32 @@ class JsonExpectedTest {
 
     @Test
     void testIsA() {
-        assertTrue( createJSON( "{'bar':'x'}" ).isA( JsonFoo.class ) );
-        assertTrue( createJSON( "{'key':'x', 'value': 1}" ).isA( JsonEntry.class ) );
-        JsonMixed both = createJSON( "{'key':'x', 'value': 1, 'bar':'y'}" );
+        assertTrue( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonFoo.class ) );
+        assertTrue( JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" ).isA( JsonEntry.class ) );
+        JsonMixed both = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1, 'bar':'y'}" );
         assertTrue( both.isA( JsonFoo.class ) );
         assertTrue( both.isA( JsonEntry.class ) );
     }
 
     @Test
     void testIsA_MissingMember() {
-        assertFalse( createJSON( "{'bar':'x'}" ).isA( JsonEntry.class ) );
-        assertFalse( createJSON( "{'key':'x', 'value': 1}" ).isA( JsonFoo.class ) );
+        assertFalse( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonEntry.class ) );
+        assertFalse( JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" ).isA( JsonFoo.class ) );
     }
 
     @Test
     void testIsA_WrongNodeType() {
-        assertFalse( createJSON( "{'bar':true}" ).isA( JsonFoo.class ) );
-        assertFalse( createJSON( "{'key':'x', 'value': '1'}" ).isA( JsonEntry.class ) );
+        assertFalse( JsonMixed.ofNonStandard( "{'bar':true}" ).isA( JsonFoo.class ) );
+        assertFalse( JsonMixed.ofNonStandard( "{'key':'x', 'value': '1'}" ).isA( JsonEntry.class ) );
     }
 
     @Test
     void testIsA_NotAnObject() {
-        assertFalse( createJSON( "[]" ).isA( JsonEntry.class ) );
-        assertFalse( createJSON( "'test'" ).isA( JsonEntry.class ) );
-        assertFalse( createJSON( "12" ).isA( JsonEntry.class ) );
-        assertFalse( createJSON( "false" ).isA( JsonEntry.class ) );
-        assertFalse( createJSON( "null" ).isA( JsonEntry.class ) );
+        assertFalse( JsonMixed.of( "[]" ).isA( JsonEntry.class ) );
+        assertFalse( JsonMixed.ofNonStandard( "'test'" ).isA( JsonEntry.class ) );
+        assertFalse( JsonMixed.of( "12" ).isA( JsonEntry.class ) );
+        assertFalse( JsonMixed.of( "false" ).isA( JsonEntry.class ) );
+        assertFalse( JsonMixed.of( "null" ).isA( JsonEntry.class ) );
     }
 
     @Test
@@ -124,75 +122,79 @@ class JsonExpectedTest {
 
     @Test
     void testAsObject_NotAnObjectArray() {
-        assertAsObjectThrows( JsonFoo.class, "[]", "Expected  JsonFoo node is not an object but a ARRAY" );
+        JsonMixed obj = JsonMixed.of( "[]" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        assertEquals( "Expected  JsonFoo node is not an object but a ARRAY", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectString() {
-        assertAsObjectThrows( JsonFoo.class, "'nop'", "Expected  JsonFoo node is not an object but a STRING" );
+        JsonMixed obj = JsonMixed.of( "\"nop\"" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        assertEquals( "Expected  JsonFoo node is not an object but a STRING", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNumber() {
-        assertAsObjectThrows( JsonFoo.class, "13", "Expected  JsonFoo node is not an object but a NUMBER" );
+        JsonMixed obj = JsonMixed.of( "13" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        assertEquals( "Expected  JsonFoo node is not an object but a NUMBER", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectBoolean() {
-        assertAsObjectThrows( JsonFoo.class, "true", "Expected  JsonFoo node is not an object but a BOOLEAN" );
+        JsonMixed obj = JsonMixed.of( "true" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        assertEquals( "Expected  JsonFoo node is not an object but a BOOLEAN", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNull() {
-        assertAsObjectThrows( JsonFoo.class, "null", "Expected  JsonFoo node is not an object but a NULL" );
+        JsonMixed obj = JsonMixed.of( "null" );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        assertEquals( "Expected  JsonFoo node is not an object but a NULL", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectUndefined() {
-        assertAsObjectThrows( () -> createJSON( "{}" ).getObject( "x" ).asObject( JsonFoo.class ),
-            "Expected  JsonFoo node does not exist" );
+        JsonObject obj = JsonMixed.of( "{}" ).getObject( "x" );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> obj.asObject( JsonFoo.class ) );
+        assertEquals( "Expected  JsonFoo node does not exist", ex.getMessage() );
     }
 
     @Test
     void testAsObject_MissingMemberUndefined() {
-        assertAsObjectThrows( JsonRoot.class, "{'b':{'bar':''}}",
-            "Expected JsonRoot node member getA was not defined" );
+        //language=json
+        String json = """
+            {"b":{"bar":""}}""";
+        JsonMixed obj = JsonMixed.of( json );
+        JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> obj.asObject( JsonRoot.class ) );
+        assertEquals( "Expected JsonRoot node property getA was not defined", ex.getMessage() );
     }
 
     @Test
     void testAsObject_MissingMemberRecursive() {
-        assertAsObjectThrows( JsonRoot.class, "{'a': {}, 'b':{'bar':''}}",
-            "Expected JsonFoo node member getA.getBar was not defined" );
+        //language=json
+        String json = """
+            {"a": {}, "b":{"bar":""}}""";
+        JsonMixed obj = JsonMixed.of( json );
+        JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> obj.asObject( JsonRoot.class ) );
+        assertEquals( "Expected JsonFoo node property getA.getBar was not defined", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectRecursive() {
-        assertAsObjectThrows( JsonRoot.class, "{'a': [], 'b':{'bar':''}}",
-            "Expected getA JsonFoo node is not an object but a ARRAY" );
-    }
-
-    private static void assertAsObjectThrows( Class<? extends JsonObject> of, String actualJson,
-        String expectedMessage ) {
-        assertAsObjectThrows( () -> assertNotNull( createJSON( actualJson ).asObject( of ) ), expectedMessage );
-    }
-
-    private static void assertAsObjectThrows( Runnable test, String expectedMessage ) {
-        try {
-            test.run();
-        } catch ( NoSuchElementException ex ) {
-            assertEquals( expectedMessage, ex.getMessage() );
-            return;
-        }
-        fail( "Expected NoSuchElementException with message: " + expectedMessage );
+        //language=json
+        String json = """
+            {"a": [], "b":{"bar":""}}""";
+        JsonMixed obj = JsonMixed.of( json );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonRoot.class ) );
+        assertEquals( "Expected getA JsonFoo node is not an object but a ARRAY", ex.getMessage() );
     }
 
     private static void assertAsObject( Class<? extends JsonObject> of, String actualJson ) {
-        JsonObject obj = createJSON( actualJson ).asObject( of );
+        JsonObject obj = JsonMixed.ofNonStandard( actualJson ).asObject( of );
         assertNotNull( obj );
         assertTrue( of.isInstance( obj ) );
-    }
-
-    private static JsonMixed createJSON( String content ) {
-        return JsonMixed.of( content.replace( '\'', '"' ), JsonTypedAccess.GLOBAL );
     }
 }

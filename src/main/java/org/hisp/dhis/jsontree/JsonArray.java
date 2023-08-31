@@ -28,9 +28,10 @@
 package org.hisp.dhis.jsontree;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static java.util.stream.Collectors.toList;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
 
 /**
  * Represents a JSON array node.
@@ -41,6 +42,7 @@ import static java.util.stream.Collectors.toList;
  *
  * @author Jan Bernitt
  */
+@Validation( type = ARRAY )
 public interface JsonArray extends JsonCollection {
 
     /**
@@ -57,24 +59,24 @@ public interface JsonArray extends JsonCollection {
 
     /**
      * @return the array elements as a uniform list of {@link String}
-     * @throws IllegalArgumentException in case the node is not an array or the array has mixed elements
+     * @throws JsonTreeException in case the node is not an array or the array has mixed elements
      */
     List<String> stringValues();
 
     /**
      * @return the array elements as a uniform list of {@link Number}
-     * @throws IllegalArgumentException in case the node is not an array or the array has mixed elements
+     * @throws JsonTreeException in case the node is not an array or the array has mixed elements
      */
     List<Number> numberValues();
 
     /**
      * @return the array elements as a uniform list of {@link Boolean}
-     * @throws IllegalArgumentException in case the node is not an array or the array has mixed elements
+     * @throws JsonTreeException in case the node is not an array or the array has mixed elements
      */
     List<Boolean> boolValues();
 
     default <E> List<E> values( Function<String, E> mapper ) {
-        return stringValues().stream().map( mapper ).collect( toList() );
+        return stringValues().stream().map( mapper ).toList();
     }
 
     default JsonValue get( int index ) {
@@ -99,6 +101,15 @@ public interface JsonArray extends JsonCollection {
 
     default JsonObject getObject( int index ) {
         return get( index, JsonObject.class );
+    }
+
+    /**
+     * @param action called for each element in the array in order of declaration
+     * @throws JsonTreeException if this node is not an array node that could have elements
+     * @since 0.10
+     */
+    default void forEach( Consumer<JsonValue> action ) {
+        node().elements().forEach( n -> action.accept( JsonValue.of( n ) ) );
     }
 
     default <E extends JsonValue> JsonList<E> getList( int index, Class<E> as ) {
@@ -133,6 +144,11 @@ public interface JsonArray extends JsonCollection {
             @Override
             public V get( int index ) {
                 return elementToX.apply( viewed.get( index ) );
+            }
+
+            @Override
+            public Class<? extends JsonValue> asType() {
+                return JsonList.class;
             }
         }
         return new JsonArrayView( this );
