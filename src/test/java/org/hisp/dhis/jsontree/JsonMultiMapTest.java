@@ -89,4 +89,11 @@ class JsonMultiMapTest {
         assertEquals( Map.of( "b", List.of( 1 ), "c", List.of( 2 ) ),
             obj2.viewAsMultiMap( arr -> arr.getNumber( 0 ) ).toMap( JsonNumber::integer ) );
     }
+
+    @Test
+    void testToMapWithOrder() {
+        JsonMultiMap<JsonNumber> obj = JsonMixed.of( "{\"b\":[1,2],\"c\":[2,1,5,4]}" ).asMultiMap( JsonNumber.class );
+        Map<String, List<Integer>> actual = obj.toMap( JsonNumber::intValue, Integer::compareTo );
+        assertEquals( Map.of( "b", List.of( 1, 2 ), "c", List.of( 1, 2, 4, 5 ) ), actual );
+    }
 }
