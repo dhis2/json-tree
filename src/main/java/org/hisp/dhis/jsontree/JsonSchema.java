@@ -2,8 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import java.util.List;
 
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
 
 /**
  * Structure of a JSON schema document as described in <a href="https://json-schema.org/draft/2020-12">2020-12
@@ -13,6 +12,14 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  */
 @SuppressWarnings( "java:S100" )
 public interface JsonSchema {
+
+    enum NodeType {
+        NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT;
+
+        boolean isSimple() {
+            return this != ARRAY && this != OBJECT;
+        }
+    }
 
     /**
      * Structural Validation.
@@ -29,18 +36,14 @@ public interface JsonSchema {
          * The value MUST be either a string or an array. If it is an array, elements of the array MUST be strings and
          * MUST be unique.
          * <p>
-         * String values MUST be one of the six primitive types ("null", "boolean", "object", "array", "number", or
+         * String values MUST be one of the six primitive type ("null", "boolean", "object", "array", "number", or
          * "string"), or "integer" which matches any number with a zero fractional part.
          *
-         * @return Validation succeeds if the type of the instance matches at least one of the given types.
+         * @return Validation succeeds if the type of the instance matches at least one of the given type.
          */
-        @Validation( type = { STRING, ARRAY }, uniqueItems = true,
-            values = { "null", "boolean", "object", "array", "string", "number", "integer" } )
-        default List<String> type() {
-            JsonValue type = get( "type" );
-            return !type.exists() ? List.of() : type.isArray()
-                ? type.asList( JsonString.class ).toList( JsonString::string )
-                : List.of( type.as( JsonString.class ).string() );
+        @Validation( type = STRING, uniqueItems = true, minItems = 0, maxItems = 6, enumeration = NodeType.class )
+        default List<NodeType> type() {
+            return get( "type" ).toListFromVarargs( JsonString.class, str -> str.parsed( NodeType::valueOf ) );
         }
 
         /**

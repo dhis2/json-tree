@@ -1,12 +1,13 @@
 package org.hisp.dhis.jsontree;
 
 /**
- * A {@link JsonValue} of unknown type that can be treated as any of the general JSON types for convenience.
+ * A {@link JsonValue} of unknown type that can be treated as any of the general JSON type for convenience.
  *
  * @author Jan Bernitt
  * @see JsonValue
  * @since 0.8
  */
+@Validation( type = { JsonSchema.NodeType.OBJECT, JsonSchema.NodeType.ARRAY, JsonSchema.NodeType.STRING, JsonSchema.NodeType.NUMBER, JsonSchema.NodeType.BOOLEAN })
 public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean {
 
     /**
@@ -31,10 +32,10 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
 
     /**
      * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
-     * mapping to Java method return types.
+     * mapping to Java method return type.
      *
      * @param json  a standard conform JSON string
-     * @param store mapping used to map JSON values to the Java method return types of abstract methods, when
+     * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return root of the virtual tree representing the given JSON input
      */

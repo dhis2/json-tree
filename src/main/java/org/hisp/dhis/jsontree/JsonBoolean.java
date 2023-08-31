@@ -27,11 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.BOOLEAN;
+
 /**
  * Represents a boolean JSON node.
  *
  * @author Jan Bernitt
  */
+@Validation( type = BOOLEAN )
 public interface JsonBoolean extends JsonPrimitive {
 
     /**

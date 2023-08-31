@@ -27,11 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.NUMBER;
+
 /**
  * Represents a numeric JSON node.
  *
  * @author Jan Bernitt
  */
+@Validation( type = NUMBER )
 public interface JsonNumber extends JsonPrimitive {
 
     /**
@@ -49,6 +52,12 @@ public interface JsonNumber extends JsonPrimitive {
         return isUndefined() ? null : intValue();
     }
 
+    /**
+     * @param orDefault value to use if this node is undefined or defined null
+     * @return the value of this number node as the type of the provided default
+     * @throws JsonTreeException  in case this node is not a number node
+     * @throws ClassCastException in case the value is not of the default type
+     */
     @SuppressWarnings( "unchecked" )
     default <T extends Number> T number( T orDefault ) {
         return isUndefined() ? orDefault : (T) number();

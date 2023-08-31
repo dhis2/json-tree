@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
+
 /**
  * Represents a JSON array node.
  * <p>
@@ -40,6 +42,7 @@ import java.util.function.Function;
  *
  * @author Jan Bernitt
  */
+@Validation( type = ARRAY )
 public interface JsonArray extends JsonCollection {
 
     /**

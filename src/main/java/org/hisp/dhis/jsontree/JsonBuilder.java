@@ -60,6 +60,8 @@ import static java.util.stream.StreamSupport.stream;
  */
 public interface JsonBuilder {
 
+    //TODO convenience methods for Date and alike to create string nodes
+
     PrettyPrint MINIMIZED = new PrettyPrint( 0, 0, false, true, false );
 
     /**

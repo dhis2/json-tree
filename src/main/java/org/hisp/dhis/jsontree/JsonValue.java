@@ -27,10 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.util.List;
+import java.util.function.Function;
+
 /**
  * The {@link JsonValue} is a virtual read-only view for JSON responses.
  * <p>
- * As usual there are specific node types for the JSON building blocks:
+ * As usual there are specific node type for the JSON building blocks:
  * <ul>
  * <li>{@link JsonObject}</li>
  * <li>{@link JsonArray}</li>
@@ -50,8 +53,8 @@ package org.hisp.dhis.jsontree;
  * <p>
  * The API is designed to:
  * <ul>
- * <li>be extended by further types extending {@link JsonValue}, such as
- * {@link JsonDate} but also further specific object types</li>
+ * <li>be extended by further type extending {@link JsonValue}, such as
+ * {@link JsonDate} but also further specific object type</li>
  * <li>fail at point of assertion. This means traversing the virtual tree does
  * not cause errors unless explicitly provoked.</li>
  * <li>be implemented by a single class which only builds a lookup path and
@@ -87,10 +90,10 @@ public interface JsonValue {
 
     /**
      * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
-     * mapping to Java method return types.
+     * mapping to Java method return type.
      *
      * @param json  a JSON string
-     * @param store mapping used to map JSON values to the Java method return types of abstract methods, when
+     * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return virtual JSON tree root {@link JsonValue}
      */
@@ -118,11 +121,21 @@ public interface JsonValue {
 
     /**
      * @param schema the schema to validate against
-     * @throws JsonSchemaException in case this value does not match the given schema
+     * @throws JsonSchemaException      in case this value does not match the given schema
+     * @throws IllegalArgumentException in case the given schema is not an interface
      * @since 0.10
      */
     default void validate( Class<? extends JsonValue> schema ) {
-        SchemaValidation.validate( this, schema );
+        JsonSchemaValidation.validate( this, schema );
+    }
+
+    /**
+     * @param schema the schema to validate against
+     * @throws JsonSchemaException in case this value does not match the given schema
+     * @since 0.10
+     */
+    default void validate( JsonSchema schema ) {
+        JsonSchemaValidation.validate( this, schema );
     }
 
     /**
@@ -254,6 +267,25 @@ public interface JsonValue {
     }
 
     /**
+     * Used to get a list when the actual value may be either a single value or an array of the same single value type.
+     *
+     * @param elementType single value or array element type
+     * @param toElement   to convert to target element type
+     * @param <T>         type target type for element conversion
+     * @param <V>         type of array elements (or the single value)
+     * @return an empty list for undefined, a list with one element for a single simple source value, or a list with the
+     * elements of an array source value.
+     * @throws JsonTreeException in case the single value or an element in the array is not compatible with the element
+     *                           type
+     * @since 0.10
+     */
+    default <T, V extends JsonValue> List<T> toListFromVarargs( Class<V> elementType, Function<V, T> toElement ) {
+        return isUndefined() ? List.of() : isArray()
+            ? asList( elementType ).toList( toElement )
+            : List.of( toElement.apply( as( elementType ) ) );
+    }
+
+    /**
      * Access the node in the JSON document. This can be the low level API that is concerned with extraction by path.
      * <p>
      * This might be useful in test to access the {@link JsonNode#getDeclaration()} to modify and reuse it.
@@ -264,7 +296,7 @@ public interface JsonValue {
     JsonNode node();
 
     /**
-     * @return true, if results of JSON to Java method return types mapping via {@link JsonTypedAccessStore} are cached
+     * @return true, if results of JSON to Java method return type mapping via {@link JsonTypedAccessStore} are cached
      * so that complex return values are only computed once. Any interface return type is considered a complex type.
      */
     default boolean isAccessCached() {

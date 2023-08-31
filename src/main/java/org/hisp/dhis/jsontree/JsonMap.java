@@ -34,6 +34,7 @@ import java.util.function.Function;
 
 import static java.util.stream.Collectors.toUnmodifiableSet;
 import static java.util.stream.StreamSupport.stream;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
 
 /**
  * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.
@@ -41,6 +42,7 @@ import static java.util.stream.StreamSupport.stream;
  * @param <E> type of the uniform map values
  * @author Jan Bernitt
  */
+@Validation( type = OBJECT )
 public interface JsonMap<E extends JsonValue> extends JsonCollection {
 
     /**

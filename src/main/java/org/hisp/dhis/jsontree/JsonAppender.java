@@ -268,7 +268,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addMember( String name, Object pojo, JsonMapper mapper ) {
-        mapper.addTo( this, null, pojo );
+        mapper.addTo( this, name, pojo );
         return this;
     }
 

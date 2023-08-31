@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonSchemaException.Info;
+
 import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
@@ -37,6 +39,7 @@ import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.stream;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
 
 /**
  * Represents a JSON object node.
@@ -48,6 +51,7 @@ import static java.util.Arrays.stream;
  *
  * @author Jan Bernitt
  */
+@Validation( type = OBJECT )
 public interface JsonObject extends JsonCollection {
 
     /**
@@ -197,8 +201,9 @@ public interface JsonObject extends JsonCollection {
                     Object property = m.invoke( obj );
                     if ( property == null || property instanceof JsonValue value && (!value.exists()
                         || !m.getAnnotation( Expected.class ).nullable() && value.isNull()) ) {
-                        throw new JsonSchemaException( String.format( "Expected %s node property %s was not defined",
-                            type.getSimpleName(), parent + m.getName() ) );
+                        String message = String.format( "Expected %s node property %s was not defined",
+                            type.getSimpleName(), parent + m.getName() );
+                        throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
                     }
                     if ( recursive && property instanceof JsonObject value && !value.isNull() ) {
                         @SuppressWarnings( "unchecked" )
@@ -206,8 +211,9 @@ public interface JsonObject extends JsonCollection {
                         ((JsonObject) property).asObject( memberType, true, parent + m.getName() );
                     }
                 } catch ( ReflectiveOperationException ex ) {
-                    throw new JsonSchemaException( String.format( "Expected %s node property %s had invalid value: %s",
-                        type.getSimpleName(), parent + m.getName(), ex.getMessage() ) );
+                    String message = String.format( "Expected %s node property %s had invalid value: %s",
+                        type.getSimpleName(), parent + m.getName(), ex.getMessage() );
+                    throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
                 }
             } );
         return obj;

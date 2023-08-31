@@ -32,7 +32,6 @@ import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
@@ -299,7 +298,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     /**
      * Abstract interface methods are "implemented" by deriving an {@link JsonGenericTypedAccessor} from the method's
-     * return type and have the accessor extract the value by using solely the underlying {@link JsonValue} API.
+     * return type and have the accessor extract the value by using the underlying {@link JsonValue} API.
      */
     private Object callAbstractMethod( JsonVirtualTree inner, Method method, Object[] args ) {
         JsonObject obj = inner.asObject();
@@ -328,21 +327,19 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     /**
      * All methods by the core API of the general JSON tree represented as {@link JsonValue}s (and the general
-     * subclasses) are implemented by the {@link JsonVirtualTree} wrapper so they can be called directly.
+     * subclasses) are implemented by the {@link JsonVirtualTree} wrapper, so they can be called directly.
      */
-    private static Object callCoreApiMethod( JsonValue inner, Method method, Object[] args )
+    private static Object callCoreApiMethod( JsonVirtualTree inner, Method method, Object[] args )
         throws Throwable {
-        try {
-            return method.invoke( inner, args );
-        } catch ( InvocationTargetException ex ) {
-            throw ex.getTargetException();
-        }
+        return args == null || args.length == 0
+            ? MethodHandles.lookup().unreflect( method ).invokeWithArguments( inner )
+            : MethodHandles.lookup().unreflect( method ).bindTo( inner ).invokeWithArguments( args );
     }
 
     /**
      * This is twofold: Concepts like {@link Stream} and {@link Iterator} should not be cached to work correctly.
      * <p>
-     * For all other types this is about reaching a balance between memory usage and CPU usage. Simple objects are
+     * For all other type this is about reaching a balance between memory usage and CPU usage. Simple objects are
      * recomputed whereas complex objects are not.
      */
     private boolean isCacheable( Class<?> resType ) {

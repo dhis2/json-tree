@@ -27,14 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.concurrent.Callable;
 import java.util.function.Function;
+
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
 
 /**
  * Represents a string JSON node.
  *
  * @author Jan Bernitt
  */
+@Validation( type = STRING )
 public interface JsonString extends JsonPrimitive {
 
     /**
@@ -66,15 +68,23 @@ public interface JsonString extends JsonPrimitive {
         return value == null ? null : parser.apply( value );
     }
 
-    default <T> T converted( Callable<T> converter ) {
+    interface CheckedFunction<A, B> {
+
+        B apply( A a )
+            throws Exception;
+    }
+
+    default <T> T parsedChecked( CheckedFunction<String, T> converter ) {
+        String value = string();
+        if ( value == null ) return null;
         try {
-            return converter.call();
+            return converter.apply( value );
         } catch ( Exception ex ) {
             throw new IllegalArgumentException( ex );
         }
     }
 
     default Class<?> parsedClass() {
-        return converted( () -> Class.forName( string() ) );
+        return parsedChecked( Class::forName );
     }
 }

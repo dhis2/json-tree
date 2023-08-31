@@ -1,7 +1,7 @@
 package org.hisp.dhis.jsontree;
 
 /**
- * Possible types of JSON nodes in {@link JsonNode} tree.
+ * Possible type of JSON nodes in {@link JsonNode} tree.
  */
 public enum JsonNodeType {
     OBJECT,

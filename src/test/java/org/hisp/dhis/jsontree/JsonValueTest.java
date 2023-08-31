@@ -29,10 +29,13 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -125,4 +128,41 @@ class JsonValueTest {
         assertFalse( JsonValue.of( "0.4" ).isInteger() );
     }
 
+    @Test
+    void testToListFromVarargs_Undefined() {
+        assertEquals( List.of(), JsonMixed.of( "{}" ).get( "foo" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+    }
+
+    @Test
+    void testToListFromVarargs_Null() {
+        assertEquals( List.of(), JsonValue.of( "null" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+    }
+
+    @Test
+    void testToListFromVarargs_Simple() {
+        assertEquals( List.of(1), JsonValue.of( "1" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+    }
+
+    @Test
+    void testToListFromVarargs_SimpleWrongType() {
+        JsonValue value = JsonValue.of( "true" );
+        assertThrowsExactly( JsonTreeException.class, () -> value.toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+    }
+
+    @Test
+    void testToListFromVarargs_ArrayEmpty() {
+        assertEquals( List.of(), JsonValue.of( "[]" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+    }
+
+    @Test
+    void testToListFromVarargs_ArrayNonEmpty() {
+        assertEquals( List.of(1,2), JsonValue.of( "[1,2]" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+
+    }
+
+    @Test
+    void testToListFromVarargs_ArrayWrongType() {
+        JsonValue value = JsonValue.of( "[1,true]" );
+        assertThrowsExactly( JsonTreeException.class, () -> value.toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+    }
 }

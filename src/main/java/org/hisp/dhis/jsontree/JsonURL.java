@@ -39,6 +39,6 @@ import java.net.URL;
 public interface JsonURL extends JsonString {
 
     default URL url() {
-        return converted( () -> new URL( string() ) );
+        return parsedChecked( URL::new );
     }
 }

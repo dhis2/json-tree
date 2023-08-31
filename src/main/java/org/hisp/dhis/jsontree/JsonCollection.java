@@ -27,6 +27,9 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+
 /**
  * Common base class for JSON nodes that have children.
  * <p>
@@ -44,6 +47,7 @@ package org.hisp.dhis.jsontree;
  *
  * @author Jan Bernitt
  */
+@Validation( type = { ARRAY, OBJECT } )
 public interface JsonCollection extends JsonValue {
 
     /**

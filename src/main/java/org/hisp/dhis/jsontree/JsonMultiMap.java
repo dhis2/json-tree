@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+
 /**
  * A {@link JsonMap} with {@link JsonList} of elements.
  * <p>
@@ -42,6 +44,7 @@ import java.util.function.Function;
  * @param <E> type of the map list elements
  * @author Jan Bernitt
  */
+@Validation( type = OBJECT )
 public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> {
 
     /**
