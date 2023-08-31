@@ -2,9 +2,10 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonSchemaException.Info;
 import org.hisp.dhis.jsontree.JsonSchema.NodeType;
+import org.hisp.dhis.jsontree.Validation.Restriction;
 import org.hisp.dhis.jsontree.Validation.YesNo;
+import org.hisp.dhis.jsontree.Validation.Error;
 
-import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AnnotatedElement;
@@ -33,29 +34,6 @@ import static java.util.stream.Collectors.toUnmodifiableSet;
  * @since 0.10
  */
 public final class JsonSchemaValidation {
-
-    public enum Type {
-        TYPE, ENUM,
-
-        // string values
-        MIN_LENGTH, MAX_LENGTH, PATTERN,
-
-        // number values
-        MINIMUM, MAXIMUM, EXCLUSIVE_MINIMUM, EXCLUSIVE_MAXIMUM, MULTIPLE_OF,
-
-        // array values
-        MIN_ITEMS, MAX_ITEMS, UNIQUE_ITEMS, MIN_CONTAINS, MAX_CONTAINS,
-
-        // object values
-        MIN_PROPERTIES, MAX_PROPERTIES, REQUIRED, DEPENDENT_REQUIRED
-    }
-
-    public record Error(Type type, JsonMixed value, List<Object> args) implements Serializable {
-
-        public static Error of( Type type, JsonMixed value, Object... args ) {
-            return new Error( type, value, List.of( args ) );
-        }
-    }
 
     /**
      * Value validation
@@ -113,7 +91,7 @@ public final class JsonSchemaValidation {
             if ( forType == null && value.isInteger() )
                 forType = anyOf.get( NodeType.INTEGER );
             if ( forType == null ) {
-                addError.accept( Error.of( Type.TYPE, value, anyOf.keySet() ) );
+                addError.accept( Error.of( Restriction.TYPE, value, anyOf.keySet() ) );
             } else {
                 forType.validate( value, addError );
             }
@@ -134,7 +112,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !constants.contains( value.node().getDeclaration() ) )
-                addError.accept( Error.of( Type.ENUM, value, constants ) );
+                addError.accept( Error.of( Restriction.ENUM, value, constants ) );
         }
     }
 
@@ -143,7 +121,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isString() && !constants.contains( value.string() ) )
-                addError.accept( Error.of( Type.ENUM, value, constants ) );
+                addError.accept( Error.of( Restriction.ENUM, value, constants ) );
         }
     }
 
@@ -156,7 +134,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isString() && value.string().length() < limit )
-                addError.accept( Error.of( Type.MIN_LENGTH, value, limit ) );
+                addError.accept( Error.of( Restriction.MIN_LENGTH, value, limit ) );
         }
     }
 
@@ -165,7 +143,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isString() && value.string().length() > limit )
-                addError.accept( Error.of( Type.MAX_LENGTH, value, limit ) );
+                addError.accept( Error.of( Restriction.MAX_LENGTH, value, limit ) );
         }
     }
 
@@ -174,7 +152,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isString() && !value.string().matches( regex ) )
-                addError.accept( Error.of( Type.PATTERN, value, regex ) );
+                addError.accept( Error.of( Restriction.PATTERN, value, regex ) );
         }
     }
 
@@ -188,7 +166,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isNumber() && value.number().doubleValue() < limit )
-                addError.accept( Error.of( Type.MINIMUM, value, limit ) );
+                addError.accept( Error.of( Restriction.MINIMUM, value, limit ) );
         }
     }
 
@@ -197,7 +175,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isNumber() && value.number().doubleValue() > limit )
-                addError.accept( Error.of( Type.MAXIMUM, value, limit ) );
+                addError.accept( Error.of( Restriction.MAXIMUM, value, limit ) );
         }
     }
 
@@ -206,7 +184,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isNumber() && value.number().doubleValue() <= limit )
-                addError.accept( Error.of( Type.EXCLUSIVE_MINIMUM, value, limit ) );
+                addError.accept( Error.of( Restriction.EXCLUSIVE_MINIMUM, value, limit ) );
         }
     }
 
@@ -215,7 +193,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isNumber() && value.number().doubleValue() >= limit )
-                addError.accept( Error.of( Type.EXCLUSIVE_MAXIMUM, value, limit ) );
+                addError.accept( Error.of( Restriction.EXCLUSIVE_MAXIMUM, value, limit ) );
         }
     }
 
@@ -224,7 +202,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isNumber() && value.number().doubleValue() % n > 0d )
-                addError.accept( Error.of( Type.MULTIPLE_OF, value, n ) );
+                addError.accept( Error.of( Restriction.MULTIPLE_OF, value, n ) );
         }
     }
 
@@ -237,7 +215,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isArray() && value.size() < count )
-                addError.accept( Error.of( Type.MIN_ITEMS, value, count ) );
+                addError.accept( Error.of( Restriction.MIN_ITEMS, value, count ) );
         }
     }
 
@@ -246,7 +224,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isArray() && value.size() > count )
-                addError.accept( Error.of( Type.MAX_ITEMS, value, count ) );
+                addError.accept( Error.of( Restriction.MAX_ITEMS, value, count ) );
         }
     }
 
@@ -259,7 +237,7 @@ public final class JsonSchemaValidation {
                 for ( int i = 0; i < elementsAsJson.size(); i++ ) {
                     int j = elementsAsJson.lastIndexOf( elementsAsJson.get( i ) );
                     if ( j != i )
-                        addError.accept( Error.of( Type.UNIQUE_ITEMS, value, elementsAsJson.get( i ), i, j ) );
+                        addError.accept( Error.of( Restriction.UNIQUE_ITEMS, value, elementsAsJson.get( i ), i, j ) );
                 }
             }
         }
@@ -274,7 +252,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isObject() && value.size() < limit )
-                addError.accept( Error.of( Type.MIN_PROPERTIES, value, limit ) );
+                addError.accept( Error.of( Restriction.MIN_PROPERTIES, value, limit ) );
         }
     }
 
@@ -283,7 +261,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isObject() && value.size() > limit )
-                addError.accept( Error.of( Type.MAX_PROPERTIES, value, limit ) );
+                addError.accept( Error.of( Restriction.MAX_PROPERTIES, value, limit ) );
         }
     }
 
@@ -291,7 +269,7 @@ public final class JsonSchemaValidation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            addError.accept( Error.of( Type.REQUIRED, value, property ) );
+            addError.accept( Error.of( Restriction.REQUIRED, value, property ) );
         }
     }
 
@@ -300,7 +278,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isObject() && value.get( property ).exists() && !value.has( properties ) )
-                addError.accept( Error.of( Type.DEPENDENT_REQUIRED, value, property, properties ) );
+                addError.accept( Error.of( Restriction.DEPENDENT_REQUIRED, value, property, properties ) );
         }
     }
 
@@ -309,7 +287,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isObject() && value.get( property ).isUndefined() && !value.has( properties ) )
-                addError.accept( Error.of( Type.DEPENDENT_REQUIRED, value, property, properties ) );
+                addError.accept( Error.of( Restriction.DEPENDENT_REQUIRED, value, property, properties ) );
         }
     }
 

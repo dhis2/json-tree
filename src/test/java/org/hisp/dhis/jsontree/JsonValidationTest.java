@@ -48,7 +48,7 @@ class JsonValidationTest {
         //language=json
         String json = """
             {"age":-1}""";
-        assertValidationError( JsonMixed.of( json ), JsonMinimum.class, JsonSchemaValidation.Type.MINIMUM );
+        assertValidationError( JsonMixed.of( json ), JsonMinimum.class, Validation.Restriction.MINIMUM );
     }
 
     @Test
@@ -56,14 +56,14 @@ class JsonValidationTest {
         //language=json
         String json = """
             {"age":true}""";
-        assertValidationError( JsonMixed.of( json ), JsonMinimum.class, JsonSchemaValidation.Type.TYPE );
+        assertValidationError( JsonMixed.of( json ), JsonMinimum.class, Validation.Restriction.TYPE );
     }
 
     private static void assertValidationError( JsonValue actual, Class<? extends JsonValue> schema,
-        JsonSchemaValidation.Type expected ) {
+        Validation.Restriction expected ) {
         JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> actual.validate( schema ) );
-        List<JsonSchemaValidation.Error> errors = ex.getInfo().errors();
+        List<Validation.Error> errors = ex.getInfo().errors();
         assertEquals( 1, errors.size() );
-        assertEquals( expected, errors.get( 0 ).type() );
+        assertEquals( expected, errors.get( 0 ).restriction() );
     }
 }

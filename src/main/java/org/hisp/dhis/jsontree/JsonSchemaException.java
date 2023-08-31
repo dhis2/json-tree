@@ -9,7 +9,7 @@ public final class JsonSchemaException extends IllegalArgumentException {
 
     private final transient Info info;
 
-    public record Info(JsonValue value, Class<? extends JsonValue> schema, List<JsonSchemaValidation.Error> errors) {}
+    public record Info(JsonValue value, Class<? extends JsonValue> schema, List<Validation.Error> errors) {}
 
     public JsonSchemaException( String message, Info info ) {
         super( message );

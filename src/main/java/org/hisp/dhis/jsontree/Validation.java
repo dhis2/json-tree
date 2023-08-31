@@ -2,11 +2,13 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonSchema.NodeType;
 
+import java.io.Serializable;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.List;
 
 /**
  * Structural Validations as defined by the JSON schema specification <a
@@ -36,6 +38,29 @@ import java.lang.annotation.Target;
 public @interface Validation {
 
     enum YesNo {NO, YES, AUTO}
+
+    enum Restriction {
+        TYPE, ENUM,
+
+        // string values
+        MIN_LENGTH, MAX_LENGTH, PATTERN,
+
+        // number values
+        MINIMUM, MAXIMUM, EXCLUSIVE_MINIMUM, EXCLUSIVE_MAXIMUM, MULTIPLE_OF,
+
+        // array values
+        MIN_ITEMS, MAX_ITEMS, UNIQUE_ITEMS, MIN_CONTAINS, MAX_CONTAINS,
+
+        // object values
+        MIN_PROPERTIES, MAX_PROPERTIES, REQUIRED, DEPENDENT_REQUIRED
+    }
+
+    record Error(Restriction restriction, JsonMixed value, List<Object> args) implements Serializable {
+
+        public static Error of( Restriction restriction, JsonMixed value, Object... args ) {
+            return new Error( restriction, value, List.of( args ) );
+        }
+    }
 
     /**
      * Used to mark properties that should not be validated. By default, all properties are validated.
