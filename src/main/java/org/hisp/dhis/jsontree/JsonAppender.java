@@ -101,7 +101,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     private void appendEscaped( CharSequence str ) {
         str.chars().forEachOrdered( c -> {
-            if ( c == '"' || c == '\\' || c <= ' ' ) {
+            if ( c == '"' || c == '\\' || c < ' ' ) {
                 appendChar.accept( '\\' );
             }
             appendChar.accept( (char) c );

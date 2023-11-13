@@ -250,6 +250,25 @@ class JsonVirtualTreeTest {
     }
 
     @Test
+    void testObjectGet_DotInMemberName() {
+        //language=JSON
+        String json = """
+            {
+                "some.thing": 42,
+                "foo.bar": { "answer": 42 },
+                "a": { "b.c": "d"},
+                "x": { "y.z": { "answer": 42 }},
+                "obj": {"x": { "y.z": { "answer": 42 }}}
+            }""";
+        JsonObject doc = JsonMixed.of( json );
+        assertEquals( "d", doc.getString( "a{b.c}" ).string() );
+        assertEquals( 42, doc.getNumber( "{some.thing}" ).integer() );
+        assertEquals( 42, doc.getNumber( "{foo.bar}.answer" ).integer() );
+        assertEquals( 42, doc.getNumber( "x{y.z}.answer" ).integer() );
+        assertEquals( 42, doc.getNumber( "obj.x{y.z}.answer" ).integer() );
+    }
+
+    @Test
     void testListContainsAll() {
         JsonList<JsonString> list = JsonMixed.ofNonStandard( "[{'a':'x'}, {'a':'y'}]" ).as( JsonArray.class )
             .viewAsList( e -> e.asObject().getString( "a" ) );

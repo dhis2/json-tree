@@ -351,6 +351,25 @@ class JsonTreeTest {
     }
 
     @Test
+    void testObject_DotInMemberName() {
+        //language=JSON
+        String json = """
+            {
+                "some.thing": 42,
+                "foo.bar": { "answer": 42 },
+                "a": { "b.c": "d"},
+                "x": { "y.z": { "answer": 42 }},
+                "obj": {"x": { "y.z": { "answer": 42 }}}
+            }""";
+        JsonNode doc = JsonNode.of( json );
+        assertEquals( "\"d\"", doc.get( "a{b.c}" ).getDeclaration() );
+        assertEquals( "42", doc.get( "{some.thing}" ).getDeclaration() );
+        assertEquals( "42", doc.get( "{foo.bar}.answer" ).getDeclaration() );
+        assertEquals( "42", doc.get( "x{y.z}.answer" ).getDeclaration() );
+        assertEquals( "42", doc.get( "obj.x{y.z}.answer" ).getDeclaration() );
+    }
+
+    @Test
     void testObject_IterateMembers() {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
