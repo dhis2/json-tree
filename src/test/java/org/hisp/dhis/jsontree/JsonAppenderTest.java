@@ -124,9 +124,21 @@ class JsonAppenderTest {
     }
 
     @Test
+    void testObject_StringEscapes() {
+        assertJson( "{'s':'\\\"oh yes\\\"'}", JsonBuilder.createObject( obj -> obj
+            .addString( "s", "\"oh yes\"" ) ) );
+    }
+
+    @Test
     void testArray_String() {
         assertJson( "['hello']", JsonBuilder.createArray( arr -> arr
             .addString( "hello" ) ) );
+    }
+
+    @Test
+    void testArray_StringEscapes() {
+        assertJson( "['hello\\\\ world']", JsonBuilder.createArray( arr -> arr
+            .addString( "hello\\ world" ) ) );
     }
 
     @Test
