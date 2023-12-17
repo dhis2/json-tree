@@ -78,14 +78,15 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> 
             return Map.of();
         }
         Map<String, List<T>> res = new LinkedHashMap<>();
-        for ( String key : keys() ) {
-            List<T> list = get( key ).toList( mapper );
+        forEach( ( key, value ) -> {
+            List<T> list = value.toList( mapper );
             if ( order != null ) {
                 list = new ArrayList<>( list );
                 list.sort( order );
             }
             res.put( key, list );
-        }
+
+        } );
         return res;
     }
 

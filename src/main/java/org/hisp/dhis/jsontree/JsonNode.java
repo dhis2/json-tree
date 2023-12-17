@@ -277,6 +277,22 @@ public interface JsonNode extends Serializable {
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      * <p>
+     * The keys are iterated in order of declaration in the underlying document.
+     * <p>
+     * The main reason to use this method over {@link #members()} is that values are not yet parsed into tree nodes if
+     * they haven't been parsed already. In that regard this can be more lightweight than using {@link #members()}.
+     *
+     * @return this {@link #value()} as a sequence of {@link String} keys
+     * @throws JsonTreeException if this node is not an object node that could have members
+     * @since 0.11
+     */
+    default Iterable<String> keys() {
+        throw new JsonTreeException( getType() + " node has no keys property." );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
      * The members are iterated in order of declaration in the underlying document.
      *
      * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
