@@ -294,33 +294,65 @@ final class JsonTree implements Serializable {
         public Iterator<Entry<String, JsonNode>> members( boolean cacheNodes ) {
             return new Iterator<>() {
                 private final char[] json = tree.json;
-                private final HashMap<String, JsonNode> nodesByPath = tree.nodesByPath;
-                private int mStart = skipWhitespace( json, expectChar( json, start, '{' ) );
+                private final Map<String, JsonNode> nodesByPath = tree.nodesByPath;
+                private int startIndex = skipWhitespace( json, expectChar( json, start, '{' ) );
 
                 @Override
                 public boolean hasNext() {
-                    return mStart < json.length && json[mStart] != '}';
+                    return startIndex < json.length && json[startIndex] != '}';
                 }
 
                 @Override
                 public Entry<String, JsonNode> next() {
                     if ( !hasNext() )
                         throw new NoSuchElementException( "next() called without checking hasNext()" );
-                    LazyJsonString.Span property = LazyJsonString.parseString( json, mStart );
+                    LazyJsonString.Span property = LazyJsonString.parseString( json, startIndex );
                     String name = property.value();
                     String mPath = path + "." + name;
-                    int vStart = expectColonSeparator( json, property.endIndex() );
+                    int startIndexVal = expectColonSeparator( json, property.endIndex() );
                     JsonNode member = cacheNodes
-                        ? nodesByPath.computeIfAbsent( mPath, key -> tree.autoDetect( key, vStart ) )
+                        ? nodesByPath.computeIfAbsent( mPath, key -> tree.autoDetect( key, startIndexVal ) )
                         : nodesByPath.get( mPath );
                     if ( member == null ) {
-                        member = tree.autoDetect( mPath, vStart );
-                    } else if ( member.endIndex() < vStart ) {
-                        mStart = expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, vStart ), '}' );
+                        member = tree.autoDetect( mPath, startIndexVal );
+                    } else if ( member.endIndex() < startIndexVal ) {
+                        // duplicate keys case: just skip the duplicate
+                        startIndex = expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, startIndexVal ), '}' );
                         return new SimpleEntry<>( name, member );
                     }
-                    mStart = expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
+                    startIndex = expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
                     return new SimpleEntry<>( name, member );
+                }
+            };
+        }
+
+        @Override
+        public Iterable<String> keys() {
+            return () -> new Iterator<>() {
+                private final char[] json = tree.json;
+                private final Map<String, JsonNode> nodesByPath = tree.nodesByPath;
+                private int startIndex = skipWhitespace( json, expectChar( json, start, '{' ) );
+
+                @Override
+                public boolean hasNext() {
+                    return startIndex < json.length && json[startIndex] != '}';
+                }
+
+                @Override
+                public String next() {
+                    if ( !hasNext() )
+                        throw new NoSuchElementException( "next() called without checking hasNext()" );
+                    LazyJsonString.Span property = LazyJsonString.parseString( json, startIndex );
+                    String name = property.value();
+                    // advance to next member or end...
+                    String mPath = path + "." + name;
+                    JsonNode member = nodesByPath.get( mPath );
+                    startIndex = expectColonSeparator( json, property.endIndex() ); // move after :
+                    // move after value
+                    startIndex = member == null || member.endIndex() < startIndex // (duplicates)
+                        ? expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, startIndex ), '}' )
+                        : expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
+                    return name;
                 }
             };
         }
@@ -419,14 +451,14 @@ final class JsonTree implements Serializable {
         public Iterator<JsonNode> elements( boolean cacheNodes ) {
             return new Iterator<>() {
                 private final char[] json = tree.json;
-                private final HashMap<String, JsonNode> nodesByPath = tree.nodesByPath;
+                private final Map<String, JsonNode> nodesByPath = tree.nodesByPath;
 
-                private int eStart = skipWhitespace( json, expectChar( json, start, '[' ) );
+                private int startIndex = skipWhitespace( json, expectChar( json, start, '[' ) );
                 private int n = 0;
 
                 @Override
                 public boolean hasNext() {
-                    return eStart < json.length && json[eStart] != ']';
+                    return startIndex < json.length && json[startIndex] != ']';
                 }
 
                 @Override
@@ -436,13 +468,13 @@ final class JsonTree implements Serializable {
                     String ePath = path + '[' + n + "]";
                     JsonNode e = cacheNodes
                         ? nodesByPath.computeIfAbsent( ePath,
-                        key -> tree.autoDetect( key, eStart ) )
+                        key -> tree.autoDetect( key, startIndex ) )
                         : nodesByPath.get( ePath );
                     if ( e == null ) {
-                        e = tree.autoDetect( ePath, eStart );
+                        e = tree.autoDetect( ePath, startIndex );
                     }
                     n++;
-                    eStart = expectCommaSeparatorOrEnd( json, e.endIndex(), ']' );
+                    startIndex = expectCommaSeparatorOrEnd( json, e.endIndex(), ']' );
                     return e;
                 }
             };
