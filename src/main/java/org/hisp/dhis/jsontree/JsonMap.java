@@ -27,12 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.Map;
-import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
-import static java.util.stream.Collectors.toUnmodifiableSet;
 import static java.util.stream.StreamSupport.stream;
 import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
 
@@ -56,35 +54,29 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
 
     /**
      * @return The keys of this map.
-     * @throws JsonPathException in case this value does not exist in the JSON document
-     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @throws JsonTreeException in case this node does exist but is not an object node or null
+     * @since 0.11 (as Stream)
      */
-    default Set<String> keys() {
-        return stream( node().members().spliterator(), false )
-            .map( Map.Entry::getKey ).collect( toUnmodifiableSet() );
+    default Stream<String> keys() {
+        return isUndefined() ? Stream.empty() : stream( node().keys().spliterator(), false );
     }
 
     /**
-     * @param orDefault returned if this value does not exist
-     * @return the keys of this map object or the given default in case this node does not exist
-     * @throws JsonTreeException in case this node does exist but is not an object node
-     * @since 0.10
+     * @return a stream of the map values
+     * @throws JsonTreeException in case this node does exist but is not an object node or null
+     * @since 0.11
      */
-    default Set<String> keys( Set<String> orDefault ) {
-        try {
-            return keys();
-        } catch ( JsonPathException ex ) {
-            return orDefault;
-        }
+    default Stream<E> values() {
+        return keys().map( this::get );
     }
 
     /**
      * @param action call with each entry in the map in order of their declaration
-     * @throws JsonPathException in case this value does not exist in the JSON document
-     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @throws JsonTreeException in case this node does exist but is not an object node or null
      * @since 0.10
      */
     default void forEach( BiConsumer<String, ? super E> action ) {
+        // need to use keys() + get(key) because of wrapper type E is not accessible otherwise
         keys().forEach( key -> action.accept( key, get( key ) ) );
     }
 
