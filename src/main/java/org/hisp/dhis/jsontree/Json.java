@@ -33,6 +33,14 @@ public interface Json {
         return JsonMixed.of( JsonBuilder.createString( value ) );
     }
 
+    static JsonString of(char value) {
+        return of(String.valueOf( value ));
+    }
+
+    static JsonString of(Character value) {
+        return value == null ? ofNull() : of( value.charValue() );
+    }
+
     static JsonNumber of( boolean value ) {
         return JsonMixed.of( String.valueOf( value ) );
     }

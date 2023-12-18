@@ -72,11 +72,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     public static final JsonVirtualTree NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonTypedAccess.GLOBAL, null );
 
     private final JsonNode root;
-
     private final String path;
-
     private final transient JsonTypedAccessStore store;
-
     private final transient ConcurrentMap<String, Object> accessCache;
 
     public JsonVirtualTree( String json, JsonTypedAccessStore store ) {

@@ -115,19 +115,19 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode ofNonStandard( String json ) {
-        return new JsonTree( json, true, null ).get( "$" );
+        return JsonTree.ofNonStandard( json, null ).get( "$" );
     }
 
     /**
      * Create a new lazily parsed {@link JsonNode} tree.
      *
      * @param json     standard compliant JSON input
-     * @param listener to observe all path lookup in the returned tree, may be null
+     * @param onGet to observe all path lookup in the returned tree, may be null
      * @return the given JSON input as {@link JsonNode} tree
      * @since 0.10
      */
-    static JsonNode of( String json, GetListener listener ) {
-        return new JsonTree( json, false, listener ).get( "$" );
+    static JsonNode of( String json, GetListener onGet ) {
+        return JsonTree.of( json, onGet ).get( "$" );
     }
 
     /**

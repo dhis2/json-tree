@@ -67,7 +67,21 @@ import static java.util.Objects.requireNonNull;
  *
  * @author Jan Bernitt
  */
-final class JsonTree implements Serializable {
+record JsonTree(
+    JsonNode.GetListener onGet,
+    char[] json,
+    HashMap<String, JsonNode> nodesByPath
+) implements Serializable {
+
+    static JsonTree of( String json, JsonNode.GetListener onGet ) {
+        return new JsonTree(onGet, json.toCharArray(), new HashMap<>());
+    }
+
+    static JsonTree ofNonStandard(String json, JsonNode.GetListener onGet) {
+        char[] jsonChars = json.toCharArray();
+        adjustToStandard(jsonChars);
+        return new JsonTree(onGet, jsonChars, new HashMap<>());
+    }
 
     /**
      * The main idea of lazy nodes is that at creation only the start index and the path the node represents is known.
@@ -621,18 +635,6 @@ final class JsonTree implements Serializable {
         }
     }
 
-    private final JsonNode.GetListener listener;
-    private final char[] json;
-
-    private final HashMap<String, JsonNode> nodesByPath = new HashMap<>();
-
-    JsonTree( String json, boolean lenient, JsonNode.GetListener listener ) {
-        this.listener = listener;
-        this.json = json.toCharArray();
-        if ( lenient ) adjustToStandard();
-        nodesByPath.put( "", autoDetect( "", skipWhitespace( this.json, 0 ) ) );
-    }
-
     @Override
     public String toString() {
         return new String( json );
@@ -648,10 +650,12 @@ final class JsonTree implements Serializable {
      * @throws JsonFormatException when this document contains malformed JSON that confuses the parser
      */
     JsonNode get( String path ) {
+        if (nodesByPath.isEmpty())
+            nodesByPath.put( "", autoDetect( "", skipWhitespace( json, 0 ) ) );
         if ( path.startsWith( "$" ) ) {
             path = path.substring( 1 );
         }
-        if ( listener != null && !path.isEmpty() ) listener.accept( path );
+        if ( onGet != null && !path.isEmpty() ) onGet.accept( path );
         JsonNode node = nodesByPath.get( path );
         if ( node != null ) {
             return node;
@@ -960,7 +964,7 @@ final class JsonTree implements Serializable {
     /**
      * Skips through the input and switches single quotes of string values and member names to double quotes.
      */
-    private void adjustToStandard() {
+    private static void adjustToStandard(char[] json) {
         adjustNodeAutodetect( json, 0 );
     }
 
