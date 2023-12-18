@@ -66,21 +66,24 @@ import static java.util.Objects.requireNonNull;
  * <a href="https://www.json.org/">json.org</a>.
  *
  * @author Jan Bernitt
+ * @implNote This uses records because JVMs starting with JDK 21/22 will consider record fields as {@code @Stable} which
+ * might help optimize access to the {@link #json} char array.
  */
-record JsonTree(
-    JsonNode.GetListener onGet,
-    char[] json,
-    HashMap<String, JsonNode> nodesByPath
-) implements Serializable {
+record JsonTree(char[] json, HashMap<String, JsonNode> nodesByPath, JsonNode.GetListener onGet) implements Serializable {
 
     static JsonTree of( String json, JsonNode.GetListener onGet ) {
-        return new JsonTree(onGet, json.toCharArray(), new HashMap<>());
+        return new JsonTree( json.toCharArray(), new HashMap<>(), onGet );
     }
 
-    static JsonTree ofNonStandard(String json, JsonNode.GetListener onGet) {
+    /**
+     * @param json valid JSON, except it also allows single quoted strings and dangling commas
+     * @return a lazy tree of the provided JSON
+     * @since 0.11
+     */
+    static JsonTree ofNonStandard(String json) {
         char[] jsonChars = json.toCharArray();
         adjustToStandard(jsonChars);
-        return new JsonTree(onGet, jsonChars, new HashMap<>());
+        return new JsonTree( jsonChars, new HashMap<>(), null );
     }
 
     /**
@@ -962,7 +965,9 @@ record JsonTree(
      */
 
     /**
-     * Skips through the input and switches single quotes of string values and member names to double quotes.
+     * Skips through the input and
+     * - switches single quotes of string values and member names to double quotes.
+     * - removes dangling commas for arrays and objects
      */
     private static void adjustToStandard(char[] json) {
         adjustNodeAutodetect( json, 0 );
@@ -994,6 +999,8 @@ record JsonTree(
             index = adjustString( json, index );
             index = expectColonSeparator( json, index );
             index = adjustNodeAutodetect( json, index );
+            // blank dangling ,
+            if (json[index] == ',' && json[index+1] == '}') json[index++] = ' ';
             index = expectCommaSeparatorOrEnd( json, index, '}' );
         }
         return expectChar( json, index, '}' );
@@ -1005,6 +1012,9 @@ record JsonTree(
         index = skipWhitespace( json, index );
         while ( index < json.length && json[index] != ']' ) {
             index = adjustNodeAutodetect( json, index );
+            // blank dangling ,
+            if (json[index] == ',' && json[index+1] == ']')
+                json[index++] = ' ';
             index = expectCommaSeparatorOrEnd( json, index, ']' );
         }
         return expectChar( json, index, ']' );

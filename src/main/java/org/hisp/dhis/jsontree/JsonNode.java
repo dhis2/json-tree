@@ -115,7 +115,7 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode ofNonStandard( String json ) {
-        return JsonTree.ofNonStandard( json, null ).get( "$" );
+        return JsonTree.ofNonStandard( json ).get( "$" );
     }
 
     /**
