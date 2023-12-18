@@ -54,6 +54,8 @@ import static java.util.stream.StreamSupport.stream;
  * {@link JsonBuilder#createObject(Consumer)} first.
  *
  * @author Jan Bernitt
+ * @since 0.11 (alpha overhaul)
+ * @apiNote beta (subject to change)
  */
 public interface JsonBuilder {
 
@@ -92,6 +94,13 @@ public interface JsonBuilder {
         return JsonNode.of( json.toString() );
     }
 
+    /**
+     * Check if a double can be represented in JSON
+     *
+     * @param value a double value
+     * @throws JsonFormatException if the double is NaN or Infinity
+     * @since 0.11
+     */
     static void checkValid( double value ) {
         if ( Double.isNaN( value ) ) throw new JsonFormatException( "NaN is not a valid JSON value" );
         if ( Double.isInfinite( value ) ) throw new JsonFormatException( "Infinite is not a valid JSON value" );
@@ -233,7 +242,8 @@ public interface JsonBuilder {
      * Builder API to add properties to JSON object node.
      *
      * @author Jan Bernitt
-     * @since 0.11 (alpha)
+     * @since 0.11 (alpha overhaul)
+     * @apiNote beta (subject to change)
      */
     interface JsonObjectBuilder {
 
@@ -295,7 +305,8 @@ public interface JsonBuilder {
      * Builder API to add elements to JSON array node.
      *
      * @author Jan Bernitt
-     * @since 0.11 (alpha)
+     * @since 0.11 (alpha overhaul)
+     * @apiNote beta (subject to change)
      */
     interface JsonArrayBuilder {
 

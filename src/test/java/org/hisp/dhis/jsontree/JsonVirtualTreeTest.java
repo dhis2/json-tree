@@ -214,31 +214,31 @@ class JsonVirtualTreeTest {
     @Test
     void testBooleanNode() {
         JsonObject obj = JsonMixed.ofNonStandard( "{'a': true }" );
-        assertEquals( "true", obj.getBoolean( "a" ).node().getDeclaration() );
+        assertEquals( "true", obj.getBoolean( "a" ).toJson() );
     }
 
     @Test
     void testNumberNode() {
         JsonObject obj = JsonMixed.ofNonStandard( "{'a': 42 }" );
-        assertEquals( "42", obj.getNumber( "a" ).node().getDeclaration() );
+        assertEquals( "42", obj.getNumber( "a" ).toJson() );
     }
 
     @Test
     void testStringNode() {
         JsonObject obj = JsonMixed.ofNonStandard( "{'a': 'hello, again' }" );
-        assertEquals( "\"hello, again\"", obj.getString( "a" ).node().getDeclaration() );
+        assertEquals( "\"hello, again\"", obj.getString( "a" ).toJson() );
     }
 
     @Test
     void testArrayNode() {
         JsonObject obj = JsonMixed.ofNonStandard( "{'a': ['hello, again', 12] }" );
-        assertEquals( "[\"hello, again\", 12]", obj.getArray( "a" ).node().getDeclaration() );
+        assertEquals( "[\"hello, again\", 12]", obj.getArray( "a" ).toJson() );
     }
 
     @Test
     void testObjectNode() {
         JsonObject obj = JsonMixed.ofNonStandard( "{'a': ['hello, again', 12] }" );
-        assertEquals( "{\"a\": [\"hello, again\", 12] }", obj.node().getDeclaration() );
+        assertEquals( "{\"a\": [\"hello, again\", 12] }", obj.toJson() );
     }
 
     @Test

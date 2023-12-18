@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * The {@link JsonValue} is a virtual read-only view for JSON responses.
+ * The {@link JsonValue} is a virtual read-only view for {@link JsonNode} representing an actual {@link JsonTree}.
  * <p>
  * As usual there are specific node type for the JSON building blocks:
  * <ul>
@@ -46,10 +46,10 @@ import java.util.function.Function;
  * base type of {@link JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
  * <p>
  * In addition {@link JsonList} is a typed JSON array of uniform elements (which
- * can be understood as a typed wrapper around a {@link JsonArray}.
+ * can be understood as a typed wrapper around a {@link JsonArray}).
  * <p>
  * Similarly {@link JsonMap} is a typed JSON object map of uniform values (which
- * can be understood as a typed wrapper around a {@link JsonObject}.
+ * can be understood as a typed wrapper around a {@link JsonObject}).
  * <p>
  * The API is designed to:
  * <ul>
@@ -81,7 +81,7 @@ public interface JsonValue {
     /**
      * View the provided JSON string as virtual lazy evaluated tree.
      *
-     * @param json JSON string
+     * @param json a valid JSON string
      * @return virtual JSON tree root {@link JsonValue}
      */
     static JsonValue of( String json ) {
@@ -92,7 +92,7 @@ public interface JsonValue {
      * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
      * mapping to Java method return type.
      *
-     * @param json  a JSON string
+     * @param json  a valid JSON string
      * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return virtual JSON tree root {@link JsonValue}

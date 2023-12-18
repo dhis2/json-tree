@@ -98,7 +98,7 @@ public final class JsonSchemaValidation {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( !constants.contains( value.node().getDeclaration() ) )
+            if ( !constants.contains( value.toJson() ) )
                 addError.accept( Error.of( Rule.ENUM, value, constants ) );
         }
     }
@@ -220,7 +220,7 @@ public final class JsonSchemaValidation {
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( value.isArray() ) {
-                List<String> elementsAsJson = value.asList( JsonValue.class ).toList( v -> v.node().getDeclaration() );
+                List<String> elementsAsJson = value.asList( JsonValue.class ).toList( v -> v.toJson() );
                 for ( int i = 0; i < elementsAsJson.size(); i++ ) {
                     int j = elementsAsJson.lastIndexOf( elementsAsJson.get( i ) );
                     if ( j != i )

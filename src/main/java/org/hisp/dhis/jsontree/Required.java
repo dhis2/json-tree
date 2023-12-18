@@ -32,20 +32,18 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+
 /**
- * Used to mark properties in a {@link JsonObject} that are expected to exist.
+ * Can be used to mark {@link JsonObject} properties that are expected to exist in the tree and are not defined as JSON
+ * null.
  * <p>
  * This can only be applied to methods without parameters.
  *
  * @author Jan Bernitt
+ * @since 0.11 (renamed from Expected in prior versions)
  */
 @Target( ElementType.METHOD )
 @Retention( RetentionPolicy.RUNTIME )
-public @interface Expected {
-
-    /**
-     * @return Can be set to {@code true} to allow {@link JsonValue}s either being set or being a JSON {@code null}
-     * value. Default value is {@code false}.
-     */
-    boolean nullable() default false;
-}
+@Validation(required = YES)
+public @interface Required {}

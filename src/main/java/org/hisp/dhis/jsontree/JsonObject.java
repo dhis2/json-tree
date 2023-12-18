@@ -146,10 +146,10 @@ public interface JsonObject extends JsonCollection {
     }
 
     /**
-     * Uses the {@link Expected} annotations present to check whether this object conforms to the provided type
+     * Uses the {@link Required} annotations present to check whether this object conforms to the provided type
      *
      * @param type object type to check
-     * @return true if this is an object and has all {@link Expected} members of the provided type
+     * @return true if this is an object and has all {@link Required} members of the provided type
      */
     default boolean isA( Class<? extends JsonObject> type ) {
         try {
@@ -168,7 +168,7 @@ public interface JsonObject extends JsonCollection {
      * @return this node as the provided object type
      * @throws JsonPathException   when this node does not exist
      * @throws JsonTreeException   when this node is not an object
-     * @throws JsonSchemaException when this node does not have all of the {@link Expected} properties present
+     * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
      * @see #asObject(Class, boolean, String)
      */
     default <T extends JsonObject> T asObject( Class<T> type )
@@ -180,7 +180,7 @@ public interface JsonObject extends JsonCollection {
      * "Cast" and check against provided object shape.
      * <p>
      * In contrast to {@link #as(Class)} this method does check that this object {@link #exists()}, that it is indeed an
-     * object node and that it has all {@link Expected} values expected for the provided object type.
+     * object node and that it has all {@link Required} values expected for the provided object type.
      *
      * @param type      expected object type
      * @param recursive true to apply the check to nested {@link JsonObject}s
@@ -189,30 +189,29 @@ public interface JsonObject extends JsonCollection {
      * @return this node as the provided object type
      * @throws JsonPathException   when this node does not exist
      * @throws JsonTreeException   when this node is not an object
-     * @throws JsonSchemaException when this node does not have all of the {@link Expected} properties present
+     * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
      */
     default <T extends JsonObject> T asObject( Class<T> type, boolean recursive, String path )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
         if ( !exists() ) {
             throw new JsonPathException( path,
-                String.format( "Expected %s %s node does not exist", path, type.getSimpleName() ) );
+                String.format( "Required %s %s node does not exist", path, type.getSimpleName() ) );
         }
         if ( !isObject() ) {
             throw new JsonTreeException(
-                String.format( "Expected %s %s node is not an object but a %s", path, type.getSimpleName(),
+                String.format( "Required %s %s node is not an object but a %s", path, type.getSimpleName(),
                     node().getType() ) );
         }
         T obj = as( type );
         String parent = path.isEmpty() ? "" : path + ".";
         stream( type.getMethods() )
-            .filter( m -> m.getParameterCount() == 0 && m.isAnnotationPresent( Expected.class ) )
+            .filter( m -> m.getParameterCount() == 0 && m.isAnnotationPresent( Required.class ) )
             .sorted( Comparator.comparing( Method::getName ) )
             .forEach( m -> {
                 try {
                     Object property = m.invoke( obj );
-                    if ( property == null || property instanceof JsonValue value && (!value.exists()
-                        || !m.getAnnotation( Expected.class ).nullable() && value.isNull()) ) {
-                        String message = String.format( "Expected %s node property %s was not defined",
+                    if ( property == null || property instanceof JsonValue value && !value.exists() ) {
+                        String message = String.format( "Required %s node property %s was not defined",
                             type.getSimpleName(), parent + m.getName() );
                         throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
                     }
@@ -222,7 +221,7 @@ public interface JsonObject extends JsonCollection {
                         ((JsonObject) property).asObject( memberType, true, parent + m.getName() );
                     }
                 } catch ( ReflectiveOperationException ex ) {
-                    String message = String.format( "Expected %s node property %s had invalid value: %s",
+                    String message = String.format( "Required %s node property %s had invalid value: %s",
                         type.getSimpleName(), parent + m.getName(), ex.getMessage() );
                     throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
                 }
