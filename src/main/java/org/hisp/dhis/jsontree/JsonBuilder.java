@@ -30,13 +30,10 @@ package org.hisp.dhis.jsontree;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
@@ -82,6 +79,23 @@ public interface JsonBuilder {
      */
     record PrettyPrint(int indentSpaces, int indentTabs, boolean spaceAfterColon, boolean retainOriginalDeclaration,
                        boolean excludeNullMembers) {}
+
+    /**
+     * @param value a Java string value, may be null
+     * @return JSON string node of the provided Java string value
+     * @since 0.11
+     */
+    static JsonNode createString( String value ) {
+        if ( value == null ) return JsonNode.NULL;
+        StringBuilder json = new StringBuilder();
+        new JsonAppender( MINIMIZED, json ).appendEscaped( value );
+        return JsonNode.of( json.toString() );
+    }
+
+    static void checkValid( double value ) {
+        if ( Double.isNaN( value ) ) throw new JsonFormatException( "NaN is not a valid JSON value" );
+        if ( Double.isInfinite( value ) ) throw new JsonFormatException( "Infinite is not a valid JSON value" );
+    }
 
     /**
      * Convenience method for ad-hoc creation of JSON object {@link JsonNode}. Use {@link JsonNode#getDeclaration()} to
@@ -162,14 +176,6 @@ public interface JsonBuilder {
     }
 
     /**
-     * Like a {@link BiConsumer} but with 3 inputs.
-     */
-    interface TriConsumer<A, B, C> {
-
-        void accept( A a, B b, C c );
-    }
-
-    /**
      * Define a {@link JsonNode} that is a {@link JsonObject}.
      *
      * @param obj fluent API to define the properties of the JSON object created
@@ -227,6 +233,7 @@ public interface JsonBuilder {
      * Builder API to add properties to JSON object node.
      *
      * @author Jan Bernitt
+     * @since 0.11 (alpha)
      */
     interface JsonObjectBuilder {
 
@@ -250,80 +257,45 @@ public interface JsonBuilder {
 
         JsonObjectBuilder addObject( String name, Consumer<JsonObjectBuilder> value );
 
-        <K, V> JsonObjectBuilder addObject( String name, Iterable<Map.Entry<K, V>> value,
-            TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember );
+        /*
+        convenience API (based on the above)
+         */
 
-        default <K, V> JsonObjectBuilder addObject( String name, Iterable<Map.Entry<K, V>> value,
-            Predicate<? super K> filter,
-            TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
-            return addObject( name, value, ( builder, k, v ) -> {
-                if ( filter.test( k ) ) toMember.accept( builder, k, v );
-            } );
+        default JsonObjectBuilder addMember( String name, Object pojo, JsonMapper mapper ) {
+            mapper.addTo( this, name, pojo );
+            return this;
         }
-
-        JsonObjectBuilder addMember( String name, Object pojo, JsonMapper mapper );
 
         default JsonObjectBuilder addMembers( Object pojo, JsonMapper mapper ) {
             return addMember( null, pojo, mapper );
         }
 
-        default <K, V> JsonObjectBuilder addMembers( Iterable<Map.Entry<K, V>> value,
-            TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
-            return addObject( null, value, toMember );
+        interface AddMember<V> {
+
+            void add( JsonObjectBuilder obj, String key, V value );
         }
 
-        default <K, V> JsonObjectBuilder addMembers( Iterable<Map.Entry<K, V>> value,
-            Predicate<? super K> filter,
-            TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
-            return addObject( null, value, filter, toMember );
+        default <V> JsonObjectBuilder addMembers( Map<String, V> value, AddMember<? super V> addMember ) {
+            return addMembers( value.entrySet(), addMember );
         }
 
-        default JsonObjectBuilder addArray( String name, JsonNode value0 ) {
-            return addArray( name, Stream.of( value0 ), JsonArrayBuilder::addElement );
+        default <V> JsonObjectBuilder addMembers( Iterable<Map.Entry<String, V>> value,
+            AddMember<? super V> addMember ) {
+            value.forEach( e -> addMember.add( this, e.getKey(), e.getValue() ) );
+            return this;
         }
 
-        default <V> JsonObjectBuilder addArray( String name, Stream<V> value,
-            BiConsumer<JsonArrayBuilder, ? super V> toElement ) {
-            return addArray( name, arr -> value.forEachOrdered( v -> toElement.accept( arr, v ) ) );
+        default <V> JsonObjectBuilder addMembers( Stream<Map.Entry<String, V>> value, AddMember<? super V> addMember ) {
+            value.forEach( e -> addMember.add( this, e.getKey(), e.getValue() ) );
+            return this;
         }
-
-        default <V> JsonObjectBuilder addArray( String name, Collection<V> value,
-            BiConsumer<JsonArrayBuilder, V> toElement ) {
-            return addArray( name, value.stream(), toElement );
-        }
-
-        default JsonObjectBuilder addArray( String name, String... value ) {
-            return addArray( name, List.of( value ), JsonArrayBuilder::addString );
-        }
-
-        default JsonObjectBuilder addArray( String name, int... value ) {
-            return addArray( name, IntStream.of( value ).boxed(), JsonArrayBuilder::addNumber );
-        }
-
-        default JsonObjectBuilder addArray( String name, long... value ) {
-            return addArray( name, LongStream.of( value ).boxed(), JsonArrayBuilder::addNumber );
-        }
-
-        default JsonObjectBuilder addArray( String name, double... value ) {
-            return addArray( name, DoubleStream.of( value ).boxed(), JsonArrayBuilder::addNumber );
-        }
-
-        default <V> JsonObjectBuilder addArray( String name, V[] value,
-            BiConsumer<JsonArrayBuilder, ? super V> toElement ) {
-            return addArray( name, Arrays.stream( value ), toElement );
-        }
-
-        default <V, X> JsonObjectBuilder addArray( String name, V[] value,
-            BiConsumer<JsonArrayBuilder, X> add, Function<? super V, X> toElement ) {
-            return addArray( name, value, ( arr, v ) -> add.accept( arr, toElement.apply( v ) ) );
-        }
-
     }
 
     /**
      * Builder API to add elements to JSON array node.
      *
      * @author Jan Bernitt
+     * @since 0.11 (alpha)
      */
     interface JsonArrayBuilder {
 
@@ -345,69 +317,71 @@ public interface JsonBuilder {
 
         JsonArrayBuilder addArray( Consumer<JsonArrayBuilder> value );
 
-        <E> JsonArrayBuilder addArray( Stream<E> values, BiConsumer<JsonArrayBuilder, ? super E> toElement );
-
-        <E> JsonArrayBuilder addElements( Stream<E> values, BiConsumer<JsonArrayBuilder, ? super E> toElement );
-
         JsonArrayBuilder addObject( Consumer<JsonObjectBuilder> value );
 
-        <K, V> JsonObjectBuilder addObject( Map<K, V> value,
-            TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember );
+        /*
+        convenience API (based on the above)
+         */
 
-        JsonArrayBuilder addElement( Object value, JsonMapper mapper );
-
-        default JsonArrayBuilder addArray( String... values ) {
-            return addArray( List.of( values ), JsonArrayBuilder::addString );
+        default JsonArrayBuilder addElement( Object value, JsonMapper mapper ) {
+            mapper.addTo( this, value );
+            return this;
         }
 
-        default JsonArrayBuilder addArray( int... values ) {
-            return addArray( IntStream.of( values ).boxed(), JsonArrayBuilder::addNumber );
+        default JsonArrayBuilder addNumbers( IntStream values ) {
+            values.forEach( this::addNumber );
+            return this;
         }
 
-        default JsonArrayBuilder addArray( long... values ) {
-            return addArray( LongStream.of( values ).boxed(), JsonArrayBuilder::addNumber );
+        default JsonArrayBuilder addNumbers( LongStream values ) {
+            values.forEach( this::addNumber );
+            return this;
         }
 
-        default JsonArrayBuilder addArray( double... values ) {
-            return addArray( DoubleStream.of( values ).boxed(), JsonArrayBuilder::addNumber );
+        default JsonArrayBuilder addNumbers( DoubleStream values ) {
+            values.forEach( this::addNumber );
+            return this;
         }
 
-        default JsonArrayBuilder addArray( Number[] values ) {
-            return addArray( values, JsonArrayBuilder::addNumber );
+        default JsonArrayBuilder addNumbers( int... values ) {
+            return addNumbers( IntStream.of( values ) );
         }
 
-        default <E> JsonArrayBuilder addArray( E[] values, BiConsumer<JsonArrayBuilder, ? super E> toElement ) {
-            return addArray( Arrays.stream( values ), toElement );
+        default JsonArrayBuilder addNumbers( long... values ) {
+            return addNumbers( LongStream.of( values ) );
         }
 
-        default <E, X> JsonArrayBuilder addArray( E[] values,
-            BiConsumer<JsonArrayBuilder, X> add, Function<? super E, X> toElement ) {
-            return addArray( values, ( arr, v ) -> add.accept( arr, toElement.apply( v ) ) );
+        default JsonArrayBuilder addNumbers( double... values ) {
+            return addNumbers( DoubleStream.of( values ) );
         }
 
-        default <E> JsonArrayBuilder addArray( Collection<E> values,
-            BiConsumer<JsonArrayBuilder, ? super E> toElement ) {
-            return addArray( values.stream(), toElement );
+        default JsonArrayBuilder addNumbers( Number[] values ) {
+            return addElements( Stream.of( values ), JsonArrayBuilder::addNumber );
         }
 
-        default <E, X> JsonArrayBuilder addArray( Collection<E> values, BiConsumer<JsonArrayBuilder, X> add,
-            Function<? super E, X> toElement ) {
-            return addArray( values, ( arr, v ) -> add.accept( arr, toElement.apply( v ) ) );
+        default JsonArrayBuilder addStrings( String... values ) {
+            return addElements( Stream.of( values ), JsonArrayBuilder::addString );
+        }
+
+        default <E> JsonArrayBuilder addElements( Stream<E> values,
+            BiConsumer<JsonArrayBuilder, ? super E> addElement ) {
+            values.forEachOrdered( v -> addElement.accept( this, v ) );
+            return this;
         }
 
         default <E> JsonArrayBuilder addElements( Iterable<E> values,
-            BiConsumer<JsonArrayBuilder, ? super E> toElement ) {
-            return addElements( stream( values.spliterator(), false ), toElement );
+            BiConsumer<JsonArrayBuilder, ? super E> addElement ) {
+            return addElements( stream( values.spliterator(), false ), addElement );
         }
 
-        default <E> JsonArrayBuilder addElements( Collection<E> values,
-            BiConsumer<JsonArrayBuilder, ? super E> toElement ) {
-            return addElements( values.stream(), toElement );
+        default <E, T> JsonArrayBuilder addElements( Iterable<T> values,
+            BiConsumer<JsonArrayBuilder, ? super E> addElement, Function<T, E> map ) {
+            return addElements( values, ( arr, e ) -> addElement.accept( arr, map.apply( e ) ) );
         }
 
-        default <E, X> JsonArrayBuilder addElements( Collection<E> values, BiConsumer<JsonArrayBuilder, X> add,
-            Function<? super E, X> toElement ) {
-            return addElements( values, ( arr, v ) -> add.accept( arr, toElement.apply( v ) ) );
+        default <E, T> JsonArrayBuilder addElements( T[] values,
+            BiConsumer<JsonArrayBuilder, ? super E> addElement, Function<T, E> map ) {
+            return addElements( Arrays.asList( values ), addElement, map );
         }
     }
 }

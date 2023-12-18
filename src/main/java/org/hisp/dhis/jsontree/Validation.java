@@ -1,7 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonSchema.NodeType;
-
 import java.io.Serializable;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -9,6 +7,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Structural Validations as defined by the JSON schema specification <a
@@ -30,16 +29,17 @@ import java.util.List;
  * Otherwise, limits are merged to use the most restrictive limit declared by one of the annotations.
  *
  * @author Jan Bernitt
- * @since 0.10
+ * @since 0.11
  */
 @Inherited
-@Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE } )
+@Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Validation {
 
     enum YesNo {NO, YES, AUTO}
 
-    enum Restriction {
+    enum Rule {
+        // any values
         TYPE, ENUM,
 
         // string values
@@ -55,10 +55,31 @@ public @interface Validation {
         MIN_PROPERTIES, MAX_PROPERTIES, REQUIRED, DEPENDENT_REQUIRED
     }
 
-    record Error(Restriction restriction, JsonMixed value, List<Object> args) implements Serializable {
+    /**
+     * In line with the JSON schema validation specification.
+     */
+    enum NodeType {
+        NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT
+    }
 
-        public static Error of( Restriction restriction, JsonMixed value, Object... args ) {
-            return new Error( restriction, value, List.of( args ) );
+    /**
+     * Value validation
+     */
+    interface Validator {
+
+        /**
+         * Adds an error to the provided callback in case the provided value is not valid according to this check.
+         *
+         * @param value    the value to check
+         * @param addError callback to add errors
+         */
+        void validate( JsonMixed value, Consumer<Error> addError );
+    }
+
+    record Error(Enum<?> rule, JsonMixed value, List<Object> args) implements Serializable {
+
+        public static Error of( Enum<?> rule, JsonMixed value, Object... args ) {
+            return new Error( rule, value, List.of( args ) );
         }
     }
 
@@ -67,6 +88,18 @@ public @interface Validation {
      */
     @Target( { ElementType.METHOD } )
     @Retention( RetentionPolicy.RUNTIME ) @interface Exclude {}
+
+    /**
+     * Validations that apply to array elements or object member values.
+     * <p>
+     * To build multi-level validations use validation annotated item types or create specific validation annotations
+     * for the items which in term can have an {@linkplain Items} annotation.
+     */
+    @Target( { ElementType.METHOD, ElementType.TYPE, ElementType.ANNOTATION_TYPE } )
+    @Retention( RetentionPolicy.RUNTIME ) @interface Items {
+
+        Validation value();
+    }
 
     /**
      * When annotated on a method this is assumed to be the property specific schema part.
@@ -88,40 +121,23 @@ public @interface Validation {
      * An {@link NodeType#INTEGER} is any number with a fraction of zero. This means it can have a fraction part as long
      * as that part is zero.
      *
-     * @return value must have one of the given JSON node type
+     * @return value must have one of the given JSON node types
      */
     NodeType[] type() default {};
 
-    @interface Type { NodeType[] value(); }
-
     /**
-     * A multi-level version of {@link #type()}. If defined it takes precedence over {@link #type()}.
+     * A property marked as varargs will allow {@link NodeType#ARRAY} to occur, each element then is validated against
+     * the present simple value validations.
      * <p>
-     * For example, to model the Java type {@code List<String>} this would use:
-     * <pre>
-     * &#064;Validation(types = { Type(ARRAY), Type(STRING) })
-     * </pre>
-     * In other words, the property value must be an array of strings.
+     * In addition, all given array requirements must be met.
+     * <p>
+     * {@link YesNo#AUTO} is used when inferring validation from the return type for types that are
+     * {@link java.util.Collection}s of simple types.
      *
-     * @return value on each level must have one of the given JSON node types
+     * @return when {@link YesNo#YES}, the given {@link #type()} can occur once (as simple type value) or many times as
+     * an array of such values.
      */
-    Type[] types() default {};
-
-    /**
-     * If {@link YesNo#YES} the given {@link #type()}s may all occur directly.
-     * <p>
-     * If {@link YesNo#NO} the given simple {@link #type()}s are understood as the array elements or object property
-     * values.
-     * <p>
-     * If {@link YesNo#AUTO} the given simple {@link #type()}s may either occur directly or as array element or object
-     * property values. For example, when an enum restricted value may occur as a string or as an array of that string.
-     * <p>
-     * If multiple annotations are present with differing value YES takes precedence over NO, both take precedence over AUTO.
-     *
-     * @return the mixed type mode used, see details above.
-     */
-    YesNo mixed() default YesNo.YES;
-    //TODO this could also be: NodeType[] elements(); // lists all the types which validations should be considered for elements
+    YesNo varargs() default YesNo.AUTO;
 
     /**
      * The JSON values do not need quoting for strings if the string starts with a letter.
@@ -270,34 +286,49 @@ public @interface Validation {
     /**
      * When set to AUTO any property using a Java primitive type is required.
      * <p>
-     * If multiple annotations are present with differing value YES takes precedence over NO, both take precedence over AUTO.
+     * If multiple annotations are present with differing value YES takes precedence over NO, both take precedence over
+     * AUTO.
      *
      * @return parent object must have the annotated property
      */
     YesNo required() default YesNo.AUTO;
 
     /**
-     * Optionally one of the properties marked with the same group name can use a {@code !} before the group name to
-     * mark the property the others in the group depend upon. This the models the feature as specified in JSON schema.
-     * <p>
-     * If none of the properties in a group is marked any of the properties makes all others in the group required.
-     * <p>
-     * A property can be member in multiple groups. Group names are scoped to the properties belonging to a type.
-     * <p>
-     * If multiple annotations are present the property becomes member of the union of all groups.
+     * This works closely together with {@link #groups()}.
      *
      * @return then name of the group(s) of properties that are required together. OBS! These are not the names of the
      * properties but made up names for groups.
      */
-    String[] dependentRequires() default {};
-
-    //TODO allow ? marker to invert the logic, if property is missing the others are required
-    // or even more general to allow multiple markers in a group which also could be mixed
-    // so that one can do logic like, if X is present Y and Z must be not present, but W must be present as well
+    String[] dependentRequired() default {};
 
     /**
-     * @return when true, this annotation is not additive to other {@link Validation} annotations present.
-     * Instead, an entirely new validation scope is started only containing the constraints of this annotation.
+     * A group describes a set of properties that are related in a way. Group names are local to the Java type defining
+     * the groups member properties.
+     * <p>
+     * A property can be member in multiple groups.
+     * <p>
+     * A group name may be marked to define the role the property has in the group:
+     * <ul>
+     *     <li>{@code group!}: in the named group when the annotated property is present the non-marked members must be present</li>
+     *     <li>{@code group?}: in the named group when the annotated property is missing the non-marked members must be present</li>
+     * </ul>
+     * If multiple members mark the same group with {@code !} all of the properties with a mark must be present to trigger the group.
+     * <p>
+     * If multiple members mark the same group with {@code ?} all of the properties with a mark must be absent to trigger the group.
+     * <p>
+     * If members of the same group are marked with both {@code !} and {@code ?} both conditions must be met to activate the group validation.
+     * <p>
+     * If none of the properties in a group is marked any of the properties makes all others in the group required.
+     * <p>
+     * If multiple groups sources are present the property becomes member of the union of all groups.
+     *
+     * @return the names of the groups the annotated property belongs to
+     */
+    String[] groups() default {};
+
+    /**
+     * @return when true, this annotation is not additive to other {@link Validation} annotations present. Instead, an
+     * entirely new validation scope is started only containing the constraints of this annotation.
      */
     boolean redefine() default false;
 

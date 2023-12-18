@@ -2,7 +2,8 @@ package org.hisp.dhis.jsontree;
 
 import java.util.List;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
 /**
  * Structure of a JSON schema document as described in <a href="https://json-schema.org/draft/2020-12">2020-12
@@ -12,14 +13,6 @@ import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
  */
 @SuppressWarnings( "java:S100" )
 public interface JsonSchema {
-
-    enum NodeType {
-        NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT;
-
-        boolean isSimple() {
-            return this != ARRAY && this != OBJECT;
-        }
-    }
 
     /**
      * Structural Validation.
@@ -41,9 +34,10 @@ public interface JsonSchema {
          *
          * @return Validation succeeds if the type of the instance matches at least one of the given type.
          */
-        @Validation( type = STRING, uniqueItems = true, minItems = 0, maxItems = 6, enumeration = NodeType.class )
-        default List<NodeType> type() {
-            return get( "type" ).toListFromVarargs( JsonString.class, str -> str.parsed( NodeType::valueOf ) );
+        @Validation( type = STRING, varargs = YES, uniqueItems = true, minItems = 0, maxItems = 6, enumeration = Validation.NodeType.class )
+        default List<Validation.NodeType> type() {
+            return get( "type" ).toListFromVarargs( JsonString.class,
+                str -> str.parsed( Validation.NodeType::valueOf ) );
         }
 
         /**
@@ -251,8 +245,8 @@ public interface JsonSchema {
          * The value of this property MUST be an object. Properties in this object, if any, MUST be arrays. Elements in
          * each array, if any, MUST be strings, and MUST be unique.
          * <p>
-         * This specifies properties that are required if a specific other property is present. Their requirement is
-         * dependent on the presence of the other property.
+         * This specifies properties that are required if a specific other property is present. Their rule is dependent
+         * on the presence of the other property.
          * <p>
          *
          * @return Validation succeeds if, for each name that appears in both the instance and as a name within the map,

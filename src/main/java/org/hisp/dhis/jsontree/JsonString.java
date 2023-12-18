@@ -29,7 +29,7 @@ package org.hisp.dhis.jsontree;
 
 import java.util.function.Function;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 /**
  * Represents a string JSON node.

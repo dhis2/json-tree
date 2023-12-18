@@ -46,7 +46,7 @@ class JsonBuilderTest {
     @Test
     void testCreateObject() {
         assertEquals( "{\"foo\":[\"bar\"]}",
-            JsonBuilder.createObject( obj -> obj.addArray( "foo", "bar" ) )
+            JsonBuilder.createObject( obj -> obj.addArray( "foo", arr -> arr.addString(  "bar" ) ))
                 .getDeclaration() );
     }
 
@@ -60,7 +60,7 @@ class JsonBuilderTest {
     @Test
     void testStreamObject() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        JsonBuilder.streamObject( out, obj -> obj.addArray( "foo", "bar" ) );
+        JsonBuilder.streamObject( out, obj -> obj.addArray( "foo", arr -> arr.addString( "bar" ) ));
         assertEquals( "{\"foo\":[\"bar\"]}", out.toString() );
     }
 

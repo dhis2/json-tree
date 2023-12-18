@@ -27,7 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 
 /**
  * Represents a numeric JSON node.

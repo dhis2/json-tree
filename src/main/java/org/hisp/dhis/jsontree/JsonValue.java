@@ -113,7 +113,7 @@ public interface JsonValue {
 
     /**
      * @throws JsonSchemaException in case this value does not match the schema of {@link #asType()}
-     * @since 0.10
+     * @since 0.11
      */
     default void validate() {
         validate( asType() );
@@ -123,7 +123,7 @@ public interface JsonValue {
      * @param schema the schema to validate against
      * @throws JsonSchemaException      in case this value does not match the given schema
      * @throws IllegalArgumentException in case the given schema is not an interface
-     * @since 0.10
+     * @since 0.11
      */
     default void validate( Class<? extends JsonValue> schema ) {
         JsonSchemaValidation.validate( this, schema );
@@ -132,7 +132,7 @@ public interface JsonValue {
     /**
      * @param schema the schema to validate against
      * @throws JsonSchemaException in case this value does not match the given schema
-     * @since 0.10
+     * @since 0.11
      */
     default void validate( JsonSchema schema ) {
         JsonSchemaValidation.validate( this, schema );
@@ -294,6 +294,15 @@ public interface JsonValue {
      * @throws JsonPathException in case this value does not exist in the JSON document
      */
     JsonNode node();
+
+    /**
+     * @return JSON declaration for this value
+     * @throws JsonPathException if this node does not exist
+     * @since 0.11
+     */
+    default String toJson() {
+        return node().getDeclaration();
+    }
 
     /**
      * @return true, if results of JSON to Java method return type mapping via {@link JsonTypedAccessStore} are cached

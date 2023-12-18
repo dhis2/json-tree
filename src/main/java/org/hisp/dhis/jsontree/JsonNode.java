@@ -36,10 +36,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
-import static java.util.function.Predicate.not;
 import static java.util.stream.IntStream.range;
 
 /**
@@ -525,7 +525,9 @@ public interface JsonNode extends Serializable {
         if ( obj.isEmpty() ) return getRoot();
         if ( isEmpty() && isRoot() ) return obj;
         return replaceWith( JsonBuilder.createObject( merged -> {
-            merged.addMembers( members(), not( obj::isMember ), JsonBuilder.JsonObjectBuilder::addMember );
+            merged.addMembers(
+                StreamSupport.stream( members().spliterator(), false ).filter( e -> !obj.isMember( e.getKey() ) ),
+                JsonBuilder.JsonObjectBuilder::addMember );
             merged.addMembers( obj.members(), JsonBuilder.JsonObjectBuilder::addMember );
         } ) );
     }
@@ -549,7 +551,9 @@ public interface JsonNode extends Serializable {
         checkType( JsonNodeType.OBJECT, getType(), "removeMembers" );
         if ( isEmpty() || names.isEmpty() ) return getRoot();
         return replaceWith( JsonBuilder.createObject(
-            obj -> obj.addMembers( members(), not( names::contains ), JsonBuilder.JsonObjectBuilder::addMember ) ) );
+            obj -> obj.addMembers(
+                StreamSupport.stream( members().spliterator(), false ).filter( e -> !names.contains( e.getKey() ) ),
+                JsonBuilder.JsonObjectBuilder::addMember ) ) );
     }
 
     /**

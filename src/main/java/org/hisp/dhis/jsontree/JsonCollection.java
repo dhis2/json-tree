@@ -27,8 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * Common base class for JSON nodes that have children.

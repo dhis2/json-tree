@@ -32,7 +32,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.StreamSupport.stream;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.

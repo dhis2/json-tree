@@ -39,7 +39,7 @@ import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.stream;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * Represents a JSON object node.
@@ -86,6 +86,17 @@ public interface JsonObject extends JsonCollection {
      * @since 0.10
      */
     boolean has( List<String> names );
+
+    /**
+     * OBS! This does not require this node to be an object node.
+     *
+     * @param name name of the object member
+     * @return true if this object does not have a member of the provided name
+     * @since 0.11
+     */
+    default boolean isUndefined( String name ) {
+        return get( name ).isUndefined();
+    }
 
     /**
      * Lists JSON object property names in order of declaration.

@@ -38,7 +38,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 /**
  * A {@link JsonList} is nothing else then a {@link JsonArray} with "typed" uniform elements.

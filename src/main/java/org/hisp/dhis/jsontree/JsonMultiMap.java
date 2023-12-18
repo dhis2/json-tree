@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * A {@link JsonMap} with {@link JsonList} of elements.

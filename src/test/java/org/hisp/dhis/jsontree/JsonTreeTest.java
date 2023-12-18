@@ -561,7 +561,7 @@ class JsonTreeTest {
             .addNumber( "num", 1 )
             .addString( "str", "zZZZ" )
             .addBoolean( "right", true )
-            .addArray( "nums", 1, 2, 3 ) );
+            .addArray( "nums", arr -> arr.addNumbers( 1, 2, 3 ) ));
 
         assertEquals( "{\"num\":1,\"right\":true}",
             root.removeMembers( Set.of( "str", "foo", "nums" ) ).getDeclaration() );

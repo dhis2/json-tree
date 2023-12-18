@@ -27,7 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.BOOLEAN;
+import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 
 /**
  * Represents a boolean JSON node.

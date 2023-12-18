@@ -36,8 +36,6 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -144,83 +142,67 @@ class JsonAppenderTest {
     @Test
     void testObject_IntArray() {
         assertJson( "{'array':[1,2]}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", 1, 2 ) ) );
+            .addArray( "array", arr -> arr.addNumbers( 1, 2 ) ) ));
     }
 
     @Test
     void testArray_IntArray() {
         assertJson( "[[1,2]]", JsonBuilder.createArray( arr -> arr
-            .addArray( 1, 2 ) ) );
+            .addArray( a -> a.addNumbers( 1, 2 ) ) ));
     }
 
     @Test
     void testObject_DoubleArray() {
         assertJson( "{'array':[1.5,2.5]}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", 1.5d, 2.5d ) ) );
+            .addArray( "array", arr -> arr.addNumbers(1.5d, 2.5d ) ) ));
     }
 
     @Test
     void testArray_DoubleArray() {
         assertJson( "[[1.5,2.5]]", JsonBuilder.createArray( arr -> arr
-            .addArray( 1.5d, 2.5d ) ) );
+            .addArray( a -> a.addNumbers (1.5d, 2.5d ) ) ));
     }
 
     @Test
     void testObject_LongArray() {
         assertJson( "{'array':[" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "]}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", Long.MIN_VALUE, Long.MAX_VALUE ) ) );
+            .addArray("array", arr -> arr.addNumbers(Long.MIN_VALUE, Long.MAX_VALUE ) ) ));
     }
 
     @Test
     void testArray_LongArray() {
         assertJson( "[[" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "]]", JsonBuilder.createArray( arr -> arr
-            .addArray( Long.MIN_VALUE, Long.MAX_VALUE ) ) );
+            .addArray( a -> a.addNumbers(Long.MIN_VALUE, Long.MAX_VALUE ) ) ));
     }
 
     @Test
     void testObject_StringArray() {
         assertJson( "{'array':['a','b']}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", "a", "b" ) ) );
+            .addArray( "array", arr -> arr.addStrings( "a", "b" ) ) ));
     }
 
     @Test
     void testArray_StringArray() {
         assertJson( "[['a','b']]", JsonBuilder.createArray( arr -> arr
-            .addArray( "a", "b" ) ) );
+            .addArray(a -> a.addStrings( "a", "b" ) ) ));
     }
 
     @Test
     void testObject_OtherArray() {
         assertJson( "{'array':['SOURCE','CLASS','RUNTIME']}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) );
+            .addArray( "array", arr -> arr.addElements( RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) ));
     }
 
     @Test
     void testArray_OtherArray() {
         assertJson( "[['SOURCE','CLASS','RUNTIME']]", JsonBuilder.createArray( arr -> arr
-            .addArray( RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) );
+            .addArray( a -> a.addElements( RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) ));
     }
 
     @Test
     void testArray_OtherCollection() {
         assertJson( "[['SOURCE','CLASS','RUNTIME']]", JsonBuilder.createArray( arr -> arr
-            .addArray( List.of( RetentionPolicy.values() ), JsonArrayBuilder::addString, RetentionPolicy::name ) ) );
-    }
-
-    @Test
-    void testObject_StreamArray() {
-        assertJson( "{'a2':[['a'],['b','c']]}", JsonBuilder.createObject( obj -> obj
-            .addArray( "a2", List.of( "a", "bc" ),
-                ( arr, e ) -> arr.addArray( e.codePoints().boxed(),
-                    ( innerArr, c ) -> innerArr.addString( Character.toString( c ) ) ) ) ) );
-    }
-
-    @Test
-    void testArray_StreamArray() {
-        assertJson( "[[['a'],['b','c']]]", JsonBuilder.createArray( arr -> arr
-            .addArray( List.of( "a", "bc" ),
-                ( arr2, e ) -> arr2.addArray( e.codePoints().boxed(),
-                    ( innerArr, c ) -> innerArr.addString( Character.toString( c ) ) ) ) ) );
+            .addArray( a -> a.addElements( List.of( RetentionPolicy.values() ), JsonArrayBuilder::addString, RetentionPolicy::name ) ) ));
     }
 
     @Test
@@ -244,13 +226,14 @@ class JsonAppenderTest {
     @Test
     void testObject_ObjectMap() {
         assertJson( "{'obj':{'field':42}}", JsonBuilder.createObject( outer -> outer
-            .addObject( "obj", Map.of( "field", 42 ).entrySet(), JsonObjectBuilder::addNumber ) ) );
+            .addObject( "obj", inner -> inner.addMembers(
+                Map.of( "field", 42 ).entrySet(), JsonObjectBuilder::addNumber ) ) ));
     }
 
     @Test
     void testArray_ObjectMap() {
         assertJson( "[{'field':42}]", JsonBuilder.createArray( arr -> arr
-            .addObject( singletonMap( "field", 42 ), JsonObjectBuilder::addNumber ) ) );
+            .addObject( obj -> obj.addMembers( Map.of( "field", 42 ), JsonObjectBuilder::addNumber ) ) ));
     }
 
     @Test
@@ -262,7 +245,7 @@ class JsonAppenderTest {
     @Test
     void testArray_ElementsCollection() {
         assertJson( "[[42]]", JsonBuilder.createArray( arr -> arr
-            .addArray( singletonList( 42 ), JsonArrayBuilder::addNumber ) ) );
+            .addArray( a -> a.addElements( List.of( 42 ), JsonArrayBuilder::addNumber ) ) ));
     }
 
     @Test

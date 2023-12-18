@@ -1,13 +1,16 @@
 package org.hisp.dhis.jsontree;
 
 /**
+ * API to convert JSON strings to {@link JsonValue} nodes.
+ * <p>
  * A {@link JsonValue} of unknown type that can be treated as any of the general JSON type for convenience.
  *
  * @author Jan Bernitt
  * @see JsonValue
  * @since 0.8
  */
-@Validation( type = { JsonSchema.NodeType.OBJECT, JsonSchema.NodeType.ARRAY, JsonSchema.NodeType.STRING, JsonSchema.NodeType.NUMBER, JsonSchema.NodeType.BOOLEAN })
+@Validation( type = { Validation.NodeType.OBJECT, Validation.NodeType.ARRAY, Validation.NodeType.STRING,
+    Validation.NodeType.NUMBER, Validation.NodeType.BOOLEAN } )
 public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean {
 
     /**
