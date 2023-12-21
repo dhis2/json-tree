@@ -1,4 +1,11 @@
-package org.hisp.dhis.jsontree;
+package org.hisp.dhis.jsontree.validation;
+
+import org.hisp.dhis.jsontree.JsonArray;
+import org.hisp.dhis.jsontree.JsonMultiMap;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonString;
+import org.hisp.dhis.jsontree.JsonValue;
+import org.hisp.dhis.jsontree.Validation;
 
 import java.util.List;
 
@@ -10,6 +17,8 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  * dialect</a>.
  *
  * @author Jan Bernitt
+ *
+ * @since 0.11
  */
 @SuppressWarnings( "java:S100" )
 public interface JsonSchema {
@@ -34,7 +43,7 @@ public interface JsonSchema {
          *
          * @return Validation succeeds if the type of the instance matches at least one of the given type.
          */
-        @Validation( type = STRING, varargs = YES, uniqueItems = true, minItems = 0, maxItems = 6, enumeration = Validation.NodeType.class )
+        @Validation( type = STRING, varargs = YES, uniqueItems = YES, minItems = 0, maxItems = 6, enumeration = Validation.NodeType.class )
         default List<Validation.NodeType> type() {
             return get( "type" ).toListFromVarargs( JsonString.class,
                 str -> str.parsed( Validation.NodeType::valueOf ) );
@@ -236,7 +245,7 @@ public interface JsonSchema {
          *
          * @return An object instance is valid if every item in the array is the name of a property in the instance.
          */
-        @Validation( uniqueItems = true )
+        @Validation( uniqueItems = YES )
         default List<String> required() {
             return getArray( "required" ).stringValues();
         }

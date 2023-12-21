@@ -42,10 +42,9 @@ import java.util.stream.Stream;
 import static java.util.stream.StreamSupport.stream;
 
 /**
- * A {@link JsonNode} builder API that mostly is designed to efficiently create JSON in a streaming scenario or when
- * programmatically declaring a JSON structure.
+ * A {@link JsonNode} builder API is designed to efficiently create declare or stream JSON programmatically.
  * <p>
- * This can be used to write JSON directly to some type of output stream or for ad-hoc creation of {@link JsonNode}s.
+ * It can be used to write JSON directly to some type of output stream or for ad-hoc creation of {@link JsonNode}s.
  * <p>
  * The {@link JsonNode} API also makes use of the builders to transform a {@link JsonNode} tree. Since each manipulation
  * creates a copy of the tree in its JSON {@link String} form the sweet spot for this is in low volume changes as they
@@ -58,6 +57,45 @@ import static java.util.stream.StreamSupport.stream;
  * @apiNote beta (subject to change)
  */
 public interface JsonBuilder {
+
+    /**
+     * Can be implemented by Java types that are capable to translate themselves to JSON
+     * using a builder.
+     *
+     * @since 0.11
+     * @apiNote beta (subject to change)
+     */
+    interface JsonEncodable {
+        /**
+         * Adds the implementing java object to a currently built array.
+         *
+         * @param arr to use to append the object to as an element
+         */
+        void addTo( JsonArrayBuilder arr );
+
+        /**
+         * Adds the implementing java object to a currently built object.
+         *
+         * @param name    name member name to use
+         * @param obj to use to append the object as a member
+         */
+        void addTo( String name, JsonObjectBuilder obj );
+    }
+
+    @FunctionalInterface
+    interface JsonObjectEncodable extends JsonEncodable {
+        @Override
+        default void addTo( JsonBuilder.JsonArrayBuilder arr ) {
+            arr.addObject(this::addToObject );
+        }
+
+        @Override
+        default void addTo( String name, JsonBuilder.JsonObjectBuilder obj ) {
+            obj.addObject( name, this::addToObject );
+        }
+
+        void addToObject(JsonBuilder.JsonObjectBuilder obj);
+    }
 
     //TODO convenience methods for Date and alike to create string nodes
 
@@ -105,6 +143,19 @@ public interface JsonBuilder {
         if ( Double.isNaN( value ) ) throw new JsonFormatException( "NaN is not a valid JSON value" );
         if ( Double.isInfinite( value ) ) throw new JsonFormatException( "Infinite is not a valid JSON value" );
     }
+
+    /**
+     * Check if a number can be represented in JSON
+     *
+     * @param value any number value, may be null
+     * @throws JsonFormatException if the double is NaN or Infinity
+     * @since 0.11
+     */
+    static void checkValid(Number value) {
+        if ( value instanceof Double d ) checkValid( d.doubleValue() );
+        if ( value instanceof Float f ) checkValid( f.doubleValue() );
+    }
+
 
     /**
      * Convenience method for ad-hoc creation of JSON object {@link JsonNode}. Use {@link JsonNode#getDeclaration()} to
@@ -271,6 +322,11 @@ public interface JsonBuilder {
         convenience API (based on the above)
          */
 
+        default JsonObjectBuilder addMember(String name, JsonEncodable value) {
+            value.addTo( name, this );
+            return this;
+        }
+
         default JsonObjectBuilder addMember( String name, Object pojo, JsonMapper mapper ) {
             mapper.addTo( this, name, pojo );
             return this;
@@ -333,6 +389,11 @@ public interface JsonBuilder {
         /*
         convenience API (based on the above)
          */
+
+        default JsonArrayBuilder addElement(JsonEncodable value) {
+            value.addTo( this );
+            return this;
+        }
 
         default JsonArrayBuilder addElement( Object value, JsonMapper mapper ) {
             mapper.addTo( this, value );

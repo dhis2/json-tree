@@ -48,6 +48,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  * @author Jan Bernitt
  */
 @Validation( type = { ARRAY, OBJECT } )
+@Validation.Ignore
 public interface JsonCollection extends JsonValue {
 
     /**

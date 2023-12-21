@@ -17,16 +17,26 @@ import java.util.function.Consumer;
  * <p>
  * Used on a {@link JsonValue} subtype to add validation to any of its usage.
  * <p>
+ * <h3>Meta-Annotations</h3>
  * Used on annotation type to define meta annotations for validations, for example a {@code @NonNegativeInteger}
  * annotation which would be annotated {@code @Validation(type=INTEGER, minimum=0)}.
  * <p>
- * With multiple sources being possible either by defining and using multiple meta annotations or simply by annotating
- * both the type returned by a method and the method itself it is possible to define multiple sources of
- * {@link Validation}s. In such a case all of them a merged additively. The annotation directly present on a method can
- * be declared {@link #redefine()} in which case all other sources are ignored.
- * <p>
- * Generally constraint limits declared by an annotation directly present on the method overrides any other limit.
- * Otherwise, limits are merged to use the most restrictive limit declared by one of the annotations.
+ * <h3>Priority</h3>
+ * Order of source priority lowest to highest:
+ * <ol>
+ *     <li>value type class (using the Java type information; only if no annotation is present on type)</li>
+ *     <li>Meta-annotation(s) on value type class</li>
+ *     <li>{@link Validation} annotation on value type class</li>
+ *     <li>Meta-annotation(s) on property method</li>
+ *     <li>{@link Validation} annotation on property method</li>
+ *     <li>Meta-annotation(s) on property method return type (type use)</li>
+ *     <li>{@link Validation} annotation on property method return type (type use)</li>
+ * </ol>
+ * Sources with higher priority override values of sources with lower priority unless the higher priority value is "undefined".
+ *
+ *
+ *
+ * @see org.hisp.dhis.jsontree.Validator
  *
  * @author Jan Bernitt
  * @since 0.11
@@ -36,7 +46,13 @@ import java.util.function.Consumer;
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Validation {
 
-    enum YesNo {NO, YES, AUTO}
+    enum YesNo {NO, YES, AUTO;
+        public boolean isYes() { return this == YES; }
+
+        public boolean isAuto() {
+            return this == AUTO;
+        }
+    }
 
     enum Rule {
         // any values
@@ -59,7 +75,18 @@ public @interface Validation {
      * In line with the JSON schema validation specification.
      */
     enum NodeType {
-        NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT
+        NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT;
+
+        public static NodeType of( JsonNodeType type ) {
+            return switch ( type ) {
+                case OBJECT -> OBJECT ;
+                case ARRAY -> ARRAY;
+                case STRING -> STRING;
+                case BOOLEAN -> BOOLEAN;
+                case NULL -> NULL;
+                case NUMBER -> NUMBER;
+            };
+        }
     }
 
     /**
@@ -86,8 +113,8 @@ public @interface Validation {
     /**
      * Used to mark properties that should not be validated. By default, all properties are validated.
      */
-    @Target( { ElementType.METHOD } )
-    @Retention( RetentionPolicy.RUNTIME ) @interface Exclude {}
+    @Target( { ElementType.METHOD, ElementType.TYPE } )
+    @Retention( RetentionPolicy.RUNTIME ) @interface Ignore {}
 
     /**
      * Validations that apply to array elements or object member values.
@@ -111,11 +138,6 @@ public @interface Validation {
     String schema() default "";
 
     /**
-     * @return refers to a class with a {@link Validation} constraints to use as basis for this set of constraints.
-     */
-    Class<? extends JsonValue> base() default JsonValue.class;
-
-    /**
      * If multiple type are given the value must be one of them.
      * <p>
      * An {@link NodeType#INTEGER} is any number with a fraction of zero. This means it can have a fraction part as long
@@ -133,6 +155,9 @@ public @interface Validation {
      * <p>
      * {@link YesNo#AUTO} is used when inferring validation from the return type for types that are
      * {@link java.util.Collection}s of simple types.
+     * <p>
+     * Cannot be used in combination with {@link #values()} as it would be unclear if those values
+     * apply to the array, the elements or both.
      *
      * @return when {@link YesNo#YES}, the given {@link #type()} can occur once (as simple type value) or many times as
      * an array of such values.
@@ -255,7 +280,7 @@ public @interface Validation {
      *
      * @return all elements in the array value must be unique
      */
-    boolean uniqueItems() default false;
+    YesNo uniqueItems() default YesNo.AUTO;
 
     /*
     Validations for Objects
@@ -325,11 +350,4 @@ public @interface Validation {
      * @return the names of the groups the annotated property belongs to
      */
     String[] groups() default {};
-
-    /**
-     * @return when true, this annotation is not additive to other {@link Validation} annotations present. Instead, an
-     * entirely new validation scope is started only containing the constraints of this annotation.
-     */
-    boolean redefine() default false;
-
 }

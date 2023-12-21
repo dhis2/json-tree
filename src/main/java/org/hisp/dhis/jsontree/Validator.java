@@ -1,6 +1,7 @@
 package org.hisp.dhis.jsontree;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -15,6 +16,7 @@ import java.lang.annotation.Target;
  * @author Jan Bernitt
  * @since 0.11
  */
+@Repeatable( Validator.ValidatorRepeat.class )
 @Retention( RetentionPolicy.RUNTIME )
 @Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
 public @interface Validator {
@@ -24,7 +26,17 @@ public @interface Validator {
      */
     Class<? extends Validation.Validator> value();
 
+    // maybe make this a @Validation? as arguments?
     String[] params() default {};
 
-    Validation.NodeType[] applies() default {};
+    @Retention( RetentionPolicy.RUNTIME )
+    @Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
+    @interface ValidatorRepeat {
+
+        Validator[] value();
+    }
+
+    //IDEA: use Class<? extends Validator>[] validator() default {} in @Validation
+    // and each of them gets the @Validation instance passed to the constructor
+    // which can be used for parameters
 }

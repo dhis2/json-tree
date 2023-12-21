@@ -19,4 +19,11 @@ public final class JsonSchemaException extends IllegalArgumentException {
     public Info getInfo() {
         return info;
     }
+
+    @Override public String toString() {
+        StringBuilder str = new StringBuilder();
+        str.append( super.toString() );
+        info.errors.forEach( e -> str.append( "\t" ).append( e ).append( "\n" ) );
+        return str.toString();
+    }
 }

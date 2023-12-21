@@ -39,6 +39,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  * @author Jan Bernitt
  */
 @Validation( type = { BOOLEAN, NUMBER, STRING } )
+@Validation.Ignore
 public interface JsonPrimitive extends JsonValue {
 
     /**

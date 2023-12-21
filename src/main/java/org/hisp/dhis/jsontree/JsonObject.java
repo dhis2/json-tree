@@ -34,6 +34,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
@@ -52,6 +53,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  * @author Jan Bernitt
  */
 @Validation( type = OBJECT )
+@Validation.Ignore
 public interface JsonObject extends JsonCollection {
 
     /**
@@ -131,6 +133,10 @@ public interface JsonObject extends JsonCollection {
 
     default JsonBoolean getBoolean( String name ) {
         return get( name, JsonBoolean.class );
+    }
+
+    default void forEachValue( Consumer<JsonValue> action ) {
+        node().members().forEach( e -> action.accept( JsonValue.of( e.getValue() )) );
     }
 
     default <E extends JsonValue> JsonList<E> getList( String name, Class<E> as ) {

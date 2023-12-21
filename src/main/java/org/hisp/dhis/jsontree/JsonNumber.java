@@ -35,6 +35,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
  * @author Jan Bernitt
  */
 @Validation( type = NUMBER )
+@Validation.Ignore
 public interface JsonNumber extends JsonPrimitive {
 
     /**

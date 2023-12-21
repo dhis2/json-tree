@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.validation.JsonValidator;
+
 import java.util.List;
 import java.util.function.Function;
 
@@ -66,6 +68,7 @@ import java.util.function.Function;
  * @author Jan Bernitt
  * @see JsonMixed
  */
+@Validation.Ignore
 public interface JsonValue {
 
     /**
@@ -126,16 +129,7 @@ public interface JsonValue {
      * @since 0.11
      */
     default void validate( Class<? extends JsonValue> schema ) {
-        JsonSchemaValidation.validate( this, schema );
-    }
-
-    /**
-     * @param schema the schema to validate against
-     * @throws JsonSchemaException in case this value does not match the given schema
-     * @since 0.11
-     */
-    default void validate( JsonSchema schema ) {
-        JsonSchemaValidation.validate( this, schema );
+        JsonValidator.validate( this, schema );
     }
 
     /**
@@ -200,6 +194,7 @@ public interface JsonValue {
      * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
+
     default boolean isString() {
         return node().getType() == JsonNodeType.STRING;
     }
@@ -293,6 +288,7 @@ public interface JsonValue {
      * @return the underlying {@link JsonNode} in the overall JSON document if it exists
      * @throws JsonPathException in case this value does not exist in the JSON document
      */
+
     JsonNode node();
 
     /**

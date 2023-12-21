@@ -37,6 +37,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  * @author Jan Bernitt
  */
 @Validation( type = STRING )
+@Validation.Ignore
 public interface JsonString extends JsonPrimitive {
 
     /**

@@ -35,6 +35,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
  * @author Jan Bernitt
  */
 @Validation( type = BOOLEAN )
+@Validation.Ignore
 public interface JsonBoolean extends JsonPrimitive {
 
     /**

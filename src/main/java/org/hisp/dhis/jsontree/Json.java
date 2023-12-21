@@ -37,7 +37,7 @@ public interface Json {
         return of(String.valueOf( value ));
     }
 
-    static JsonString of(Character value) {
+    static JsonString of( Character value ) {
         return value == null ? ofNull() : of( value.charValue() );
     }
 
@@ -68,8 +68,7 @@ public interface Json {
     }
 
     static JsonNumber of( Number value ) {
-        if ( value instanceof Double d ) checkValid( d );
-        if ( value instanceof Float f ) checkValid( f );
+        checkValid( value );
         return value == null ? ofNull() : JsonMixed.of( value.toString() );
     }
 

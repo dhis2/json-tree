@@ -210,8 +210,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     @Override
     public JsonObjectBuilder addNumber( String name, Number value ) {
         if ( value == null && config.excludeNullMembers() ) return this;
-        if ( value instanceof Double d ) checkValid( d );
-        if ( value instanceof Float f ) checkValid( f );
+        checkValid( value );
         return addRawMember( name, value == null ? "null" : value.toString() );
     }
 
@@ -308,8 +307,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonArrayBuilder addNumber( Number value ) {
-        if ( value instanceof Double d ) checkValid( d );
-        if ( value instanceof Float f ) checkValid( f );
+        checkValid( value );
         return addRawElement( value == null ? "null" : value.toString() );
     }
 
