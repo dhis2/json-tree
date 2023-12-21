@@ -215,7 +215,7 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isObject() ) value.forEachValue( e -> each.validate( e.as( JsonMixed.class ), addError ) );
+            if ( value.isObject() ) value.forEachEntry( e -> each.validate( e.as( JsonMixed.class ), addError ) );
             if ( value.isArray() ) value.forEach( e -> each.validate( e.as( JsonMixed.class ), addError ) );
         }
     }

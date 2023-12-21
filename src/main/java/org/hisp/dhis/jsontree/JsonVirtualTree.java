@@ -169,13 +169,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
-    public boolean has( List<String> names ) {
-        return Boolean.TRUE.equals( value( JsonNodeType.OBJECT,
-            node -> names.stream().allMatch( node::isMember ),
-            ex -> false ) );
-    }
-
-    @Override
     public List<String> stringValues() {
         return arrayList( String.class );
     }

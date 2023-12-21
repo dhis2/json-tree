@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.util.List;
@@ -113,6 +114,15 @@ public interface JsonValue {
      * @since 0.10
      */
     Class<? extends JsonValue> asType();
+
+    /**
+     * @since 0.11
+     * @return this node path or null if this node does not exist in the actual tree
+     */
+    @Maybe
+    default String path() {
+        return !exists() ? null : node().getPath();
+    }
 
     /**
      * @throws JsonSchemaException in case this value does not match the schema of {@link #asType()}
@@ -288,7 +298,6 @@ public interface JsonValue {
      * @return the underlying {@link JsonNode} in the overall JSON document if it exists
      * @throws JsonPathException in case this value does not exist in the JSON document
      */
-
     JsonNode node();
 
     /**

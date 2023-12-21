@@ -65,7 +65,7 @@ class JsonVirtualTreeTest {
         assertFalse( JsonMixed.of( "[]" ).getObject( "undefined" ).has( "foo" ) );
         JsonObject bar = obj.getObject( "users" ).getObject( "bar" );
         Exception ex = assertThrowsExactly( JsonTreeException.class, () -> bar.has( "is-array" ) );
-        assertEquals( "Path `$.users.bar` does not contain an OBJECT but a(n) ARRAY: []", ex.getMessage() );
+        assertEquals( "ARRAY node has no member property: is-array", ex.getMessage() );
     }
 
     @Test
@@ -179,7 +179,7 @@ class JsonVirtualTreeTest {
         assertEquals( asList( 1, null, 3 ),
             list.viewAsList( e -> e.getNumber( "b" ) ).toList( JsonNumber::intValue, null ) );
         assertEquals( asList( 1, 3 ),
-            list.viewAsList( e -> e.getNumber( "b" ) ).toListOfElementsThatExists( JsonNumber::intValue ) );
+            list.viewAsList( e -> e.getNumber( "b" ) ).toListOfNonnullElements( JsonNumber::intValue ) );
     }
 
     @Test

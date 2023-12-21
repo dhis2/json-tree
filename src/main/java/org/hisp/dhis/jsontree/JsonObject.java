@@ -30,14 +30,12 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.JsonSchemaException.Info;
 
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.stream;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
@@ -54,7 +52,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  */
 @Validation( type = OBJECT )
 @Validation.Ignore
-public interface JsonObject extends JsonCollection {
+public interface JsonObject extends JsonObjectish<JsonValue> {
 
     /**
      * Name access to object fields.
@@ -67,49 +65,6 @@ public interface JsonObject extends JsonCollection {
      * @return field value for the given name
      */
     <T extends JsonValue> T get( String name, Class<T> as );
-
-    /**
-     * Test an object for property names.
-     *
-     * @param names a set of property names that should exist
-     * @return true if this object has (at least) all the given names
-     * @throws JsonTreeException in case this value is not an JSON object
-     */
-    default boolean has( String... names ) {
-        return has( List.of( names ) );
-    }
-
-    /**
-     * Test an object for property names.
-     *
-     * @param names a set of property names that should exist
-     * @return true if this object has (at least) all the given names
-     * @throws JsonTreeException in case this value is not an JSON object
-     * @since 0.10
-     */
-    boolean has( List<String> names );
-
-    /**
-     * OBS! This does not require this node to be an object node.
-     *
-     * @param name name of the object member
-     * @return true if this object does not have a member of the provided name
-     * @since 0.11
-     */
-    default boolean isUndefined( String name ) {
-        return get( name ).isUndefined();
-    }
-
-    /**
-     * Lists JSON object property names in order of declaration.
-     *
-     * @return The list of property names in the order they were defined.
-     * @throws JsonTreeException in case this value is not an JSON object
-     * @throws JsonPathException in case this value does not exist in the JSON document
-     */
-    default List<String> names() {
-        return StreamSupport.stream( node().members().spliterator(), false ).map( Map.Entry::getKey ).toList();
-    }
 
     default JsonValue get( String name ) {
         return get( name, JsonValue.class );
@@ -133,10 +88,6 @@ public interface JsonObject extends JsonCollection {
 
     default JsonBoolean getBoolean( String name ) {
         return get( name, JsonBoolean.class );
-    }
-
-    default void forEachValue( Consumer<JsonValue> action ) {
-        node().members().forEach( e -> action.accept( JsonValue.of( e.getValue() )) );
     }
 
     default <E extends JsonValue> JsonList<E> getList( String name, Class<E> as ) {
@@ -249,14 +200,14 @@ public interface JsonObject extends JsonCollection {
     default <T extends JsonObject> T find( Class<T> type, Predicate<T> test ) {
         Optional<JsonNode> match = node().find( JsonNodeType.OBJECT, node -> {
             try {
-                return test.test( JsonValue.of( node.getDeclaration() ).asObject().asObject( type ) );
+                return test.test( node.lift().as( type ) );
             } catch ( RuntimeException ex ) {
                 return false;
             }
         } );
         return match.isEmpty()
-            ? JsonVirtualTree.NULL.as( type )
-            : JsonValue.of( match.get().getDeclaration() ).asObject().asObject( type );
+            ? JsonValue.of( "null" ).as( type )
+            : match.get().lift().as( type );
     }
 
     /**
@@ -282,7 +233,7 @@ public interface JsonObject extends JsonCollection {
             }
 
             @Override
-            public boolean has( List<String> names ) {
+            public boolean has( Collection<String> names ) {
                 return viewed.has( names );
             }
 

@@ -103,10 +103,10 @@ public @interface Validation {
         void validate( JsonMixed value, Consumer<Error> addError );
     }
 
-    record Error(Enum<?> rule, JsonMixed value, List<Object> args) implements Serializable {
+    record Error(Enum<?> rule, String path, JsonMixed value, List<Object> args) implements Serializable {
 
         public static Error of( Enum<?> rule, JsonMixed value, Object... args ) {
-            return new Error( rule, value, List.of( args ) );
+            return new Error( rule, value.node().getPath(), value, List.of( args ) );
         }
     }
 

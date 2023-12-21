@@ -19,11 +19,12 @@ class JsonObjectTest {
 
     @Test
     void testFind() {
-        //language=JSON
         String json = """
             { "x":{ "foo": 1 }}""";
         JsonMixed root = JsonMixed.of( json );
-        assertTrue( root.find( JsonObject.class, obj -> obj.has( "foo" ) ).isObject() );
+        JsonObject foo = root.find( JsonObject.class, obj -> obj.has( "foo" ) );
+        assertTrue( foo.isObject() );
+        assertEquals( ".x", foo.path() );
         assertTrue( root.find( JsonObject.class, obj -> obj.has( "bar" ) ).isNull() );
     }
 
@@ -36,7 +37,7 @@ class JsonObjectTest {
     @Test
     void testNames_Undefined() {
         JsonObject value = JsonMixed.of( "{}" ).getObject( "x" );
-        assertThrowsExactly( JsonPathException.class, value::names );
+        assertEquals( List.of(), value.names() );
     }
 
     @Test

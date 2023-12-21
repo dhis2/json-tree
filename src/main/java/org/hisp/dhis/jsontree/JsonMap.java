@@ -41,44 +41,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  * @author Jan Bernitt
  */
 @Validation( type = OBJECT )
-public interface JsonMap<E extends JsonValue> extends JsonCollection {
-
-    /**
-     * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd
-     * parameter is the type parameter E.
-     *
-     * @param key property to access
-     * @return value at the provided property
-     */
-    E get( String key );
-
-    /**
-     * @return The keys of this map.
-     * @throws JsonTreeException in case this node does exist but is not an object node or null
-     * @since 0.11 (as Stream)
-     */
-    default Stream<String> keys() {
-        return isUndefined() ? Stream.empty() : stream( node().keys().spliterator(), false );
-    }
-
-    /**
-     * @return a stream of the map values
-     * @throws JsonTreeException in case this node does exist but is not an object node or null
-     * @since 0.11
-     */
-    default Stream<E> values() {
-        return keys().map( this::get );
-    }
-
-    /**
-     * @param action call with each entry in the map in order of their declaration
-     * @throws JsonTreeException in case this node does exist but is not an object node or null
-     * @since 0.10
-     */
-    default void forEach( BiConsumer<String, ? super E> action ) {
-        // need to use keys() + get(key) because of wrapper type E is not accessible otherwise
-        keys().forEach( key -> action.accept( key, get( key ) ) );
-    }
+public interface JsonMap<E extends JsonValue> extends JsonObjectish<E> {
 
     /**
      * Maps this map's entry values to a lazy transformed map view where each entry value of the original map is

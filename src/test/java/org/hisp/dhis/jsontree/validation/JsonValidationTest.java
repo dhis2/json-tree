@@ -1,5 +1,11 @@
-package org.hisp.dhis.jsontree;
+package org.hisp.dhis.jsontree.validation;
 
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonNode;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonSchemaException;
+import org.hisp.dhis.jsontree.JsonValue;
+import org.hisp.dhis.jsontree.Validation;
 import org.junit.jupiter.api.Test;
 
 import java.util.Deque;
@@ -14,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
  */
 class JsonValidationTest {
 
-    interface JsonBean extends JsonObject {
+    public interface JsonBean extends JsonObject {
 
         @Validation
         default String getFoo() {
@@ -35,7 +41,7 @@ class JsonValidationTest {
         assertEquals( ".bar", rec.getLast() );
     }
 
-    interface JsonMinimum extends JsonObject {
+    public interface JsonMinimum extends JsonObject {
 
         @Validation(minimum = 0)
         default int age() {

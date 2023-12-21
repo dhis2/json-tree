@@ -28,7 +28,6 @@
 package org.hisp.dhis.jsontree;
 
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
@@ -44,7 +43,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
  */
 @Validation( type = ARRAY )
 @Validation.Ignore
-public interface JsonArray extends JsonCollection {
+public interface JsonArray extends JsonArrayish<JsonValue> {
 
     /**
      * Index access to the array.
@@ -102,15 +101,6 @@ public interface JsonArray extends JsonCollection {
 
     default JsonObject getObject( int index ) {
         return get( index, JsonObject.class );
-    }
-
-    /**
-     * @param action called for each element in the array in order of declaration
-     * @throws JsonTreeException if this node is not an array node that could have elements
-     * @since 0.10
-     */
-    default void forEach( Consumer<JsonValue> action ) {
-        node().elements().forEach( n -> action.accept( JsonValue.of( n ) ) );
     }
 
     default <E extends JsonValue> JsonList<E> getList( int index, Class<E> as ) {

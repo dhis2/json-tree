@@ -142,6 +142,22 @@ public interface JsonNode extends Serializable {
     JsonNode getRoot();
 
     /**
+     * In contrast to {@link JsonValue#of(JsonNode)} this method does not result in a new independent virtual tree.
+     * <p>
+     * In other words this is the reverse method for {@link JsonValue#node()}
+     *
+     * @return this node as {@link JsonValue} as it is contained in its current tree
+     * @since 0.11
+     */
+    default JsonValue lift() {
+        //TODO make JsonNode paths work with JsonValue as they are
+        String path = getPath();
+        if (path.startsWith( "$" )) path = path.substring( 1 );
+        if (path.startsWith( "." )) path = path.substring( 1 );
+        return new JsonVirtualTree( getRoot(), JsonTypedAccess.GLOBAL ).get( path );
+    }
+
+    /**
      * @return The parent of this node or the root itself if this node is the root
      * @since 0.6
      */
@@ -259,7 +275,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode member( String name )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no member property." );
+        throw new JsonTreeException( getType() + " node has no member property: "+name );
     }
 
     /**
@@ -316,7 +332,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode element( int index )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no element property." );
+        throw new JsonTreeException( getType() + " node has no element property for index: "+index );
     }
 
     /**

@@ -31,7 +31,7 @@ class JsonSchemaValidationTest {
 
         JsonValue json = JsonValue.of( """
             {
-            "data": [["yes", "hello"]],
+            "data": [["yes", "hello"], []],
             "data2": []
             }
             """ );
