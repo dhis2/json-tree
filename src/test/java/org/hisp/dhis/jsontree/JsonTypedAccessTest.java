@@ -278,7 +278,7 @@ class JsonTypedAccessTest {
         NestedBean obj = JsonMixed.ofNonStandard( "{'list': [{'a':3}, {'a':4, 'list': [{'a':5}]}]}" )
             .as( NestedBean.class );
         assertEquals( List.of( 3, 4 ),
-            obj.list().viewAsList( e -> e.getNumber( "a" ) ).toList( JsonNumber::intValue ) );
+            obj.list().project( e -> e.getNumber( "a" ) ).toList( JsonNumber::intValue ) );
         assertEquals( 5, obj.list().get( 1 ).list().get( 0 ).a() );
     }
 

@@ -52,10 +52,10 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  */
 @Validation( type = OBJECT )
 @Validation.Ignore
-public interface JsonObject extends JsonObjectish<JsonValue> {
+public interface JsonObject extends JanAbstractObject<JsonValue> {
 
     /**
-     * Name access to object fields.
+     * Access to object fields by name.
      * <p>
      * Note that this neither checks if a field exist nor if it has the assumed type.
      *
@@ -91,15 +91,15 @@ public interface JsonObject extends JsonObjectish<JsonValue> {
     }
 
     default <E extends JsonValue> JsonList<E> getList( String name, Class<E> as ) {
-        return JsonCollection.asList( getArray( name ), as );
+        return JsonAbstractCollection.asList( getArray( name ), as );
     }
 
     default <E extends JsonValue> JsonMap<E> getMap( String name, Class<E> as ) {
-        return JsonCollection.asMap( getObject( name ), as );
+        return JsonAbstractCollection.asMap( getObject( name ), as );
     }
 
     default <E extends JsonValue> JsonMultiMap<E> getMultiMap( String name, Class<E> as ) {
-        return JsonCollection.asMultiMap( getObject( name ), as );
+        return JsonAbstractCollection.asMultiMap( getObject( name ), as );
     }
 
     /**
@@ -187,49 +187,25 @@ public interface JsonObject extends JsonObjectish<JsonValue> {
     }
 
     /**
-     * Finds the first {@link JsonObject} of the given type where the provided test returns true.
-     * <p>
-     * OBS! When no match is found the resulting {@link JsonValue#exists()} will return true. Use
-     * {@link JsonValue#isUndefined()} instead.
-     *
-     * @param type {@link JsonObject} type to find (must satisfy the {@link #asObject(Class)} conditions)
-     * @param test test to perform on all objects that satisfy the type filter
-     * @param <T>  type of the object to find
-     * @return the first found match or JSON {@code null} object
-     */
-    default <T extends JsonObject> T find( Class<T> type, Predicate<T> test ) {
-        Optional<JsonNode> match = node().find( JsonNodeType.OBJECT, node -> {
-            try {
-                return test.test( node.lift().as( type ) );
-            } catch ( RuntimeException ex ) {
-                return false;
-            }
-        } );
-        return match.isEmpty()
-            ? JsonValue.of( "null" ).as( type )
-            : match.get().lift().as( type );
-    }
-
-    /**
      * Maps this object's members to a lazy transformed object view where each property value of the original object is
      * transformed by the given function when accessed.
      * <p>
      * This means the returned object always has the same number of members as the original object.
      *
-     * @param memberToX transformer function
+     * @param projection transformer function
      * @param <V>       type of the transformer output, members of the object view
      * @return a lazily transformed object view of this object
      */
-    default <V extends JsonValue> JsonObject viewAsObject( Function<JsonValue, V> memberToX ) {
-        final class JsonObjectView extends CollectionView<JsonObject> implements JsonObject {
+    default <V extends JsonValue> JsonObject project( Function<JsonValue, V> projection ) {
+        final class JsonObjectProjection extends CollectionView<JsonObject> implements JsonObject {
 
-            private JsonObjectView( JsonObject viewed ) {
+            private JsonObjectProjection( JsonObject viewed ) {
                 super( viewed );
             }
 
             @Override
             public <T extends JsonValue> T get( String name, Class<T> as ) {
-                return memberToX.apply( viewed.get( name ) ).as( as );
+                return projection.apply( viewed.get( name ) ).as( as );
             }
 
             @Override
@@ -242,6 +218,6 @@ public interface JsonObject extends JsonObjectish<JsonValue> {
                 return JsonObject.class;
             }
         }
-        return new JsonObjectView( this );
+        return new JsonObjectProjection( this );
     }
 }

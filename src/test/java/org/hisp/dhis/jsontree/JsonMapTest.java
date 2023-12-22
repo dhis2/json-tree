@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -93,47 +92,47 @@ class JsonMapTest {
     void testViewAsMap_Undefined() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{}" ).getMap( "a", JsonArray.class );
         JsonMap<JsonArray> obj2 = JsonMixed.of( "null" ).getObject( "a" ).asMap( JsonArray.class );
-        assertDoesNotThrow( () -> obj.viewAsMap( arr -> arr.get( 0 ) ) );
-        assertDoesNotThrow( () -> obj2.viewAsMap( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj.project( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj2.project( arr -> arr.get( 0 ) ) );
     }
 
     @Test
     void testViewAsMap_NoMapObject() {
         JsonMap<JsonArray> obj = JsonMixed.of( "[1]" ).getMap( 0, JsonArray.class );
         JsonMap<JsonArray> obj2 = JsonMixed.of( "null" ).asMap( JsonArray.class );
-        assertDoesNotThrow( () -> obj.viewAsMap( arr -> arr.get( 0 ) ) );
-        assertDoesNotThrow( () -> obj2.viewAsMap( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj.project( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj2.project( arr -> arr.get( 0 ) ) );
     }
 
     @Test
     void testViewAsMap_Empty() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{}" ).asMap( JsonArray.class );
         JsonMap<JsonArray> obj2 = JsonMixed.of( "{\"a\":{}}" ).getMap( "a", JsonArray.class );
-        assertTrue( obj.viewAsMap( arr -> arr.get( 0 ) ).isEmpty() );
-        assertTrue( obj2.viewAsMap( arr -> arr.get( 0 ) ).isEmpty() );
+        assertTrue( obj.project( arr -> arr.get( 0 ) ).isEmpty() );
+        assertTrue( obj2.project( arr -> arr.get( 0 ) ).isEmpty() );
     }
 
     @Test
     void testViewAsMap_NonEmpty() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
         JsonMap<JsonArray> obj2 = JsonMixed.of( "{\"a\":{\"b\":[1],\"c\":[2]}}" ).getMap( "a", JsonArray.class );
-        assertEquals( List.of( "b", "c" ), obj.viewAsMap( arr -> arr.get( 0 ) ).keys().toList() );
-        assertEquals( List.of( "b", "c" ), obj2.viewAsMap( arr -> arr.get( 0 ) ).keys().toList() );
-        assertEquals( 1, obj.viewAsMap( arr -> arr.getNumber( 0 ) ).get( "b" ).intValue() );
-        assertEquals( 1, obj2.viewAsMap( arr -> arr.getNumber( 0 ) ).get( "b" ).intValue() );
+        assertEquals( List.of( "b", "c" ), obj.project( arr -> arr.get( 0 ) ).keys().toList() );
+        assertEquals( List.of( "b", "c" ), obj2.project( arr -> arr.get( 0 ) ).keys().toList() );
+        assertEquals( 1, obj.project( arr -> arr.getNumber( 0 ) ).get( "b" ).intValue() );
+        assertEquals( 1, obj2.project( arr -> arr.getNumber( 0 ) ).get( "b" ).intValue() );
     }
 
     @Test
     void testViewAsMap_Keys() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
-        JsonMap<JsonNumber> view = obj.viewAsMap( arr -> arr.getNumber( 0 ) );
+        JsonMap<JsonNumber> view = obj.project( arr -> arr.getNumber( 0 ) );
         assertEquals( List.of("b", "c"), view.keys().toList() );
     }
 
     @Test
     void testViewAsMap_Values() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
-        JsonMap<JsonNumber> view = obj.viewAsMap( arr -> arr.getNumber( 0 ) );
+        JsonMap<JsonNumber> view = obj.project( arr -> arr.getNumber( 0 ) );
         assertEquals( List.of(1, 2), view.values().map( JsonNumber::intValue ).toList() );
     }
 }

@@ -149,12 +149,9 @@ public interface JsonNode extends Serializable {
      * @return this node as {@link JsonValue} as it is contained in its current tree
      * @since 0.11
      */
-    default JsonValue lift() {
-        //TODO make JsonNode paths work with JsonValue as they are
-        String path = getPath();
-        if (path.startsWith( "$" )) path = path.substring( 1 );
-        if (path.startsWith( "." )) path = path.substring( 1 );
-        return new JsonVirtualTree( getRoot(), JsonTypedAccess.GLOBAL ).get( path );
+    default JsonValue lift(JsonTypedAccessStore store) {
+        JsonVirtualTree root = new JsonVirtualTree( getRoot(), store );
+        return isRoot() ? root : root.get( getPath() );
     }
 
     /**
@@ -382,13 +379,26 @@ public interface JsonNode extends Serializable {
     }
 
     /**
-     * Searches for a node in this subtree that matches type and returns true from the provided test.
+     * Searches for a node in this subtree that satisfies the provided test.
      *
-     * @param type node type tested
-     * @param test test performed, returns true when node is found
-     * @return the first found node or empty
+     * @param test a test that returns true when node is found
+     * @return the first node found or empty
+     * @since 0.11
      */
-    Optional<JsonNode> find( JsonNodeType type, Predicate<JsonNode> test );
+    default Optional<JsonNode> find(Predicate<JsonNode> test) {
+        return find( null, test );
+    }
+
+    /**
+     * Searches for a node in this subtree that matches type and satisfies the provided test.
+     *
+     * @param type node type tested, maybe null to search for any type of node
+     * @param test a test that returns true when node is found
+     * @return the first node found or empty
+     */
+    default Optional<JsonNode> find( JsonNodeType type, Predicate<JsonNode> test ) {
+        throw new JsonTreeException( getType() + " node does not support find." );
+    }
 
     /**
      * Count matching nodes in a subtree of this node including this node.

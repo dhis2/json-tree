@@ -165,4 +165,47 @@ class JsonValueTest {
         JsonValue value = JsonValue.of( "[1,true]" );
         assertThrowsExactly( JsonTreeException.class, () -> value.toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
     }
+
+    @Test
+    void testFind_Object() {
+        String json = """
+            { "x":{ "foo": 1 }}""";
+        JsonMixed root = JsonMixed.of( json );
+        JsonObject foo = root.find( JsonObject.class, obj -> obj.has( "foo" ) );
+        assertTrue( foo.isObject() );
+        assertEquals( ".x", foo.path() );
+        assertFalse( root.find( JsonObject.class, obj -> obj.has( "bar" ) ).exists() );
+    }
+
+    @Test
+    void testFind_Array() {
+        assertEquals( 42, JsonValue.of( "[1,42,99]" )
+            .find( JsonNumber.class, n -> n.intValue() > 20 ).intValue() );
+    }
+
+    @Test
+    void testFind_String() {
+        assertFalse( JsonValue.of( "\"hello\"" )
+            .find( JsonString.class, n -> n.string().length() > 30 ).exists() );
+        assertEquals( "hello", JsonValue.of( "\"hello\"" )
+            .find( JsonString.class, n -> n.string().length() > 3 ).string() );
+    }
+
+    @Test
+    void testFind_Number() {
+        assertFalse( JsonMixed.of( "1" ).find( JsonObject.class, obj -> obj.containsKey( "x" ) ).exists());
+        assertEquals(42, JsonMixed.of( "42" ).find( JsonNumber.class, JsonValue::isInteger ).intValue() );
+    }
+
+    @Test
+    void testFind_Null() {
+        assertFalse( JsonMixed.of( "null" ).find( JsonObject.class, obj -> obj.containsKey( "x" ) ).exists());
+    }
+
+    @Test
+    void testFind_Undefined() {
+        JsonObject undefined = JsonMixed.of( "{}" ).getObject( "x" );
+        assertFalse( undefined.find( JsonObject.class, obj -> obj.containsKey( "y" ) ).exists() );
+        assertFalse( undefined.find( JsonValue.class, JsonValue::exists ).exists() );
+    }
 }

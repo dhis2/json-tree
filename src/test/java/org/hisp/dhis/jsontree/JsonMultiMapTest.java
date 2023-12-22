@@ -56,16 +56,16 @@ class JsonMultiMapTest {
     void testViewAsMultiMap_Undefined() {
         JsonMultiMap<JsonArray> obj = JsonMixed.of( "{}" ).getMultiMap( "a", JsonArray.class );
         JsonMultiMap<JsonArray> obj2 = JsonMixed.of( "null" ).getObject( "a" ).asMultiMap( JsonArray.class );
-        assertDoesNotThrow( () -> obj.viewAsMultiMap( arr -> arr.get( 0 ) ) );
-        assertDoesNotThrow( () -> obj2.viewAsMultiMap( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj.project( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj2.project( arr -> arr.get( 0 ) ) );
     }
 
     @Test
     void testViewAsMultiMap_NoMapObject() {
         JsonMultiMap<JsonArray> obj = JsonMixed.of( "[1]" ).getMultiMap( 0, JsonArray.class );
         JsonMultiMap<JsonArray> obj2 = JsonMixed.of( "1" ).asMultiMap( JsonArray.class );
-        assertDoesNotThrow( () -> obj.viewAsMultiMap( arr -> arr.get( 0 ) ) );
-        assertDoesNotThrow( () -> obj2.viewAsMultiMap( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj.project( arr -> arr.get( 0 ) ) );
+        assertDoesNotThrow( () -> obj2.project( arr -> arr.get( 0 ) ) );
     }
 
     @Test
@@ -73,9 +73,9 @@ class JsonMultiMapTest {
         JsonMultiMap<JsonArray> obj = JsonMixed.of( "{}" ).asMultiMap( JsonArray.class );
         JsonMultiMap<JsonArray> obj2 = JsonMixed.of( "{\"a\":{}}" ).getMultiMap( "a", JsonArray.class );
         JsonMultiMap<JsonArray> obj3 = JsonMixed.of( "null" ).asMultiMap( JsonArray.class );
-        assertTrue( obj.viewAsMultiMap( arr -> arr.get( 0 ) ).isEmpty() );
-        assertTrue( obj2.viewAsMultiMap( arr -> arr.get( 0 ) ).isEmpty() );
-        JsonMultiMap<JsonValue> view = obj3.viewAsMultiMap( arr -> arr.get( 0 ) );
+        assertTrue( obj.project( arr -> arr.get( 0 ) ).isEmpty() );
+        assertTrue( obj2.project( arr -> arr.get( 0 ) ).isEmpty() );
+        JsonMultiMap<JsonValue> view = obj3.project( arr -> arr.get( 0 ) );
         assertThrowsExactly( JsonTreeException.class, view::isEmpty );
     }
 
@@ -85,9 +85,9 @@ class JsonMultiMapTest {
         JsonMultiMap<JsonArray> obj2 = JsonMixed.of( "{\"a\":{\"b\":[[1]],\"c\":[[2]]}}" )
             .getMultiMap( "a", JsonArray.class );
         assertEquals( Map.of( "b", List.of( 1 ), "c", List.of( 2 ) ),
-            obj.viewAsMultiMap( arr -> arr.getNumber( 0 ) ).toMap( JsonNumber::integer ) );
+            obj.project( arr -> arr.getNumber( 0 ) ).toMap( JsonNumber::integer ) );
         assertEquals( Map.of( "b", List.of( 1 ), "c", List.of( 2 ) ),
-            obj2.viewAsMultiMap( arr -> arr.getNumber( 0 ) ).toMap( JsonNumber::integer ) );
+            obj2.project( arr -> arr.getNumber( 0 ) ).toMap( JsonNumber::integer ) );
     }
 
     @Test

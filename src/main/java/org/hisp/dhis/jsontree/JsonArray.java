@@ -43,7 +43,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
  */
 @Validation( type = ARRAY )
 @Validation.Ignore
-public interface JsonArray extends JsonArrayish<JsonValue> {
+public interface JsonArray extends JsonAbstractArray<JsonValue> {
 
     /**
      * Index access to the array.
@@ -104,15 +104,15 @@ public interface JsonArray extends JsonArrayish<JsonValue> {
     }
 
     default <E extends JsonValue> JsonList<E> getList( int index, Class<E> as ) {
-        return JsonCollection.asList( getArray( index ), as );
+        return JsonAbstractCollection.asList( getArray( index ), as );
     }
 
     default <E extends JsonValue> JsonMap<E> getMap( int index, Class<E> as ) {
-        return JsonCollection.asMap( getObject( index ), as );
+        return JsonAbstractCollection.asMap( getObject( index ), as );
     }
 
     default <E extends JsonValue> JsonMultiMap<E> getMultiMap( int index, Class<E> as ) {
-        return JsonCollection.asMultiMap( getObject( index ), as );
+        return JsonAbstractCollection.asMultiMap( getObject( index ), as );
     }
 
     /**
@@ -121,20 +121,20 @@ public interface JsonArray extends JsonArrayish<JsonValue> {
      * <p>
      * This means the returned list always has same size as the original array.
      *
-     * @param elementToX transformer function
+     * @param projection transformer function
      * @param <V>        type of the transformer output, elements of the list view
      * @return a lazily transformed list view of this array
      */
-    default <V extends JsonValue> JsonList<V> viewAsList( Function<JsonValue, V> elementToX ) {
-        final class JsonArrayView extends CollectionView<JsonArray> implements JsonList<V> {
+    default <V extends JsonValue> JsonList<V> projectAsList( Function<JsonValue, V> projection ) {
+        final class JsonArrayProjection extends CollectionView<JsonArray> implements JsonList<V> {
 
-            private JsonArrayView( JsonArray self ) {
+            private JsonArrayProjection( JsonArray self ) {
                 super( self );
             }
 
             @Override
             public V get( int index ) {
-                return elementToX.apply( viewed.get( index ) );
+                return projection.apply( viewed.get( index ) );
             }
 
             @Override
@@ -142,6 +142,6 @@ public interface JsonArray extends JsonArrayish<JsonValue> {
                 return JsonList.class;
             }
         }
-        return new JsonArrayView( this );
+        return new JsonArrayProjection( this );
     }
 }

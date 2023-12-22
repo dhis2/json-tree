@@ -28,6 +28,8 @@
 package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Serializable;
 import java.lang.invoke.MethodHandles;
@@ -69,27 +71,32 @@ import static java.lang.Character.toLowerCase;
  */
 final class JsonVirtualTree implements JsonMixed, Serializable {
 
-    public static final JsonVirtualTree NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonTypedAccess.GLOBAL, null );
+    public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonTypedAccess.GLOBAL, null );
 
-    private final JsonNode root;
-    private final String path;
-    private final transient JsonTypedAccessStore store;
-    private final transient ConcurrentMap<String, Object> accessCache;
+    private final @Surly JsonNode root;
+    private final @Surly String path;
+    private final transient @Surly JsonTypedAccessStore store;
+    private final transient @Maybe ConcurrentMap<String, Object> accessCache;
 
-    public JsonVirtualTree( String json, JsonTypedAccessStore store ) {
+    public JsonVirtualTree(@Maybe String json, @Surly JsonTypedAccessStore store ) {
         this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), "$", store, null );
     }
 
-    public JsonVirtualTree( JsonNode root, JsonTypedAccessStore store ) {
+    public JsonVirtualTree(@Surly JsonNode root, @Surly JsonTypedAccessStore store ) {
         this( root, "$", store, null );
     }
 
-    private JsonVirtualTree( JsonNode root, String path, JsonTypedAccessStore store,
-        ConcurrentMap<String, Object> accessCache ) {
+    private JsonVirtualTree(@Surly JsonNode root, @Surly String path, @Surly JsonTypedAccessStore store,
+        @Maybe ConcurrentMap<String, Object> accessCache ) {
         this.root = root;
         this.path = path;
         this.store = store;
         this.accessCache = accessCache;
+    }
+
+    @Surly @Override
+    public JsonTypedAccessStore getAccessStore() {
+        return store;
     }
 
     @Override
@@ -136,7 +143,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public <T extends JsonValue> T get( String name, Class<T> as ) {
-        String p = name.startsWith( "{" ) ? path + name : path + "." + name;
+        boolean isQualified = name.startsWith( "{" ) || name.startsWith( "." ) || name.startsWith( "[" );
+        String p = isQualified ? path + name : path + "." + name;
         return asType( as, new JsonVirtualTree( root, p, store, accessCache ) );
     }
 

@@ -27,6 +27,9 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
+
 import java.io.Serializable;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
@@ -69,9 +72,9 @@ import static java.util.Objects.requireNonNull;
  * @implNote This uses records because JVMs starting with JDK 21/22 will consider record fields as {@code @Stable} which
  * might help optimize access to the {@link #json} char array.
  */
-record JsonTree(char[] json, HashMap<String, JsonNode> nodesByPath, JsonNode.GetListener onGet) implements Serializable {
+record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath, @Maybe JsonNode.GetListener onGet) implements Serializable {
 
-    static JsonTree of( String json, JsonNode.GetListener onGet ) {
+    static JsonTree of(@Surly String json, @Maybe JsonNode.GetListener onGet ) {
         return new JsonTree( json.toCharArray(), new HashMap<>(), onGet );
     }
 
@@ -80,7 +83,7 @@ record JsonTree(char[] json, HashMap<String, JsonNode> nodesByPath, JsonNode.Get
      * @return a lazy tree of the provided JSON
      * @since 0.11
      */
-    static JsonTree ofNonStandard(String json) {
+    static JsonTree ofNonStandard(@Surly String json) {
         char[] jsonChars = json.toCharArray();
         adjustToStandard(jsonChars);
         return new JsonTree( jsonChars, new HashMap<>(), null );
@@ -193,8 +196,8 @@ record JsonTree(char[] json, HashMap<String, JsonNode> nodesByPath, JsonNode.Get
         }
 
         @Override
-        public Optional<JsonNode> find( JsonNodeType type, Predicate<JsonNode> test ) {
-            if ( type == getType() && test.test( this ) ) {
+        public final Optional<JsonNode> find(@Maybe JsonNodeType type, Predicate<JsonNode> test ) {
+            if ( (type == null || type == getType()) && test.test( this ) ) {
                 return Optional.of( this );
             }
             return findChildren( type, test );
@@ -223,7 +226,7 @@ record JsonTree(char[] json, HashMap<String, JsonNode> nodesByPath, JsonNode.Get
             super( tree, path, start );
         }
 
-        @Override
+        @Surly @Override
         public Iterator<Entry<String, JsonNode>> iterator() {
             return members( true );
         }
@@ -381,7 +384,7 @@ record JsonTree(char[] json, HashMap<String, JsonNode> nodesByPath, JsonNode.Get
             super( tree, path, start );
         }
 
-        @Override
+        @Surly @Override
         public Iterator<JsonNode> iterator() {
             return elements( true );
         }
@@ -423,13 +426,9 @@ record JsonTree(char[] json, HashMap<String, JsonNode> nodesByPath, JsonNode.Get
 
         @Override
         Optional<JsonNode> findChildren( JsonNodeType type, Predicate<JsonNode> test ) {
-            Iterator<JsonNode> iter = elements( false );
-            while ( iter.hasNext() ) {
-                JsonNode e = iter.next();
+            for (JsonNode e : elements()) {
                 Optional<JsonNode> res = e.find( type, test );
-                if ( res.isPresent() ) {
-                    return res;
-                }
+                if (res.isPresent()) return res;
             }
             return Optional.empty();
         }

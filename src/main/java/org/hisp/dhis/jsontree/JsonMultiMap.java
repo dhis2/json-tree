@@ -46,7 +46,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  * @author Jan Bernitt
  */
 @Validation( type = OBJECT )
-public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> {
+@Validation.Ignore
+public interface JsonMultiMap<E extends JsonValue> extends JanAbstractObject<JsonList<E>> {
 
     /**
      * Convert this {@link JsonMultiMap} to a {@link Map} of {@link List} values where the list elements are mapped from
@@ -96,20 +97,20 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> 
      * <p>
      * This means the returned multimap always has same size as the original map.
      *
-     * @param memberToX transformer function
+     * @param projection transformer function
      * @param <V>       type of the transformer output for list elements of each of the map entry lists
      * @return a lazily transformed multimap view of this multimap
      */
-    default <V extends JsonValue> JsonMultiMap<V> viewAsMultiMap( Function<E, V> memberToX ) {
-        final class JsonMapView extends CollectionView<JsonMultiMap<E>> implements JsonMultiMap<V> {
+    default <V extends JsonValue> JsonMultiMap<V> project( Function<E, V> projection ) {
+        final class JsonMultiMapProjection extends CollectionView<JsonMultiMap<E>> implements JsonMultiMap<V> {
 
-            private JsonMapView( JsonMultiMap<E> viewed ) {
+            private JsonMultiMapProjection( JsonMultiMap<E> viewed ) {
                 super( viewed );
             }
 
             @Override
             public JsonList<V> get( String key ) {
-                return viewed.get( key ).viewAsList( memberToX );
+                return viewed.get( key ).project( projection );
             }
 
             @Override
@@ -117,6 +118,6 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonMap<JsonList<E>> 
                 return JsonMultiMap.class;
             }
         }
-        return new JsonMapView( this );
+        return new JsonMultiMapProjection( this );
     }
 }

@@ -28,10 +28,13 @@
 package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode} representing an actual {@link JsonTree}.
@@ -44,7 +47,7 @@ import java.util.function.Function;
  * <li>{@link JsonNumber}</li>
  * <li>{@link JsonBoolean}</li>
  * </ul>
- * In addition, there is {@link JsonCollection} as a common base type of
+ * In addition, there is {@link JsonAbstractCollection} as a common base type of
  * {@link JsonObject} and {@link JsonArray}, as well as {@link JsonPrimitive} as common
  * base type of {@link JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
  * <p>
@@ -246,7 +249,7 @@ public interface JsonValue {
      * @return list view of this value (assumes array)
      */
     default <E extends JsonValue> JsonList<E> asList( Class<E> elementType ) {
-        return JsonCollection.asList( as( JsonArray.class ), elementType );
+        return JsonAbstractCollection.asList( as( JsonArray.class ), elementType );
     }
 
     /**
@@ -257,7 +260,7 @@ public interface JsonValue {
      * @return map view of this value (assumes object)
      */
     default <V extends JsonValue> JsonMap<V> asMap( Class<V> valueType ) {
-        return JsonCollection.asMap( as( JsonObject.class ), valueType );
+        return JsonAbstractCollection.asMap( as( JsonObject.class ), valueType );
     }
 
     /**
@@ -268,7 +271,7 @@ public interface JsonValue {
      * @return map view of this value (assumes object)
      */
     default <V extends JsonValue> JsonMultiMap<V> asMultiMap( Class<V> valueType ) {
-        return JsonCollection.asMultiMap( as( JsonObject.class ), valueType );
+        return JsonAbstractCollection.asMultiMap( as( JsonObject.class ), valueType );
     }
 
     /**
@@ -322,5 +325,39 @@ public interface JsonValue {
      */
     default JsonValue withAccessCached() {
         return this;
+    }
+
+    /**
+     * @since 0.11
+     * @return the store used by this instance
+     */
+    @Surly
+    JsonTypedAccessStore getAccessStore();
+
+    /**
+     * Finds the first value that satisfies the given test.
+     * <p>
+     * OBS! When no match is found a value that does not exist is returned.
+     *
+     * @param type API to test the node with
+     * @param test test to perform on all objects that satisfy the type filter
+     * @param <T>  type of the object to find
+     * @return the first found match or JSON {@code null} object
+     */
+    default <T extends JsonValue> T find( Class<T> type, Predicate<T> test ) {
+        if (isUndefined()) return JsonMixed.of( "{}" ).get( "notFound", type );
+        JsonTypedAccessStore store = getAccessStore();
+        Optional<JsonNode> match = node().find(
+            node -> {
+                try {
+                    return test.test( node.lift( store ).as( type ) );
+                } catch ( JsonTreeException | JsonPathException ex ) {
+                    // the test called a method that was not supported by the tested node
+                    return false;
+                }
+            } );
+        return match.isEmpty()
+            ? JsonMixed.of( "{}" ).get( "notFound", type )
+            : match.get().lift(store).as( type );
     }
 }

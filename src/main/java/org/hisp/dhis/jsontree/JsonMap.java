@@ -27,9 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static java.util.stream.StreamSupport.stream;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
@@ -41,7 +39,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  * @author Jan Bernitt
  */
 @Validation( type = OBJECT )
-public interface JsonMap<E extends JsonValue> extends JsonObjectish<E> {
+@Validation.Ignore
+public interface JsonMap<E extends JsonValue> extends JanAbstractObject<E> {
 
     /**
      * Maps this map's entry values to a lazy transformed map view where each entry value of the original map is
@@ -49,20 +48,20 @@ public interface JsonMap<E extends JsonValue> extends JsonObjectish<E> {
      * <p>
      * This means the returned map always has same size as the original map.
      *
-     * @param memberToX transformer function
+     * @param projection transformer function
      * @param <V>       type of the transformer output, entries of the map view
      * @return a lazily transformed map view of this map
      */
-    default <V extends JsonValue> JsonMap<V> viewAsMap( Function<E, V> memberToX ) {
-        final class JsonMapView extends CollectionView<JsonMap<E>> implements JsonMap<V> {
+    default <V extends JsonValue> JsonMap<V> project( Function<E, V> projection ) {
+        final class JsonMapProjection extends CollectionView<JsonMap<E>> implements JsonMap<V> {
 
-            private JsonMapView( JsonMap<E> viewed ) {
+            private JsonMapProjection( JsonMap<E> viewed ) {
                 super( viewed );
             }
 
             @Override
             public V get( String key ) {
-                return memberToX.apply( viewed.get( key ) );
+                return projection.apply( viewed.get( key ) );
             }
 
             @Override
@@ -70,6 +69,6 @@ public interface JsonMap<E extends JsonValue> extends JsonObjectish<E> {
                 return JsonMap.class;
             }
         }
-        return new JsonMapView( this );
+        return new JsonMapProjection( this );
     }
 }

@@ -126,6 +126,7 @@ public @interface Validation {
     @Retention( RetentionPolicy.RUNTIME ) @interface Items {
 
         Validation value();
+        //IDEA: Class<?> items() default JsonValue.class in @Validation to refer to an item (annotated) type?
     }
 
     /**

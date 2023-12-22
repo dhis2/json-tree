@@ -309,6 +309,4 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
         if ( Map.class.isAssignableFrom( type ) ) return OBJECT;
         return null;
     }
-
-    //TODO idea: items => refer to JsonValue annotated type?
 }

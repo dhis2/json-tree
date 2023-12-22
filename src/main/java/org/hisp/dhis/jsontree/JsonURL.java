@@ -36,6 +36,7 @@ import java.net.URL;
  *
  * @author Jan Bernitt
  */
+@Validation.Ignore
 public interface JsonURL extends JsonString {
 
     default URL url() {

@@ -4,7 +4,6 @@ import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -17,7 +16,7 @@ import java.util.stream.StreamSupport;
  * @since 0.11
  */
 @Validation.Ignore
-public interface JsonArrayish<E extends JsonValue> extends JsonCollection, Iterable<E> {
+public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractCollection, Iterable<E> {
 
     /**
      * A typed variant of {@link JsonArray#get(int)}, equivalent to {@link JsonArray#get(int, Class)} where 2nd
@@ -47,19 +46,6 @@ public interface JsonArrayish<E extends JsonValue> extends JsonCollection, Itera
      */
     default Stream<E> stream() {
         return isUndefined() ? Stream.empty() : StreamSupport.stream( spliterator(), false );
-    }
-
-    /**
-     * True, if this list contains all the values provided given each value of the list is transformed by the toValue
-     * function to access its comparable value.
-     *
-     * @param toValue convert list element to comparable value
-     * @param values  set of expected value in no particular order
-     * @param <T>     type of the values compared
-     * @return true if all values are found, otherwise false
-     */
-    default <T> boolean containsAll( Function<E, T> toValue, T... values ) {
-        return containsAll( toValue, Set.of( values ) );
     }
 
     /**

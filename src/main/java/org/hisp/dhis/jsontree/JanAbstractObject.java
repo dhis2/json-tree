@@ -15,7 +15,7 @@ import static java.util.stream.StreamSupport.stream;
  * @since 0.11
  */
 @Validation.Ignore
-public interface JsonObjectish<E extends JsonValue> extends JsonCollection {
+public interface JanAbstractObject<E extends JsonValue> extends JsonAbstractCollection {
 
     /**
      * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd

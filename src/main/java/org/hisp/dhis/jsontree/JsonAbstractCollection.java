@@ -27,6 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Surly;
+
+import java.util.Optional;
+import java.util.function.Predicate;
+
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
@@ -49,7 +54,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  */
 @Validation( type = { ARRAY, OBJECT } )
 @Validation.Ignore
-public interface JsonCollection extends JsonValue {
+public interface JsonAbstractCollection extends JsonValue {
 
     /**
      * @return true, in case the collection exists but has no elements and is not {@code null}
@@ -125,7 +130,8 @@ public interface JsonCollection extends JsonValue {
         return new MultiMapView( object );
     }
 
-    abstract class CollectionView<T extends JsonCollection> implements JsonCollection {
+    abstract class CollectionView<T extends JsonAbstractCollection> implements
+        JsonAbstractCollection {
 
         protected final T viewed;
 
@@ -156,6 +162,11 @@ public interface JsonCollection extends JsonValue {
         @Override
         public final boolean isAccessCached() {
             return viewed.isAccessCached();
+        }
+
+        @Surly @Override
+        public JsonTypedAccessStore getAccessStore() {
+            return viewed.getAccessStore();
         }
 
         @Override

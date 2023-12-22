@@ -30,6 +30,7 @@ package org.hisp.dhis.jsontree;
 import org.junit.jupiter.api.Test;
 
 import java.util.Objects;
+import java.util.Set;
 
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -166,7 +167,7 @@ class JsonVirtualTreeTest {
     @Test
     void testArrayValuesMappedView() {
         JsonArray arr = JsonMixed.ofNonStandard( "[{'a':'x'},{'a':'y'},{'a':'z','b':1}]" );
-        JsonList<JsonString> view = arr.viewAsList( e -> e.asObject().getString( "a" ) );
+        JsonList<JsonString> view = arr.projectAsList( e -> e.asObject().getString( "a" ) );
         assertEquals( asList( "x", "y", "z" ), view.toList( JsonString::string ) );
     }
 
@@ -175,11 +176,11 @@ class JsonVirtualTreeTest {
         JsonList<JsonObject> list = JsonMixed.ofNonStandard( "[{'a':'x','b':1},{'a':'y'},{'a':'z','b':3}]" )
             .asList( JsonObject.class );
         assertEquals( asList( "x", "y", "z" ),
-            list.viewAsList( e -> e.getString( "a" ) ).toList( JsonString::string ) );
+            list.project( e -> e.getString( "a" ) ).toList( JsonString::string ) );
         assertEquals( asList( 1, null, 3 ),
-            list.viewAsList( e -> e.getNumber( "b" ) ).toList( JsonNumber::intValue, null ) );
+            list.project( e -> e.getNumber( "b" ) ).toList( JsonNumber::intValue, null ) );
         assertEquals( asList( 1, 3 ),
-            list.viewAsList( e -> e.getNumber( "b" ) ).toListOfNonnullElements( JsonNumber::intValue ) );
+            list.project( e -> e.getNumber( "b" ) ).toListOfNonNullElements( JsonNumber::intValue ) );
     }
 
     @Test
@@ -271,14 +272,14 @@ class JsonVirtualTreeTest {
     @Test
     void testListContainsAll() {
         JsonList<JsonString> list = JsonMixed.ofNonStandard( "[{'a':'x'}, {'a':'y'}]" ).as( JsonArray.class )
-            .viewAsList( e -> e.asObject().getString( "a" ) );
-        assertTrue( list.containsAll( JsonString::string, "y", "x" ) );
+            .projectAsList( e -> e.asObject().getString( "a" ) );
+        assertTrue( list.containsAll( JsonString::string, Set.of("y", "x" ) ));
     }
 
     @Test
     void testListContains() {
         JsonList<JsonString> list = JsonMixed.ofNonStandard( "[{'a':'x'}, {'a':'y'}]" ).as( JsonArray.class )
-            .viewAsList( e -> e.asObject().getString( "a" ) );
+            .projectAsList( e -> e.asObject().getString( "a" ) );
         assertTrue( list.contains( JsonString::string, "y"::equals ) );
         assertFalse( list.contains( JsonString::string, "z"::equals ) );
     }
@@ -286,7 +287,7 @@ class JsonVirtualTreeTest {
     @Test
     void testListContainsUnique() {
         JsonList<JsonString> list = JsonMixed.ofNonStandard( "[{'a':'x'}, {'a':'y'}, {'a':'y'}]" ).as( JsonArray.class )
-            .viewAsList( e -> e.asObject().getString( "a" ) );
+            .projectAsList( e -> e.asObject().getString( "a" ) );
         assertTrue( list.containsUnique( JsonString::string, "x"::equals ) );
         assertFalse( list.containsUnique( JsonString::string, "y"::equals ) );
     }

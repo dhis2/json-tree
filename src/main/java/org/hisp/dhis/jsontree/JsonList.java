@@ -40,7 +40,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
  * @author Jan Bernitt
  */
 @Validation( type = ARRAY )
-public interface JsonList<E extends JsonValue> extends JsonArrayish<E> {
+@Validation.Ignore
+public interface JsonList<E extends JsonValue> extends JsonAbstractArray<E> {
 
     /**
      * Convert to Java list.
@@ -61,12 +62,12 @@ public interface JsonList<E extends JsonValue> extends JsonArrayish<E> {
      * Undefined can occur because of views.
      *
      * @param toValue  maps from {@link JsonValue} to a plain JAVA value
-     * @param whenNull value used when {@link JsonValue} is {@link JsonValue#isUndefined()}
+     * @param whenUndefined value used when {@link JsonValue} is {@link JsonValue#isUndefined()}
      * @param <T>      type of result list elements
      * @return this list mapped with any elements defined JSON null replaced with the provided default
      */
-    default <T> List<T> toList( Function<E, T> toValue, T whenNull ) {
-        return toList( e -> e.isUndefined() ? whenNull : toValue.apply( e ) );
+    default <T> List<T> toList( Function<E, T> toValue, T whenUndefined ) {
+        return toList( e -> e.isUndefined() ? whenUndefined : toValue.apply( e ) );
     }
 
     /**
@@ -79,7 +80,7 @@ public interface JsonList<E extends JsonValue> extends JsonArrayish<E> {
      * @return existing elements of this list mapped by the provided toValue function. Undefined or JSON null is mapped
      * to an empty list.
      */
-    default <T> List<T> toListOfNonnullElements( Function<E, T> toValue ) {
+    default <T> List<T> toListOfNonNullElements( Function<E, T> toValue ) {
         if ( isUndefined() ) return List.of();
         return indexes().mapToObj( this::get ).filter( not(JsonValue::isUndefined) ).map( toValue ).toList();
     }
@@ -90,20 +91,20 @@ public interface JsonList<E extends JsonValue> extends JsonArrayish<E> {
      * <p>
      * This means the returned list always has same size as the original list.
      *
-     * @param elementToX transformer function
+     * @param projection transformer function
      * @param <V>        type of the transformer output, elements of the list view
      * @return a lazily transformed list view of this list
      */
-    default <V extends JsonValue> JsonList<V> viewAsList( Function<E, V> elementToX ) {
-        final class JsonListView extends CollectionView<JsonList<E>> implements JsonList<V> {
+    default <V extends JsonValue> JsonList<V> project( Function<E, V> projection ) {
+        final class JsonListProjection extends CollectionView<JsonList<E>> implements JsonList<V> {
 
-            private JsonListView( JsonList<E> self ) {
+            private JsonListProjection( JsonList<E> self ) {
                 super( self );
             }
 
             @Override
             public V get( int index ) {
-                return elementToX.apply( viewed.get( index ) );
+                return projection.apply( viewed.get( index ) );
             }
 
             @Override
@@ -111,6 +112,6 @@ public interface JsonList<E extends JsonValue> extends JsonArrayish<E> {
                 return JsonList.class;
             }
         }
-        return new JsonListView( this );
+        return new JsonListProjection( this );
     }
 }
