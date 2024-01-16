@@ -128,6 +128,15 @@ public interface JsonValue {
     }
 
     /**
+     * @since 0.11
+     * @return this node's type or null if this node does not exist in the actual tree
+     */
+    @Maybe
+    default JsonNodeType type() {
+        return !exists() ? null : node().getType();
+    }
+
+    /**
      * @throws JsonSchemaException in case this value does not match the schema of {@link #asType()}
      * @since 0.11
      */

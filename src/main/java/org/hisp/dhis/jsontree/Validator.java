@@ -26,8 +26,7 @@ public @interface Validator {
      */
     Class<? extends Validation.Validator> value();
 
-    // maybe make this a @Validation? as arguments?
-    String[] params() default {};
+    Validation[] params() default {};
 
     @Retention( RetentionPolicy.RUNTIME )
     @Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
@@ -35,8 +34,4 @@ public @interface Validator {
 
         Validator[] value();
     }
-
-    //IDEA: use Class<? extends Validator>[] validator() default {} in @Validation
-    // and each of them gets the @Validation instance passed to the constructor
-    // which can be used for parameters
 }

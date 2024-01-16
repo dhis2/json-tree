@@ -79,7 +79,9 @@ class JsonRequiredTest {
     @Test
     void testIsA() {
         assertTrue( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonFoo.class ) );
-        assertTrue( JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" ).isA( JsonEntry.class ) );
+        JsonMixed val = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" );
+        JsonEntry e = val.as( JsonEntry.class );
+        assertTrue( val.isA( JsonEntry.class ) );
         JsonMixed both = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1, 'bar':'y'}" );
         assertTrue( both.isA( JsonFoo.class ) );
         assertTrue( both.isA( JsonEntry.class ) );

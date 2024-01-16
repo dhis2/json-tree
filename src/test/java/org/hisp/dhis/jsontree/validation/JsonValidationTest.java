@@ -12,6 +12,7 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.List;
 
+import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
@@ -41,35 +42,4 @@ class JsonValidationTest {
         assertEquals( ".bar", rec.getLast() );
     }
 
-    public interface JsonMinimum extends JsonObject {
-
-        @Validation(minimum = 0)
-        default int age() {
-            return getNumber( "age" ).intValue();
-        }
-    }
-
-    @Test
-    void testMinimum_TooSmall() {
-        //language=json
-        String json = """
-            {"age":-1}""";
-        assertValidationError( JsonMixed.of( json ), JsonMinimum.class, Validation.Rule.MINIMUM );
-    }
-
-    @Test
-    void testMinimum_WrongType() {
-        //language=json
-        String json = """
-            {"age":true}""";
-        assertValidationError( JsonMixed.of( json ), JsonMinimum.class, Validation.Rule.TYPE );
-    }
-
-    private static void assertValidationError( JsonValue actual, Class<? extends JsonValue> schema,
-        Validation.Rule expected ) {
-        JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> actual.validate( schema ) );
-        List<Validation.Error> errors = ex.getInfo().errors();
-        assertEquals( 1, errors.size() );
-        assertEquals( expected, errors.get( 0 ).rule() );
-    }
 }

@@ -16,9 +16,9 @@ import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
  * <p>
  * It builds on top of the individual APIs like {@link JsonValue}, {@link JsonMixed} and {@link JsonBuilder}.
  * <p>
- * In contrast to the lower level APIs this APIs expects Java value as input. For example, a {@link String} is
- * understood not as a JSON string value with quotes but a Java string value that is escaped to create the JSON string
- * equivalent.
+ * In contrast to the lower level APIs the {@link Json} API accepts Java values as input. For example, a {@link String}
+ * is understood not as a JSON string value with quotes but a Java string value that is escaped to create the JSON
+ * string equivalent.
  *
  * @author Jan Bernitt
  * @since 0.11

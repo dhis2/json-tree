@@ -260,11 +260,13 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     private static Validation.Validator toValidator(@Surly Validator src) {
         Class<? extends Validation.Validator> type = src.value();
         if (!type.isRecord()) return null;
-        String[] params = src.params();
+        Validation[] params = src.params();
         try {
-            return params.length == 0
-                ? type.getConstructor().newInstance()
-                : type.getConstructor( List.class ).newInstance( List.of(params) );
+            if (params.length == 0)
+                return type.getConstructor().newInstance();
+            if (params.length == 1)
+                return type.getConstructor( Validation.class ).newInstance( params[0] );
+            return type.getConstructor( Validation[].class ).newInstance( (Object) params );
         } catch ( Exception ex ) {
             return null;
         }

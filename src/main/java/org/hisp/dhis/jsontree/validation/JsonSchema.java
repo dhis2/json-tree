@@ -44,7 +44,7 @@ public interface JsonSchema {
          * @return Validation succeeds if the type of the instance matches at least one of the given type.
          */
         @Validation( type = STRING, varargs = YES, uniqueItems = YES, minItems = 0, maxItems = 6, enumeration = Validation.NodeType.class )
-        default List<Validation.NodeType> type() {
+        default List<Validation.NodeType> $type() {
             return get( "type" ).toListFromVarargs( JsonString.class,
                 str -> str.parsed( Validation.NodeType::valueOf ) );
         }

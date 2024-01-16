@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import static java.lang.Double.isNaN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
@@ -38,8 +39,10 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  * @author Jan Bernitt
  * @since 0.11
  */
-record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<String, Validator> properties)
-    implements Validator {
+record ObjectValidator(
+    @Surly Class<? extends JsonValue> schema,
+    @Surly Map<String, Validator> properties
+) implements Validator {
 
     @Override
     public void validate( JsonMixed value, Consumer<Error> addError ) {
@@ -96,17 +99,19 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
         if ( has.test( OBJECT ) ) add.accept( JsonNodeType.OBJECT, create( node.objects() ));
 
         Validator type = anyOf.isEmpty() ? null : new Type( anyOf );
-        Validator anyType = create( node.values(), property );
+        Validator anyType = create( node.values() );
         Validator typeDependent = byType.isEmpty() ? null : new TypeDependent( byType );
         Validator items = node.items() == null ? null : new Items( create( node.items(), property ));
 
-        return Guard.of( type, Guard.of( anyType, Guard.of( typeDependent, items ) ));
+        Validator whenDefined = Guard.of( type, Guard.of( anyType, Guard.of( typeDependent, items ) ) );
+        PropertyValidation.ValueValidation values = node.values();
+        Validator required = values == null || !values.required().isYes() ? null : new Required( property );
+        return Guard.of(required, whenDefined );
     }
 
     @Maybe
-    private static Validator create(@Maybe PropertyValidation.ValueValidation values, String property) {
+    private static Validator create(@Maybe PropertyValidation.ValueValidation values ) {
         return values == null ? null : All.of(
-            !values.required().isYes() ? null : new Required( property ),
             values.anyOfJsons().isEmpty() ? null : new EnumAnyJson( values.anyOfJsons() ),
             values.customs().isEmpty() ? null : new All(values.customs())
         );
@@ -126,7 +131,7 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
     private static Validator create(@Maybe PropertyValidation.NumberValidation numbers) {
         return numbers == null ? null : All.of(
             isNaN( numbers.minimum() ) ? null : new Minimum( numbers.minimum() ),
-            isNaN( numbers.maximum() ) ? null : new Maximum( numbers.minimum() ),
+            isNaN( numbers.maximum() ) ? null : new Maximum( numbers.maximum() ),
             isNaN( numbers.exclusiveMinimum() ) ? null : new ExclusiveMinimum( numbers.exclusiveMinimum() ),
             isNaN( numbers.exclusiveMaximum() ) ? null : new ExclusiveMaximum( numbers.exclusiveMaximum() ),
             isNaN( numbers.multipleOf() ) ? null : new MultipleOf( numbers.multipleOf() ));
@@ -195,8 +200,8 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            NodeType actual = NodeType.of(value.node().getType());
-            if (anyOf.contains( actual )) return;
+            NodeType actual = NodeType.of(value.type());
+            if (actual == NULL || anyOf.contains( actual )) return;
             if (actual == NUMBER && anyOf.contains( INTEGER ) && value.isInteger()) return;
             addError.accept( Error.of( Validation.Rule.TYPE, value, anyOf ) );
         }
@@ -206,7 +211,7 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            Validator forType = anyOf.get( value.node().getType() );
+            Validator forType = anyOf.get( value.type() );
             if (forType != null) forType.validate( value, addError );
         }
     }
@@ -238,7 +243,7 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( !constants.contains( value.toJson() ) )
+            if (!value.isUndefined() && !constants.contains( value.toJson() ) )
                 addError.accept( Error.of( Validation.Rule.ENUM, value, constants ) );
         }
     }
@@ -251,8 +256,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isString() && !constants.contains( value.string() ) )
-                addError.accept( Error.of( Validation.Rule.ENUM, value, constants ) );
+            if ( !value.isString() ) return;
+            String actual = value.string();
+            if (!constants.contains( actual ) )
+                addError.accept( Error.of( Validation.Rule.ENUM, value, constants, actual ) );
         }
     }
 
@@ -260,8 +267,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isString() && value.string().length() < limit )
-                addError.accept( Error.of( Validation.Rule.MIN_LENGTH, value, limit ) );
+            if ( !value.isString()) return;
+            int actual = value.string().length();
+            if ( actual < limit )
+                addError.accept( Error.of( Validation.Rule.MIN_LENGTH, value, limit, actual ) );
         }
     }
 
@@ -269,8 +278,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isString() && value.string().length() > limit )
-                addError.accept( Error.of( Validation.Rule.MAX_LENGTH, value, limit ) );
+            if ( !value.isString()) return;
+            int actual = value.string().length();
+            if ( actual > limit )
+                addError.accept( Error.of( Validation.Rule.MAX_LENGTH, value, limit, actual ) );
         }
     }
 
@@ -278,7 +289,8 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isString() && !value.string().matches( regex ) )
+            if ( !value.isString()) return;
+            if (!value.string().matches( regex ) )
                 addError.accept( Error.of( Validation.Rule.PATTERN, value, regex ) );
         }
     }
@@ -292,8 +304,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isNumber() && value.number().doubleValue() < limit )
-                addError.accept( Error.of( Validation.Rule.MINIMUM, value, limit ) );
+            if ( !value.isNumber()) return;
+            double actual = value.number().doubleValue();
+            if (actual < limit )
+                addError.accept( Error.of( Validation.Rule.MINIMUM, value, limit, actual ) );
         }
     }
 
@@ -301,8 +315,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isNumber() && value.number().doubleValue() > limit )
-                addError.accept( Error.of( Validation.Rule.MAXIMUM, value, limit ) );
+            if ( !value.isNumber() ) return;
+            double actual = value.number().doubleValue();
+            if ( actual > limit )
+                addError.accept( Error.of( Validation.Rule.MAXIMUM, value, limit, actual ) );
         }
     }
 
@@ -310,8 +326,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isNumber() && value.number().doubleValue() <= limit )
-                addError.accept( Error.of( Validation.Rule.EXCLUSIVE_MINIMUM, value, limit ) );
+            if ( !value.isNumber()) return;
+            double actual = value.number().doubleValue();
+            if ( actual <= limit )
+                addError.accept( Error.of( Validation.Rule.EXCLUSIVE_MINIMUM, value, limit, actual ) );
         }
     }
 
@@ -319,8 +337,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isNumber() && value.number().doubleValue() >= limit )
-                addError.accept( Error.of( Validation.Rule.EXCLUSIVE_MAXIMUM, value, limit ) );
+            if ( !value.isNumber() ) return;
+            double actual = value.number().doubleValue();
+            if ( actual >= limit )
+                addError.accept( Error.of( Validation.Rule.EXCLUSIVE_MAXIMUM, value, limit, actual ) );
         }
     }
 
@@ -328,8 +348,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isNumber() && value.number().doubleValue() % n > 0d )
-                addError.accept( Error.of( Validation.Rule.MULTIPLE_OF, value, n ) );
+            if ( !value.isNumber()) return;
+            double actual = value.number().doubleValue();
+            if ( actual % n > 0d )
+                addError.accept( Error.of( Validation.Rule.MULTIPLE_OF, value, n, actual ) );
         }
     }
 
@@ -341,8 +363,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isArray() && value.size() < count )
-                addError.accept( Error.of( Validation.Rule.MIN_ITEMS, value, count ) );
+            if ( !value.isArray()) return;
+            int actual = value.size();
+            if ( actual < count )
+                addError.accept( Error.of( Validation.Rule.MIN_ITEMS, value, count, actual ) );
         }
     }
 
@@ -350,8 +374,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isArray() && value.size() > count )
-                addError.accept( Error.of( Validation.Rule.MAX_ITEMS, value, count ) );
+            if ( !value.isArray() ) return;
+            int actual = value.size();
+            if ( actual > count )
+                addError.accept( Error.of( Validation.Rule.MAX_ITEMS, value, count, actual ) );
         }
     }
 
@@ -378,8 +404,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isObject() && value.size() < limit )
-                addError.accept( Error.of( Validation.Rule.MIN_PROPERTIES, value, limit ) );
+            if ( !value.isObject()) return;
+            int actual = value.size();
+            if ( actual < limit )
+                addError.accept( Error.of( Validation.Rule.MIN_PROPERTIES, value, limit, actual ) );
         }
     }
 
@@ -387,8 +415,10 @@ record ObjectValidator(@Surly Class<? extends JsonValue> schema, @Surly Map<Stri
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isObject() && value.size() > limit )
-                addError.accept( Error.of( Validation.Rule.MAX_PROPERTIES, value, limit ) );
+            if ( !value.isObject()) return;
+            int actual = value.size();
+            if ( actual > limit )
+                addError.accept( Error.of( Validation.Rule.MAX_PROPERTIES, value, limit, actual ) );
         }
     }
 

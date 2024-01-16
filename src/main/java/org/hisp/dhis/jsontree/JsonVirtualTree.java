@@ -271,7 +271,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                 if ( isExtended( declaringClass ) ) {
                     if ( method.isDefault() ) {
                         // call the default method of the proxied type itself
-                        return callDefaultMethod( proxy, method, declaringClass );
+                        return callDefaultMethod( proxy, method, declaringClass, args );
                     }
                     // abstract extending interface method?
                     return callAbstractMethod( inner, method, args );
@@ -285,13 +285,13 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
      * Any default methods implemented by an extension of the {@link JsonValue} class tree is run by calling the default
      * as defined in the interface. This is sadly not as straight forward as it might sound.
      */
-    private static Object callDefaultMethod( Object proxy, Method method, Class<?> declaringClass )
+    private static Object callDefaultMethod( Object proxy, Method method, Class<?> declaringClass, Object[] args )
         throws Throwable {
         return MethodHandles.lookup()
             .findSpecial( declaringClass, method.getName(),
                 MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
                 declaringClass )
-            .bindTo( proxy ).invokeWithArguments();
+            .bindTo( proxy ).invokeWithArguments(args);
     }
 
     /**

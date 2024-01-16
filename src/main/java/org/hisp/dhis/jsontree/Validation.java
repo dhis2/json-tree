@@ -1,5 +1,8 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
+
 import java.io.Serializable;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -56,7 +59,7 @@ public @interface Validation {
 
     enum Rule {
         // any values
-        TYPE, ENUM,
+        TYPE, ENUM, CUSTOM,
 
         // string values
         MIN_LENGTH, MAX_LENGTH, PATTERN,
@@ -77,7 +80,9 @@ public @interface Validation {
     enum NodeType {
         NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT;
 
-        public static NodeType of( JsonNodeType type ) {
+        @Surly
+        public static NodeType of(@Maybe JsonNodeType type ) {
+            if (type == null) return NULL;
             return switch ( type ) {
                 case OBJECT -> OBJECT ;
                 case ARRAY -> ARRAY;
@@ -106,7 +111,7 @@ public @interface Validation {
     record Error(Enum<?> rule, String path, JsonMixed value, List<Object> args) implements Serializable {
 
         public static Error of( Enum<?> rule, JsonMixed value, Object... args ) {
-            return new Error( rule, value.node().getPath(), value, List.of( args ) );
+            return new Error( rule, value.path(), value, List.of( args ) );
         }
     }
 
