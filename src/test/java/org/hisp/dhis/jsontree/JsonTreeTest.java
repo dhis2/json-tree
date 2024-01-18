@@ -678,7 +678,7 @@ class JsonTreeTest {
 
     @Test
     void testOfNonStandard_DanglingCommas() {
-        assertEquals( "[1,2 ]", JsonNode.ofNonStandard( "[1,2]" ).getDeclaration() );
-        assertEquals( "{\"a\":1 }", JsonNode.ofNonStandard( "{'a':1}" ).getDeclaration() );
+        assertEquals( "[1,2 ]", JsonNode.ofNonStandard( "[1,2,]" ).getDeclaration() );
+        assertEquals( "{\"a\":1 }", JsonNode.ofNonStandard( "{'a':1,}" ).getDeclaration() );
     }
 }

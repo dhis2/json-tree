@@ -25,8 +25,6 @@ class JsonValidationMiscMetaAnnotationTest {
         default String getUID() {
             return getString( "id" ).string();
         }
-
-        ;
     }
 
     @Test
