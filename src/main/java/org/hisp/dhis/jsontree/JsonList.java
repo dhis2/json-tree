@@ -61,9 +61,9 @@ public interface JsonList<E extends JsonValue> extends JsonAbstractArray<E> {
      * <p>
      * Undefined can occur because of views.
      *
-     * @param toValue  maps from {@link JsonValue} to a plain JAVA value
+     * @param toValue       maps from {@link JsonValue} to a plain JAVA value
      * @param whenUndefined value used when {@link JsonValue} is {@link JsonValue#isUndefined()}
-     * @param <T>      type of result list elements
+     * @param <T>           type of result list elements
      * @return this list mapped with any elements defined JSON null replaced with the provided default
      */
     default <T> List<T> toList( Function<E, T> toValue, T whenUndefined ) {
@@ -82,7 +82,7 @@ public interface JsonList<E extends JsonValue> extends JsonAbstractArray<E> {
      */
     default <T> List<T> toListOfNonNullElements( Function<E, T> toValue ) {
         if ( isUndefined() ) return List.of();
-        return indexes().mapToObj( this::get ).filter( not(JsonValue::isUndefined) ).map( toValue ).toList();
+        return indexes().mapToObj( this::get ).filter( not( JsonValue::isUndefined ) ).map( toValue ).toList();
     }
 
     /**

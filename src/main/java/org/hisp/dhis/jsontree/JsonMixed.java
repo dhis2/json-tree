@@ -9,12 +9,12 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 /**
  * Main API to wrap JSON raw strings as {@link JsonValue} nodes.
  * <p>
- * {@link JsonValue} is the bottom type or base type of possible JSON values.
- * It represents a value of "unknown" node type.
+ * {@link JsonValue} is the bottom type or base type of possible JSON values. It represents a value of "unknown" node
+ * type.
  * <p>
- * {@linkplain JsonMixed} is the union type of all possible core JSON types.
- * It is a convenience starting point that can be treated as any node type.
- * It can also be used to represent a value that knowingly can be of different JSON node types.
+ * {@linkplain JsonMixed} is the union type of all possible core JSON types. It is a convenience starting point that can
+ * be treated as any node type. It can also be used to represent a value that knowingly can be of different JSON node
+ * types.
  *
  * @author Jan Bernitt
  * @see JsonValue

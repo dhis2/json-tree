@@ -4,11 +4,11 @@ import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonNode;
 import org.hisp.dhis.jsontree.JsonPathException;
 import org.hisp.dhis.jsontree.JsonValue;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validator;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 import org.hisp.dhis.jsontree.validation.PropertyValidation.ArrayValidation;
 import org.hisp.dhis.jsontree.validation.PropertyValidation.NumberValidation;
 import org.hisp.dhis.jsontree.validation.PropertyValidation.StringValidation;
@@ -57,7 +57,8 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
 
     private static final Map<Class<? extends JsonValue>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
 
-    private static final Map<Class<?>, PropertyValidation> RECORD_BY_JAVA_TYPE = new ConcurrentSkipListMap<>(comparing( Class::getName ));
+    private static final Map<Class<?>, PropertyValidation> RECORD_BY_JAVA_TYPE = new ConcurrentSkipListMap<>(
+        comparing( Class::getName ) );
 
     /**
      * Meta annotations are those that are themselves annotated {@link Validation} or one or more meta-annotations which
@@ -78,17 +79,17 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
         return INSTANCES.computeIfAbsent( schema, ObjectValidation::createInstance );
     }
 
-    private static ObjectValidation createInstance(Class<? extends JsonValue> schema) {
+    private static ObjectValidation createInstance( Class<? extends JsonValue> schema ) {
         Map<String, PropertyValidation> properties = new HashMap<>();
         propertyMethods( schema )
             .forEach( m -> {
-            String property = captureProperty( m, schema );
-            if ( property != null ) {
-                properties.put( property, fromMethod( m ) );
-            }
-        } );
+                String property = captureProperty( m, schema );
+                if ( property != null ) {
+                    properties.put( property, fromMethod( m ) );
+                }
+            } );
         // TODO properties.put( "", fromValueTypeDeclaration( schema ) );
-        return new ObjectValidation( schema, Map.copyOf( properties ));
+        return new ObjectValidation( schema, Map.copyOf( properties ) );
     }
 
     private static <T extends JsonValue> String captureProperty( Method m, Class<T> schema ) {
@@ -97,7 +98,7 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
         try {
             Object res = MethodHandles.lookup().unreflect( m ).invokeWithArguments( value );
             // for virtual nodes force lookup by resolving the underlying node in the actual tree
-            if (res instanceof JsonValue node) node.node();
+            if ( res instanceof JsonValue node ) node.node();
             return box[0];
         } catch ( JsonPathException e ) {
             return box[0];
@@ -108,7 +109,8 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
 
     private static Stream<Method> propertyMethods( Class<?> schema ) {
         return Stream.of( schema.getMethods() )
-            .filter( m -> m.getDeclaringClass().isInterface() && !m.getDeclaringClass().isAnnotationPresent( Validation.Ignore.class ) )
+            .filter( m -> m.getDeclaringClass().isInterface() && !m.getDeclaringClass()
+                .isAnnotationPresent( Validation.Ignore.class ) )
             .filter( m -> m.getReturnType() != void.class && !m.isAnnotationPresent( Validation.Ignore.class ) )
             .filter( m -> m.getParameterCount() == 0 && (m.isDefault()) || isAbstract( m.getModifiers() ) );
     }
@@ -117,8 +119,8 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     private static PropertyValidation fromMethod( Method src ) {
         PropertyValidation onMethod = fromAnnotations( src );
         PropertyValidation onReturnType = fromValueTypeUse( src.getAnnotatedReturnType() );
-        if (onMethod == null) return onReturnType;
-        if (onReturnType == null) return onMethod;
+        if ( onMethod == null ) return onReturnType;
+        if ( onReturnType == null ) return onMethod;
         return onMethod.overlay( onReturnType );
     }
 
@@ -129,10 +131,10 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     @Maybe
     private static PropertyValidation fromValueTypeUse( AnnotatedType src ) {
         Type type = src.getType();
-        if (type instanceof Class<?> simpleType )
+        if ( type instanceof Class<?> simpleType )
             return fromValueTypeDeclaration( simpleType ).overlay( fromAnnotations( src ) );
         //TODO AnnotatedArrayType...
-        if (!(src instanceof AnnotatedParameterizedType pt )) return null;
+        if ( !(src instanceof AnnotatedParameterizedType pt) ) return null;
         Type rt = ((ParameterizedType) pt.getType()).getRawType();
         Class<?> rawType = (Class<?>) rt;
         PropertyValidation base = fromValueTypeDeclaration( rawType ).overlay( fromAnnotations( src ) );
@@ -145,30 +147,30 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     }
 
     @Surly
-    private static PropertyValidation fromValueTypeDeclaration(@Surly Class<?> type ) {
+    private static PropertyValidation fromValueTypeDeclaration( @Surly Class<?> type ) {
         return RECORD_BY_JAVA_TYPE.computeIfAbsent( type, t -> {
             PropertyValidation declared = fromAnnotations( t );
-            PropertyValidation inferred = declared != null ? declared : toNodeValidation( t );
+            PropertyValidation inferred = declared != null ? declared : toPropertyValidation( t );
             if ( Object[].class.isAssignableFrom( t ) )
                 return inferred.withItems( fromValueTypeDeclaration( t.getComponentType() ) );
             return inferred;
-        });
+        } );
     }
 
     @Maybe
     private static PropertyValidation fromAnnotations( AnnotatedElement src ) {
         PropertyValidation meta = fromMetaAnnotations( src );
-        if (!src.isAnnotationPresent( Validation.class )) return meta;
-        PropertyValidation main = toNodeValidation( src.getAnnotation( Validation.class ) );
+        if ( !src.isAnnotationPresent( Validation.class ) ) return meta;
+        PropertyValidation main = toPropertyValidation( src.getAnnotation( Validation.class ) );
         return (meta == null ? main : meta.overlay( main ))
             .withCustoms( toValidators( src ) )
             .withItems( fromItems( src ) );
     }
 
     @Maybe
-    private static PropertyValidation fromMetaAnnotations(AnnotatedElement src) {
+    private static PropertyValidation fromMetaAnnotations( AnnotatedElement src ) {
         Annotation[] candidates = src.getAnnotations();
-        if (candidates.length == 0) return null;
+        if ( candidates.length == 0 ) return null;
         return Stream.of( candidates )
             .sorted( comparing( a -> a.annotationType().getSimpleName() ) )
             .map( ObjectValidation::fromMetaAnnotation )
@@ -180,28 +182,28 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     @Maybe
     private static PropertyValidation fromMetaAnnotation( Annotation a ) {
         Class<? extends Annotation> type = a.annotationType();
-        if (!type.isAnnotationPresent( Validation.class )) return null;
+        if ( !type.isAnnotationPresent( Validation.class ) ) return null;
         return RECORD_BY_META_TYPE.computeIfAbsent( type,
-            t -> toNodeValidation( t.getAnnotation( Validation.class ) )
+            t -> toPropertyValidation( t.getAnnotation( Validation.class ) )
                 .withCustoms( toValidators( t ) )
                 .withItems( fromItems( t ) )
         );
     }
 
     @Maybe
-    private static PropertyValidation fromItems(AnnotatedElement src) {
-        if (!src.isAnnotationPresent( Validation.Items.class )) return null;
-        return toNodeValidation( src.getAnnotation( Validation.Items.class ).value() );
+    private static PropertyValidation fromItems( AnnotatedElement src ) {
+        if ( !src.isAnnotationPresent( Validation.Items.class ) ) return null;
+        return toPropertyValidation( src.getAnnotation( Validation.Items.class ).value() );
     }
 
     @Surly
-    private static PropertyValidation toNodeValidation( Class<?> type ) {
-        ValueValidation values = !type.isPrimitive() ? null : new ValueValidation( YES, Set.of(), List.of() );
+    private static PropertyValidation toPropertyValidation( Class<?> type ) {
+        ValueValidation values = !type.isPrimitive() ? null : new ValueValidation( YES, Set.of(), Set.of(), List.of() );
         return new PropertyValidation( anyOfTypes( type ), values, null, null, null, null, null );
     }
 
     @Surly
-    private static PropertyValidation toNodeValidation(@Surly Validation src ) {
+    private static PropertyValidation toPropertyValidation( @Surly Validation src ) {
         PropertyValidation res = new PropertyValidation(
             anyOfTypes( src ),
             toValueValidation( src ),
@@ -214,20 +216,25 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     }
 
     @Maybe
-    private static ValueValidation toValueValidation(@Surly Validation src) {
-        if (src.required().isAuto() && src.values().length == 0) return null;
-        return new ValueValidation( src.required(), Set.of(src.values()), List.of() );
+    private static ValueValidation toValueValidation( @Surly Validation src ) {
+        boolean oneOfValuesEmpty = src.oneOfValues().length == 0;
+        boolean dependentRequiresEmpty = src.dependentRequired().length == 0;
+        if ( src.required().isAuto() && oneOfValuesEmpty && dependentRequiresEmpty ) return null;
+        Set<String> oneOfValues = oneOfValuesEmpty
+            ? Set.of()
+            : Set.copyOf( Stream.of( src.oneOfValues() ).map( e -> JsonValue.of( e ).toMinimizedJson() ).toList() );
+        return new ValueValidation( src.required(), Set.of( src.dependentRequired() ), oneOfValues, List.of() );
     }
 
     @Maybe
-    private static StringValidation toStringValidation(@Surly Validation src) {
+    private static StringValidation toStringValidation( @Surly Validation src ) {
         if ( src.enumeration() == Enum.class && src.minLength() < 0 && src.maxLength() < 0 && src.pattern().isEmpty() )
             return null;
         return new StringValidation( src.enumeration(), src.minLength(), src.maxLength(), src.pattern() );
     }
 
     @Maybe
-    private static NumberValidation toNumberValidation(@Surly Validation src) {
+    private static NumberValidation toNumberValidation( @Surly Validation src ) {
         if ( isNaN( src.minimum() ) && isNaN( src.maximum() ) && isNaN( src.exclusiveMinimum() ) && isNaN(
             src.exclusiveMaximum() ) && isNaN( src.multipleOf() ) ) return null;
         return new NumberValidation( src.minimum(), src.maximum(), src.exclusiveMinimum(), src.exclusiveMaximum(),
@@ -235,21 +242,21 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     }
 
     @Maybe
-    private static ArrayValidation toArrayValidation(@Surly Validation src) {
-        if (src.minItems() < 0 && src.maxItems() < 0 && src.uniqueItems().isAuto()) return null;
-        return new ArrayValidation( src.minItems(), src.maxItems(), src.uniqueItems());
+    private static ArrayValidation toArrayValidation( @Surly Validation src ) {
+        if ( src.minItems() < 0 && src.maxItems() < 0 && src.uniqueItems().isAuto() ) return null;
+        return new ArrayValidation( src.minItems(), src.maxItems(), src.uniqueItems() );
     }
 
     @Maybe
-    private static PropertyValidation.ObjectValidation toObjectValidation(@Surly Validation src) {
-        if (src.minProperties() < 0 && src.maxProperties() < 0) return null;
+    private static PropertyValidation.ObjectValidation toObjectValidation( @Surly Validation src ) {
+        if ( src.minProperties() < 0 && src.maxProperties() < 0 ) return null;
         return new PropertyValidation.ObjectValidation( src.minProperties(), src.maxProperties() );
     }
 
     @Surly
-    private static List<Validation.Validator> toValidators(@Surly AnnotatedElement src) {
+    private static List<Validation.Validator> toValidators( @Surly AnnotatedElement src ) {
         Validator[] validators = src.getAnnotationsByType( Validator.class );
-        if (validators.length == 0) return List.of();
+        if ( validators.length == 0 ) return List.of();
         return Stream.of( validators )
             .map( ObjectValidation::toValidator )
             .filter( Objects::nonNull )
@@ -257,14 +264,14 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     }
 
     @Maybe
-    private static Validation.Validator toValidator(@Surly Validator src) {
+    private static Validation.Validator toValidator( @Surly Validator src ) {
         Class<? extends Validation.Validator> type = src.value();
-        if (!type.isRecord()) return null;
+        if ( !type.isRecord() ) return null;
         Validation[] params = src.params();
         try {
-            if (params.length == 0)
+            if ( params.length == 0 )
                 return type.getConstructor().newInstance();
-            if (params.length == 1)
+            if ( params.length == 1 )
                 return type.getConstructor( Validation.class ).newInstance( params[0] );
             return type.getConstructor( Validation[].class ).newInstance( (Object) params );
         } catch ( Exception ex ) {
@@ -273,28 +280,28 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     }
 
     @Surly
-    private static Set<NodeType> anyOfTypes(@Surly Validation src) {
+    private static Set<NodeType> anyOfTypes( @Surly Validation src ) {
         return anyOfTypes( src.type() );
     }
 
     @Surly
     private static Set<NodeType> anyOfTypes( NodeType... type ) {
-        if (type.length == 0) return Set.of();
+        if ( type.length == 0 ) return Set.of();
         Set<NodeType> anyOf = EnumSet.of( type[0], type );
-        if (anyOf.contains( NodeType.INTEGER ) && anyOf.contains( NodeType.NUMBER )) anyOf.remove( NodeType.INTEGER );
+        if ( anyOf.contains( NodeType.INTEGER ) && anyOf.contains( NodeType.NUMBER ) ) anyOf.remove( NodeType.INTEGER );
         return Set.copyOf( anyOf );
     }
 
     @Surly
-    private static Set<NodeType> anyOfTypes(Class<?> type) {
+    private static Set<NodeType> anyOfTypes( Class<?> type ) {
         NodeType main = nodeTypeOf( type );
-        if (type == Date.class && main != null) return Set.of(main, INTEGER);
-        if (main != null) return Set.of(main);
+        if ( type == Date.class && main != null ) return Set.of( main, INTEGER );
+        if ( main != null ) return Set.of( main );
         return Set.of();
     }
 
     @Maybe
-    private static NodeType nodeTypeOf(@Surly Class<?> type ) {
+    private static NodeType nodeTypeOf( @Surly Class<?> type ) {
         if ( type == String.class || type.isEnum() || type == Date.class ) return STRING;
         if ( type == Character.class || type == char.class ) return STRING;
         if ( type == Boolean.class || type == boolean.class ) return BOOLEAN;

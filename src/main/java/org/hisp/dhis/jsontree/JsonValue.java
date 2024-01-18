@@ -29,7 +29,6 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
-import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.util.List;
 import java.util.Optional;
@@ -119,39 +118,19 @@ public interface JsonValue {
     Class<? extends JsonValue> asType();
 
     /**
+     * @return this node path
      * @since 0.11
-     * @return this node path or null if this node does not exist in the actual tree
      */
-    @Maybe
-    default String path() {
-        return !exists() ? null : node().getPath();
-    }
+    @Surly
+    String path();
 
     /**
-     * @since 0.11
      * @return this node's type or null if this node does not exist in the actual tree
+     * @since 0.11
      */
     @Maybe
     default JsonNodeType type() {
         return !exists() ? null : node().getType();
-    }
-
-    /**
-     * @throws JsonSchemaException in case this value does not match the schema of {@link #asType()}
-     * @since 0.11
-     */
-    default void validate() {
-        validate( asType() );
-    }
-
-    /**
-     * @param schema the schema to validate against
-     * @throws JsonSchemaException      in case this value does not match the given schema
-     * @throws IllegalArgumentException in case the given schema is not an interface
-     * @since 0.11
-     */
-    default void validate( Class<? extends JsonValue> schema ) {
-        JsonValidator.validate( this, schema );
     }
 
     /**
@@ -167,7 +146,7 @@ public interface JsonValue {
      * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isNull() {
-        return node().getType() == JsonNodeType.NULL;
+        return type() == JsonNodeType.NULL;
     }
 
     /**
@@ -179,32 +158,28 @@ public interface JsonValue {
 
     /**
      * @return true if the value exists and is a JSON array node (empty or not) but not JSON {@code null}
-     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isArray() {
-        return node().getType() == JsonNodeType.ARRAY;
+        return type() == JsonNodeType.ARRAY;
     }
 
     /**
      * @return true if the value exists and is an JSON object node (empty or not) but not JSON {@code null}
-     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isObject() {
-        return node().getType() == JsonNodeType.OBJECT;
+        return type() == JsonNodeType.OBJECT;
     }
 
     /**
      * @return true if the value exists and is an JSON number node (not JSON {@code null})
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
     default boolean isNumber() {
-        return node().getType() == JsonNodeType.NUMBER;
+        return type() == JsonNodeType.NUMBER;
     }
 
     /**
      * @return true if the value exists and is an JSON number node and has no fraction part or a fraction of zero
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
     default boolean isInteger() {
@@ -213,21 +188,19 @@ public interface JsonValue {
 
     /**
      * @return true if the value exists and is an JSON string node (not JSON {@code null})
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
 
     default boolean isString() {
-        return node().getType() == JsonNodeType.STRING;
+        return type() == JsonNodeType.STRING;
     }
 
     /**
      * @return true if the value exists and is an JSON boolean node (not JSON {@code null})
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
     default boolean isBoolean() {
-        return node().getType() == JsonNodeType.BOOLEAN;
+        return type() == JsonNodeType.BOOLEAN;
     }
 
     /**
@@ -313,12 +286,26 @@ public interface JsonValue {
     JsonNode node();
 
     /**
-     * @return JSON declaration for this value
+     * @return JSON declaration for this value (as originally given)
      * @throws JsonPathException if this node does not exist
      * @since 0.11
      */
     default String toJson() {
         return node().getDeclaration();
+    }
+
+    /**
+     * @return JSON declaration for this value in a minimized formatting
+     * @throws JsonPathException if this node does not exist
+     * @since 0.11
+     */
+    default String toMinimizedJson() {
+        if ( !isObject() && !isArray() ) return toJson();
+        if ( isObject() ) return JsonBuilder.createObject( JsonBuilder.MINIMIZED_FULL,
+                obj -> asObject().entries().forEach( e -> obj.addMember( e.getKey(), e.getValue().node() ) ) )
+            .getDeclaration();
+        return JsonBuilder.createArray( JsonBuilder.MINIMIZED_FULL,
+            arr -> as( JsonArray.class ).forEach( e -> arr.addElement( e.node() ) ) ).getDeclaration();
     }
 
     /**
@@ -337,8 +324,8 @@ public interface JsonValue {
     }
 
     /**
-     * @since 0.11
      * @return the store used by this instance
+     * @since 0.11
      */
     @Surly
     JsonTypedAccessStore getAccessStore();
@@ -354,7 +341,7 @@ public interface JsonValue {
      * @return the first found match or JSON {@code null} object
      */
     default <T extends JsonValue> T find( Class<T> type, Predicate<T> test ) {
-        if (isUndefined()) return JsonMixed.of( "{}" ).get( "notFound", type );
+        if ( isUndefined() ) return JsonMixed.of( "{}" ).get( "notFound", type );
         JsonTypedAccessStore store = getAccessStore();
         Optional<JsonNode> match = node().find(
             node -> {
@@ -367,6 +354,6 @@ public interface JsonValue {
             } );
         return match.isEmpty()
             ? JsonMixed.of( "{}" ).get( "notFound", type )
-            : match.get().lift(store).as( type );
+            : match.get().lift( store ).as( type );
     }
 }

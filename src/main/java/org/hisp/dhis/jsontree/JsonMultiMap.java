@@ -47,7 +47,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  */
 @Validation( type = OBJECT )
 @Validation.Ignore
-public interface JsonMultiMap<E extends JsonValue> extends JanAbstractObject<JsonList<E>> {
+public interface JsonMultiMap<E extends JsonValue> extends JsonAbstractObject<JsonList<E>> {
 
     /**
      * Convert this {@link JsonMultiMap} to a {@link Map} of {@link List} values where the list elements are mapped from
@@ -55,32 +55,32 @@ public interface JsonMultiMap<E extends JsonValue> extends JanAbstractObject<Jso
      * <p>
      * The order of the elements in the list are kept.
      *
-     * @param mapper maps map list elements
-     * @param <T>    type of map value list elements
+     * @param toValue maps map list elements
+     * @param <T>     type of map value list elements
      * @return this {@link JsonMultiMap} as {@link Map}
      * @throws JsonTreeException in case this node does exist but is not an object node
      */
-    default <T> Map<String, List<T>> toMap( Function<E, T> mapper ) {
-        return toMap( mapper, null );
+    default <T> Map<String, List<T>> toMap( Function<E, T> toValue ) {
+        return toMap( toValue, null );
     }
 
     /**
      * Same as {@link #toMap(Function)} but the order of the elements in a {@link List} is sorted by the provided
      * order.
      *
-     * @param mapper maps map list elements
-     * @param order  comparison used to sort the lists representing the map values
-     * @param <T>    type of map value list elements
+     * @param toValue maps map list elements
+     * @param order   comparison used to sort the lists representing the map values
+     * @param <T>     type of map value list elements
      * @return this {@link JsonMultiMap} as {@link Map}
      * @throws JsonTreeException in case this node does exist but is not an object node
      */
-    default <T> Map<String, List<T>> toMap( Function<E, T> mapper, Comparator<T> order ) {
+    default <T> Map<String, List<T>> toMap( Function<E, T> toValue, Comparator<T> order ) {
         if ( isUndefined() ) {
             return Map.of();
         }
         Map<String, List<T>> res = new LinkedHashMap<>();
         forEach( ( key, value ) -> {
-            List<T> list = value.toList( mapper );
+            List<T> list = value.toList( toValue );
             if ( order != null ) {
                 list = new ArrayList<>( list );
                 list.sort( order );
@@ -98,7 +98,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JanAbstractObject<Jso
      * This means the returned multimap always has same size as the original map.
      *
      * @param projection transformer function
-     * @param <V>       type of the transformer output for list elements of each of the map entry lists
+     * @param <V>        type of the transformer output for list elements of each of the map entry lists
      * @return a lazily transformed multimap view of this multimap
      */
     default <V extends JsonValue> JsonMultiMap<V> project( Function<E, V> projection ) {

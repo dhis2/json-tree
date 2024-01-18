@@ -121,7 +121,7 @@ public interface JsonNode extends Serializable {
     /**
      * Create a new lazily parsed {@link JsonNode} tree.
      *
-     * @param json     standard compliant JSON input
+     * @param json  standard compliant JSON input
      * @param onGet to observe all path lookup in the returned tree, may be null
      * @return the given JSON input as {@link JsonNode} tree
      * @since 0.10
@@ -149,7 +149,7 @@ public interface JsonNode extends Serializable {
      * @return this node as {@link JsonValue} as it is contained in its current tree
      * @since 0.11
      */
-    default JsonValue lift(JsonTypedAccessStore store) {
+    default JsonValue lift( JsonTypedAccessStore store ) {
         JsonVirtualTree root = new JsonVirtualTree( getRoot(), store );
         return isRoot() ? root : root.get( getPath() );
     }
@@ -272,7 +272,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode member( String name )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no member property: "+name );
+        throw new JsonTreeException( getType() + " node has no member property: " + name );
     }
 
     /**
@@ -329,7 +329,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode element( int index )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no element property for index: "+index );
+        throw new JsonTreeException( getType() + " node has no element property for index: " + index );
     }
 
     /**
@@ -385,7 +385,7 @@ public interface JsonNode extends Serializable {
      * @return the first node found or empty
      * @since 0.11
      */
-    default Optional<JsonNode> find(Predicate<JsonNode> test) {
+    default Optional<JsonNode> find( Predicate<JsonNode> test ) {
         return find( null, test );
     }
 

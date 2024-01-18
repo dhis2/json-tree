@@ -1,7 +1,7 @@
 package org.hisp.dhis.jsontree.validation;
 
+import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
@@ -19,16 +19,17 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  */
 class JsonValidationExclusiveMinimumTest {
 
-    public interface JsonMinimumRequiredExample extends JsonObject {
+    public interface JsonMinimumExampleA extends JsonObject {
 
-        @Validation(exclusiveMinimum = 0)
+        @Validation( exclusiveMinimum = 0 )
         default int age() {
             return getNumber( "age" ).intValue();
         }
     }
 
-    public interface JsonMinimumExample extends JsonObject {
-        @Validation(exclusiveMinimum = 20)
+    public interface JsonMinimumExampleB extends JsonObject {
+
+        @Validation( exclusiveMinimum = 20 )
         default Integer height() {
             return getNumber( "height" ).integer();
         }
@@ -36,34 +37,34 @@ class JsonValidationExclusiveMinimumTest {
 
     @Test
     void testExclusiveMinimum_OK() {
-        assertDoesNotThrow( () -> JsonValue.of( """
-            {"age":1}""" ).validate( JsonMinimumRequiredExample.class ) );
-        assertDoesNotThrow( () -> JsonValue.of( """
-            {"age":50}""" ).validate( JsonMinimumRequiredExample.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"age":1}""" ).validate( JsonMinimumExampleA.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"age":50}""" ).validate( JsonMinimumExampleA.class ) );
 
-        assertDoesNotThrow( () -> JsonValue.of( "{}" ).validate( JsonMinimumExample.class ) );
-        assertDoesNotThrow( () -> JsonValue.of( """
-            {"height":21}""" ).validate( JsonMinimumExample.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( "{}" ).validate( JsonMinimumExampleB.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"height":21}""" ).validate( JsonMinimumExampleB.class ) );
     }
 
     @Test
     void testExclusiveMinimum_Required() {
-        assertValidationError( "{}", JsonMinimumRequiredExample.class, Rule.REQUIRED, "age" );
+        assertValidationError( "{}", JsonMinimumExampleA.class, Rule.REQUIRED, "age" );
     }
 
     @Test
     void testExclusiveMinimum_TooSmall() {
         assertValidationError( """
-            {"age":0}""", JsonMinimumRequiredExample.class, Rule.EXCLUSIVE_MINIMUM, 0d, 0d );
+            {"age":0}""", JsonMinimumExampleA.class, Rule.EXCLUSIVE_MINIMUM, 0d, 0d );
         assertValidationError( """
-            {"height":20}""", JsonMinimumExample.class, Rule.EXCLUSIVE_MINIMUM, 20d, 20d );
+            {"height":20}""", JsonMinimumExampleB.class, Rule.EXCLUSIVE_MINIMUM, 20d, 20d );
     }
 
     @Test
     void testExclusiveMinimum_WrongType() {
-        assertValidationError(  """
-            {"age":true}""", JsonMinimumRequiredExample.class, Rule.TYPE, Set.of( NodeType.INTEGER ) );
-        assertValidationError(  """
-            {"height":true}""", JsonMinimumExample.class, Rule.TYPE, Set.of( NodeType.INTEGER )  );
+        assertValidationError( """
+            {"age":true}""", JsonMinimumExampleA.class, Rule.TYPE, Set.of( NodeType.INTEGER ), NodeType.BOOLEAN );
+        assertValidationError( """
+            {"height":true}""", JsonMinimumExampleB.class, Rule.TYPE, Set.of( NodeType.INTEGER ), NodeType.BOOLEAN );
     }
 }

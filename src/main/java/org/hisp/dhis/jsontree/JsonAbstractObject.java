@@ -1,8 +1,11 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.validation.JsonValidator;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -15,7 +18,7 @@ import static java.util.stream.StreamSupport.stream;
  * @since 0.11
  */
 @Validation.Ignore
-public interface JanAbstractObject<E extends JsonValue> extends JsonAbstractCollection {
+public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCollection {
 
     /**
      * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd
@@ -55,7 +58,7 @@ public interface JanAbstractObject<E extends JsonValue> extends JsonAbstractColl
      * @since 0.11
      */
     default boolean containsKey( String key ) {
-        return !isUndefined(key);
+        return !isUndefined( key );
     }
 
     /**
@@ -88,6 +91,15 @@ public interface JanAbstractObject<E extends JsonValue> extends JsonAbstractColl
     }
 
     /**
+     * @return a stream of map/object entries in order of their declaration
+     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @since 0.11
+     */
+    default Stream<Map.Entry<String, E>> entries() {
+        return keys().map( key -> Map.entry( key, get( key ) ) );
+    }
+
+    /**
      * Lists JSON object property names in order of declaration.
      *
      * @return The list of property names in the order they were defined.
@@ -115,7 +127,17 @@ public interface JanAbstractObject<E extends JsonValue> extends JsonAbstractColl
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11
      */
-    default void forEachEntry( Consumer<E> action ) {
-        keys().forEach( name -> action.accept( get( name )) );
+    default void forEachValue( Consumer<E> action ) {
+        keys().forEach( name -> action.accept( get( name ) ) );
+    }
+
+    /**
+     * @param schema the schema to validate against
+     * @throws JsonSchemaException      in case this value does not match the given schema
+     * @throws IllegalArgumentException in case the given schema is not an interface
+     * @since 0.11
+     */
+    default void validate( Class<? extends JsonAbstractObject<?>> schema ) {
+        JsonValidator.validate( this, schema );
     }
 }

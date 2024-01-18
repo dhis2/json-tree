@@ -17,7 +17,6 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  * dialect</a>.
  *
  * @author Jan Bernitt
- *
  * @since 0.11
  */
 @SuppressWarnings( "java:S100" )

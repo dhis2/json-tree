@@ -69,7 +69,7 @@ import static java.lang.Character.toLowerCase;
  *
  * @author Jan Bernitt
  */
-final class JsonVirtualTree implements JsonMixed, Serializable {
+final class JsonVirtualTree implements JsonMixed, JsonInteger, Serializable {
 
     public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonTypedAccess.GLOBAL, null );
 
@@ -78,20 +78,25 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     private final transient @Surly JsonTypedAccessStore store;
     private final transient @Maybe ConcurrentMap<String, Object> accessCache;
 
-    public JsonVirtualTree(@Maybe String json, @Surly JsonTypedAccessStore store ) {
+    public JsonVirtualTree( @Maybe String json, @Surly JsonTypedAccessStore store ) {
         this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), "$", store, null );
     }
 
-    public JsonVirtualTree(@Surly JsonNode root, @Surly JsonTypedAccessStore store ) {
+    public JsonVirtualTree( @Surly JsonNode root, @Surly JsonTypedAccessStore store ) {
         this( root, "$", store, null );
     }
 
-    private JsonVirtualTree(@Surly JsonNode root, @Surly String path, @Surly JsonTypedAccessStore store,
+    private JsonVirtualTree( @Surly JsonNode root, @Surly String path, @Surly JsonTypedAccessStore store,
         @Maybe ConcurrentMap<String, Object> accessCache ) {
         this.root = root;
         this.path = path;
         this.store = store;
         this.accessCache = accessCache;
+    }
+
+    @Surly @Override
+    public String path() {
+        return path;
     }
 
     @Surly @Override
@@ -143,6 +148,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public <T extends JsonValue> T get( String name, Class<T> as ) {
+        if ( name.isEmpty() ) return as( as );
         boolean isQualified = name.startsWith( "{" ) || name.startsWith( "." ) || name.startsWith( "[" );
         String p = isQualified ? path + name : path + "." + name;
         return asType( as, new JsonVirtualTree( root, p, store, accessCache ) );
@@ -291,7 +297,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             .findSpecial( declaringClass, method.getName(),
                 MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
                 declaringClass )
-            .bindTo( proxy ).invokeWithArguments(args);
+            .bindTo( proxy ).invokeWithArguments( args );
     }
 
     /**

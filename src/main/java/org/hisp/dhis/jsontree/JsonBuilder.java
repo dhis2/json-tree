@@ -53,19 +53,19 @@ import static java.util.stream.StreamSupport.stream;
  * {@link JsonBuilder#createObject(Consumer)} first.
  *
  * @author Jan Bernitt
- * @since 0.11 (alpha overhaul)
  * @apiNote beta (subject to change)
+ * @since 0.11 (alpha overhaul)
  */
 public interface JsonBuilder {
 
     /**
-     * Can be implemented by Java types that are capable to translate themselves to JSON
-     * using a builder.
+     * Can be implemented by Java types that are capable to translate themselves to JSON using a builder.
      *
-     * @since 0.11
      * @apiNote beta (subject to change)
+     * @since 0.11
      */
     interface JsonEncodable {
+
         /**
          * Adds the implementing java object to a currently built array.
          *
@@ -76,17 +76,18 @@ public interface JsonBuilder {
         /**
          * Adds the implementing java object to a currently built object.
          *
-         * @param name    name member name to use
-         * @param obj to use to append the object as a member
+         * @param name name member name to use
+         * @param obj  to use to append the object as a member
          */
         void addTo( String name, JsonObjectBuilder obj );
     }
 
     @FunctionalInterface
     interface JsonObjectEncodable extends JsonEncodable {
+
         @Override
         default void addTo( JsonBuilder.JsonArrayBuilder arr ) {
-            arr.addObject(this::addToObject );
+            arr.addObject( this::addToObject );
         }
 
         @Override
@@ -94,10 +95,12 @@ public interface JsonBuilder {
             obj.addObject( name, this::addToObject );
         }
 
-        void addToObject(JsonBuilder.JsonObjectBuilder obj);
+        void addToObject( JsonBuilder.JsonObjectBuilder obj );
     }
 
     PrettyPrint MINIMIZED = new PrettyPrint( 0, 0, false, true, false );
+
+    PrettyPrint MINIMIZED_FULL = new PrettyPrint( 0, 0, false, false, false );
 
     /**
      * Pretty-printing configuration for the {@link JsonBuilder}.
@@ -149,11 +152,10 @@ public interface JsonBuilder {
      * @throws JsonFormatException if the double is NaN or Infinity
      * @since 0.11
      */
-    static void checkValid(Number value) {
+    static void checkValid( Number value ) {
         if ( value instanceof Double d ) checkValid( d.doubleValue() );
         if ( value instanceof Float f ) checkValid( f.doubleValue() );
     }
-
 
     /**
      * Convenience method for ad-hoc creation of JSON object {@link JsonNode}. Use {@link JsonNode#getDeclaration()} to
@@ -291,8 +293,8 @@ public interface JsonBuilder {
      * Builder API to add properties to JSON object node.
      *
      * @author Jan Bernitt
-     * @since 0.11 (alpha overhaul)
      * @apiNote beta (subject to change)
+     * @since 0.11 (alpha overhaul)
      */
     interface JsonObjectBuilder {
 
@@ -320,7 +322,7 @@ public interface JsonBuilder {
         convenience API (based on the above)
          */
 
-        default JsonObjectBuilder addMember(String name, JsonEncodable value) {
+        default JsonObjectBuilder addMember( String name, JsonEncodable value ) {
             value.addTo( name, this );
             return this;
         }
@@ -359,8 +361,8 @@ public interface JsonBuilder {
      * Builder API to add elements to JSON array node.
      *
      * @author Jan Bernitt
-     * @since 0.11 (alpha overhaul)
      * @apiNote beta (subject to change)
+     * @since 0.11 (alpha overhaul)
      */
     interface JsonArrayBuilder {
 
@@ -388,7 +390,7 @@ public interface JsonBuilder {
         convenience API (based on the above)
          */
 
-        default JsonArrayBuilder addElement(JsonEncodable value) {
+        default JsonArrayBuilder addElement( JsonEncodable value ) {
             value.addTo( this );
             return this;
         }

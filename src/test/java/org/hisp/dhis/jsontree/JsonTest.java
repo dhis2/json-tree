@@ -24,11 +24,11 @@ class JsonTest {
 
     @Test
     void testOf_Boolean() {
-        assertJson( "true", Json.of(true) );
-        assertJson( "false", Json.of(false) );
-        assertJson( "null", Json.of((Boolean) null) );
-        assertJson( "true", Json.of(Boolean.TRUE) );
-        assertJson( "false", Json.of(Boolean.FALSE) );
+        assertJson( "true", Json.of( true ) );
+        assertJson( "false", Json.of( false ) );
+        assertJson( "null", Json.of( (Boolean) null ) );
+        assertJson( "true", Json.of( Boolean.TRUE ) );
+        assertJson( "false", Json.of( Boolean.FALSE ) );
     }
 
     @Test
@@ -82,9 +82,9 @@ class JsonTest {
         assertJson( "2.4", Json.of( Float.valueOf( 2.4f ) ) );
         assertJson( "42.42", Json.of( Double.valueOf( 42.42d ) ) );
         assertJson( "null", Json.of( (Number) null ) );
-        assertThrowsExactly( JsonFormatException.class, () -> Json.of( Double.valueOf( Double.NaN ) ));
-        assertThrowsExactly( JsonFormatException.class, () -> Json.of( Double.valueOf(Double.POSITIVE_INFINITY ) ));
-        assertThrowsExactly( JsonFormatException.class, () -> Json.of( Double.valueOf(Double.NEGATIVE_INFINITY ) ));
+        assertThrowsExactly( JsonFormatException.class, () -> Json.of( Double.valueOf( Double.NaN ) ) );
+        assertThrowsExactly( JsonFormatException.class, () -> Json.of( Double.valueOf( Double.POSITIVE_INFINITY ) ) );
+        assertThrowsExactly( JsonFormatException.class, () -> Json.of( Double.valueOf( Double.NEGATIVE_INFINITY ) ) );
         assertThrowsExactly( JsonFormatException.class, () -> Json.of( Float.valueOf( Float.NaN ) ) );
         assertThrowsExactly( JsonFormatException.class, () -> Json.of( Float.valueOf( Float.POSITIVE_INFINITY ) ) );
         assertThrowsExactly( JsonFormatException.class, () -> Json.of( Float.valueOf( Float.NEGATIVE_INFINITY ) ) );
@@ -100,9 +100,9 @@ class JsonTest {
     @Test
     void testArray_Iterable() {
         assertJson( "null", Json.array( Json::of, (List<Long>) null ) );
-        assertJson( "[]", Json.array( Json::of, List.<Integer>of()) );
-        assertJson( "[true,false]", Json.array( Json::of, List.of(true, false )) );
-        assertJson( "[\"1\",\"2\",\"3\"]", Json.array( Json::of, List.of("1", "2", "3" )) );
+        assertJson( "[]", Json.array( Json::of, List.<Integer>of() ) );
+        assertJson( "[true,false]", Json.array( Json::of, List.of( true, false ) ) );
+        assertJson( "[\"1\",\"2\",\"3\"]", Json.array( Json::of, List.of( "1", "2", "3" ) ) );
     }
 
     @Test
@@ -116,16 +116,16 @@ class JsonTest {
 
     @Test
     void testArray_Builder() {
-        assertJson( "[]", Json.array( arr -> {} ));
-        assertJson( "[42]", Json.array( arr -> arr.addNumber( 42 ) ));
+        assertJson( "[]", Json.array( arr -> {} ) );
+        assertJson( "[42]", Json.array( arr -> arr.addNumber( 42 ) ) );
         assertJson( "[\"forty\",2,null]",
-            Json.array( arr -> arr.addString( "forty" ).addNumber( 2 ).addString( null ) ));
+            Json.array( arr -> arr.addString( "forty" ).addNumber( 2 ).addString( null ) ) );
     }
 
     @Test
     void testArray_Nest() {
-        assertJson( "[[1,2,3],[4]]", Json.array( e -> Json.array(Json::of, e),
-            List.of(List.of(1,2,3), List.of(4)) ) );
+        assertJson( "[[1,2,3],[4]]", Json.array( e -> Json.array( Json::of, e ),
+            List.of( List.of( 1, 2, 3 ), List.of( 4 ) ) ) );
     }
 
     @Test
@@ -135,48 +135,48 @@ class JsonTest {
 
     @Test
     void testArray_Ints() {
-        assertJson( "[1,2,3]", Json.array(1,2,3) );
+        assertJson( "[1,2,3]", Json.array( 1, 2, 3 ) );
     }
 
     @Test
     void testArray_Longs() {
-        assertJson( "[1,2,3]", Json.array(1L,2L,3L) );
+        assertJson( "[1,2,3]", Json.array( 1L, 2L, 3L ) );
     }
 
     @Test
     void testArray_Doubles() {
-        assertJson( "[1.0,2.0,3.0]", Json.array(1d,2d,3d) );
-        assertThrowsExactly( JsonFormatException.class, () -> Json.array(1d, Double.NaN, 3d) );
+        assertJson( "[1.0,2.0,3.0]", Json.array( 1d, 2d, 3d ) );
+        assertThrowsExactly( JsonFormatException.class, () -> Json.array( 1d, Double.NaN, 3d ) );
     }
 
     @Test
     void testObject_Stream() {
-        assertJson( "{}", Json.object( Json::of, Stream.<Map.Entry<String, Number>>empty() ));
-        assertJson( "{\"a\":1}", Json.object( Json::of, Stream.of(Map.entry( "a", 1 ))));
+        assertJson( "{}", Json.object( Json::of, Stream.<Map.Entry<String, Number>>empty() ) );
+        assertJson( "{\"a\":1}", Json.object( Json::of, Stream.of( Map.entry( "a", 1 ) ) ) );
         assertJson( "{\"a\":\"b\",\"c\":\"d\"}",
-            Json.object( Json::of, Stream.of(Map.entry( "a", "b" ), Map.entry( "c", "d" ))));
+            Json.object( Json::of, Stream.of( Map.entry( "a", "b" ), Map.entry( "c", "d" ) ) ) );
     }
 
     @Test
     void testObject_Iterable() {
         assertJson( "null", Json.object( Json::of, (List<Map.Entry<String, Number>>) null ) );
-        assertJson( "{}", Json.object( Json::of, List.<Map.Entry<String, Number>>of() ));
-        assertJson( "{\"a\":true}", Json.object( Json::of, List.of(Map.entry( "a", true ))));
+        assertJson( "{}", Json.object( Json::of, List.<Map.Entry<String, Number>>of() ) );
+        assertJson( "{\"a\":true}", Json.object( Json::of, List.of( Map.entry( "a", true ) ) ) );
         assertJson( "{\"a\":\"b\",\"c\":\"d\"}",
-            Json.object( Json::of, List.of(Map.entry( "a", "b" ), Map.entry( "c", "d" ))));
+            Json.object( Json::of, List.of( Map.entry( "a", "b" ), Map.entry( "c", "d" ) ) ) );
     }
 
     @Test
     void testObject_Map() {
-        assertJson( "{}", Json.object( Json::of, Map.<String, Number>of() ));
-        assertJson( "{\"a\":true}", Json.object( Json::of, Map.of( "a", true )));
+        assertJson( "{}", Json.object( Json::of, Map.<String, Number>of() ) );
+        assertJson( "{\"a\":true}", Json.object( Json::of, Map.of( "a", true ) ) );
         assertJson( "{\"a\":\"b\",\"c\":\"d\"}",
-            Json.object( Json::of, new TreeMap<>(Map.of( "a", "b", "c", "d" ))));
+            Json.object( Json::of, new TreeMap<>( Map.of( "a", "b", "c", "d" ) ) ) );
     }
 
     @Test
     void testObject_Builder() {
-        assertJson( "{}", Json.object( obj -> {} ));
+        assertJson( "{}", Json.object( obj -> {} ) );
         assertJson( "{\"a\":true,\"b\":42}",
             Json.object( obj -> obj.addBoolean( "a", true ).addNumber( "b", 42 ) ) );
     }
@@ -184,7 +184,7 @@ class JsonTest {
     @Test
     void testObject_Nest() {
         assertJson( "{\"a\":{\"b\":1}}",
-            Json.object( e -> Json.object(Json::of, e), Map.of("a", Map.of("b", 1))));
+            Json.object( e -> Json.object( Json::of, e ), Map.of( "a", Map.of( "b", 1 ) ) ) );
     }
 
     @Test

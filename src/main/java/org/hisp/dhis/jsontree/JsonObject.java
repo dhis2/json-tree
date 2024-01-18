@@ -33,9 +33,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static java.util.Arrays.stream;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
@@ -52,7 +50,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  */
 @Validation( type = OBJECT )
 @Validation.Ignore
-public interface JsonObject extends JanAbstractObject<JsonValue> {
+public interface JsonObject extends JsonAbstractObject<JsonValue> {
 
     /**
      * Access to object fields by name.
@@ -193,7 +191,7 @@ public interface JsonObject extends JanAbstractObject<JsonValue> {
      * This means the returned object always has the same number of members as the original object.
      *
      * @param projection transformer function
-     * @param <V>       type of the transformer output, members of the object view
+     * @param <V>        type of the transformer output, members of the object view
      * @return a lazily transformed object view of this object
      */
     default <V extends JsonValue> JsonObject project( Function<JsonValue, V> projection ) {

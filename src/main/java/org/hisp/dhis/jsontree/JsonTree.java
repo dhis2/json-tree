@@ -72,9 +72,10 @@ import static java.util.Objects.requireNonNull;
  * @implNote This uses records because JVMs starting with JDK 21/22 will consider record fields as {@code @Stable} which
  * might help optimize access to the {@link #json} char array.
  */
-record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath, @Maybe JsonNode.GetListener onGet) implements Serializable {
+record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath, @Maybe JsonNode.GetListener onGet)
+    implements Serializable {
 
-    static JsonTree of(@Surly String json, @Maybe JsonNode.GetListener onGet ) {
+    static JsonTree of( @Surly String json, @Maybe JsonNode.GetListener onGet ) {
         return new JsonTree( json.toCharArray(), new HashMap<>(), onGet );
     }
 
@@ -83,9 +84,9 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
      * @return a lazy tree of the provided JSON
      * @since 0.11
      */
-    static JsonTree ofNonStandard(@Surly String json) {
+    static JsonTree ofNonStandard( @Surly String json ) {
         char[] jsonChars = json.toCharArray();
-        adjustToStandard(jsonChars);
+        adjustToStandard( jsonChars );
         return new JsonTree( jsonChars, new HashMap<>(), null );
     }
 
@@ -103,6 +104,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
 
         protected Integer end;
         private transient T value;
+
+        //TODO remember the index in parent array/object to improve size() performance?
 
         LazyJsonNode( JsonTree tree, String path, int start ) {
             this.tree = tree;
@@ -196,7 +199,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
         }
 
         @Override
-        public final Optional<JsonNode> find(@Maybe JsonNodeType type, Predicate<JsonNode> test ) {
+        public final Optional<JsonNode> find( @Maybe JsonNodeType type, Predicate<JsonNode> test ) {
             if ( (type == null || type == getType()) && test.test( this ) ) {
                 return Optional.of( this );
             }
@@ -426,9 +429,9 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
 
         @Override
         Optional<JsonNode> findChildren( JsonNodeType type, Predicate<JsonNode> test ) {
-            for (JsonNode e : elements()) {
+            for ( JsonNode e : elements() ) {
                 Optional<JsonNode> res = e.find( type, test );
-                if (res.isPresent()) return res;
+                if ( res.isPresent() ) return res;
             }
             return Optional.empty();
         }
@@ -652,7 +655,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
      * @throws JsonFormatException when this document contains malformed JSON that confuses the parser
      */
     JsonNode get( String path ) {
-        if (nodesByPath.isEmpty())
+        if ( nodesByPath.isEmpty() )
             nodesByPath.put( "", autoDetect( "", skipWhitespace( json, 0 ) ) );
         if ( path.startsWith( "$" ) ) {
             path = path.substring( 1 );
@@ -964,11 +967,10 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
      */
 
     /**
-     * Skips through the input and
-     * - switches single quotes of string values and member names to double quotes.
-     * - removes dangling commas for arrays and objects
+     * Skips through the input and - switches single quotes of string values and member names to double quotes. -
+     * removes dangling commas for arrays and objects
      */
-    private static void adjustToStandard(char[] json) {
+    private static void adjustToStandard( char[] json ) {
         adjustNodeAutodetect( json, 0 );
     }
 
@@ -999,7 +1001,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
             index = expectColonSeparator( json, index );
             index = adjustNodeAutodetect( json, index );
             // blank dangling ,
-            if (json[index] == ',' && json[index+1] == '}') json[index++] = ' ';
+            if ( json[index] == ',' && json[index + 1] == '}' ) json[index++] = ' ';
             index = expectCommaSeparatorOrEnd( json, index, '}' );
         }
         return expectChar( json, index, '}' );
@@ -1012,7 +1014,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
         while ( index < json.length && json[index] != ']' ) {
             index = adjustNodeAutodetect( json, index );
             // blank dangling ,
-            if (json[index] == ',' && json[index+1] == ']')
+            if ( json[index] == ',' && json[index + 1] == ']' )
                 json[index++] = ' ';
             index = expectCommaSeparatorOrEnd( json, index, ']' );
         }

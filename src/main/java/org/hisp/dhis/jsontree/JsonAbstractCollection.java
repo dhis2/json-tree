@@ -29,9 +29,6 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.Surly;
 
-import java.util.Optional;
-import java.util.function.Predicate;
-
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
@@ -137,6 +134,11 @@ public interface JsonAbstractCollection extends JsonValue {
 
         protected CollectionView( T viewed ) {
             this.viewed = viewed;
+        }
+
+        @Surly @Override
+        public String path() {
+            return viewed.path();
         }
 
         @Override

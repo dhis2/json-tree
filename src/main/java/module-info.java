@@ -5,5 +5,4 @@ module org.hisp.dhis.jsontree {
 
     exports org.hisp.dhis.jsontree;
     exports org.hisp.dhis.jsontree.validation;
-    exports org.hisp.dhis.jsontree.internal;
 }

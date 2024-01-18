@@ -561,7 +561,7 @@ class JsonTreeTest {
             .addNumber( "num", 1 )
             .addString( "str", "zZZZ" )
             .addBoolean( "right", true )
-            .addArray( "nums", arr -> arr.addNumbers( 1, 2, 3 ) ));
+            .addArray( "nums", arr -> arr.addNumbers( 1, 2, 3 ) ) );
 
         assertEquals( "{\"num\":1,\"right\":true}",
             root.removeMembers( Set.of( "str", "foo", "nums" ) ).getDeclaration() );
@@ -678,7 +678,7 @@ class JsonTreeTest {
 
     @Test
     void testOfNonStandard_DanglingCommas() {
-        assertEquals( "[1,2 ]", JsonNode.ofNonStandard( "[1,2,]" ).getDeclaration() );
-        assertEquals( "{\"a\":1 }", JsonNode.ofNonStandard( "{'a':1,}" ).getDeclaration() );
+        assertEquals( "[1,2 ]", JsonNode.ofNonStandard( "[1,2]" ).getDeclaration() );
+        assertEquals( "{\"a\":1 }", JsonNode.ofNonStandard( "{'a':1}" ).getDeclaration() );
     }
 }

@@ -8,6 +8,6 @@ import java.lang.annotation.Target;
  *
  * @see Maybe
  */
-@Target( {ElementType.PARAMETER, ElementType.METHOD, ElementType.FIELD } )
+@Target( { ElementType.PARAMETER, ElementType.METHOD, ElementType.FIELD } )
 public @interface Surly {
 }

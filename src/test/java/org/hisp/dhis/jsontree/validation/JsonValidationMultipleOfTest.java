@@ -1,7 +1,7 @@
 package org.hisp.dhis.jsontree.validation;
 
+import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
@@ -19,16 +19,17 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
  */
 class JsonValidationMultipleOfTest {
 
-    public interface JsonMultipleOfRequiredExample extends JsonObject {
+    public interface JsonMultipleOfExampleA extends JsonObject {
 
-        @Validation(multipleOf = 10)
+        @Validation( multipleOf = 10 )
         default int age() {
             return getNumber( "age" ).intValue();
         }
     }
 
-    public interface JsonMultipleOfExample extends JsonObject {
-        @Validation(multipleOf = 0.5)
+    public interface JsonMultipleOfExampleB extends JsonObject {
+
+        @Validation( multipleOf = 0.5 )
         default Number height() {
             return getNumber( "height" ).number();
         }
@@ -36,32 +37,32 @@ class JsonValidationMultipleOfTest {
 
     @Test
     void testMultipleOf_OK() {
-        assertDoesNotThrow( () -> JsonValue.of( """
-            {"age":0}""" ).validate( JsonMultipleOfRequiredExample.class ) );
-        assertDoesNotThrow( () -> JsonValue.of( """
-            {"age":20}""" ).validate( JsonMultipleOfRequiredExample.class ) );
-        assertDoesNotThrow( () -> JsonValue.of( """
-            {"height":1.5}""" ).validate( JsonMultipleOfExample.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"age":0}""" ).validate( JsonMultipleOfExampleA.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"age":20}""" ).validate( JsonMultipleOfExampleA.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"height":1.5}""" ).validate( JsonMultipleOfExampleB.class ) );
     }
 
     @Test
     void testMultipleOf_Required() {
-        assertValidationError( "{}", JsonMultipleOfRequiredExample.class, Rule.REQUIRED, "age" );
+        assertValidationError( "{}", JsonMultipleOfExampleA.class, Rule.REQUIRED, "age" );
     }
 
     @Test
     void testMultipleOf_Remainder() {
         assertValidationError( """
-            {"age":5}""", JsonMultipleOfRequiredExample.class, Rule.MULTIPLE_OF, 10d, 5d );
+            {"age":5}""", JsonMultipleOfExampleA.class, Rule.MULTIPLE_OF, 10d, 5d );
         assertValidationError( """
-            {"height":1.2}""", JsonMultipleOfExample.class, Rule.MULTIPLE_OF, 0.5d, 1.2d );
+            {"height":1.2}""", JsonMultipleOfExampleB.class, Rule.MULTIPLE_OF, 0.5d, 1.2d );
     }
 
     @Test
     void testMultipleOf_WrongType() {
-        assertValidationError(  """
-            {"age":true}""", JsonMultipleOfRequiredExample.class, Rule.TYPE, Set.of( NodeType.INTEGER ) );
-        assertValidationError(  """
-            {"height":true}""", JsonMultipleOfExample.class, Rule.TYPE, Set.of( NodeType.NUMBER )  );
+        assertValidationError( """
+            {"age":true}""", JsonMultipleOfExampleA.class, Rule.TYPE, Set.of( NodeType.INTEGER ), NodeType.BOOLEAN );
+        assertValidationError( """
+            {"height":true}""", JsonMultipleOfExampleB.class, Rule.TYPE, Set.of( NodeType.NUMBER ), NodeType.BOOLEAN );
     }
 }

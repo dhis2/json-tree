@@ -197,8 +197,7 @@ class JsonVirtualTreeTest {
         assertTrue( JsonMixed.of( "[]" ).isArray() );
         assertTrue( obj.getArray( "array" ).isArray() );
         assertFalse( obj.getArray( "notAnArray" ).isArray() );
-        JsonArray missing = obj.getArray( "missing" );
-        assertThrowsExactly( JsonPathException.class, missing::isArray );
+        assertFalse( obj.getArray( "missing" ).isArray() );
     }
 
     @Test
@@ -207,9 +206,8 @@ class JsonVirtualTreeTest {
 
         assertTrue( obj.isObject() );
         assertTrue( obj.getArray( "object" ).isObject() );
-        assertFalse( obj.getArray( "notAnObject" ).isObject() );
-        JsonArray missing = obj.getArray( "missing" );
-        assertThrowsExactly( JsonPathException.class, missing::isObject );
+        assertFalse( obj.getNumber( "notAnObject" ).isObject() );
+        assertFalse( obj.getObject( "missing" ).isObject() );
     }
 
     @Test
@@ -273,7 +271,7 @@ class JsonVirtualTreeTest {
     void testListContainsAll() {
         JsonList<JsonString> list = JsonMixed.ofNonStandard( "[{'a':'x'}, {'a':'y'}]" ).as( JsonArray.class )
             .projectAsList( e -> e.asObject().getString( "a" ) );
-        assertTrue( list.containsAll( JsonString::string, Set.of("y", "x" ) ));
+        assertTrue( list.containsAll( JsonString::string, Set.of( "y", "x" ) ) );
     }
 
     @Test

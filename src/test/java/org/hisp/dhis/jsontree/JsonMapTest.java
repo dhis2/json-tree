@@ -23,8 +23,8 @@ class JsonMapTest {
     void testKeys_Undefined() {
         JsonMap<JsonString> obj = JsonMixed.of( "{}" ).getMap( "a", JsonString.class );
         JsonMap<JsonString> obj2 = JsonMixed.of( "null" ).getObject( "a" ).asMap( JsonString.class );
-        assertEquals(List.of(), obj.keys().toList() );
-        assertEquals(List.of(), obj2.keys().toList() );
+        assertEquals( List.of(), obj.keys().toList() );
+        assertEquals( List.of(), obj2.keys().toList() );
     }
 
     @Test
@@ -55,8 +55,8 @@ class JsonMapTest {
     void testForEach_Undefined() {
         JsonMap<JsonString> obj = JsonMixed.of( "{}" ).getMap( "a", JsonString.class );
         JsonMap<JsonString> obj2 = JsonMixed.of( "null" ).getObject( "a" ).asMap( JsonString.class );
-        obj.forEach( ( k, v ) -> fail("Should not be called") );
-        obj2.forEach( ( k, v ) -> fail("Should not be called") );
+        obj.forEach( ( k, v ) -> fail( "Should not be called" ) );
+        obj2.forEach( ( k, v ) -> fail( "Should not be called" ) );
     }
 
     @Test
@@ -126,13 +126,13 @@ class JsonMapTest {
     void testViewAsMap_Keys() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
         JsonMap<JsonNumber> view = obj.project( arr -> arr.getNumber( 0 ) );
-        assertEquals( List.of("b", "c"), view.keys().toList() );
+        assertEquals( List.of( "b", "c" ), view.keys().toList() );
     }
 
     @Test
     void testViewAsMap_Values() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
         JsonMap<JsonNumber> view = obj.project( arr -> arr.getNumber( 0 ) );
-        assertEquals( List.of(1, 2), view.values().map( JsonNumber::intValue ).toList() );
+        assertEquals( List.of( 1, 2 ), view.values().map( JsonNumber::intValue ).toList() );
     }
 }

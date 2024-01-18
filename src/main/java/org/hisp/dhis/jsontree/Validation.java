@@ -37,11 +37,8 @@ import java.util.function.Consumer;
  * </ol>
  * Sources with higher priority override values of sources with lower priority unless the higher priority value is "undefined".
  *
- *
- *
- * @see org.hisp.dhis.jsontree.Validator
- *
  * @author Jan Bernitt
+ * @see org.hisp.dhis.jsontree.Validator
  * @since 0.11
  */
 @Inherited
@@ -49,8 +46,12 @@ import java.util.function.Consumer;
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Validation {
 
-    enum YesNo {NO, YES, AUTO;
-        public boolean isYes() { return this == YES; }
+    enum YesNo {
+        NO, YES, AUTO;
+
+        public boolean isYes() {
+            return this == YES;
+        }
 
         public boolean isAuto() {
             return this == AUTO;
@@ -81,10 +82,10 @@ public @interface Validation {
         NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT;
 
         @Surly
-        public static NodeType of(@Maybe JsonNodeType type ) {
-            if (type == null) return NULL;
+        public static NodeType of( @Maybe JsonNodeType type ) {
+            if ( type == null ) return NULL;
             return switch ( type ) {
-                case OBJECT -> OBJECT ;
+                case OBJECT -> OBJECT;
                 case ARRAY -> ARRAY;
                 case STRING -> STRING;
                 case BOOLEAN -> BOOLEAN;
@@ -97,6 +98,7 @@ public @interface Validation {
     /**
      * Value validation
      */
+    @FunctionalInterface
     interface Validator {
 
         /**
@@ -108,10 +110,15 @@ public @interface Validation {
         void validate( JsonMixed value, Consumer<Error> addError );
     }
 
-    record Error(Enum<?> rule, String path, JsonMixed value, List<Object> args) implements Serializable {
+    record Error(Rule rule, String path, JsonValue value, String template, List<Object> args) implements Serializable {
 
-        public static Error of( Enum<?> rule, JsonMixed value, Object... args ) {
-            return new Error( rule, value.path(), value, List.of( args ) );
+        public static Error of( Rule rule, JsonValue value, String template, Object... args ) {
+            return new Error( rule, value.path(), value, template, List.of( args ) );
+        }
+
+        @Override
+        public String toString() {
+            return "%s %s (%s)".formatted( path, template.formatted( args.toArray() ), rule );
         }
     }
 
@@ -131,17 +138,7 @@ public @interface Validation {
     @Retention( RetentionPolicy.RUNTIME ) @interface Items {
 
         Validation value();
-        //IDEA: Class<?> items() default JsonValue.class in @Validation to refer to an item (annotated) type?
     }
-
-    /**
-     * When annotated on a method this is assumed to be the property specific schema part.
-     * <p>
-     * When annotated on a type this is assumed to be an entire JSON schema definition.
-     *
-     * @return A JSON schema definition to extract all validations
-     */
-    String schema() default "";
 
     /**
      * If multiple type are given the value must be one of them.
@@ -162,8 +159,8 @@ public @interface Validation {
      * {@link YesNo#AUTO} is used when inferring validation from the return type for types that are
      * {@link java.util.Collection}s of simple types.
      * <p>
-     * Cannot be used in combination with {@link #values()} as it would be unclear if those values
-     * apply to the array, the elements or both.
+     * Cannot be used in combination with {@link #oneOfValues()} as it would be unclear if those values apply to the
+     * array, the elements or both.
      *
      * @return when {@link YesNo#YES}, the given {@link #type()} can occur once (as simple type value) or many times as
      * an array of such values.
@@ -171,17 +168,14 @@ public @interface Validation {
     YesNo varargs() default YesNo.AUTO;
 
     /**
-     * The JSON values do not need quoting for strings if the string starts with a letter.
-     * <p>
-     * When multiple annotations are present defining a set of values the union of those sets is used.
+     * Corresponds to JSON schema validation specified as {@code enum}.
      *
      * @return value must be equal to one of the given JSON values
      */
-    String[] values() default {};
+    String[] oneOfValues() default {};
 
     /**
-     * If multiple annotations are present defining an enumeration type they have to be the same or an
-     * {@link IllegalStateException} is thrown to indicate the programming error.
+     * Corresponds to JSON schema validation specified as {@code enum}.
      *
      * @return value must be equal to one of the value of the given enum
      */
@@ -325,35 +319,21 @@ public @interface Validation {
     YesNo required() default YesNo.AUTO;
 
     /**
-     * This works closely together with {@link #groups()}.
-     *
-     * @return then name of the group(s) of properties that are required together. OBS! These are not the names of the
-     * properties but made up names for groups.
-     */
-    String[] dependentRequired() default {};
-
-    /**
-     * A group describes a set of properties that are related in a way. Group names are local to the Java type defining
-     * the groups member properties.
+     * To describe which properties are in a dependency relation with each other properties can be assigned group names.
+     * One or more members of a group have the role of a trigger while the others are the ones that are required
+     * depending on the trigger. This property defines the groups for the annotated property and its role using suffixes
+     * as described below.
      * <p>
-     * A property can be member in multiple groups.
+     * A trigger uses the suffix {@code !} to trigger when present, {@code ?} to trigger when absent.
      * <p>
-     * A group name may be marked to define the role the property has in the group:
-     * <ul>
-     *     <li>{@code group!}: in the named group when the annotated property is present the non-marked members must be present</li>
-     *     <li>{@code group?}: in the named group when the annotated property is missing the non-marked members must be present</li>
-     * </ul>
-     * If multiple members mark the same group with {@code !} all of the properties with a mark must be present to trigger the group.
-     * <p>
-     * If multiple members mark the same group with {@code ?} all of the properties with a mark must be absent to trigger the group.
-     * <p>
-     * If members of the same group are marked with both {@code !} and {@code ?} both conditions must be met to activate the group validation.
+     * Multiple triggers in a group always combine with AND logic (all need to present/absent). For a group with
+     * multiple {@code !} triggers all must be present to trigger. For a group with multiple {@code ?} triggers all must
+     * be absent to trigger. For a group with both {@code !} and {@code ?} triggers both conditions must be met to
+     * trigger.
      * <p>
      * If none of the properties in a group is marked any of the properties makes all others in the group required.
-     * <p>
-     * If multiple groups sources are present the property becomes member of the union of all groups.
      *
      * @return the names of the groups the annotated property belongs to
      */
-    String[] groups() default {};
+    String[] dependentRequired() default {};
 }

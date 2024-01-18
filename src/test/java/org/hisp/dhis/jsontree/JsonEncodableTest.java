@@ -2,8 +2,6 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.function.Consumer;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -13,7 +11,7 @@ class JsonEncodableTest {
 
     record Point(int x, int y) implements JsonBuilder.JsonObjectEncodable {
 
-        public void addToObject(JsonBuilder.JsonObjectBuilder p) {
+        public void addToObject( JsonBuilder.JsonObjectBuilder p ) {
             p.addNumber( "x", x ).addNumber( "y", y );
         }
     }

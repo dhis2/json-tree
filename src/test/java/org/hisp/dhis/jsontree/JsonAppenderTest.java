@@ -142,67 +142,70 @@ class JsonAppenderTest {
     @Test
     void testObject_IntArray() {
         assertJson( "{'array':[1,2]}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", arr -> arr.addNumbers( 1, 2 ) ) ));
+            .addArray( "array", arr -> arr.addNumbers( 1, 2 ) ) ) );
     }
 
     @Test
     void testArray_IntArray() {
         assertJson( "[[1,2]]", JsonBuilder.createArray( arr -> arr
-            .addArray( a -> a.addNumbers( 1, 2 ) ) ));
+            .addArray( a -> a.addNumbers( 1, 2 ) ) ) );
     }
 
     @Test
     void testObject_DoubleArray() {
         assertJson( "{'array':[1.5,2.5]}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", arr -> arr.addNumbers(1.5d, 2.5d ) ) ));
+            .addArray( "array", arr -> arr.addNumbers( 1.5d, 2.5d ) ) ) );
     }
 
     @Test
     void testArray_DoubleArray() {
         assertJson( "[[1.5,2.5]]", JsonBuilder.createArray( arr -> arr
-            .addArray( a -> a.addNumbers (1.5d, 2.5d ) ) ));
+            .addArray( a -> a.addNumbers( 1.5d, 2.5d ) ) ) );
     }
 
     @Test
     void testObject_LongArray() {
         assertJson( "{'array':[" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "]}", JsonBuilder.createObject( obj -> obj
-            .addArray("array", arr -> arr.addNumbers(Long.MIN_VALUE, Long.MAX_VALUE ) ) ));
+            .addArray( "array", arr -> arr.addNumbers( Long.MIN_VALUE, Long.MAX_VALUE ) ) ) );
     }
 
     @Test
     void testArray_LongArray() {
         assertJson( "[[" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "]]", JsonBuilder.createArray( arr -> arr
-            .addArray( a -> a.addNumbers(Long.MIN_VALUE, Long.MAX_VALUE ) ) ));
+            .addArray( a -> a.addNumbers( Long.MIN_VALUE, Long.MAX_VALUE ) ) ) );
     }
 
     @Test
     void testObject_StringArray() {
         assertJson( "{'array':['a','b']}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", arr -> arr.addStrings( "a", "b" ) ) ));
+            .addArray( "array", arr -> arr.addStrings( "a", "b" ) ) ) );
     }
 
     @Test
     void testArray_StringArray() {
         assertJson( "[['a','b']]", JsonBuilder.createArray( arr -> arr
-            .addArray(a -> a.addStrings( "a", "b" ) ) ));
+            .addArray( a -> a.addStrings( "a", "b" ) ) ) );
     }
 
     @Test
     void testObject_OtherArray() {
         assertJson( "{'array':['SOURCE','CLASS','RUNTIME']}", JsonBuilder.createObject( obj -> obj
-            .addArray( "array", arr -> arr.addElements( RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) ));
+            .addArray( "array", arr -> arr.addElements( RetentionPolicy.values(), JsonArrayBuilder::addString,
+                RetentionPolicy::name ) ) ) );
     }
 
     @Test
     void testArray_OtherArray() {
         assertJson( "[['SOURCE','CLASS','RUNTIME']]", JsonBuilder.createArray( arr -> arr
-            .addArray( a -> a.addElements( RetentionPolicy.values(), JsonArrayBuilder::addString, RetentionPolicy::name ) ) ));
+            .addArray( a -> a.addElements( RetentionPolicy.values(), JsonArrayBuilder::addString,
+                RetentionPolicy::name ) ) ) );
     }
 
     @Test
     void testArray_OtherCollection() {
         assertJson( "[['SOURCE','CLASS','RUNTIME']]", JsonBuilder.createArray( arr -> arr
-            .addArray( a -> a.addElements( List.of( RetentionPolicy.values() ), JsonArrayBuilder::addString, RetentionPolicy::name ) ) ));
+            .addArray( a -> a.addElements( List.of( RetentionPolicy.values() ), JsonArrayBuilder::addString,
+                RetentionPolicy::name ) ) ) );
     }
 
     @Test
@@ -227,13 +230,13 @@ class JsonAppenderTest {
     void testObject_ObjectMap() {
         assertJson( "{'obj':{'field':42}}", JsonBuilder.createObject( outer -> outer
             .addObject( "obj", inner -> inner.addMembers(
-                Map.of( "field", 42 ).entrySet(), JsonObjectBuilder::addNumber ) ) ));
+                Map.of( "field", 42 ).entrySet(), JsonObjectBuilder::addNumber ) ) ) );
     }
 
     @Test
     void testArray_ObjectMap() {
         assertJson( "[{'field':42}]", JsonBuilder.createArray( arr -> arr
-            .addObject( obj -> obj.addMembers( Map.of( "field", 42 ), JsonObjectBuilder::addNumber ) ) ));
+            .addObject( obj -> obj.addMembers( Map.of( "field", 42 ), JsonObjectBuilder::addNumber ) ) ) );
     }
 
     @Test
@@ -245,7 +248,7 @@ class JsonAppenderTest {
     @Test
     void testArray_ElementsCollection() {
         assertJson( "[[42]]", JsonBuilder.createArray( arr -> arr
-            .addArray( a -> a.addElements( List.of( 42 ), JsonArrayBuilder::addNumber ) ) ));
+            .addArray( a -> a.addElements( List.of( 42 ), JsonArrayBuilder::addNumber ) ) ) );
     }
 
     @Test

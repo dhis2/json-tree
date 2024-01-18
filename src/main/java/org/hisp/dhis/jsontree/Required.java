@@ -45,5 +45,5 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  */
 @Target( ElementType.METHOD )
 @Retention( RetentionPolicy.RUNTIME )
-@Validation(required = YES)
+@Validation( required = YES )
 public @interface Required {}

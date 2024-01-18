@@ -28,8 +28,8 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
     E get( int index );
 
     /**
-     * @since 0.11
      * @return indexes of the elements contained in this array
+     * @since 0.11
      */
     default IntStream indexes() {
         return isEmpty() ? IntStream.empty() : IntStream.range( 0, size() );
@@ -106,6 +106,6 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
      * @return the first matching element, or an element that does not exist
      */
     default E first( Predicate<E> test ) {
-        return stream().filter( test ).findFirst().orElseGet(() -> get( size() ));
+        return stream().filter( test ).findFirst().orElseGet( () -> get( size() ) );
     }
 }

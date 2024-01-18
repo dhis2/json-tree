@@ -130,7 +130,8 @@ class JsonValueTest {
 
     @Test
     void testToListFromVarargs_Undefined() {
-        assertEquals( List.of(), JsonMixed.of( "{}" ).get( "foo" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+        assertEquals( List.of(),
+            JsonMixed.of( "{}" ).get( "foo" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
     }
 
     @Test
@@ -140,13 +141,14 @@ class JsonValueTest {
 
     @Test
     void testToListFromVarargs_Simple() {
-        assertEquals( List.of(1), JsonValue.of( "1" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+        assertEquals( List.of( 1 ), JsonValue.of( "1" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
     }
 
     @Test
     void testToListFromVarargs_SimpleWrongType() {
         JsonValue value = JsonValue.of( "true" );
-        assertThrowsExactly( JsonTreeException.class, () -> value.toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+        assertThrowsExactly( JsonTreeException.class,
+            () -> value.toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
     }
 
     @Test
@@ -156,14 +158,16 @@ class JsonValueTest {
 
     @Test
     void testToListFromVarargs_ArrayNonEmpty() {
-        assertEquals( List.of(1,2), JsonValue.of( "[1,2]" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+        assertEquals( List.of( 1, 2 ),
+            JsonValue.of( "[1,2]" ).toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
 
     }
 
     @Test
     void testToListFromVarargs_ArrayWrongType() {
         JsonValue value = JsonValue.of( "[1,true]" );
-        assertThrowsExactly( JsonTreeException.class, () -> value.toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
+        assertThrowsExactly( JsonTreeException.class,
+            () -> value.toListFromVarargs( JsonNumber.class, JsonNumber::intValue ) );
     }
 
     @Test
@@ -173,7 +177,7 @@ class JsonValueTest {
         JsonMixed root = JsonMixed.of( json );
         JsonObject foo = root.find( JsonObject.class, obj -> obj.has( "foo" ) );
         assertTrue( foo.isObject() );
-        assertEquals( ".x", foo.path() );
+        assertEquals( "$.x", foo.path() );
         assertFalse( root.find( JsonObject.class, obj -> obj.has( "bar" ) ).exists() );
     }
 
@@ -193,13 +197,13 @@ class JsonValueTest {
 
     @Test
     void testFind_Number() {
-        assertFalse( JsonMixed.of( "1" ).find( JsonObject.class, obj -> obj.containsKey( "x" ) ).exists());
-        assertEquals(42, JsonMixed.of( "42" ).find( JsonNumber.class, JsonValue::isInteger ).intValue() );
+        assertFalse( JsonMixed.of( "1" ).find( JsonObject.class, obj -> obj.containsKey( "x" ) ).exists() );
+        assertEquals( 42, JsonMixed.of( "42" ).find( JsonNumber.class, JsonValue::isInteger ).intValue() );
     }
 
     @Test
     void testFind_Null() {
-        assertFalse( JsonMixed.of( "null" ).find( JsonObject.class, obj -> obj.containsKey( "x" ) ).exists());
+        assertFalse( JsonMixed.of( "null" ).find( JsonObject.class, obj -> obj.containsKey( "x" ) ).exists() );
     }
 
     @Test

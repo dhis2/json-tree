@@ -27,9 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import static java.util.stream.StreamSupport.stream;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
@@ -40,7 +41,17 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  */
 @Validation( type = OBJECT )
 @Validation.Ignore
-public interface JsonMap<E extends JsonValue> extends JanAbstractObject<E> {
+public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
+
+    /**
+     * @param toValue from JSON to Java type
+     * @return a Java {@link Map} of this {@link JsonMap}
+     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @since 0.11
+     */
+    default <T> Map<String, T> toMap( Function<E, T> toValue ) {
+        return entries().collect( Collectors.toMap( Map.Entry::getKey, e -> toValue.apply( e.getValue() ) ) );
+    }
 
     /**
      * Maps this map's entry values to a lazy transformed map view where each entry value of the original map is
@@ -49,7 +60,7 @@ public interface JsonMap<E extends JsonValue> extends JanAbstractObject<E> {
      * This means the returned map always has same size as the original map.
      *
      * @param projection transformer function
-     * @param <V>       type of the transformer output, entries of the map view
+     * @param <V>        type of the transformer output, entries of the map view
      * @return a lazily transformed map view of this map
      */
     default <V extends JsonValue> JsonMap<V> project( Function<E, V> projection ) {

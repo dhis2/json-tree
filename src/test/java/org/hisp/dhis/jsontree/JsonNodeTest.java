@@ -29,6 +29,8 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Deque;
+import java.util.LinkedList;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -169,6 +171,26 @@ class JsonNodeTest {
             "a": 1,
             "b": {"y":1}
             }""", actual.getDeclaration() );
+    }
+
+    public interface JsonBean extends JsonObject {
+
+        default String getFoo() {
+            return getString( "foo" ).string();
+        }
+
+        String bar();
+    }
+
+    @Test
+    void testPathCanBeRecorded() {
+        Deque<String> rec = new LinkedList<>();
+        JsonObject obj = JsonMixed.of( JsonNode.of( "{}", rec::add ) );
+
+        obj.as( JsonBean.class ).getFoo();
+        assertEquals( ".foo", rec.getLast() );
+        obj.as( JsonBean.class ).bar();
+        assertEquals( ".bar", rec.getLast() );
     }
 
     private static void assertGetThrowsJsonPathException( String json, String expected ) {

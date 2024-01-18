@@ -29,8 +29,8 @@ public @interface Validator {
     Validation[] params() default {};
 
     @Retention( RetentionPolicy.RUNTIME )
-    @Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
-    @interface ValidatorRepeat {
+    @Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE,
+        ElementType.TYPE_USE } ) @interface ValidatorRepeat {
 
         Validator[] value();
     }
