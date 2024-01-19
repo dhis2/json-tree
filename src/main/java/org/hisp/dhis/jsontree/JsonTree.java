@@ -27,6 +27,9 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
+
 import java.io.Serializable;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
@@ -66,8 +69,26 @@ import static java.util.Objects.requireNonNull;
  * <a href="https://www.json.org/">json.org</a>.
  *
  * @author Jan Bernitt
+ * @implNote This uses records because JVMs starting with JDK 21/22 will consider record fields as {@code @Stable} which
+ * might help optimize access to the {@link #json} char array.
  */
-final class JsonTree implements Serializable {
+record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath, @Maybe JsonNode.GetListener onGet)
+    implements Serializable {
+
+    static JsonTree of( @Surly String json, @Maybe JsonNode.GetListener onGet ) {
+        return new JsonTree( json.toCharArray(), new HashMap<>(), onGet );
+    }
+
+    /**
+     * @param json valid JSON, except it also allows single quoted strings and dangling commas
+     * @return a lazy tree of the provided JSON
+     * @since 0.11
+     */
+    static JsonTree ofNonStandard( @Surly String json ) {
+        char[] jsonChars = json.toCharArray();
+        adjustToStandard( jsonChars );
+        return new JsonTree( jsonChars, new HashMap<>(), null );
+    }
 
     /**
      * The main idea of lazy nodes is that at creation only the start index and the path the node represents is known.
@@ -83,6 +104,8 @@ final class JsonTree implements Serializable {
 
         protected Integer end;
         private transient T value;
+
+        //TODO remember the index in parent array/object to improve size() performance?
 
         LazyJsonNode( JsonTree tree, String path, int start ) {
             this.tree = tree;
@@ -176,8 +199,8 @@ final class JsonTree implements Serializable {
         }
 
         @Override
-        public Optional<JsonNode> find( JsonNodeType type, Predicate<JsonNode> test ) {
-            if ( type == getType() && test.test( this ) ) {
+        public final Optional<JsonNode> find( @Maybe JsonNodeType type, Predicate<JsonNode> test ) {
+            if ( (type == null || type == getType()) && test.test( this ) ) {
                 return Optional.of( this );
             }
             return findChildren( type, test );
@@ -202,11 +225,13 @@ final class JsonTree implements Serializable {
     private static final class LazyJsonObject extends LazyJsonNode<Iterable<Entry<String, JsonNode>>>
         implements Iterable<Entry<String, JsonNode>> {
 
+        private Integer size;
+
         LazyJsonObject( JsonTree tree, String path, int start ) {
             super( tree, path, start );
         }
 
-        @Override
+        @Surly @Override
         public Iterator<Entry<String, JsonNode>> iterator() {
             return members( true );
         }
@@ -239,8 +264,10 @@ final class JsonTree implements Serializable {
 
         @Override
         public int size() {
-            // only compute value when needed
-            return isEmpty() ? 0 : (int) StreamSupport.stream( spliterator(), false ).count();
+            if (isEmpty()) return 0;
+            if (size != null) return size;
+            size = (int) StreamSupport.stream( spliterator(), false ).count();
+            return size;
         }
 
         @Override
@@ -360,11 +387,13 @@ final class JsonTree implements Serializable {
 
     private static final class LazyJsonArray extends LazyJsonNode<Iterable<JsonNode>> implements Iterable<JsonNode> {
 
+        private Integer size;
+
         LazyJsonArray( JsonTree tree, String path, int start ) {
             super( tree, path, start );
         }
 
-        @Override
+        @Surly @Override
         public Iterator<JsonNode> iterator() {
             return elements( true );
         }
@@ -395,8 +424,10 @@ final class JsonTree implements Serializable {
 
         @Override
         public int size() {
-            // only compute value when needed
-            return isEmpty() ? 0 : (int) StreamSupport.stream( spliterator(), false ).count();
+            if (isEmpty()) return 0;
+            if (size != null) return size;
+            size = (int) StreamSupport.stream( spliterator(), false ).count();
+            return size;
         }
 
         @Override
@@ -406,13 +437,9 @@ final class JsonTree implements Serializable {
 
         @Override
         Optional<JsonNode> findChildren( JsonNodeType type, Predicate<JsonNode> test ) {
-            Iterator<JsonNode> iter = elements( false );
-            while ( iter.hasNext() ) {
-                JsonNode e = iter.next();
+            for ( JsonNode e : elements() ) {
                 Optional<JsonNode> res = e.find( type, test );
-                if ( res.isPresent() ) {
-                    return res;
-                }
+                if ( res.isPresent() ) return res;
             }
             return Optional.empty();
         }
@@ -621,18 +648,6 @@ final class JsonTree implements Serializable {
         }
     }
 
-    private final JsonNode.GetListener listener;
-    private final char[] json;
-
-    private final HashMap<String, JsonNode> nodesByPath = new HashMap<>();
-
-    JsonTree( String json, boolean lenient, JsonNode.GetListener listener ) {
-        this.listener = listener;
-        this.json = json.toCharArray();
-        if ( lenient ) adjustToStandard();
-        nodesByPath.put( "", autoDetect( "", skipWhitespace( this.json, 0 ) ) );
-    }
-
     @Override
     public String toString() {
         return new String( json );
@@ -648,10 +663,12 @@ final class JsonTree implements Serializable {
      * @throws JsonFormatException when this document contains malformed JSON that confuses the parser
      */
     JsonNode get( String path ) {
+        if ( nodesByPath.isEmpty() )
+            nodesByPath.put( "", autoDetect( "", skipWhitespace( json, 0 ) ) );
         if ( path.startsWith( "$" ) ) {
             path = path.substring( 1 );
         }
-        if ( listener != null && !path.isEmpty() ) listener.accept( path );
+        if ( onGet != null && !path.isEmpty() ) onGet.accept( path );
         JsonNode node = nodesByPath.get( path );
         if ( node != null ) {
             return node;
@@ -958,9 +975,10 @@ final class JsonTree implements Serializable {
      */
 
     /**
-     * Skips through the input and switches single quotes of string values and member names to double quotes.
+     * Skips through the input and - switches single quotes of string values and member names to double quotes. -
+     * removes dangling commas for arrays and objects
      */
-    private void adjustToStandard() {
+    private static void adjustToStandard( char[] json ) {
         adjustNodeAutodetect( json, 0 );
     }
 
@@ -990,6 +1008,8 @@ final class JsonTree implements Serializable {
             index = adjustString( json, index );
             index = expectColonSeparator( json, index );
             index = adjustNodeAutodetect( json, index );
+            // blank dangling ,
+            if ( json[index] == ',' && json[index + 1] == '}' ) json[index++] = ' ';
             index = expectCommaSeparatorOrEnd( json, index, '}' );
         }
         return expectChar( json, index, '}' );
@@ -1001,6 +1021,9 @@ final class JsonTree implements Serializable {
         index = skipWhitespace( json, index );
         while ( index < json.length && json[index] != ']' ) {
             index = adjustNodeAutodetect( json, index );
+            // blank dangling ,
+            if ( json[index] == ',' && json[index + 1] == ']' )
+                json[index++] = ' ';
             index = expectCommaSeparatorOrEnd( json, index, ']' );
         }
         return expectChar( json, index, ']' );

@@ -31,11 +31,10 @@ import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 
 import java.io.PrintStream;
-import java.util.Map;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
+
+import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
 
 /**
  * An "append only" {@link JsonBuilder} implementation that can be used with a {@link PrintStream} or a
@@ -99,13 +98,19 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
         if ( indent ) append( indentLevel );
     }
 
-    private void appendEscaped( CharSequence str ) {
+    void appendEscaped( CharSequence str ) {
+        if ( str == null ) {
+            append( "null" );
+            return;
+        }
+        append( '"' );
         str.chars().forEachOrdered( c -> {
             if ( c == '"' || c == '\\' || c < ' ' ) {
                 appendChar.accept( '\\' );
             }
             appendChar.accept( (char) c );
         } );
+        append( '"' );
     }
 
     private void beginLevel( char c ) {
@@ -198,12 +203,14 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonObjectBuilder addNumber( String name, double value ) {
+        checkValid( value );
         return addRawMember( name, String.valueOf( value ) );
     }
 
     @Override
     public JsonObjectBuilder addNumber( String name, Number value ) {
         if ( value == null && config.excludeNullMembers() ) return this;
+        checkValid( value );
         return addRawMember( name, value == null ? "null" : value.toString() );
     }
 
@@ -216,9 +223,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
         append( name );
         append( '"' );
         append( colon );
-        append( '"' );
         appendEscaped( value );
-        append( '"' );
         return this;
     }
 
@@ -245,30 +250,6 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
         beginLevel( '{' );
         value.accept( this );
         endLevel( '}' );
-        return this;
-    }
-
-    @Override
-    public <K, V> JsonObjectBuilder addObject( String name, Iterable<Map.Entry<K, V>> value,
-        TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
-        if ( name == null ) {
-            value.forEach( e -> toMember.accept( this, e.getKey(), e.getValue() ) );
-            return this;
-        }
-        appendCommaWhenNeeded();
-        append( '"' );
-        append( name );
-        append( '"' );
-        append( colon );
-        beginLevel( '{' );
-        value.forEach( e -> toMember.accept( this, e.getKey(), e.getValue() ) );
-        endLevel( '}' );
-        return this;
-    }
-
-    @Override
-    public JsonObjectBuilder addMember( String name, Object pojo, JsonMapper mapper ) {
-        mapper.addTo( this, name, pojo );
         return this;
     }
 
@@ -320,20 +301,20 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonArrayBuilder addNumber( double value ) {
+        checkValid( value );
         return addRawElement( String.valueOf( value ) );
     }
 
     @Override
     public JsonArrayBuilder addNumber( Number value ) {
+        checkValid( value );
         return addRawElement( value == null ? "null" : value.toString() );
     }
 
     @Override
     public JsonArrayBuilder addString( String value ) {
         appendCommaWhenNeeded();
-        append( '"' );
         appendEscaped( value );
-        append( '"' );
         return this;
     }
 
@@ -347,21 +328,6 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     @Override
-    public <E> JsonArrayBuilder addArray( Stream<E> values, BiConsumer<JsonArrayBuilder, ? super E> toElement ) {
-        appendCommaWhenNeeded();
-        beginLevel( '[' );
-        values.forEachOrdered( v -> toElement.accept( this, v ) );
-        endLevel( ']' );
-        return this;
-    }
-
-    @Override
-    public <E> JsonArrayBuilder addElements( Stream<E> values, BiConsumer<JsonArrayBuilder, ? super E> toElement ) {
-        values.forEachOrdered( v -> toElement.accept( this, v ) );
-        return this;
-    }
-
-    @Override
     public JsonArrayBuilder addObject( Consumer<JsonObjectBuilder> value ) {
         appendCommaWhenNeeded();
         beginLevel( '{' );
@@ -369,21 +335,4 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
         endLevel( '}' );
         return this;
     }
-
-    @Override
-    public <K, V> JsonObjectBuilder addObject( Map<K, V> value,
-        TriConsumer<JsonObjectBuilder, ? super K, ? super V> toMember ) {
-        appendCommaWhenNeeded();
-        beginLevel( '{' );
-        value.forEach( ( k, v ) -> toMember.accept( this, k, v ) );
-        endLevel( '}' );
-        return this;
-    }
-
-    @Override
-    public JsonArrayBuilder addElement( Object value, JsonMapper mapper ) {
-        mapper.addTo( this, value );
-        return this;
-    }
-
 }

@@ -28,10 +28,9 @@
 package org.hisp.dhis.jsontree;
 
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 /**
  * Represents a JSON array node.
@@ -42,8 +41,8 @@ import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
  *
  * @author Jan Bernitt
  */
-@Validation( type = ARRAY )
-public interface JsonArray extends JsonCollection {
+@Validation.Ignore
+public interface JsonArray extends JsonAbstractArray<JsonValue> {
 
     /**
      * Index access to the array.
@@ -103,25 +102,16 @@ public interface JsonArray extends JsonCollection {
         return get( index, JsonObject.class );
     }
 
-    /**
-     * @param action called for each element in the array in order of declaration
-     * @throws JsonTreeException if this node is not an array node that could have elements
-     * @since 0.10
-     */
-    default void forEach( Consumer<JsonValue> action ) {
-        node().elements().forEach( n -> action.accept( JsonValue.of( n ) ) );
-    }
-
     default <E extends JsonValue> JsonList<E> getList( int index, Class<E> as ) {
-        return JsonCollection.asList( getArray( index ), as );
+        return JsonAbstractCollection.asList( getArray( index ), as );
     }
 
     default <E extends JsonValue> JsonMap<E> getMap( int index, Class<E> as ) {
-        return JsonCollection.asMap( getObject( index ), as );
+        return JsonAbstractCollection.asMap( getObject( index ), as );
     }
 
     default <E extends JsonValue> JsonMultiMap<E> getMultiMap( int index, Class<E> as ) {
-        return JsonCollection.asMultiMap( getObject( index ), as );
+        return JsonAbstractCollection.asMultiMap( getObject( index ), as );
     }
 
     /**
@@ -130,20 +120,20 @@ public interface JsonArray extends JsonCollection {
      * <p>
      * This means the returned list always has same size as the original array.
      *
-     * @param elementToX transformer function
+     * @param projection transformer function
      * @param <V>        type of the transformer output, elements of the list view
      * @return a lazily transformed list view of this array
      */
-    default <V extends JsonValue> JsonList<V> viewAsList( Function<JsonValue, V> elementToX ) {
-        final class JsonArrayView extends CollectionView<JsonArray> implements JsonList<V> {
+    default <V extends JsonValue> JsonList<V> projectAsList( Function<JsonValue, V> projection ) {
+        final class JsonArrayProjection extends CollectionView<JsonArray> implements JsonList<V> {
 
-            private JsonArrayView( JsonArray self ) {
+            private JsonArrayProjection( JsonArray self ) {
                 super( self );
             }
 
             @Override
             public V get( int index ) {
-                return elementToX.apply( viewed.get( index ) );
+                return projection.apply( viewed.get( index ) );
             }
 
             @Override
@@ -151,6 +141,6 @@ public interface JsonArray extends JsonCollection {
                 return JsonList.class;
             }
         }
-        return new JsonArrayView( this );
+        return new JsonArrayProjection( this );
     }
 }

@@ -4,4 +4,5 @@
 module org.hisp.dhis.jsontree {
 
     exports org.hisp.dhis.jsontree;
+    exports org.hisp.dhis.jsontree.validation;
 }

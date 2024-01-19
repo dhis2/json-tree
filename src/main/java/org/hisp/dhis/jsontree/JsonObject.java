@@ -28,18 +28,17 @@
 package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonSchemaException.Info;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.stream;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * Represents a JSON object node.
@@ -51,11 +50,11 @@ import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
  *
  * @author Jan Bernitt
  */
-@Validation( type = OBJECT )
-public interface JsonObject extends JsonCollection {
+@Validation.Ignore
+public interface JsonObject extends JsonAbstractObject<JsonValue> {
 
     /**
-     * Name access to object fields.
+     * Access to object fields by name.
      * <p>
      * Note that this neither checks if a field exist nor if it has the assumed type.
      *
@@ -65,38 +64,6 @@ public interface JsonObject extends JsonCollection {
      * @return field value for the given name
      */
     <T extends JsonValue> T get( String name, Class<T> as );
-
-    /**
-     * Test an object for property names.
-     *
-     * @param names a set of property names that should exist
-     * @return true if this object has (at least) all the given names
-     * @throws JsonTreeException in case this value is not an JSON object
-     */
-    default boolean has( String... names ) {
-        return has( List.of( names ) );
-    }
-
-    /**
-     * Test an object for property names.
-     *
-     * @param names a set of property names that should exist
-     * @return true if this object has (at least) all the given names
-     * @throws JsonTreeException in case this value is not an JSON object
-     * @since 0.10
-     */
-    boolean has( List<String> names );
-
-    /**
-     * Lists JSON object property names in order of declaration.
-     *
-     * @return The list of property names in the order they were defined.
-     * @throws JsonTreeException in case this value is not an JSON object
-     * @throws JsonPathException in case this value does not exist in the JSON document
-     */
-    default List<String> names() {
-        return StreamSupport.stream( node().members().spliterator(), false ).map( Map.Entry::getKey ).toList();
-    }
 
     default JsonValue get( String name ) {
         return get( name, JsonValue.class );
@@ -123,22 +90,22 @@ public interface JsonObject extends JsonCollection {
     }
 
     default <E extends JsonValue> JsonList<E> getList( String name, Class<E> as ) {
-        return JsonCollection.asList( getArray( name ), as );
+        return JsonAbstractCollection.asList( getArray( name ), as );
     }
 
     default <E extends JsonValue> JsonMap<E> getMap( String name, Class<E> as ) {
-        return JsonCollection.asMap( getObject( name ), as );
+        return JsonAbstractCollection.asMap( getObject( name ), as );
     }
 
     default <E extends JsonValue> JsonMultiMap<E> getMultiMap( String name, Class<E> as ) {
-        return JsonCollection.asMultiMap( getObject( name ), as );
+        return JsonAbstractCollection.asMultiMap( getObject( name ), as );
     }
 
     /**
-     * Uses the {@link Expected} annotations present to check whether this object conforms to the provided type
+     * Uses the {@link Required} annotations present to check whether this object conforms to the provided type
      *
      * @param type object type to check
-     * @return true if this is an object and has all {@link Expected} members of the provided type
+     * @return true if this is an object and has all {@link Required} members of the provided type
      */
     default boolean isA( Class<? extends JsonObject> type ) {
         try {
@@ -157,90 +124,13 @@ public interface JsonObject extends JsonCollection {
      * @return this node as the provided object type
      * @throws JsonPathException   when this node does not exist
      * @throws JsonTreeException   when this node is not an object
-     * @throws JsonSchemaException when this node does not have all of the {@link Expected} properties present
-     * @see #asObject(Class, boolean, String)
+     * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
      */
     default <T extends JsonObject> T asObject( Class<T> type )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
-        return asObject( type, true, "" );
-    }
-
-    /**
-     * "Cast" and check against provided object shape.
-     * <p>
-     * In contrast to {@link #as(Class)} this method does check that this object {@link #exists()}, that it is indeed an
-     * object node and that it has all {@link Expected} values expected for the provided object type.
-     *
-     * @param type      expected object type
-     * @param recursive true to apply the check to nested {@link JsonObject}s
-     * @param path      currently checked root object (for recursion, start with empty)
-     * @param <T>       type check and of the result
-     * @return this node as the provided object type
-     * @throws JsonPathException   when this node does not exist
-     * @throws JsonTreeException   when this node is not an object
-     * @throws JsonSchemaException when this node does not have all of the {@link Expected} properties present
-     */
-    default <T extends JsonObject> T asObject( Class<T> type, boolean recursive, String path )
-        throws JsonPathException, JsonTreeException, JsonSchemaException {
-        if ( !exists() ) {
-            throw new JsonPathException( path,
-                String.format( "Expected %s %s node does not exist", path, type.getSimpleName() ) );
-        }
-        if ( !isObject() ) {
-            throw new JsonTreeException(
-                String.format( "Expected %s %s node is not an object but a %s", path, type.getSimpleName(),
-                    node().getType() ) );
-        }
         T obj = as( type );
-        String parent = path.isEmpty() ? "" : path + ".";
-        stream( type.getMethods() )
-            .filter( m -> m.getParameterCount() == 0 && m.isAnnotationPresent( Expected.class ) )
-            .sorted( Comparator.comparing( Method::getName ) )
-            .forEach( m -> {
-                try {
-                    Object property = m.invoke( obj );
-                    if ( property == null || property instanceof JsonValue value && (!value.exists()
-                        || !m.getAnnotation( Expected.class ).nullable() && value.isNull()) ) {
-                        String message = String.format( "Expected %s node property %s was not defined",
-                            type.getSimpleName(), parent + m.getName() );
-                        throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
-                    }
-                    if ( recursive && property instanceof JsonObject value && !value.isNull() ) {
-                        @SuppressWarnings( "unchecked" )
-                        Class<? extends JsonObject> memberType = (Class<? extends JsonObject>) m.getReturnType();
-                        ((JsonObject) property).asObject( memberType, true, parent + m.getName() );
-                    }
-                } catch ( ReflectiveOperationException ex ) {
-                    String message = String.format( "Expected %s node property %s had invalid value: %s",
-                        type.getSimpleName(), parent + m.getName(), ex.getMessage() );
-                    throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
-                }
-            } );
+        JsonValidator.validate( obj, type, Rule.TYPE, Rule.REQUIRED );
         return obj;
-    }
-
-    /**
-     * Finds the first {@link JsonObject} of the given type where the provided test returns true.
-     * <p>
-     * OBS! When no match is found the resulting {@link JsonValue#exists()} will return true. Use
-     * {@link JsonValue#isUndefined()} instead.
-     *
-     * @param type {@link JsonObject} type to find (must satisfy the {@link #asObject(Class)} conditions)
-     * @param test test to perform on all objects that satisfy the type filter
-     * @param <T>  type of the object to find
-     * @return the first found match or JSON {@code null} object
-     */
-    default <T extends JsonObject> T find( Class<T> type, Predicate<T> test ) {
-        Optional<JsonNode> match = node().find( JsonNodeType.OBJECT, node -> {
-            try {
-                return test.test( JsonValue.of( node.getDeclaration() ).asObject().asObject( type ) );
-            } catch ( RuntimeException ex ) {
-                return false;
-            }
-        } );
-        return match.isEmpty()
-            ? JsonVirtualTree.NULL.as( type )
-            : JsonValue.of( match.get().getDeclaration() ).asObject().asObject( type );
     }
 
     /**
@@ -249,24 +139,24 @@ public interface JsonObject extends JsonCollection {
      * <p>
      * This means the returned object always has the same number of members as the original object.
      *
-     * @param memberToX transformer function
-     * @param <V>       type of the transformer output, members of the object view
+     * @param projection transformer function
+     * @param <V>        type of the transformer output, members of the object view
      * @return a lazily transformed object view of this object
      */
-    default <V extends JsonValue> JsonObject viewAsObject( Function<JsonValue, V> memberToX ) {
-        final class JsonObjectView extends CollectionView<JsonObject> implements JsonObject {
+    default <V extends JsonValue> JsonObject project( Function<JsonValue, V> projection ) {
+        final class JsonObjectProjection extends CollectionView<JsonObject> implements JsonObject {
 
-            private JsonObjectView( JsonObject viewed ) {
+            private JsonObjectProjection( JsonObject viewed ) {
                 super( viewed );
             }
 
             @Override
             public <T extends JsonValue> T get( String name, Class<T> as ) {
-                return memberToX.apply( viewed.get( name ) ).as( as );
+                return projection.apply( viewed.get( name ) ).as( as );
             }
 
             @Override
-            public boolean has( List<String> names ) {
+            public boolean has( Collection<String> names ) {
                 return viewed.has( names );
             }
 
@@ -275,6 +165,6 @@ public interface JsonObject extends JsonCollection {
                 return JsonObject.class;
             }
         }
-        return new JsonObjectView( this );
+        return new JsonObjectProjection( this );
     }
 }

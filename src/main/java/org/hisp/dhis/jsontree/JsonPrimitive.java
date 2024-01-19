@@ -29,9 +29,9 @@ package org.hisp.dhis.jsontree;
 
 import java.util.function.Function;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.BOOLEAN;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.NUMBER;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 /**
  * A common base type for the primitive nodes in a JSON tree.
@@ -39,6 +39,7 @@ import static org.hisp.dhis.jsontree.JsonSchema.NodeType.STRING;
  * @author Jan Bernitt
  */
 @Validation( type = { BOOLEAN, NUMBER, STRING } )
+@Validation.Ignore
 public interface JsonPrimitive extends JsonValue {
 
     /**

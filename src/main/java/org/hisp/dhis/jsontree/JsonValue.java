@@ -27,11 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
+
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
- * The {@link JsonValue} is a virtual read-only view for JSON responses.
+ * The {@link JsonValue} is a virtual read-only view for {@link JsonNode} representing an actual {@link JsonTree}.
  * <p>
  * As usual there are specific node type for the JSON building blocks:
  * <ul>
@@ -41,15 +46,15 @@ import java.util.function.Function;
  * <li>{@link JsonNumber}</li>
  * <li>{@link JsonBoolean}</li>
  * </ul>
- * In addition, there is {@link JsonCollection} as a common base type of
+ * In addition, there is {@link JsonAbstractCollection} as a common base type of
  * {@link JsonObject} and {@link JsonArray}, as well as {@link JsonPrimitive} as common
  * base type of {@link JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
  * <p>
  * In addition {@link JsonList} is a typed JSON array of uniform elements (which
- * can be understood as a typed wrapper around a {@link JsonArray}.
+ * can be understood as a typed wrapper around a {@link JsonArray}).
  * <p>
  * Similarly {@link JsonMap} is a typed JSON object map of uniform values (which
- * can be understood as a typed wrapper around a {@link JsonObject}.
+ * can be understood as a typed wrapper around a {@link JsonObject}).
  * <p>
  * The API is designed to:
  * <ul>
@@ -66,6 +71,7 @@ import java.util.function.Function;
  * @author Jan Bernitt
  * @see JsonMixed
  */
+@Validation.Ignore
 public interface JsonValue {
 
     /**
@@ -81,7 +87,7 @@ public interface JsonValue {
     /**
      * View the provided JSON string as virtual lazy evaluated tree.
      *
-     * @param json JSON string
+     * @param json a valid JSON string
      * @return virtual JSON tree root {@link JsonValue}
      */
     static JsonValue of( String json ) {
@@ -92,7 +98,7 @@ public interface JsonValue {
      * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
      * mapping to Java method return type.
      *
-     * @param json  a JSON string
+     * @param json  a valid JSON string
      * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return virtual JSON tree root {@link JsonValue}
@@ -112,6 +118,22 @@ public interface JsonValue {
     Class<? extends JsonValue> asType();
 
     /**
+     * @return this node path
+     * @since 0.11
+     */
+    @Surly
+    String path();
+
+    /**
+     * @return this node's type or null if this node does not exist in the actual tree
+     * @since 0.11
+     */
+    @Maybe
+    default JsonNodeType type() {
+        return !exists() ? null : node().getType();
+    }
+
+    /**
      * A property exists when it is part of the JSON response. This means it can be declared JSON {@code null}. Only a
      * path that does not exist returns false.
      *
@@ -124,7 +146,7 @@ public interface JsonValue {
      * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isNull() {
-        return node().getType() == JsonNodeType.NULL;
+        return type() == JsonNodeType.NULL;
     }
 
     /**
@@ -136,32 +158,28 @@ public interface JsonValue {
 
     /**
      * @return true if the value exists and is a JSON array node (empty or not) but not JSON {@code null}
-     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isArray() {
-        return node().getType() == JsonNodeType.ARRAY;
+        return type() == JsonNodeType.ARRAY;
     }
 
     /**
      * @return true if the value exists and is an JSON object node (empty or not) but not JSON {@code null}
-     * @throws JsonPathException in case this value does not exist in the JSON document
      */
     default boolean isObject() {
-        return node().getType() == JsonNodeType.OBJECT;
+        return type() == JsonNodeType.OBJECT;
     }
 
     /**
      * @return true if the value exists and is an JSON number node (not JSON {@code null})
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
     default boolean isNumber() {
-        return node().getType() == JsonNodeType.NUMBER;
+        return type() == JsonNodeType.NUMBER;
     }
 
     /**
      * @return true if the value exists and is an JSON number node and has no fraction part or a fraction of zero
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
     default boolean isInteger() {
@@ -170,20 +188,19 @@ public interface JsonValue {
 
     /**
      * @return true if the value exists and is an JSON string node (not JSON {@code null})
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
+
     default boolean isString() {
-        return node().getType() == JsonNodeType.STRING;
+        return type() == JsonNodeType.STRING;
     }
 
     /**
      * @return true if the value exists and is an JSON boolean node (not JSON {@code null})
-     * @throws JsonPathException in case this value does not exist in the JSON document
      * @since 0.10
      */
     default boolean isBoolean() {
-        return node().getType() == JsonNodeType.BOOLEAN;
+        return type() == JsonNodeType.BOOLEAN;
     }
 
     /**
@@ -214,7 +231,7 @@ public interface JsonValue {
      * @return list view of this value (assumes array)
      */
     default <E extends JsonValue> JsonList<E> asList( Class<E> elementType ) {
-        return JsonCollection.asList( as( JsonArray.class ), elementType );
+        return JsonAbstractCollection.asList( as( JsonArray.class ), elementType );
     }
 
     /**
@@ -225,7 +242,7 @@ public interface JsonValue {
      * @return map view of this value (assumes object)
      */
     default <V extends JsonValue> JsonMap<V> asMap( Class<V> valueType ) {
-        return JsonCollection.asMap( as( JsonObject.class ), valueType );
+        return JsonAbstractCollection.asMap( as( JsonObject.class ), valueType );
     }
 
     /**
@@ -236,7 +253,7 @@ public interface JsonValue {
      * @return map view of this value (assumes object)
      */
     default <V extends JsonValue> JsonMultiMap<V> asMultiMap( Class<V> valueType ) {
-        return JsonCollection.asMultiMap( as( JsonObject.class ), valueType );
+        return JsonAbstractCollection.asMultiMap( as( JsonObject.class ), valueType );
     }
 
     /**
@@ -269,6 +286,29 @@ public interface JsonValue {
     JsonNode node();
 
     /**
+     * @return JSON declaration for this value (as originally given)
+     * @throws JsonPathException if this node does not exist
+     * @since 0.11
+     */
+    default String toJson() {
+        return node().getDeclaration();
+    }
+
+    /**
+     * @return JSON declaration for this value in a minimized formatting
+     * @throws JsonPathException if this node does not exist
+     * @since 0.11
+     */
+    default String toMinimizedJson() {
+        if ( !isObject() && !isArray() ) return toJson();
+        if ( isObject() ) return JsonBuilder.createObject( JsonBuilder.MINIMIZED_FULL,
+                obj -> asObject().entries().forEach( e -> obj.addMember( e.getKey(), e.getValue().node() ) ) )
+            .getDeclaration();
+        return JsonBuilder.createArray( JsonBuilder.MINIMIZED_FULL,
+            arr -> as( JsonArray.class ).forEach( e -> arr.addElement( e.node() ) ) ).getDeclaration();
+    }
+
+    /**
      * @return true, if results of JSON to Java method return type mapping via {@link JsonTypedAccessStore} are cached
      * so that complex return values are only computed once. Any interface return type is considered a complex type.
      */
@@ -281,5 +321,39 @@ public interface JsonValue {
      */
     default JsonValue withAccessCached() {
         return this;
+    }
+
+    /**
+     * @return the store used by this instance
+     * @since 0.11
+     */
+    @Surly
+    JsonTypedAccessStore getAccessStore();
+
+    /**
+     * Finds the first value that satisfies the given test.
+     * <p>
+     * OBS! When no match is found a value that does not exist is returned.
+     *
+     * @param type API to test the node with
+     * @param test test to perform on all objects that satisfy the type filter
+     * @param <T>  type of the object to find
+     * @return the first found match or JSON {@code null} object
+     */
+    default <T extends JsonValue> T find( Class<T> type, Predicate<T> test ) {
+        if ( isUndefined() ) return JsonMixed.of( "{}" ).get( "notFound", type );
+        JsonTypedAccessStore store = getAccessStore();
+        Optional<JsonNode> match = node().find(
+            node -> {
+                try {
+                    return test.test( node.lift( store ).as( type ) );
+                } catch ( JsonTreeException | JsonPathException ex ) {
+                    // the test called a method that was not supported by the tested node
+                    return false;
+                }
+            } );
+        return match.isEmpty()
+            ? JsonMixed.of( "{}" ).get( "notFound", type )
+            : match.get().lift( store ).as( type );
     }
 }

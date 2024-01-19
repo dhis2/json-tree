@@ -25,10 +25,24 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package org.hisp.dhis.jsontree;
+package org.hisp.dhis.jsontree.validation;
 
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonNodeType;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonPathException;
+import org.hisp.dhis.jsontree.JsonSchemaException;
+import org.hisp.dhis.jsontree.JsonTreeException;
+import org.hisp.dhis.jsontree.Required;
+import org.hisp.dhis.jsontree.Validation;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Set;
+
+import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,41 +50,41 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests the {@link Expected} annotation feature.
+ * Tests the {@link Required} annotation feature.
  *
  * @author Jan Bernitt
  */
-class JsonExpectedTest {
+class JsonRequiredTest {
 
-    private interface JsonFoo extends JsonObject {
+    public interface JsonFoo extends JsonObject {
 
-        @Expected
+        @Required
         default String getBar() {
             return getString( "bar" ).string();
         }
     }
 
-    private interface JsonEntry extends JsonObject {
+    public interface JsonEntry extends JsonObject {
 
-        @Expected
+        @Required
         default String getKey() {
             return getString( "key" ).string();
         }
 
-        @Expected
+        @Required
         default Number getValue() {
             return getNumber( "value" ).number();
         }
     }
 
-    private interface JsonRoot extends JsonObject {
+    public interface JsonRoot extends JsonObject {
 
-        @Expected( nullable = true )
+        @Required
         default JsonFoo getA() {
             return get( "a", JsonFoo.class );
         }
 
-        @Expected
+        @Required
         default JsonFoo getB() {
             return get( "b", JsonFoo.class );
         }
@@ -78,8 +92,10 @@ class JsonExpectedTest {
 
     @Test
     void testIsA() {
-        assertTrue( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonFoo.class ) );
-        assertTrue( JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" ).isA( JsonEntry.class ) );
+        Assertions.assertTrue( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonFoo.class ) );
+        JsonMixed val = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" );
+        JsonEntry e = val.as( JsonEntry.class );
+        assertTrue( val.isA( JsonEntry.class ) );
         JsonMixed both = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1, 'bar':'y'}" );
         assertTrue( both.isA( JsonFoo.class ) );
         assertTrue( both.isA( JsonEntry.class ) );
@@ -116,70 +132,61 @@ class JsonExpectedTest {
     }
 
     @Test
-    void testAsObject_Nullable() {
-        assertAsObject( JsonRoot.class, "{'a':null,'b':{'bar':'x'}}" );
-    }
-
-    @Test
     void testAsObject_NotAnObjectArray() {
         JsonMixed obj = JsonMixed.of( "[]" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
-        assertEquals( "Expected  JsonFoo node is not an object but a ARRAY", ex.getMessage() );
+        assertEquals( "Value $ JsonFoo node is not an object but a ARRAY", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectString() {
         JsonMixed obj = JsonMixed.of( "\"nop\"" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
-        assertEquals( "Expected  JsonFoo node is not an object but a STRING", ex.getMessage() );
+        assertEquals( "Value $ JsonFoo node is not an object but a STRING", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNumber() {
         JsonMixed obj = JsonMixed.of( "13" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
-        assertEquals( "Expected  JsonFoo node is not an object but a NUMBER", ex.getMessage() );
+        assertEquals( "Value $ JsonFoo node is not an object but a NUMBER", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectBoolean() {
         JsonMixed obj = JsonMixed.of( "true" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
-        assertEquals( "Expected  JsonFoo node is not an object but a BOOLEAN", ex.getMessage() );
+        assertEquals( "Value $ JsonFoo node is not an object but a BOOLEAN", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNull() {
         JsonMixed obj = JsonMixed.of( "null" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
-        assertEquals( "Expected  JsonFoo node is not an object but a NULL", ex.getMessage() );
+        assertEquals( "Value $ JsonFoo node is not an object but a NULL", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectUndefined() {
         JsonObject obj = JsonMixed.of( "{}" ).getObject( "x" );
         JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> obj.asObject( JsonFoo.class ) );
-        assertEquals( "Expected  JsonFoo node does not exist", ex.getMessage() );
+        assertEquals( "Value $.x JsonFoo node does not exist", ex.getMessage() );
     }
 
     @Test
     void testAsObject_MissingMemberUndefined() {
-        //language=json
         String json = """
             {"b":{"bar":""}}""";
-        JsonMixed obj = JsonMixed.of( json );
-        JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> obj.asObject( JsonRoot.class ) );
-        assertEquals( "Expected JsonRoot node property getA was not defined", ex.getMessage() );
+        Validation.Error error = assertValidationError( json, JsonRoot.class, Rule.REQUIRED, "a" );
+        assertEquals( "$.a", error.path() );
     }
 
     @Test
     void testAsObject_MissingMemberRecursive() {
-        //language=json
         String json = """
             {"a": {}, "b":{"bar":""}}""";
-        JsonMixed obj = JsonMixed.of( json );
-        JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> obj.asObject( JsonRoot.class ) );
-        assertEquals( "Expected JsonFoo node property getA.getBar was not defined", ex.getMessage() );
+        Validation.Error error = assertValidationError( json, JsonRoot.class, Rule.REQUIRED, "bar" );
+        assertEquals( "$.a.bar", error.path() );
     }
 
     @Test
@@ -188,8 +195,7 @@ class JsonExpectedTest {
         String json = """
             {"a": [], "b":{"bar":""}}""";
         JsonMixed obj = JsonMixed.of( json );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonRoot.class ) );
-        assertEquals( "Expected getA JsonFoo node is not an object but a ARRAY", ex.getMessage() );
+        assertValidationError( json, JsonRoot.class, Rule.TYPE, Set.of( NodeType.OBJECT ), NodeType.ARRAY );
     }
 
     private static void assertAsObject( Class<? extends JsonObject> of, String actualJson ) {

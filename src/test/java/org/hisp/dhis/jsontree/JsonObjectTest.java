@@ -18,16 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JsonObjectTest {
 
     @Test
-    void testFind() {
-        //language=JSON
-        String json = """
-            { "x":{ "foo": 1 }}""";
-        JsonMixed root = JsonMixed.of( json );
-        assertTrue( root.find( JsonObject.class, obj -> obj.has( "foo" ) ).isObject() );
-        assertTrue( root.find( JsonObject.class, obj -> obj.has( "bar" ) ).isNull() );
-    }
-
-    @Test
     void testHas_NoObject() {
         JsonMixed value = JsonMixed.of( "1" );
         assertThrowsExactly( JsonTreeException.class, () -> value.has( "x" ) );
@@ -36,7 +26,7 @@ class JsonObjectTest {
     @Test
     void testNames_Undefined() {
         JsonObject value = JsonMixed.of( "{}" ).getObject( "x" );
-        assertThrowsExactly( JsonPathException.class, value::names );
+        assertEquals( List.of(), value.names() );
     }
 
     @Test
@@ -61,12 +51,12 @@ class JsonObjectTest {
     }
 
     @Test
-    void testViewAsObject() {
+    void testProject() {
         //language=json
         String json = """
             { "a": [1], "b": [2] }""";
         JsonMixed value = JsonMixed.of( json );
-        JsonObject obj = value.viewAsObject( e -> e.as( JsonArray.class ).get( 0 ) );
+        JsonObject obj = value.project( e -> e.as( JsonArray.class ).get( 0 ) );
         assertSame( JsonObject.class, obj.asType() );
         assertEquals( List.of( "a", "b" ), obj.names() );
         assertEquals( List.of( 1, 2 ), List.of( obj.get( "a" ).node().value(), obj.get( "b" ).node().value() ) );

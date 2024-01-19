@@ -39,6 +39,7 @@ import java.time.format.DateTimeFormatter;
  *
  * @author Jan Bernitt
  */
+@Validation.Ignore
 public interface JsonDate extends JsonString {
 
     default LocalDateTime date() {

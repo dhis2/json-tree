@@ -561,7 +561,7 @@ class JsonTreeTest {
             .addNumber( "num", 1 )
             .addString( "str", "zZZZ" )
             .addBoolean( "right", true )
-            .addArray( "nums", 1, 2, 3 ) );
+            .addArray( "nums", arr -> arr.addNumbers( 1, 2, 3 ) ) );
 
         assertEquals( "{\"num\":1,\"right\":true}",
             root.removeMembers( Set.of( "str", "foo", "nums" ) ).getDeclaration() );
@@ -667,5 +667,18 @@ class JsonTreeTest {
         assertEquals( 1, root.count( JsonNodeType.STRING ) );
         assertEquals( 1, root.count( JsonNodeType.ARRAY ) );
         assertEquals( 0, root.count( JsonNodeType.NULL ) );
+    }
+
+    @Test
+    void testOfNonStandard_SingleQuotes() {
+        assertEquals( "\"hello\"", JsonNode.ofNonStandard( "'hello'" ).getDeclaration() );
+        assertEquals( "{\"hello\":42}", JsonNode.ofNonStandard( "{'hello':42}" ).getDeclaration() );
+        assertEquals( "{\"hello\":\"you\"}", JsonNode.ofNonStandard( "{'hello':'you'}" ).getDeclaration() );
+    }
+
+    @Test
+    void testOfNonStandard_DanglingCommas() {
+        assertEquals( "[1,2 ]", JsonNode.ofNonStandard( "[1,2,]" ).getDeclaration() );
+        assertEquals( "{\"a\":1 }", JsonNode.ofNonStandard( "{'a':1,}" ).getDeclaration() );
     }
 }

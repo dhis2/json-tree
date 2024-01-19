@@ -1,13 +1,27 @@
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+
 /**
- * A {@link JsonValue} of unknown type that can be treated as any of the general JSON type for convenience.
+ * Main API to wrap JSON raw strings as {@link JsonValue} nodes.
+ * <p>
+ * {@link JsonValue} is the bottom type or base type of possible JSON values. It represents a value of "unknown" node
+ * type.
+ * <p>
+ * {@linkplain JsonMixed} is the union type of all possible core JSON types. It is a convenience starting point that can
+ * be treated as any node type. It can also be used to represent a value that knowingly can be of different JSON node
+ * types.
  *
  * @author Jan Bernitt
  * @see JsonValue
  * @since 0.8
  */
-@Validation( type = { JsonSchema.NodeType.OBJECT, JsonSchema.NodeType.ARRAY, JsonSchema.NodeType.STRING, JsonSchema.NodeType.NUMBER, JsonSchema.NodeType.BOOLEAN })
+@Validation( type = { OBJECT, ARRAY, STRING, NUMBER, BOOLEAN } )
+@Validation.Ignore
 public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean {
 
     /**

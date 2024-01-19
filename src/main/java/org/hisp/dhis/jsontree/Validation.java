@@ -1,14 +1,17 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonSchema.NodeType;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Serializable;
+import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Structural Validations as defined by the JSON schema specification <a
@@ -18,29 +21,46 @@ import java.util.List;
  * <p>
  * Used on a {@link JsonValue} subtype to add validation to any of its usage.
  * <p>
+ * <h3>Meta-Annotations</h3>
  * Used on annotation type to define meta annotations for validations, for example a {@code @NonNegativeInteger}
  * annotation which would be annotated {@code @Validation(type=INTEGER, minimum=0)}.
  * <p>
- * With multiple sources being possible either by defining and using multiple meta annotations or simply by annotating
- * both the type returned by a method and the method itself it is possible to define multiple sources of
- * {@link Validation}s. In such a case all of them a merged additively. The annotation directly present on a method can
- * be declared {@link #redefine()} in which case all other sources are ignored.
- * <p>
- * Generally constraint limits declared by an annotation directly present on the method overrides any other limit.
- * Otherwise, limits are merged to use the most restrictive limit declared by one of the annotations.
+ * <h3>Priority</h3>
+ * Order of source priority lowest to highest:
+ * <ol>
+ *     <li>value type class (using the Java type information; only if no annotation is present on type)</li>
+ *     <li>Meta-annotation(s) on value type class</li>
+ *     <li>{@link Validation} annotation on value type class</li>
+ *     <li>Meta-annotation(s) on property method</li>
+ *     <li>{@link Validation} annotation on property method</li>
+ *     <li>Meta-annotation(s) on property method return type (type use)</li>
+ *     <li>{@link Validation} annotation on property method return type (type use)</li>
+ * </ol>
+ * Sources with higher priority override values of sources with lower priority unless the higher priority value is "undefined".
  *
  * @author Jan Bernitt
- * @since 0.10
+ * @see org.hisp.dhis.jsontree.Validator
+ * @since 0.11
  */
-@Inherited
-@Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE } )
+@Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Validation {
 
-    enum YesNo {NO, YES, AUTO}
+    enum YesNo {
+        NO, YES, AUTO;
 
-    enum Restriction {
-        TYPE, ENUM,
+        public boolean isYes() {
+            return this == YES;
+        }
+
+        public boolean isAuto() {
+            return this == AUTO;
+        }
+    }
+
+    enum Rule {
+        // any values
+        TYPE, ENUM, CUSTOM,
 
         // string values
         MIN_LENGTH, MAX_LENGTH, PATTERN,
@@ -49,38 +69,76 @@ public @interface Validation {
         MINIMUM, MAXIMUM, EXCLUSIVE_MINIMUM, EXCLUSIVE_MAXIMUM, MULTIPLE_OF,
 
         // array values
-        MIN_ITEMS, MAX_ITEMS, UNIQUE_ITEMS, MIN_CONTAINS, MAX_CONTAINS,
+        MIN_ITEMS, MAX_ITEMS, UNIQUE_ITEMS,
 
         // object values
         MIN_PROPERTIES, MAX_PROPERTIES, REQUIRED, DEPENDENT_REQUIRED
     }
 
-    record Error(Restriction restriction, JsonMixed value, List<Object> args) implements Serializable {
+    /**
+     * In line with the JSON schema validation specification.
+     */
+    enum NodeType {
+        NULL, BOOLEAN, STRING, NUMBER, INTEGER, ARRAY, OBJECT;
 
-        public static Error of( Restriction restriction, JsonMixed value, Object... args ) {
-            return new Error( restriction, value, List.of( args ) );
+        @Surly
+        public static NodeType of( @Maybe JsonNodeType type ) {
+            if ( type == null ) return NULL;
+            return switch ( type ) {
+                case OBJECT -> OBJECT;
+                case ARRAY -> ARRAY;
+                case STRING -> STRING;
+                case BOOLEAN -> BOOLEAN;
+                case NULL -> NULL;
+                case NUMBER -> NUMBER;
+            };
+        }
+    }
+
+    /**
+     * Value validation
+     */
+    @FunctionalInterface
+    interface Validator {
+
+        /**
+         * Adds an error to the provided callback in case the provided value is not valid according to this check.
+         *
+         * @param value    the value to check
+         * @param addError callback to add errors
+         */
+        void validate( JsonMixed value, Consumer<Error> addError );
+    }
+
+    record Error(Rule rule, String path, JsonValue value, String template, List<Object> args) implements Serializable {
+
+        public static Error of( Rule rule, JsonValue value, String template, Object... args ) {
+            return new Error( rule, value.path(), value, template, List.of( args ) );
+        }
+
+        @Override
+        public String toString() {
+            return "%s %s (%s)".formatted( path, template.formatted( args.toArray() ), rule );
         }
     }
 
     /**
      * Used to mark properties that should not be validated. By default, all properties are validated.
      */
-    @Target( { ElementType.METHOD } )
-    @Retention( RetentionPolicy.RUNTIME ) @interface Exclude {}
+    @Target( { ElementType.METHOD, ElementType.TYPE } )
+    @Retention( RetentionPolicy.RUNTIME ) @interface Ignore {}
 
     /**
-     * When annotated on a method this is assumed to be the property specific schema part.
+     * Validations that apply to array elements or object member values.
      * <p>
-     * When annotated on a type this is assumed to be an entire JSON schema definition.
-     *
-     * @return A JSON schema definition to extract all validations
+     * To build multi-level validations use validation annotated item types or create specific validation annotations
+     * for the items which in term can have an {@linkplain Items} annotation.
      */
-    String schema() default "";
+    @Target( { ElementType.METHOD, ElementType.TYPE, ElementType.ANNOTATION_TYPE } )
+    @Retention( RetentionPolicy.RUNTIME ) @interface Items {
 
-    /**
-     * @return refers to a class with a {@link Validation} constraints to use as basis for this set of constraints.
-     */
-    Class<? extends JsonValue> base() default JsonValue.class;
+        Validation value();
+    }
 
     /**
      * If multiple type are given the value must be one of them.
@@ -88,53 +146,36 @@ public @interface Validation {
      * An {@link NodeType#INTEGER} is any number with a fraction of zero. This means it can have a fraction part as long
      * as that part is zero.
      *
-     * @return value must have one of the given JSON node type
+     * @return value must have one of the given JSON node types
      */
     NodeType[] type() default {};
 
-    @interface Type { NodeType[] value(); }
-
     /**
-     * A multi-level version of {@link #type()}. If defined it takes precedence over {@link #type()}.
+     * A property marked as varargs will allow {@link NodeType#ARRAY} to occur, each element then is validated against
+     * the present simple value validations.
      * <p>
-     * For example, to model the Java type {@code List<String>} this would use:
-     * <pre>
-     * &#064;Validation(types = { Type(ARRAY), Type(STRING) })
-     * </pre>
-     * In other words, the property value must be an array of strings.
+     * In addition, all given array requirements must be met.
+     * <p>
+     * {@link YesNo#AUTO} is used when inferring validation from the return type for types that are
+     * {@link java.util.Collection}s of simple types.
+     * <p>
+     * Cannot be used in combination with {@link #oneOfValues()} as it would be unclear if those values apply to the
+     * array, the elements or both.
      *
-     * @return value on each level must have one of the given JSON node types
+     * @return when {@link YesNo#YES}, the given {@link #type()} can occur once (as simple type value) or many times as
+     * an array of such values.
      */
-    Type[] types() default {};
+    YesNo varargs() default YesNo.AUTO;
 
     /**
-     * If {@link YesNo#YES} the given {@link #type()}s may all occur directly.
-     * <p>
-     * If {@link YesNo#NO} the given simple {@link #type()}s are understood as the array elements or object property
-     * values.
-     * <p>
-     * If {@link YesNo#AUTO} the given simple {@link #type()}s may either occur directly or as array element or object
-     * property values. For example, when an enum restricted value may occur as a string or as an array of that string.
-     * <p>
-     * If multiple annotations are present with differing value YES takes precedence over NO, both take precedence over AUTO.
-     *
-     * @return the mixed type mode used, see details above.
-     */
-    YesNo mixed() default YesNo.YES;
-    //TODO this could also be: NodeType[] elements(); // lists all the types which validations should be considered for elements
-
-    /**
-     * The JSON values do not need quoting for strings if the string starts with a letter.
-     * <p>
-     * When multiple annotations are present defining a set of values the union of those sets is used.
+     * Corresponds to JSON schema validation specified as {@code enum}.
      *
      * @return value must be equal to one of the given JSON values
      */
-    String[] values() default {};
+    String[] oneOfValues() default {};
 
     /**
-     * If multiple annotations are present defining an enumeration type they have to be the same or an
-     * {@link IllegalStateException} is thrown to indicate the programming error.
+     * Corresponds to JSON schema validation specified as {@code enum}.
      *
      * @return value must be equal to one of the value of the given enum
      */
@@ -239,7 +280,7 @@ public @interface Validation {
      *
      * @return all elements in the array value must be unique
      */
-    boolean uniqueItems() default false;
+    YesNo uniqueItems() default YesNo.AUTO;
 
     /*
     Validations for Objects
@@ -270,35 +311,29 @@ public @interface Validation {
     /**
      * When set to AUTO any property using a Java primitive type is required.
      * <p>
-     * If multiple annotations are present with differing value YES takes precedence over NO, both take precedence over AUTO.
+     * If multiple annotations are present with differing value YES takes precedence over NO, both take precedence over
+     * AUTO.
      *
      * @return parent object must have the annotated property
      */
     YesNo required() default YesNo.AUTO;
 
     /**
-     * Optionally one of the properties marked with the same group name can use a {@code !} before the group name to
-     * mark the property the others in the group depend upon. This the models the feature as specified in JSON schema.
+     * To describe which properties are in a dependency relation with each other properties can be assigned group names.
+     * One or more members of a group have the role of a trigger while the others are the ones that are required
+     * depending on the trigger. This property defines the groups for the annotated property and its role using suffixes
+     * as described below.
+     * <p>
+     * A trigger uses the suffix {@code !} to trigger when present, {@code ?} to trigger when absent.
+     * <p>
+     * Multiple triggers in a group always combine with AND logic (all need to present/absent). For a group with
+     * multiple {@code !} triggers all must be present to trigger. For a group with multiple {@code ?} triggers all must
+     * be absent to trigger. For a group with both {@code !} and {@code ?} triggers both conditions must be met to
+     * trigger.
      * <p>
      * If none of the properties in a group is marked any of the properties makes all others in the group required.
-     * <p>
-     * A property can be member in multiple groups. Group names are scoped to the properties belonging to a type.
-     * <p>
-     * If multiple annotations are present the property becomes member of the union of all groups.
      *
-     * @return then name of the group(s) of properties that are required together. OBS! These are not the names of the
-     * properties but made up names for groups.
+     * @return the names of the groups the annotated property belongs to
      */
-    String[] dependentRequires() default {};
-
-    //TODO allow ? marker to invert the logic, if property is missing the others are required
-    // or even more general to allow multiple markers in a group which also could be mixed
-    // so that one can do logic like, if X is present Y and Z must be not present, but W must be present as well
-
-    /**
-     * @return when true, this annotation is not additive to other {@link Validation} annotations present.
-     * Instead, an entirely new validation scope is started only containing the constraints of this annotation.
-     */
-    boolean redefine() default false;
-
+    String[] dependentRequired() default {};
 }

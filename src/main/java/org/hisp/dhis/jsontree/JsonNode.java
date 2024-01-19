@@ -36,10 +36,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
-import static java.util.function.Predicate.not;
 import static java.util.stream.IntStream.range;
 
 /**
@@ -115,19 +115,19 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode ofNonStandard( String json ) {
-        return new JsonTree( json, true, null ).get( "$" );
+        return JsonTree.ofNonStandard( json ).get( "$" );
     }
 
     /**
      * Create a new lazily parsed {@link JsonNode} tree.
      *
-     * @param json     standard compliant JSON input
-     * @param listener to observe all path lookup in the returned tree, may be null
+     * @param json  standard compliant JSON input
+     * @param onGet to observe all path lookup in the returned tree, may be null
      * @return the given JSON input as {@link JsonNode} tree
      * @since 0.10
      */
-    static JsonNode of( String json, GetListener listener ) {
-        return new JsonTree( json, false, listener ).get( "$" );
+    static JsonNode of( String json, GetListener onGet ) {
+        return JsonTree.of( json, onGet ).get( "$" );
     }
 
     /**
@@ -140,6 +140,19 @@ public interface JsonNode extends Serializable {
      * @since 0.6
      */
     JsonNode getRoot();
+
+    /**
+     * In contrast to {@link JsonValue#of(JsonNode)} this method does not result in a new independent virtual tree.
+     * <p>
+     * In other words this is the reverse method for {@link JsonValue#node()}
+     *
+     * @return this node as {@link JsonValue} as it is contained in its current tree
+     * @since 0.11
+     */
+    default JsonValue lift( JsonTypedAccessStore store ) {
+        JsonVirtualTree root = new JsonVirtualTree( getRoot(), store );
+        return isRoot() ? root : root.get( getPath() );
+    }
 
     /**
      * @return The parent of this node or the root itself if this node is the root
@@ -259,7 +272,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode member( String name )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no member property." );
+        throw new JsonTreeException( getType() + " node has no member property: " + name );
     }
 
     /**
@@ -316,7 +329,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode element( int index )
         throws JsonPathException {
-        throw new JsonTreeException( getType() + " node has no element property." );
+        throw new JsonTreeException( getType() + " node has no element property for index: " + index );
     }
 
     /**
@@ -366,13 +379,26 @@ public interface JsonNode extends Serializable {
     }
 
     /**
-     * Searches for a node in this subtree that matches type and returns true from the provided test.
+     * Searches for a node in this subtree that satisfies the provided test.
      *
-     * @param type node type tested
-     * @param test test performed, returns true when node is found
-     * @return the first found node or empty
+     * @param test a test that returns true when node is found
+     * @return the first node found or empty
+     * @since 0.11
      */
-    Optional<JsonNode> find( JsonNodeType type, Predicate<JsonNode> test );
+    default Optional<JsonNode> find( Predicate<JsonNode> test ) {
+        return find( null, test );
+    }
+
+    /**
+     * Searches for a node in this subtree that matches type and satisfies the provided test.
+     *
+     * @param type node type tested, maybe null to search for any type of node
+     * @param test a test that returns true when node is found
+     * @return the first node found or empty
+     */
+    default Optional<JsonNode> find( JsonNodeType type, Predicate<JsonNode> test ) {
+        throw new JsonTreeException( getType() + " node does not support find." );
+    }
 
     /**
      * Count matching nodes in a subtree of this node including this node.
@@ -525,7 +551,9 @@ public interface JsonNode extends Serializable {
         if ( obj.isEmpty() ) return getRoot();
         if ( isEmpty() && isRoot() ) return obj;
         return replaceWith( JsonBuilder.createObject( merged -> {
-            merged.addMembers( members(), not( obj::isMember ), JsonBuilder.JsonObjectBuilder::addMember );
+            merged.addMembers(
+                StreamSupport.stream( members().spliterator(), false ).filter( e -> !obj.isMember( e.getKey() ) ),
+                JsonBuilder.JsonObjectBuilder::addMember );
             merged.addMembers( obj.members(), JsonBuilder.JsonObjectBuilder::addMember );
         } ) );
     }
@@ -549,7 +577,9 @@ public interface JsonNode extends Serializable {
         checkType( JsonNodeType.OBJECT, getType(), "removeMembers" );
         if ( isEmpty() || names.isEmpty() ) return getRoot();
         return replaceWith( JsonBuilder.createObject(
-            obj -> obj.addMembers( members(), not( names::contains ), JsonBuilder.JsonObjectBuilder::addMember ) ) );
+            obj -> obj.addMembers(
+                StreamSupport.stream( members().spliterator(), false ).filter( e -> !names.contains( e.getKey() ) ),
+                JsonBuilder.JsonObjectBuilder::addMember ) ) );
     }
 
     /**

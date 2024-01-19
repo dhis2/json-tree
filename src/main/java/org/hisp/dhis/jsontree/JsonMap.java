@@ -27,12 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.function.BiConsumer;
+import java.util.Map;
 import java.util.function.Function;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
-import static java.util.stream.StreamSupport.stream;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.
@@ -41,43 +40,17 @@ import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
  * @author Jan Bernitt
  */
 @Validation( type = OBJECT )
-public interface JsonMap<E extends JsonValue> extends JsonCollection {
+@Validation.Ignore
+public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
 
     /**
-     * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd
-     * parameter is the type parameter E.
-     *
-     * @param key property to access
-     * @return value at the provided property
-     */
-    E get( String key );
-
-    /**
-     * @return The keys of this map.
-     * @throws JsonTreeException in case this node does exist but is not an object node or null
-     * @since 0.11 (as Stream)
-     */
-    default Stream<String> keys() {
-        return isUndefined() ? Stream.empty() : stream( node().keys().spliterator(), false );
-    }
-
-    /**
-     * @return a stream of the map values
-     * @throws JsonTreeException in case this node does exist but is not an object node or null
+     * @param toValue from JSON to Java type
+     * @return a Java {@link Map} of this {@link JsonMap}
+     * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11
      */
-    default Stream<E> values() {
-        return keys().map( this::get );
-    }
-
-    /**
-     * @param action call with each entry in the map in order of their declaration
-     * @throws JsonTreeException in case this node does exist but is not an object node or null
-     * @since 0.10
-     */
-    default void forEach( BiConsumer<String, ? super E> action ) {
-        // need to use keys() + get(key) because of wrapper type E is not accessible otherwise
-        keys().forEach( key -> action.accept( key, get( key ) ) );
+    default <T> Map<String, T> toMap( Function<E, T> toValue ) {
+        return entries().collect( Collectors.toMap( Map.Entry::getKey, e -> toValue.apply( e.getValue() ) ) );
     }
 
     /**
@@ -86,20 +59,20 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
      * <p>
      * This means the returned map always has same size as the original map.
      *
-     * @param memberToX transformer function
-     * @param <V>       type of the transformer output, entries of the map view
+     * @param projection transformer function
+     * @param <V>        type of the transformer output, entries of the map view
      * @return a lazily transformed map view of this map
      */
-    default <V extends JsonValue> JsonMap<V> viewAsMap( Function<E, V> memberToX ) {
-        final class JsonMapView extends CollectionView<JsonMap<E>> implements JsonMap<V> {
+    default <V extends JsonValue> JsonMap<V> project( Function<E, V> projection ) {
+        final class JsonMapProjection extends CollectionView<JsonMap<E>> implements JsonMap<V> {
 
-            private JsonMapView( JsonMap<E> viewed ) {
+            private JsonMapProjection( JsonMap<E> viewed ) {
                 super( viewed );
             }
 
             @Override
             public V get( String key ) {
-                return memberToX.apply( viewed.get( key ) );
+                return projection.apply( viewed.get( key ) );
             }
 
             @Override
@@ -107,6 +80,6 @@ public interface JsonMap<E extends JsonValue> extends JsonCollection {
                 return JsonMap.class;
             }
         }
-        return new JsonMapView( this );
+        return new JsonMapProjection( this );
     }
 }

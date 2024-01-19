@@ -80,30 +80,30 @@ class JsonListTest {
     @Test
     void testList_toListOfElementsThatExists_Undefined() {
         JsonList<JsonNumber> list = JsonMixed.of( "{}" ).getList( "missing", JsonNumber.class );
-        assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
+        assertEquals( List.of(), list.toListOfNonNullElements( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_Null() {
         JsonList<JsonNumber> list = JsonMixed.of( "null" ).asList( JsonNumber.class );
-        assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
+        assertEquals( List.of(), list.toListOfNonNullElements( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_Empty() {
         JsonList<JsonNumber> list = JsonMixed.of( "[]" ).asList( JsonNumber.class );
-        assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
+        assertEquals( List.of(), list.toListOfNonNullElements( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_OnlyNulls() {
         JsonList<JsonNumber> list = JsonMixed.of( "[null,null]" ).asList( JsonNumber.class );
-        assertEquals( List.of(), list.toListOfElementsThatExists( JsonNumber::intValue ) );
+        assertEquals( List.of(), list.toListOfNonNullElements( JsonNumber::intValue ) );
     }
 
     @Test
     void testList_toListOfElementsThatExists_Mixed() {
         JsonList<JsonNumber> list = JsonMixed.of( "[null,1,2,null,3]" ).asList( JsonNumber.class );
-        assertEquals( List.of( 1, 2, 3 ), list.toListOfElementsThatExists( JsonNumber::intValue ) );
+        assertEquals( List.of( 1, 2, 3 ), list.toListOfNonNullElements( JsonNumber::intValue ) );
     }
 }

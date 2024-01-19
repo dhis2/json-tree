@@ -27,8 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
+import org.hisp.dhis.jsontree.internal.Surly;
+
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * Common base class for JSON nodes that have children.
@@ -48,7 +50,8 @@ import static org.hisp.dhis.jsontree.JsonSchema.NodeType.OBJECT;
  * @author Jan Bernitt
  */
 @Validation( type = { ARRAY, OBJECT } )
-public interface JsonCollection extends JsonValue {
+@Validation.Ignore
+public interface JsonAbstractCollection extends JsonValue {
 
     /**
      * @return true, in case the collection exists but has no elements and is not {@code null}
@@ -124,12 +127,18 @@ public interface JsonCollection extends JsonValue {
         return new MultiMapView( object );
     }
 
-    abstract class CollectionView<T extends JsonCollection> implements JsonCollection {
+    abstract class CollectionView<T extends JsonAbstractCollection> implements
+        JsonAbstractCollection {
 
         protected final T viewed;
 
         protected CollectionView( T viewed ) {
             this.viewed = viewed;
+        }
+
+        @Surly @Override
+        public String path() {
+            return viewed.path();
         }
 
         @Override
@@ -155,6 +164,11 @@ public interface JsonCollection extends JsonValue {
         @Override
         public final boolean isAccessCached() {
             return viewed.isAccessCached();
+        }
+
+        @Surly @Override
+        public JsonTypedAccessStore getAccessStore() {
+            return viewed.getAccessStore();
         }
 
         @Override
