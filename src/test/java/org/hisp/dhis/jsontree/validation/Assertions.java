@@ -12,12 +12,12 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 class Assertions {
 
-    public static void assertValidationError( String actualJson, Class<? extends JsonAbstractObject<?>> schema,
+    public static Validation.Error assertValidationError( String actualJson, Class<? extends JsonAbstractObject<?>> schema,
         Validation.Rule expected, Object... args ) {
-        assertValidationError( JsonMixed.of( actualJson ), schema, expected, args );
+        return assertValidationError( JsonMixed.of( actualJson ), schema, expected, args );
     }
 
-    public static void assertValidationError( JsonAbstractObject<?> actual,
+    public static Validation.Error assertValidationError( JsonAbstractObject<?> actual,
         Class<? extends JsonAbstractObject<?>> schema,
         Validation.Rule expected, Object... args ) {
         JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> actual.validate( schema ),
@@ -27,5 +27,6 @@ class Assertions {
         Validation.Error error = errors.get( 0 );
         assertEquals( expected, error.rule(), "unexpected error type" );
         assertEquals( List.of( args ), error.args(), "unexpected error arguments" );
+        return error;
     }
 }

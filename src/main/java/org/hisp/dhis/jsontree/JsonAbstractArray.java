@@ -10,12 +10,15 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+
 /**
  * An "abstract" type that is expected to be backed by a JSON array.
  *
  * @since 0.11
  */
 @Validation.Ignore
+@Validation( type = ARRAY )
 public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractCollection, Iterable<E> {
 
     /**
@@ -32,7 +35,7 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
      * @since 0.11
      */
     default IntStream indexes() {
-        return isEmpty() ? IntStream.empty() : IntStream.range( 0, size() );
+        return isUndefined() || isEmpty() ? IntStream.empty() : IntStream.range( 0, size() );
     }
 
     @Surly
@@ -45,7 +48,7 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
      * @return this list as a {@link Stream}, if this node does not exist or is JSON {@code null} the stream is empty
      */
     default Stream<E> stream() {
-        return isUndefined() ? Stream.empty() : StreamSupport.stream( spliterator(), false );
+        return isUndefined() || isEmpty() ? Stream.empty() : StreamSupport.stream( spliterator(), false );
     }
 
     /**

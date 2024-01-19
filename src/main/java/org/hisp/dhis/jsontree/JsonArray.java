@@ -41,7 +41,6 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
  *
  * @author Jan Bernitt
  */
-@Validation( type = ARRAY )
 @Validation.Ignore
 public interface JsonArray extends JsonAbstractArray<JsonValue> {
 

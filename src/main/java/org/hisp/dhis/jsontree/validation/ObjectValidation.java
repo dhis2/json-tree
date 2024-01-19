@@ -53,7 +53,10 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  * @author Jan Bernitt
  * @since 0.11
  */
-record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<String, PropertyValidation> properties) {
+record ObjectValidation(
+    @Surly Class<? extends JsonValue> schema,
+    @Surly Map<String, Class<?>> types,
+    @Surly Map<String, PropertyValidation> properties) {
 
     private static final Map<Class<? extends JsonValue>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
 
@@ -81,15 +84,16 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
 
     private static ObjectValidation createInstance( Class<? extends JsonValue> schema ) {
         Map<String, PropertyValidation> properties = new HashMap<>();
+        Map<String, Class<?>> types = new HashMap<>();
         propertyMethods( schema )
             .forEach( m -> {
                 String property = captureProperty( m, schema );
                 if ( property != null ) {
                     properties.put( property, fromMethod( m ) );
+                    types.put( property, m.getReturnType() );
                 }
             } );
-        // TODO properties.put( "", fromValueTypeDeclaration( schema ) );
-        return new ObjectValidation( schema, Map.copyOf( properties ) );
+        return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( properties ) );
     }
 
     private static <T extends JsonValue> String captureProperty( Method m, Class<T> schema ) {
@@ -160,11 +164,24 @@ record ObjectValidation(@Surly Class<? extends JsonValue> schema, @Surly Map<Str
     @Maybe
     private static PropertyValidation fromAnnotations( AnnotatedElement src ) {
         PropertyValidation meta = fromMetaAnnotations( src );
-        if ( !src.isAnnotationPresent( Validation.class ) ) return meta;
-        PropertyValidation main = toPropertyValidation( src.getAnnotation( Validation.class ) );
+        Validation validation = getValidationAnnotation( src );
+        if ( validation == null ) return meta;
+        PropertyValidation main = toPropertyValidation( validation );
         return (meta == null ? main : meta.overlay( main ))
             .withCustoms( toValidators( src ) )
             .withItems( fromItems( src ) );
+    }
+
+    @Maybe
+    private static Validation getValidationAnnotation( AnnotatedElement src ) {
+        Validation a = src.getAnnotation( Validation.class );
+        if (a != null) return a;
+        if (!(src instanceof Class<?> c )) return null;
+        for (Class<?> si : c.getInterfaces()) {
+            a = getValidationAnnotation( si );
+            if (a != null) return a;
+        }
+        return null;
     }
 
     @Maybe

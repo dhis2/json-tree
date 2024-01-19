@@ -11,6 +11,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.util.stream.StreamSupport.stream;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * An "abstract" type that is expected to be backed by a JSON object.
@@ -18,6 +19,7 @@ import static java.util.stream.StreamSupport.stream;
  * @since 0.11
  */
 @Validation.Ignore
+@Validation( type = OBJECT )
 public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCollection {
 
     /**
@@ -78,7 +80,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @since 0.11 (as Stream)
      */
     default Stream<String> keys() {
-        return isUndefined() ? Stream.empty() : stream( node().keys().spliterator(), false );
+        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().keys().spliterator(), false );
     }
 
     /**

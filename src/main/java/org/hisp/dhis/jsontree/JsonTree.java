@@ -225,6 +225,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
     private static final class LazyJsonObject extends LazyJsonNode<Iterable<Entry<String, JsonNode>>>
         implements Iterable<Entry<String, JsonNode>> {
 
+        private Integer size;
+
         LazyJsonObject( JsonTree tree, String path, int start ) {
             super( tree, path, start );
         }
@@ -262,8 +264,10 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
 
         @Override
         public int size() {
-            // only compute value when needed
-            return isEmpty() ? 0 : (int) StreamSupport.stream( spliterator(), false ).count();
+            if (isEmpty()) return 0;
+            if (size != null) return size;
+            size = (int) StreamSupport.stream( spliterator(), false ).count();
+            return size;
         }
 
         @Override
@@ -383,6 +387,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
 
     private static final class LazyJsonArray extends LazyJsonNode<Iterable<JsonNode>> implements Iterable<JsonNode> {
 
+        private Integer size;
+
         LazyJsonArray( JsonTree tree, String path, int start ) {
             super( tree, path, start );
         }
@@ -418,8 +424,10 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
 
         @Override
         public int size() {
-            // only compute value when needed
-            return isEmpty() ? 0 : (int) StreamSupport.stream( spliterator(), false ).count();
+            if (isEmpty()) return 0;
+            if (size != null) return size;
+            size = (int) StreamSupport.stream( spliterator(), false ).count();
+            return size;
         }
 
         @Override

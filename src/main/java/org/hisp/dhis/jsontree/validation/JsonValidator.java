@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree.validation;
 
+import org.hisp.dhis.jsontree.JsonAbstractObject;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonPathException;
 import org.hisp.dhis.jsontree.JsonSchemaException;
@@ -20,22 +21,23 @@ import java.util.Set;
  */
 public final class JsonValidator {
 
-    public static void validate( JsonValue value, Class<? extends JsonValue> schema ) {
+    public static void validate( JsonValue value, Class<? extends JsonAbstractObject<?>> schema ) {
         validate( value, schema, Set.of() );
     }
 
-    public static void validate( JsonValue value, Class<? extends JsonValue> schema, Validation.Rule... rules ) {
+    public static void validate( JsonValue value, Class<? extends JsonAbstractObject<?>> schema, Validation.Rule... rules ) {
         validate( value, schema, Set.of( rules ) );
     }
 
-    public static void validate( JsonValue value, Class<? extends JsonValue> schema, Set<Validation.Rule> rules ) {
-        if ( !value.exists() ) {
+    public static void validate( JsonValue value, Class<? extends JsonAbstractObject<?>> schema, Set<Validation.Rule> rules ) {
+        if (!schema.isInterface())
+            throw new IllegalArgumentException("Must be an interface bust was: "+schema);
+        if ( !value.exists() )
             throw new JsonPathException( value.path(),
-                String.format( "Required %s %s node does not exist", value.path(), schema.getSimpleName() ) );
-        }
+                String.format( "Value %s %s node does not exist", value.path(), schema.getSimpleName() ) );
         if ( !value.isObject() ) {
             throw new JsonTreeException(
-                String.format( "Required %s %s node is not an object but a %s", value.path(), schema.getSimpleName(),
+                String.format( "Value %s %s node is not an object but a %s", value.path(), schema.getSimpleName(),
                     value.type() ) );
         }
 

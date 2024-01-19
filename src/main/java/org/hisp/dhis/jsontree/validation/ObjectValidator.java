@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree.validation;
 
+import org.hisp.dhis.jsontree.JsonAbstractObject;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonNodeType;
 import org.hisp.dhis.jsontree.JsonValue;
@@ -78,9 +79,15 @@ record ObjectValidator(
         return BY_SCHEMA_TYPE.computeIfAbsent( schema,
             type -> {
                 Map<String, Validator> res = new TreeMap<>();
-                Map<String, PropertyValidation> properties = analyse.get().properties();
+                ObjectValidation objectValidation = analyse.get();
+                Map<String, PropertyValidation> properties = objectValidation.properties();
                 properties.forEach( ( property, validation ) -> {
-                    Validator validator = create( validation, property );
+                    Validator propValidator = create( validation, property );
+                    Class<?> propType = objectValidation.types().get( property );
+                    Validator propTypeValidator =JsonAbstractObject.class.isAssignableFrom( propType )
+                        ? getInstance( (Class<? extends JsonValue>) propType )
+                        : null;
+                    Validator validator = Guard.of( propValidator, propTypeValidator );
                     if ( validator != null ) res.put( property, validator );
                 } );
                 Validator dependentRequired = createDependentRequired( properties );
@@ -370,7 +377,7 @@ record ObjectValidator(
             double actual = value.number().doubleValue();
             if ( actual < limit )
                 addError.accept( Error.of( Rule.MINIMUM, value,
-                    "must be >= %d but was: %d", limit, actual ) );
+                    "must be >= %f but was: %f", limit, actual ) );
         }
     }
 
@@ -382,7 +389,7 @@ record ObjectValidator(
             double actual = value.number().doubleValue();
             if ( actual > limit )
                 addError.accept( Error.of( Rule.MAXIMUM, value,
-                    "must be <= %d but was: %d", limit, actual ) );
+                    "must be <= %f but was: %f", limit, actual ) );
         }
     }
 
@@ -394,7 +401,7 @@ record ObjectValidator(
             double actual = value.number().doubleValue();
             if ( actual <= limit )
                 addError.accept( Error.of( Rule.EXCLUSIVE_MINIMUM, value,
-                    "must be > %d but was: %d", limit, actual ) );
+                    "must be > %f but was: %f", limit, actual ) );
         }
     }
 
@@ -406,7 +413,7 @@ record ObjectValidator(
             double actual = value.number().doubleValue();
             if ( actual >= limit )
                 addError.accept( Error.of( Rule.EXCLUSIVE_MAXIMUM, value,
-                    "must be < %d but was: %d", limit, actual ) );
+                    "must be < %f but was: %f", limit, actual ) );
         }
     }
 
@@ -418,7 +425,7 @@ record ObjectValidator(
             double actual = value.number().doubleValue();
             if ( actual % n > 0d )
                 addError.accept( Error.of( Rule.MULTIPLE_OF, value,
-                    "must be a multiple of %d but was: %d", n, actual ) );
+                    "must be a multiple of %f but was: %f", n, actual ) );
         }
     }
 

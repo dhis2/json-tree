@@ -42,7 +42,6 @@ import java.util.function.Consumer;
  * @see org.hisp.dhis.jsontree.Validator
  * @since 0.11
  */
-@Inherited
 @Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Validation {
@@ -70,7 +69,7 @@ public @interface Validation {
         MINIMUM, MAXIMUM, EXCLUSIVE_MINIMUM, EXCLUSIVE_MAXIMUM, MULTIPLE_OF,
 
         // array values
-        MIN_ITEMS, MAX_ITEMS, UNIQUE_ITEMS, MIN_CONTAINS, MAX_CONTAINS,
+        MIN_ITEMS, MAX_ITEMS, UNIQUE_ITEMS,
 
         // object values
         MIN_PROPERTIES, MAX_PROPERTIES, REQUIRED, DEPENDENT_REQUIRED

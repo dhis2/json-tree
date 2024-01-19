@@ -1,6 +1,9 @@
 package org.hisp.dhis.jsontree;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.joining;
 
 /**
  * Thrown when an JSON input does not match its JSON schema description.
@@ -12,7 +15,7 @@ public final class JsonSchemaException extends IllegalArgumentException {
     public record Info(JsonValue value, Class<? extends JsonValue> schema, List<Validation.Error> errors) {}
 
     public JsonSchemaException( String message, Info info ) {
-        super( message );
+        super( message+toString( info.errors() ) );
         this.info = info;
     }
 
@@ -20,10 +23,7 @@ public final class JsonSchemaException extends IllegalArgumentException {
         return info;
     }
 
-    @Override public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append( super.toString() );
-        info.errors.forEach( e -> str.append( "\t" ).append( e ).append( "\n" ) );
-        return str.toString();
+    private static String toString(List<Validation.Error> errors) {
+        return errors.stream().map( e -> "\n\t"+ e.toString()).collect( joining());
     }
 }

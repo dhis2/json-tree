@@ -28,6 +28,8 @@
 package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonSchemaException.Info;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -48,7 +50,6 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
  *
  * @author Jan Bernitt
  */
-@Validation( type = OBJECT )
 @Validation.Ignore
 public interface JsonObject extends JsonAbstractObject<JsonValue> {
 
@@ -124,63 +125,11 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @throws JsonPathException   when this node does not exist
      * @throws JsonTreeException   when this node is not an object
      * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
-     * @see #asObject(Class, boolean, String)
      */
     default <T extends JsonObject> T asObject( Class<T> type )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
-        return asObject( type, true, "" );
-    }
-
-    /**
-     * "Cast" and check against provided object shape.
-     * <p>
-     * In contrast to {@link #as(Class)} this method does check that this object {@link #exists()}, that it is indeed an
-     * object node and that it has all {@link Required} values expected for the provided object type.
-     *
-     * @param type      expected object type
-     * @param recursive true to apply the check to nested {@link JsonObject}s
-     * @param path      currently checked root object (for recursion, start with empty)
-     * @param <T>       type check and of the result
-     * @return this node as the provided object type
-     * @throws JsonPathException   when this node does not exist
-     * @throws JsonTreeException   when this node is not an object
-     * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
-     */
-    default <T extends JsonObject> T asObject( Class<T> type, boolean recursive, String path )
-        throws JsonPathException, JsonTreeException, JsonSchemaException {
-        if ( !exists() ) {
-            throw new JsonPathException( path,
-                String.format( "Required %s %s node does not exist", path, type.getSimpleName() ) );
-        }
-        if ( !isObject() ) {
-            throw new JsonTreeException(
-                String.format( "Required %s %s node is not an object but a %s", path, type.getSimpleName(),
-                    node().getType() ) );
-        }
         T obj = as( type );
-        String parent = path.isEmpty() ? "" : path + ".";
-        stream( type.getMethods() )
-            .filter( m -> m.getParameterCount() == 0 && m.isAnnotationPresent( Required.class ) )
-            .sorted( Comparator.comparing( Method::getName ) )
-            .forEach( m -> {
-                try {
-                    Object property = m.invoke( obj );
-                    if ( property == null || property instanceof JsonValue value && !value.exists() ) {
-                        String message = String.format( "Required %s node property %s was not defined",
-                            type.getSimpleName(), parent + m.getName() );
-                        throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
-                    }
-                    if ( recursive && property instanceof JsonObject value && !value.isNull() ) {
-                        @SuppressWarnings( "unchecked" )
-                        Class<? extends JsonObject> memberType = (Class<? extends JsonObject>) m.getReturnType();
-                        ((JsonObject) property).asObject( memberType, true, parent + m.getName() );
-                    }
-                } catch ( ReflectiveOperationException ex ) {
-                    String message = String.format( "Required %s node property %s had invalid value: %s",
-                        type.getSimpleName(), parent + m.getName(), ex.getMessage() );
-                    throw new JsonSchemaException( message, new Info( this, type, List.of() ) );
-                }
-            } );
+        JsonValidator.validate( obj, type, Rule.TYPE, Rule.REQUIRED );
         return obj;
     }
 
