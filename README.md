@@ -95,7 +95,7 @@ JsonObject o = JsonMixed.of(json);
 
 ## User Types as JSON Tree
 The pre-defined basic types of the virtual tree can easily be extended and mixed
-with user defined ones. Like they basic types thse are defined using `interface`s.
+with user defined ones. Like the basic types these are defined using `interface`s.
 Properties are represented as `default` methods but build a typical "object model".
 
 ```java
