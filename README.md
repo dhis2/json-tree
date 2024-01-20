@@ -2,285 +2,206 @@
 
 [![main](https://github.com/dhis2/json-tree/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/dhis2/json-tree/actions/workflows/main.yml)
 
-A lazily parsed JSON object tree library
+A lazily parsed JSON virtual tree library.
 
-See [CONTRIBUTING.md]() for information about contributing and maintaining this project.
+Virtually here means it represents the "wanted" or "expected" tree structure.
+On leaf value access it is checked against the actual tree structure underneath.
+As a result tree navigation is painless and checks only have to be made for 
+and when values are resolved (extracted) from the actual tree.
 
-## Virtual vs Actual Tree
+Lazily parsed means only the parts of the underlying tree that are used during
+navigation will be parsed into nodes which remember offsets ("pointers") into 
+the original JSON input.
+Untouched parts of a JSON tree are skipped over until they are used.
+This makes for a fast and memory efficient implementation that is convenient 
+to query and extend with user types that can handle inputs in MB range without
+problem. 
 
-A `JsonVirtualTree` is a **virtual** tree of `JsonValue` nodes, each type
-with a node type specific interface.
+## Java to JSON Tree
+Crating a (virtual) tree from Java types is handled by the `Json` API.
 
-Underlying implementation of the actual JSON document is the `JsonTree`
-which exposes all node types as `JsonNode`.
+```java
+JsonString s  = Json.of("hello"); // note: not quoted
+JsonBoolean b = Json.of(true);
+JsonInteger i = Json.of(42);
+JsonNumber d  = Json.of(42.01d);
+JsonArray a   = Json.array(Json::of, List.of(1,2,3));
+JsonObject o  = Json.object(Json::of, Map.of("a", 4, "b", 2));
+```
 
-| `JsonValue` API                                                      | `JsonNode` API                                             |
-|----------------------------------------------------------------------|------------------------------------------------------------|
-| `JsonValue#node()` =>                                                | <= `JsonValue.of(node)`                                    |
-| **virtual** 👻                                                       | **actual** ☠️                                              |
-| high level abstraction                                               | low level abstraction                                      |
-| the JSON assumed                                                     | the actual JSON                                            |
-| navigation without requiring existence (no exceptions)               | navigation demands existence (otherwise throws exceptions) |
-| extendable tree API                                                  | non-extendable tree API                                    |
-| `JsonObject`, `JsonArray`, `JsonNumber`, `JsonString`, `JsonBoolean` | `JsonNode` + `JsonNodeType`                                |
-| `JsonValue` (API all above have in common)                           | `JsonNode`                                                 |
-| `JsonMixed` (API of all above togehter)                              | `JsonNode`                                                 |
-| read-only (with views)                                               | immutable (transformations to new trees)                   |
-| extendable user type mapping (see `JsonTypedAccessStore`)            | build in mapping to JDK types                              |
+Arrays and objects can also be composed in various ways using a builder API.
+```java
+JsonArray a = Json.array(arr -> arr.addNumber(1).addString("yes"));
+a.toJson();   // [1,"yes"]
 
-"Casting" to Node Types (casting does not check that actual document matches the target)
+JsonObject o = Json.object(obj -> obj.addNumber("x", 1).addNumber("y", 5));
+o.toJson();   // {"x":1,"y":5}
 
-* `JsonValue   as(Class<T extends JsonValue> type)`
-* `JsonList<T> asList(Class<T extends JsonValue> type)`
-* `JsonMap<V>  asMap(Class<V extends JsonValue> type)`
-* and more of similar kind...
+JsonObject o2 = Json.object(obj -> obj.addArray("points", 
+        arr -> arr.addNumbers(IntStream.range(0,10))));
+o2.toJson();  // {"points":[1,2,3,4,5,6,7,8,9]}
+```
 
-Tree Navigation
+## JSON to JSON Tree
+Creating a (virtual) tree from JSON is handled by the `JsonMixed` and 
+`JsonValue` API.
 
-* `JsonValue  get(String path)`
-* `JsonObject getObject(String path)`
-* `JsonArray  getArray(String path)`
-* `JsonNumber getNumber(String path)`
-* `JsonBoolean getBoolean(String path)`
-* `JsonValue  get(int index)`
-* and more of similar kind...
+`JsonMixed` is the union type (top type) of all basic JSON types, 
+while `JsonValue` is the base type (bottom type) of all basic JSON types.
 
-Drilling down...
+The basic types are `JsonBoolean`, `JsonNumber`, `JsonInteger`, `JsonString`, 
+`JsonArray` and `JsonObject`. 
+An instance of these represents a virtual tree node. 
+Their values are then accessed using the appropriate access method on the node.
 
-    JsonString str=root.getObject("a").getArray("b").getString(3)
-    // or
-    JsonString str=root.getString("a.b[3]")
+Representing JSON `null` as type is not necessary since in a virtual tree each
+node can be of the type that is wanted, not the type actually present.
+Hence, the actual value for any type can be undefined or defined `null`.
 
-Traversing the **actual** tree to find nodes
+```java
+JsonString s = JsonMixed.of("null");
+s.exists();      // true, it is a NULL node in the actual tree
+s.isUndefined(); // true
+s.isNull();      // true
+s.isString();    // false
+s.type();        // JsonNodeType.NULL
+s.string();      // throws exception
+```
+Whereas nodes can actually not exist. For example:
+```java
+JsonString s = JsonMixed.of("{}").getString("x"); // the member "x" as string
+s.exists();      // false
+s.isUndefined(); // true
+s.type();        // null (Java null)        
+s.string();      // throws exception
+```
 
-* `JsonValue#node()`: from virtual to actual JSON tree 🗱
-* `JsonObect#find`: return first matching `JsonValue`
-* `JsonNode#visit`: visit matching nodes
-* `JsonNode#find`: return first matching `JsonNode`
-* `JsonNode#count`: count matching nodes
+When creating a virtual tree using `JsonMixed.of` or `JsonValue.of` the
+input must be valid JSON. This means a string must be quoted.
 
-Assertions using standard JUnit asserts
+```java
+JsonString s = JsonMixed.of("\"null\"");
+s.isString();    // true
+s.string();      // "null" (as Java string)
+s.type();        // JsonNodeType.STRING
+```
 
-    JsonObject settings = GET("/me/settings").content(HttpStatus.OK);
-    
-    assertTrue(settings.isObject());
-    assertFalse(settings.isEmpty());
-    assertTrue(settings.get("keyMessageSmsNotification").exists());
-    assertEquals("en",settings.getString("keyUiLocale").string());
+Equally, to create a virtual tree for a complex JSON input:
+```java
+String json = """
+{ "key": "answer", "value": [1,2,3] }"""
+JsonObject o = JsonMixed.of(json);
+```
 
-Virtual tree: no exceptions before assert 🤩
+## User Types as JSON Tree
+The pre-defined basic types of the virtual tree can easily be extended and mixed
+with user defined ones. Like they basic types thse are defined using `interface`s.
+Properties are represented as `default` methods but build a typical "object model".
 
-## Custom Node Types
-
-The `JsonValue` API can easily be extended with user defined types by simply declaring an interface with `default`
+```java
+interface JsonAddress extends JsonObject {
+    default String street() {
+        return getString("street").string();
+    }
+    default Integer no() {
+        return getNumber("no").integer();
+    }
+    default JsonString city() {
+        return getString("city");
+    }
+}
+```
+While being convenient to define the user has full control over conversions and 
+weather or not properties are used on the value level or the node level (city).
+This also allows to put any kind of logic, e.g. for defaults in the property
 methods.
 
 ```java
-public interface JsonPasswordValidation extends JsonObject
-{
-    default boolean isValidPassword()
-    {
-        return getBoolean( "isValidPassword" ).booleanValue();
-    }
-
-    default String getErrorMessage()
-    {
-        return getString( "errorMessage" ).string();
-    }
-}
+String json = """
+    {"street": "Elm", "no": 11, "city": "Oslo"}""";
+JsonObject obj = JsonMixed.of(json);
+JsonAddress a = obj.as(JsonAddress.class); // "viewing" the object as address
+a.street();        // = "Elm" (Java String)
+a.no();            // = 11 (Java Integer)
+a.city().exits();  // as city() is merely the node we can check for existence
+a.city().string(); // = "Oslo" (Java String)
 ```
 
-Use `as` or `asObject` to "cast" a `JsonValue` to a custom type:
-
-    JsonValue jsonValue = fetchPasswordValidation();
-    JsonPasswordValidation result = jsonValue.as(JsonPasswordValidation.class );
-    assertTrue(result.isValidPassword());
-    assertNull(result.getErrorMessage());
-
-Asserting a Schema or Structure
-
-    assertTrue(settings.isA(JsonPasswordValidation.class));
-
-Recursively checks that all primitive members or members annotated with `@Expected` as defined by the `JsonSettings`
-interface are present.
-
-When `asObject` is used instead of `as` the structural check is done implicitly and fails with an exception should the
-actual JSON not match the expectations defined by the provided user defined interface.
-
-### Mapping to POJO-like objects
-Mapping to actual POJO objects defined as `class` would negate many of the key benefits of the on demand 
-parsing and accessing the virtual tree API provides. This is why the mapping feature is slightly different
-in this library. 
-
-Again, the target types are defined as interfaces, but this time with abstract methods, for example:
+Entire domain models can easily be created using this approach.
 
 ```java
-interface Account extends JsonValue
-{
-  boolean isEnabled();
-  String getUsername();
-  List<Membership> memberships();
-}
-interface Membership extends JsonValue
-{
-   String getGroup();
-   Date getJoinDate();
-}
-```
-This would match JSON of the structure:
-```json
-{
-  "enabled": true,
-  "username": "TomTraubert",
-  "memberships": [{ "group": "BigTimers", "joinDate": "1973-02-05" }]
-}
-```
-The return types of the abstract methods support most common JDK types 
-such as primitives and their wrappers, strings, dates and collections.
-Further types can be added to the default "mapper" using `JsonTypedAccess.GLOBAL.add`. 
+import org.hisp.dhis.jsontree.JsonObject;
 
-A complete custom mapping can be created via `new JsonTypedAccess()` and using `init()` and `add(...)` 
-or by writing your own implementation of a `JsonTypedAccessStore`.
-A custom store is then used by creating your root via `JsonValue.of(json, myStore)`.
-
-Note that the mapping to target types defined by abstract interface method can be mixed 
-with using default methods and lazily mapped collection types such as the `JsonList`.
-
-A POJO-like interace can extend any of the `JsonValue` tree types. 
-It makes most sense to either chose `JsonValue` to inherit as little further methods,
-or to extends `JsonObject` to also allow use of the generic object accessor methods
-on the POJO-like data type.
-
-## Building or Streaming JSON
-
-The `JsonBuilder` API is used to:
-
-* create a `JsonNode` document (and from there a JSON `String`)
-* directly stream JSON to an output stream while it is built
-
-While it is an "append-only" API to support true streaming its use of lambda function arguments allows to compose the
-output in a convenient and flexible way.
-
-Ad-hoc creation of `JsonNode`:
-
-    JsonNode obj = JsonBuilder.createObject(
-        obj -> obj.addString( "name","value" ));
+interface JsonUser extends JsonObject {
     
-    String json = obj.getDeclaration();
+    default JsonAddress address() {
+        return get( "address", JsonAddress.class );
+    }
+    default JsonList<JsonAddress> alternativeAddresses() {
+        return getList( "alternativeAddresses", JsonAddress.class );
+    }
+}
+```
 
-Directly writing JSON to an output stream:
+## Validation of a JSON Tree
+Since a virtual tree describes the "wanted" structure a common use case is to
+check the actual input against this target. For that objects can be validated.
 
-    JsonBuilder.streamObject( out, 
-        obj -> obj.addString( "name", "value" ) );
+```java
+JsonObject obj = JsonMixed.of("""
+    {"city": "Oslo", "no": 42}""");
+obj.validate(JsonAddress.class); // node types match, no exception
+```
 
-## Manipulating JSON Trees
+The basic types all include validation for the JSON node type. This means a
+string property cannot have an actual value that is a JSON number and so on.
+To extend the requirements additional validations can be added using 
+annotations.
 
-The `JsonNode` trees are effectively immutable tree structures. However, they
-can be "manipulated" returning a new changed tree root.
+```java
+interface JsonAddress extends JsonObject {
 
-To replace any type of node with a different node use `JsonNode#replaceWith`.
-The new JSON `String` provided is expected to be valid JSON. To add members to
-an object node `JsonNode#addMember` is used, again expecting value name and JSON
-value. Both return a new changed root.
+    @Required
+    default String street() {
+        return getString( "street" ).string();
+    }
 
-If only a subtree of an existing tree should be extracted
-use `JsonNode#extract();`
+    @Validation( required = YesNo.YES, minimum = 1)
+    default Integer no() {
+        return getNumber( "no" ).integer();
+    }
 
-**OBS!** This technique should be used with care it each changes produces a new
-tree that needs to be parsed again.
+    default JsonString city() {
+        return getString( "city" );
+    }
+}
+```
+With the improved `JsonAddress` declaration a JSON input that lacks `street`
+would now result in an error and throw an exception when calling 
+`obj.validate(JsonAdress.class)`.
 
-## Searching JSON Trees
+Validation is either given by annotating with `@Validation` or using meta
+annotation like `@Required`. The provided validation follow the JSON schema
+validation specification.
 
-As the `JsonValue` represents a virtual or expected tree the API to search this
-tree is quite limited as any search has to build upon the `JsonNode` API which
-reflects the actual tree.
+Users can simply create their own meta annotations by annotating the annotation 
+type with `@Validation`, for example:
 
-For convenience the subtree of a `JsonObject` can be searched for an object node
-that satisfies a particular shape and test `Predicate`:
+```java
+@Target( ElementType.METHOD )
+@Retention( RetentionPolicy.RUNTIME )
+@Validation( mininum = 1 )
+public @interface Positive {}
+```
 
-    JsonObject match = root.find(JsonPasswordValidation.class, obj -> true);
-
-The above example finds the first object in the subtree that successfully can
-be "cast" to a `JsonPasswordValidation`
-object, meaning it has all its `@Expected` members (same as
-calling `obj.isA(JsonPasswordValidation.class)` on each potential object in the
-subtree).
-
-    JsonObject match = root.find(JsonPasswordValidation.class, 
-        validation -> !validation.isValidPassword());
-
-In the second example the search is extended by an additional `Predicate`. Now
-the `match` is the first `JsonPasswordValidation` which has an invalid password.
-
-The `JsonObject#find` method builds upon the `JsonNode` API which offers a
-broader range of search capabilities.
-
-* `JsonNode#find`: find first match that satisfy both a
-  particular `JsonNodeType` and a `Predicate<JsonNode>`
-* `JsonNode#count`: count all matches that satisfy both a
-  particular `JsonNodeType` and `Predicate<JsonNode>`
-* `JsonNode#visit`: fully generic subtree visitor in form of
-  a `Consumer<JsonNode>`
-
-The downside of the `JsonNode` search API is that dealing with `JsonNode` is
-more cumbersome and can throw exceptions. Therefore, it can make sense to
-implement specific search methods similar to `JsonObject#find` in types that
-extend `JsonObject`.
-
-Searching for an element in a `JsonList` can be done using a number of methods:
-
-* `containsAll`: check if the list contains a subset
-* `contains`: check at least one matching element is contained
-* `containsUnique`: check that one and only one matching element is contained
-* `count`: count elements matching a `Predicate` test
-* `first`: find the first matching element
-
-These can be used with `JsonArray` as any array can be treated as list
-using `array.asList(JsonValue.class)`.
-
-Another way to test qualities of a `JsonList` is to use one of its `toList`
-methods to turn it into a `java.util.List`. The assumption is that the values in
-that target list should not be instances of `JsonValue` but "usual" java types.
-Therefore, any of the `toList` methods accepts a `Function` to transform
-the `JsonValue` elements into some java type. At the point of conversion the
-virtual tree is accessing the actual tree which means exceptions are possible.
-To mitigate this risk there are different variations of the `toList` method:
-
-* `toList(Function)`: map and expect all source values to exist, otherwise
-  throws exception
-* `toList(Function, Object)`: map and use provided default value in
-  case source element does not exist
-* `toListOfElementsThatExists(Function)`: map and skip those source elements
-  of the list that do not exist
-
-A reason for elements to not exist in an existing array are view
-transformations. For example if the original elements are objects and a member
-is extracted for the view not all object might have this member.
-
-## View-Transform JSON Trees
-
-While the actual `JsonNode` tree is immutable and never changed for any
-virtual `JsonValue` tree layered on top of it the virtual tree can be virtually
-transformed. This means looking at the same tree through a lens that maps the
-affected level to some other way to look at it. Usually this is used to 
-"de-objectify" elements or members by mapping to one of their members.
-
-Available view transformations are:
-
-* `JsonArray#viewAsList`: maps all array elements resulting in a list view
-* `JsonList#viewAsList`: maps all list elements resulting in a list view
-* `JsonMap#viewAsMap`: maps all map members resulting in a map view
-* `JsonObject#viewAsObject`: maps all object member values resulting in an
-  object view
-* `JsonMultiMap#viewAsMultiMap`: maps all values of the multimap lists
-  returning in a multimap view
-
-Given the list `[{"x":1},{"x":2}]` the view 
-
-    array.viewAsList(e -> e.asObject().getNumber("x"))
-
-would result in an effective value of `[1,2]`. Again, the underlying tree is not
-changed by this, just the view on top of it is transformed.
-
-Such transformation can be especially useful in combination with `toList` to
-extract a list of the values that can be compared to an expected list.
+A simple structural compatibility check can be done using `isA` and `asA`.
+```java
+JsonObject obj = JsonMixed.of("""
+{"city": "Oslo", "no": 0, "street": "Elm" }""");
+obj.isA(JsonAddress.class);                 // true
+JsonAddress a = obj.asA(JsonAddress.class); // success
+// however
+obj.validate(JsonAddress.class);            // throws exception, no < 1
+```
+The `isA` and `asA` do only validate rules of `TYPE` and `REQUIRED`. 
+The violation of the `MINIMUM` constraint is ignored for `isA` and `asA`. 
