@@ -241,7 +241,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
             return JsonNodeType.OBJECT;
         }
 
-        @Override
+        @Surly @Override
         public JsonNode get( String path ) {
             if ( path.isEmpty() ) return this;
             if ( "$".equals( path ) ) return getRoot();
@@ -398,7 +398,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
             return elements( true );
         }
 
-        @Override
+        @Surly @Override
         public JsonNode get( String path ) {
             if ( path.isEmpty() ) return this;
             if ( "$".equals( path ) ) return getRoot();

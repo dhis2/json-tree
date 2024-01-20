@@ -41,19 +41,19 @@ public interface Json {
         return value == null ? ofNull() : of( value.charValue() );
     }
 
-    static JsonNumber of( boolean value ) {
+    static JsonBoolean of( boolean value ) {
         return JsonMixed.of( String.valueOf( value ) );
     }
 
-    static JsonNumber of( Boolean value ) {
+    static JsonBoolean of( Boolean value ) {
         return value == null ? ofNull() : JsonMixed.of( value.toString() );
     }
 
-    static JsonNumber of( int value ) {
+    static JsonInteger of( int value ) {
         return JsonMixed.of( String.valueOf( value ) );
     }
 
-    static JsonNumber of( long value ) {
+    static JsonInteger of( long value ) {
         return JsonMixed.of( String.valueOf( value ) );
     }
 

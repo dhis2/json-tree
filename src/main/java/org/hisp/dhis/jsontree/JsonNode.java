@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Surly;
+
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.Map.Entry;
@@ -158,6 +160,7 @@ public interface JsonNode extends Serializable {
      * @return The parent of this node or the root itself if this node is the root
      * @since 0.6
      */
+    @Surly
     default JsonNode getParent() {
         return isRoot() ? this : getRoot().get( parentPath( getPath() ) );
     }
@@ -170,6 +173,7 @@ public interface JsonNode extends Serializable {
      * @return the node at the given path
      * @throws JsonPathException when no such node exists in the subtree of this node
      */
+    @Surly
     default JsonNode get( String path )
         throws JsonPathException {
         if ( path.isEmpty() ) return this;

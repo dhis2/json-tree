@@ -6,6 +6,7 @@ import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonString;
 import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation;
+import org.hisp.dhis.jsontree.Validation.NodeType;
 
 import java.util.List;
 
@@ -42,10 +43,10 @@ public interface JsonSchema {
          *
          * @return Validation succeeds if the type of the instance matches at least one of the given type.
          */
-        @Validation( type = STRING, varargs = YES, uniqueItems = YES, minItems = 0, maxItems = 6, enumeration = Validation.NodeType.class )
-        default List<Validation.NodeType> $type() {
+        @Validation( type = STRING, varargs = YES, uniqueItems = YES, minItems = 0, maxItems = 6, enumeration = NodeType.class )
+        default List<NodeType> $type() {
             return get( "type" ).toListFromVarargs( JsonString.class,
-                str -> str.parsed( Validation.NodeType::valueOf ) );
+                str -> str.parsed( NodeType::valueOf ) );
         }
 
         /**

@@ -27,18 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonSchemaException.Info;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
-import java.lang.reflect.Method;
 import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
 import java.util.function.Function;
 
 import static java.util.Arrays.stream;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * Represents a JSON object node.
@@ -109,7 +104,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      */
     default boolean isA( Class<? extends JsonObject> type ) {
         try {
-            asObject( type );
+            asA( type );
             return true;
         } catch ( JsonPathException | JsonTreeException | JsonSchemaException ex ) {
             return false;
@@ -126,7 +121,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @throws JsonTreeException   when this node is not an object
      * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
      */
-    default <T extends JsonObject> T asObject( Class<T> type )
+    default <T extends JsonObject> T asA( Class<T> type )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
         T obj = as( type );
         JsonValidator.validate( obj, type, Rule.TYPE, Rule.REQUIRED );

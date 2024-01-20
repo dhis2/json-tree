@@ -69,7 +69,7 @@ import static java.lang.Character.toLowerCase;
  *
  * @author Jan Bernitt
  */
-final class JsonVirtualTree implements JsonMixed, JsonInteger, Serializable {
+final class JsonVirtualTree implements JsonMixed, Serializable {
 
     public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonTypedAccess.GLOBAL, null );
 

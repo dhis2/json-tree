@@ -28,10 +28,8 @@
 package org.hisp.dhis.jsontree.validation;
 
 import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonNodeType;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonPathException;
-import org.hisp.dhis.jsontree.JsonSchemaException;
 import org.hisp.dhis.jsontree.JsonTreeException;
 import org.hisp.dhis.jsontree.Required;
 import org.hisp.dhis.jsontree.Validation;
@@ -134,42 +132,42 @@ class JsonRequiredTest {
     @Test
     void testAsObject_NotAnObjectArray() {
         JsonMixed obj = JsonMixed.of( "[]" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
         assertEquals( "Value $ JsonFoo node is not an object but a ARRAY", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectString() {
         JsonMixed obj = JsonMixed.of( "\"nop\"" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
         assertEquals( "Value $ JsonFoo node is not an object but a STRING", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNumber() {
         JsonMixed obj = JsonMixed.of( "13" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
         assertEquals( "Value $ JsonFoo node is not an object but a NUMBER", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectBoolean() {
         JsonMixed obj = JsonMixed.of( "true" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
         assertEquals( "Value $ JsonFoo node is not an object but a BOOLEAN", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNull() {
         JsonMixed obj = JsonMixed.of( "null" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asObject( JsonFoo.class ) );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
         assertEquals( "Value $ JsonFoo node is not an object but a NULL", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectUndefined() {
         JsonObject obj = JsonMixed.of( "{}" ).getObject( "x" );
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> obj.asObject( JsonFoo.class ) );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> obj.asA( JsonFoo.class ) );
         assertEquals( "Value $.x JsonFoo node does not exist", ex.getMessage() );
     }
 
@@ -191,7 +189,6 @@ class JsonRequiredTest {
 
     @Test
     void testAsObject_NotAnObjectRecursive() {
-        //language=json
         String json = """
             {"a": [], "b":{"bar":""}}""";
         JsonMixed obj = JsonMixed.of( json );
@@ -199,7 +196,7 @@ class JsonRequiredTest {
     }
 
     private static void assertAsObject( Class<? extends JsonObject> of, String actualJson ) {
-        JsonObject obj = JsonMixed.ofNonStandard( actualJson ).asObject( of );
+        JsonObject obj = JsonMixed.ofNonStandard( actualJson ).asA( of );
         assertNotNull( obj );
         assertTrue( of.isInstance( obj ) );
     }
