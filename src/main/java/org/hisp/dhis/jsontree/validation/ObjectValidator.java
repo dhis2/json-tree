@@ -1,6 +1,9 @@
 package org.hisp.dhis.jsontree.validation;
 
+import org.hisp.dhis.jsontree.JsonAbstractArray;
 import org.hisp.dhis.jsontree.JsonAbstractObject;
+import org.hisp.dhis.jsontree.JsonList;
+import org.hisp.dhis.jsontree.JsonMap;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonNodeType;
 import org.hisp.dhis.jsontree.JsonValue;
@@ -11,7 +14,9 @@ import org.hisp.dhis.jsontree.Validation.Validator;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -60,9 +66,12 @@ record ObjectValidator(
      */
 
     /**
-     * "JVM Cache" for schemas that are already transformed to a {@link ObjectValidator} entry
+     * "JVM Cache" for schemas that are already transformed to a {@link ObjectValidator} entry.
+     * OBS! Cannot use {@code ConcurrentHashMap} because while computing an entry another entry might be added within
+     * (as a consequence of) the computation.
      */
-    private static final Map<Class<? extends JsonValue>, ObjectValidator> BY_SCHEMA_TYPE = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends JsonValue>, ObjectValidator> BY_SCHEMA_TYPE = new ConcurrentSkipListMap<>(
+        Comparator.comparing( Class::getName ));
 
     @Surly
     public static ObjectValidator getInstance( Class<? extends JsonValue> schema ) {
@@ -83,10 +92,7 @@ record ObjectValidator(
                 Map<String, PropertyValidation> properties = objectValidation.properties();
                 properties.forEach( ( property, validation ) -> {
                     Validator propValidator = create( validation, property );
-                    Class<?> propType = objectValidation.types().get( property );
-                    Validator propTypeValidator =JsonAbstractObject.class.isAssignableFrom( propType )
-                        ? getInstance( (Class<? extends JsonValue>) propType )
-                        : null;
+                    Validator propTypeValidator = getInstance( objectValidation.types().get( property ) );
                     Validator validator = Guard.of( propValidator, propTypeValidator );
                     if ( validator != null ) res.put( property, validator );
                 } );
@@ -94,6 +100,33 @@ record ObjectValidator(
                 if ( dependentRequired != null ) res.put( "", dependentRequired );
                 return new ObjectValidator( type, Map.copyOf( res ) );
             } );
+    }
+
+    /**
+     * TODO support for types like:
+     * {@code JsonIntList extends JsonList<JsonInteger>}
+     * So a Class type where the actual type for the list element needs to be extracted from the superinterfaces.
+     * {@code JsonSet<T> extends JsonAbstractArray<T>} or {@code JsonMultiMap<T> extends JsonAbstractObject<JsonList<T>>}
+     * So types with parameters where the actual type of the object or array needs to be found from a combination of the
+     * actual type arguments and the superinterfaces.
+     */
+    @Maybe
+    private static Validator getInstance( java.lang.reflect.Type type ) {
+        if (type instanceof Class<?> cType) {
+            if (JsonAbstractObject.class.isAssignableFrom( cType )) {
+                @SuppressWarnings( "unchecked" )
+                Class<? extends JsonValue> schema = (Class<? extends JsonValue>) cType;
+                return getInstance( schema );
+            }
+        }
+        if (type instanceof ParameterizedType pt ) {
+            Class<?> rawType = (Class<?>) pt.getRawType();
+            if ( JsonMap.class.isAssignableFrom( rawType ) )
+                return Items.of(getInstance( pt.getActualTypeArguments()[0] ));
+            if ( JsonList.class.isAssignableFrom( rawType ) )
+                return Items.of( getInstance( pt.getActualTypeArguments()[0] ));
+        }
+        return null;
     }
 
     @Maybe
@@ -114,7 +147,7 @@ record ObjectValidator(
         Validator type = anyOf.isEmpty() ? null : new Type( anyOf );
         Validator anyType = create( node.values() );
         Validator typeDependent = byType.isEmpty() ? null : new TypeDependent( byType );
-        Validator items = node.items() == null ? null : new Items( create( node.items(), property ) );
+        Validator items = node.items() == null ? null : Items.of( create( node.items(), property ) );
         Validator whenDefined = Guard.of( type, Guard.of( anyType, Guard.of( typeDependent, items ) ) );
 
         PropertyValidation.ValueValidation values = node.values();
@@ -195,7 +228,7 @@ record ObjectValidator(
         } );
         List<Validator> all = new ArrayList<>();
         groupPropertyRole.forEach( ( group, members ) -> {
-            if ( members.values().stream().allMatch( role -> !role.endsWith( "!" ) && !role.endsWith( "?" ) ) ) {
+            if ( members.values().stream().noneMatch( ObjectValidator::isDependentRequiredRole )) {
                 all.add( new DependentRequiredCodependent( Set.copyOf( members.keySet() ) ) );
             } else {
                 List<String> present = members.entrySet().stream().filter( e ->
@@ -203,12 +236,19 @@ record ObjectValidator(
                 List<String> absent = members.entrySet().stream().filter( e ->
                     e.getValue().endsWith( "?" ) ).map( Map.Entry::getKey ).toList();
                 List<String> dependent = members.entrySet().stream().filter( e ->
-                    !e.getValue().endsWith( "!" ) && !e.getValue().endsWith( "?" ) ).map( Map.Entry::getKey ).toList();
+                    !isDependentRequiredRole( e.getValue() ) ).map( Map.Entry::getKey ).toList();
+                List<String> exclusiveDependent = members.entrySet().stream().filter( e ->
+                    e.getValue().endsWith( "^" ) ).map( Map.Entry::getKey ).toList();
                 all.add(
-                    new DependentRequired( Set.copyOf( present ), Set.copyOf( absent ), Set.copyOf( dependent ) ) );
+                    new DependentRequired( Set.copyOf( present ), Set.copyOf( absent ),
+                        Set.copyOf( dependent ), Set.copyOf( exclusiveDependent ) ) );
             }
         } );
         return All.of( all.toArray( Validator[]::new ) );
+    }
+
+    private static boolean isDependentRequiredRole(String group) {
+        return group.endsWith( "?" ) || group.endsWith( "!" ) || group.endsWith( "^" );
     }
 
     /*
@@ -277,6 +317,10 @@ record ObjectValidator(
     }
 
     private record Items(Validator each) implements Validator {
+
+        static Validator of(Validator each) {
+            return each == null ? null : new Items( each );
+        }
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
@@ -503,25 +547,43 @@ record ObjectValidator(
     }
 
     private record DependentRequired(Set<String> present, Set<String> absent,
-                                     Set<String> dependents) implements Validator {
+                                     Set<String> dependents, Set<String> exclusiveDependent) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isObject() ) return;
             if ( !present.isEmpty() && present.stream().anyMatch( value::isUndefined ) ) return;
             if ( !absent.isEmpty() && absent.stream().anyMatch( not( value::isUndefined ) ) ) return;
-            if ( dependents.stream().anyMatch( value::isUndefined ) ) {
+            if ( !dependents.isEmpty() && dependents.stream().anyMatch( value::isUndefined ) ) {
                 Set<String> missing = Set.copyOf( dependents.stream().filter( value::isUndefined ).toList() );
                 if ( present.isEmpty() ) {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
-                        "object without any of %s all of %s are required, missing: %s", absent, dependents, missing ) );
+                        "object without any of %s requires all of %s, missing: %s", absent, dependents, missing ) );
                 } else if ( absent.isEmpty() ) {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
-                        "object with any of %s all of %s are required, missing: %s", present, dependents, missing ) );
+                        "object with any of %s requires all of %s, missing: %s", present, dependents, missing ) );
                 } else {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
-                        "object with any of %s or without any of %s all of %s are required, missing: %s", present,
+                        "object with any of %s or without any of %s requires all of %s, missing: %s", present,
                         absent, dependents, missing ) );
+                }
+            }
+            if (!exclusiveDependent.isEmpty()) {
+                Set<String> defined = Set.copyOf( exclusiveDependent.stream().filter( p -> !value.isUndefined( p ) ).toList());
+                if (defined.size() == 1) return; // it is exclusively defined => OK
+                if (present.isEmpty() && absent.isEmpty()) {
+                    addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
+                        "object requires one but only one of %s, but has: %s", exclusiveDependent, defined ) );
+                } else if ( present.isEmpty() ) {
+                    addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
+                        "object without any of %s requires one but only one of %s, but has: %s", absent, exclusiveDependent, defined ) );
+                } else if ( absent.isEmpty() ) {
+                    addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
+                        "object with any of %s requires one but only one of %s, but has: %s", present, exclusiveDependent, defined ) );
+                } else {
+                    addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
+                        "object with any of %s or without any of %s requires one but only one of %s, but has: %s", present,
+                        absent, exclusiveDependent, defined ) );
                 }
             }
         }

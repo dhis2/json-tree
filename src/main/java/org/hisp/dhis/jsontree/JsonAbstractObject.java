@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.util.ArrayList;
@@ -135,11 +136,12 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
 
     /**
      * @param schema the schema to validate against
+     * @param rules optional set of {@link Rule}s to check, empty includes all
      * @throws JsonSchemaException      in case this value does not match the given schema
      * @throws IllegalArgumentException in case the given schema is not an interface
      * @since 0.11
      */
-    default void validate( Class<? extends JsonAbstractObject<?>> schema ) {
-        JsonValidator.validate( this, schema );
+    default void validate( Class<? extends JsonAbstractObject<?>> schema, Rule... rules ) {
+        JsonValidator.validate( this, schema, rules );
     }
 }

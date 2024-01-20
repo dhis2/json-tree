@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *
  * @author Jan Bernitt
  */
-class JsonRequiredTest {
+class JsonValidationRequiredTest {
 
     public interface JsonFoo extends JsonObject {
 

@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
+import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
@@ -20,7 +21,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  * @see JsonValue
  * @since 0.8
  */
-@Validation( type = { OBJECT, ARRAY, STRING, NUMBER, BOOLEAN } )
+@Validation( type = { OBJECT, ARRAY, STRING, NUMBER, INTEGER, BOOLEAN } )
 @Validation.Ignore
 public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean, JsonInteger {
 
