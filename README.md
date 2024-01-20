@@ -18,7 +18,7 @@ to query and extend with user types that can handle inputs in MB range without
 problem. 
 
 ## Java to JSON Tree
-Crating a (virtual) tree from Java types is handled by the `Json` API.
+Creating a (virtual) tree from Java types is handled by the `Json` API.
 
 ```java
 JsonString s  = Json.of("hello"); // note: not quoted
@@ -89,7 +89,11 @@ s.type();        // JsonNodeType.STRING
 Equally, to create a virtual tree for a complex JSON input:
 ```java
 String json = """
-{ "key": "answer", "value": [1,2,3] }"""
+    {   
+        "key": "points", 
+        "value": [1,2,3] 
+    }
+    """;
 JsonObject o = JsonMixed.of(json);
 ```
 
@@ -116,9 +120,12 @@ weather or not properties are used on the value level or the node level (city).
 This also allows for logic in the property methods (e.g. for default or parsing).
 
 ```java
-String json = """
-    {"street": "Elm", "no": 11, "city": "Oslo"}""";
-JsonObject obj = JsonMixed.of(json);
+JsonObject obj = JsonMixed.of("""
+    {
+        "street": "Elm", 
+        "no": 11, 
+        "city": "Oslo"
+    }""");
 JsonAddress a = obj.as(JsonAddress.class); // "viewing" the object as address
 a.street();        // = "Elm" (Java String)
 a.no();            // = 11 (Java Integer)
@@ -130,7 +137,6 @@ Entire domain models can easily be created using this approach.
 
 ```java
 interface JsonUser extends JsonObject {
-    
     default JsonAddress address() {
         return get( "address", JsonAddress.class );
     }
@@ -146,7 +152,10 @@ check the actual input against this target. For that objects can be validated.
 
 ```java
 JsonObject obj = JsonMixed.of("""
-    {"city": "Oslo", "no": 42}""");
+    {
+        "city": "Oslo", 
+        "no": 42
+    }""");
 obj.validate(JsonAddress.class); // node types match, no exception
 ```
 
@@ -157,17 +166,14 @@ annotations.
 
 ```java
 interface JsonAddress extends JsonObject {
-
     @Required
     default String street() {
         return getString( "street" ).string();
     }
-
     @Validation( required = YesNo.YES, minimum = 1)
     default Integer no() {
         return getNumber( "no" ).integer();
     }
-
     default JsonString city() {
         return getString( "city" );
     }
@@ -191,14 +197,18 @@ type with `@Validation`, for example:
 public @interface Positive {}
 ```
 
-A simple structural compatibility check can be done using `isA` and `asA`.
+To check conformity with a given schema type `JsonObject::isA` can be used. 
+The `JsonObject::asA` is same as `JsonValue::as` with a validation check before
+the "cast".
 ```java
 JsonObject obj = JsonMixed.of("""
-{"city": "Oslo", "no": 0, "street": "Elm" }""");
+    {
+        "city": "Oslo", 
+        "no": 0, 
+        "street": "Elm"
+    }""");
 obj.isA(JsonAddress.class);                 // true
-JsonAddress a = obj.asA(JsonAddress.class); // success
-// however
-obj.validate(JsonAddress.class);            // throws exception, no < 1
+JsonAddress a = obj.asA(JsonAddress.class); // throws exception, no < 1
 ```
-The `isA` and `asA` do only validate rules of `TYPE` and `REQUIRED`. 
-The violation of the `MINIMUM` constraint is ignored for `isA` and `asA`. 
+Both `isA` and `asA` can also be limited to a given set of validation `Rule`
+types.

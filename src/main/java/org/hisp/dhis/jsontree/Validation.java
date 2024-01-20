@@ -332,6 +332,9 @@ public @interface Validation {
      * trigger.
      * <p>
      * If none of the properties in a group is marked any of the properties makes all others in the group required.
+     * <p>
+     * In addition, a property that is dependent required (not a trigger) can use the {@code ^} suffix if it is
+     * mutual exclusive to all other required properties that are marked equally.
      *
      * @return the names of the groups the annotated property belongs to
      */

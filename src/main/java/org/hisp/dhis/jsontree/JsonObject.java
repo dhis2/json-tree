@@ -100,11 +100,13 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * Uses the {@link Required} annotations present to check whether this object conforms to the provided type
      *
      * @param type object type to check
+     * @param rules optional set of {@link Rule}s to check, empty includes all
      * @return true if this is an object and has all {@link Required} members of the provided type
+     * @since 0.11 (in this form with rules parameter)
      */
-    default boolean isA( Class<? extends JsonObject> type ) {
+    default boolean isA( Class<? extends JsonObject> type, Rule... rules ) {
         try {
-            asA( type );
+            asA( type, rules );
             return true;
         } catch ( JsonPathException | JsonTreeException | JsonSchemaException ex ) {
             return false;
@@ -115,16 +117,18 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * "Cast" and check against provided object shape.
      *
      * @param type expected object type
+     * @param rules optional set of {@link Rule}s to check, empty includes all
      * @param <T>  type check and of the result
      * @return this node as the provided object type
      * @throws JsonPathException   when this node does not exist
      * @throws JsonTreeException   when this node is not an object
      * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
+     * @since 0.11 (in this form with rules parameter)
      */
-    default <T extends JsonObject> T asA( Class<T> type )
+    default <T extends JsonObject> T asA( Class<T> type, Rule... rules )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
         T obj = as( type );
-        JsonValidator.validate( obj, type, Rule.TYPE, Rule.REQUIRED );
+        JsonValidator.validate( obj, type, rules );
         return obj;
     }
 

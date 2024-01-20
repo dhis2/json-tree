@@ -55,7 +55,7 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  */
 record ObjectValidation(
     @Surly Class<? extends JsonValue> schema,
-    @Surly Map<String, Class<?>> types,
+    @Surly Map<String, Type> types,
     @Surly Map<String, PropertyValidation> properties) {
 
     private static final Map<Class<? extends JsonValue>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
@@ -84,13 +84,13 @@ record ObjectValidation(
 
     private static ObjectValidation createInstance( Class<? extends JsonValue> schema ) {
         Map<String, PropertyValidation> properties = new HashMap<>();
-        Map<String, Class<?>> types = new HashMap<>();
+        Map<String, Type> types = new HashMap<>();
         propertyMethods( schema )
             .forEach( m -> {
                 String property = captureProperty( m, schema );
                 if ( property != null ) {
                     properties.put( property, fromMethod( m ) );
-                    types.put( property, m.getReturnType() );
+                    types.put( property, m.getGenericReturnType() );
                 }
             } );
         return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( properties ) );
