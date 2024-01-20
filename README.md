@@ -96,7 +96,7 @@ JsonObject o = JsonMixed.of(json);
 ## User Types as JSON Tree
 The pre-defined basic types of the virtual tree can easily be extended and mixed
 with user defined ones. Like the basic types these are defined using `interface`s.
-Properties are represented as `default` methods but build a typical "object model".
+Properties are represented as `default` methods to build a typical "object model".
 
 ```java
 interface JsonAddress extends JsonObject {
@@ -113,8 +113,7 @@ interface JsonAddress extends JsonObject {
 ```
 While being convenient to define the user has full control over conversions and 
 weather or not properties are used on the value level or the node level (city).
-This also allows to put any kind of logic, e.g. for defaults in the property
-methods.
+This also allows for logic in the property methods (e.g. for default or parsing).
 
 ```java
 String json = """
@@ -130,8 +129,6 @@ a.city().string(); // = "Oslo" (Java String)
 Entire domain models can easily be created using this approach.
 
 ```java
-import org.hisp.dhis.jsontree.JsonObject;
-
 interface JsonUser extends JsonObject {
     
     default JsonAddress address() {
