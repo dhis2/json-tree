@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
@@ -22,7 +21,7 @@ class JsonValidationPatternTest {
 
     public interface JsonPatternExampleA extends JsonObject {
 
-        @Validation( pattern = "[0-9]{1,4}[A-Z]?")
+        @Validation( pattern = "[0-9]{1,4}[A-Z]?" )
         default String no() {
             return getString( "no" ).string();
         }

@@ -12,7 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 class Assertions {
 
-    public static Validation.Error assertValidationError( String actualJson, Class<? extends JsonAbstractObject<?>> schema,
+    public static Validation.Error assertValidationError( String actualJson,
+        Class<? extends JsonAbstractObject<?>> schema,
         Validation.Rule expected, Object... args ) {
         return assertValidationError( JsonMixed.of( actualJson ), schema, expected, args );
     }

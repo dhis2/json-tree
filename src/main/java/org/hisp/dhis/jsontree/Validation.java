@@ -38,6 +38,8 @@ import java.util.function.Consumer;
  * </ol>
  * Sources with higher priority override values of sources with lower priority unless the higher priority value is "undefined".
  *
+ * @see Required
+ *
  * @author Jan Bernitt
  * @see org.hisp.dhis.jsontree.Validator
  * @since 0.11
