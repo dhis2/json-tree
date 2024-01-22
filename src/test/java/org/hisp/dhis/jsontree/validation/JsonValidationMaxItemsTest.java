@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Set;
 
-import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -26,7 +25,7 @@ class JsonValidationMaxItemsTest {
 
     public interface JsonMaxItemsExampleA extends JsonObject {
 
-        @Validation( maxItems = 2, required = YES)
+        @Validation( maxItems = 2, required = YES )
         default List<String> names() {
             return getArray( "names" ).stringValues();
         }
@@ -34,7 +33,7 @@ class JsonValidationMaxItemsTest {
 
     public interface JsonMaxItemsExampleB extends JsonObject {
 
-        @Validation( maxItems = 3)
+        @Validation( maxItems = 3 )
         default JsonList<JsonInteger> points() {
             return getList( "points", JsonInteger.class );
         }

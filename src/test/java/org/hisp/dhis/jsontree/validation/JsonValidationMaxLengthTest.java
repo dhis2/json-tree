@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
-import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -23,7 +22,7 @@ class JsonValidationMaxLengthTest {
 
     public interface JsonMaxLengthExampleA extends JsonObject {
 
-        @Validation( maxLength = 2, required = YES)
+        @Validation( maxLength = 2, required = YES )
         default String name() {
             return getString( "name" ).string();
         }

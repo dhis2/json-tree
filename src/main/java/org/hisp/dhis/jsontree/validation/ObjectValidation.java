@@ -165,11 +165,16 @@ record ObjectValidation(
     private static PropertyValidation fromAnnotations( AnnotatedElement src ) {
         PropertyValidation meta = fromMetaAnnotations( src );
         Validation validation = getValidationAnnotation( src );
-        if ( validation == null ) return meta;
-        PropertyValidation main = toPropertyValidation( validation );
-        return (meta == null ? main : meta.overlay( main ))
-            .withCustoms( toValidators( src ) )
-            .withItems( fromItems( src ) );
+        PropertyValidation main = validation == null ? null : toPropertyValidation( validation );
+        List<Validation.Validator> validators = toValidators( src );
+        PropertyValidation items = fromItems( src );
+        PropertyValidation base = meta == null ? main : meta.overlay( main );
+        if (base == null && items == null && validators.isEmpty()) return null;
+        if (base == null)
+            base = new PropertyValidation( Set.of(), null, null, null, null, null, null );
+        return base
+            .withCustoms( validators )
+            .withItems( items );
     }
 
     @Maybe

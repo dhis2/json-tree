@@ -167,6 +167,7 @@ annotations.
 ```java
 interface JsonAddress extends JsonObject {
     @Required
+    @Validation( maxLength = 50 )
     default String street() {
         return getString( "street" ).string();
     }
@@ -174,6 +175,7 @@ interface JsonAddress extends JsonObject {
     default Integer no() {
         return getNumber( "no" ).integer();
     }
+    @Validation( maxLength = 50 )
     default JsonString city() {
         return getString( "city" );
     }

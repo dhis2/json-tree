@@ -12,7 +12,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 import java.util.Set;
 
-import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -34,7 +33,7 @@ class JsonValidationMaxPropertiesTest {
 
     public interface JsonMaxPropertiesExampleB extends JsonObject {
 
-        @Validation( maxProperties = 3)
+        @Validation( maxProperties = 3 )
         default JsonMap<JsonInteger> points() {
             return getMap( "points", JsonInteger.class );
         }
@@ -64,9 +63,11 @@ class JsonValidationMaxPropertiesTest {
     @Test
     void testMaxProperties_TooMany() {
         assertValidationError( """
-            {"config":{"hey": 1, "ho": 2, "silver": 3}}""", JsonMaxPropertiesExampleA.class, Rule.MAX_PROPERTIES, 2, 3 );
+                {"config":{"hey": 1, "ho": 2, "silver": 3}}""", JsonMaxPropertiesExampleA.class, Rule.MAX_PROPERTIES, 2,
+            3 );
         assertValidationError( """
-            {"points":{"x": 1, "y":  2, "z": 3, "w": 5}}""", JsonMaxPropertiesExampleB.class, Rule.MAX_PROPERTIES, 3, 4 );
+                {"points":{"x": 1, "y":  2, "z": 3, "w": 5}}""", JsonMaxPropertiesExampleB.class, Rule.MAX_PROPERTIES, 3,
+            4 );
     }
 
     @Test
