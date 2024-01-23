@@ -1,6 +1,5 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonAbstractArray;
 import org.hisp.dhis.jsontree.JsonAbstractObject;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
@@ -19,13 +18,14 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -66,33 +66,40 @@ record ObjectValidator(
      */
 
     /**
-     * "JVM Cache" for schemas that are already transformed to a {@link ObjectValidator} entry.
-     * OBS! Cannot use {@code ConcurrentHashMap} because while computing an entry another entry might be added within
-     * (as a consequence of) the computation.
+     * "JVM Cache" for schemas that are already transformed to a {@link ObjectValidator} entry. OBS! Cannot use
+     * {@code ConcurrentHashMap} because while computing an entry another entry might be added within (as a consequence
+     * of) the computation.
      */
     private static final Map<Class<? extends JsonValue>, ObjectValidator> BY_SCHEMA_TYPE = new ConcurrentSkipListMap<>(
-        Comparator.comparing( Class::getName ));
+        Comparator.comparing( Class::getName ) );
 
     @Surly
     public static ObjectValidator getInstance( Class<? extends JsonValue> schema ) {
-        return getInstance( schema, () -> ObjectValidation.getInstance( schema ) );
+        return getInstance( schema, new HashSet<>() );
+    }
+
+    @Surly
+    private static ObjectValidator getInstance( Class<? extends JsonValue> schema, Set<Class<?>> currentlyResolved ) {
+        return getInstance( schema, () -> ObjectValidation.getInstance( schema ), currentlyResolved );
     }
 
     @Surly
     public static ObjectValidator getInstance( ObjectValidation obj ) {
-        return getInstance( obj.schema(), () -> obj );
+        return getInstance( obj.schema(), () -> obj, new HashSet<>() );
     }
 
     private static ObjectValidator getInstance( Class<? extends JsonValue> schema,
-        Supplier<ObjectValidation> analyse ) {
+        Supplier<ObjectValidation> analyse, Set<Class<?>> currentlyResolved ) {
         return BY_SCHEMA_TYPE.computeIfAbsent( schema,
             type -> {
+                currentlyResolved.add( type );
                 Map<String, Validator> res = new TreeMap<>();
                 ObjectValidation objectValidation = analyse.get();
                 Map<String, PropertyValidation> properties = objectValidation.properties();
                 properties.forEach( ( property, validation ) -> {
                     Validator propValidator = create( validation, property );
-                    Validator propTypeValidator = getInstance( objectValidation.types().get( property ) );
+                    Validator propTypeValidator = getInstance( objectValidation.types().get( property ),
+                        currentlyResolved );
                     Validator validator = Guard.of( propValidator, propTypeValidator );
                     if ( validator != null ) res.put( property, validator );
                 } );
@@ -111,20 +118,21 @@ record ObjectValidator(
      * actual type arguments and the superinterfaces.
      */
     @Maybe
-    private static Validator getInstance( java.lang.reflect.Type type ) {
-        if (type instanceof Class<?> cType) {
-            if (JsonAbstractObject.class.isAssignableFrom( cType )) {
+    private static Validator getInstance( java.lang.reflect.Type type, Set<Class<?>> currentlyResolved ) {
+        if ( type instanceof Class<?> cType ) {
+            if ( JsonAbstractObject.class.isAssignableFrom( cType ) ) {
                 @SuppressWarnings( "unchecked" )
                 Class<? extends JsonValue> schema = (Class<? extends JsonValue>) cType;
-                return getInstance( schema );
+                if ( currentlyResolved.contains( schema ) ) return new Lazy( schema, new AtomicReference<>() );
+                return getInstance( schema, currentlyResolved );
             }
         }
-        if (type instanceof ParameterizedType pt ) {
+        if ( type instanceof ParameterizedType pt ) {
             Class<?> rawType = (Class<?>) pt.getRawType();
             if ( JsonMap.class.isAssignableFrom( rawType ) )
-                return Items.of(getInstance( pt.getActualTypeArguments()[0] ));
+                return Items.of( getInstance( pt.getActualTypeArguments()[0], currentlyResolved ) );
             if ( JsonList.class.isAssignableFrom( rawType ) )
-                return Items.of( getInstance( pt.getActualTypeArguments()[0] ));
+                return Items.of( getInstance( pt.getActualTypeArguments()[0], currentlyResolved ) );
         }
         return null;
     }
@@ -228,7 +236,7 @@ record ObjectValidator(
         } );
         List<Validator> all = new ArrayList<>();
         groupPropertyRole.forEach( ( group, members ) -> {
-            if ( members.values().stream().noneMatch( ObjectValidator::isDependentRequiredRole )) {
+            if ( members.values().stream().noneMatch( ObjectValidator::isDependentRequiredRole ) ) {
                 all.add( new DependentRequiredCodependent( Set.copyOf( members.keySet() ) ) );
             } else {
                 List<String> present = members.entrySet().stream().filter( e ->
@@ -247,7 +255,7 @@ record ObjectValidator(
         return All.of( all.toArray( Validator[]::new ) );
     }
 
-    private static boolean isDependentRequiredRole(String group) {
+    private static boolean isDependentRequiredRole( String group ) {
         return group.endsWith( "?" ) || group.endsWith( "!" ) || group.endsWith( "^" );
     }
 
@@ -318,7 +326,7 @@ record ObjectValidator(
 
     private record Items(Validator each) implements Validator {
 
-        static Validator of(Validator each) {
+        static Validator of( Validator each ) {
             return each == null ? null : new Items( each );
         }
 
@@ -568,21 +576,25 @@ record ObjectValidator(
                         absent, dependents, missing ) );
                 }
             }
-            if (!exclusiveDependent.isEmpty()) {
-                Set<String> defined = Set.copyOf( exclusiveDependent.stream().filter( p -> !value.isUndefined( p ) ).toList());
-                if (defined.size() == 1) return; // it is exclusively defined => OK
-                if (present.isEmpty() && absent.isEmpty()) {
+            if ( !exclusiveDependent.isEmpty() ) {
+                Set<String> defined = Set.copyOf(
+                    exclusiveDependent.stream().filter( p -> !value.isUndefined( p ) ).toList() );
+                if ( defined.size() == 1 ) return; // it is exclusively defined => OK
+                if ( present.isEmpty() && absent.isEmpty() ) {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
                         "object requires one but only one of %s, but has: %s", exclusiveDependent, defined ) );
                 } else if ( present.isEmpty() ) {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
-                        "object without any of %s requires one but only one of %s, but has: %s", absent, exclusiveDependent, defined ) );
+                        "object without any of %s requires one but only one of %s, but has: %s", absent,
+                        exclusiveDependent, defined ) );
                 } else if ( absent.isEmpty() ) {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
-                        "object with any of %s requires one but only one of %s, but has: %s", present, exclusiveDependent, defined ) );
+                        "object with any of %s requires one but only one of %s, but has: %s", present,
+                        exclusiveDependent, defined ) );
                 } else {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
-                        "object with any of %s or without any of %s requires one but only one of %s, but has: %s", present,
+                        "object with any of %s or without any of %s requires one but only one of %s, but has: %s",
+                        present,
                         absent, exclusiveDependent, defined ) );
                 }
             }
@@ -598,6 +610,19 @@ record ObjectValidator(
                 addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
                     "object with any of %1$s all of %1$s are required, missing: %s", codependent,
                     Set.copyOf( codependent.stream().filter( value::isUndefined ).toList() ) ) );
+        }
+    }
+
+    private record Lazy(Class<? extends JsonValue> of, AtomicReference<Validator> instance) implements Validator {
+
+        @Override
+        public void validate( JsonMixed value, Consumer<Error> addError ) {
+            Validator validator = instance.get();
+            if ( validator == null ) {
+                validator = getInstance( of );
+                instance.set( validator );
+            }
+            validator.validate( value, addError );
         }
     }
 }
