@@ -209,7 +209,7 @@ JsonObject obj = JsonMixed.of("""
         "no": 0, 
         "street": "Elm"
     }""");
-obj.isA(JsonAddress.class);                 // true
+obj.isA(JsonAddress.class);                 // false, no < 1
 JsonAddress a = obj.asA(JsonAddress.class); // throws exception, no < 1
 ```
 Both `isA` and `asA` can also be limited to a given set of validation `Rule`
