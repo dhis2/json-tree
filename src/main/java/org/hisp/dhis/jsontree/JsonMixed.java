@@ -1,5 +1,8 @@
 package org.hisp.dhis.jsontree;
 
+import java.io.Reader;
+import java.nio.file.Path;
+
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
@@ -72,5 +75,23 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      */
     static JsonMixed ofNonStandard( String json ) {
         return of( JsonNode.ofNonStandard( json ) );
+    }
+
+    /**
+     * @param file a JSON file in UTF-8 encoding
+     * @return root of the virtual tree representing the given JSON input
+     * @since 1.0
+     */
+    static JsonMixed of( Path file ) {
+        return of(JsonNode.of( file ));
+    }
+
+    /**
+     * @param json JSON input
+     * @return root of the virtual tree representing the given JSON input
+     * @since 1.0
+     */
+    static JsonMixed of( Reader json ) {
+        return of(JsonNode.of( json, null ));
     }
 }

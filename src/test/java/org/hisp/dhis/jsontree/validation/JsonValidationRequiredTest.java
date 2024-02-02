@@ -40,7 +40,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
-import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;

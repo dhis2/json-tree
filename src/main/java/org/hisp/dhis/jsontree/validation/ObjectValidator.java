@@ -34,6 +34,7 @@ import java.util.stream.Stream;
 
 import static java.lang.Double.isNaN;
 import static java.util.function.Predicate.not;
+import static java.util.stream.Collectors.toMap;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
@@ -186,9 +187,11 @@ record ObjectValidator(
 
     @Maybe
     private static Validator create( @Maybe PropertyValidation.StringValidation strings ) {
-        return strings == null ? null : All.of(
-            strings.anyOfNames() == Enum.class ? null : new EnumAnyString(
-                Stream.of( strings.anyOfNames().getEnumConstants() ).map( Enum::name ).toList() ),
+        if (strings == null) return null;
+        return All.of(
+            strings.anyOfStrings().isEmpty()
+                ? null
+                : new EnumAnyString( strings.anyOfStrings(), strings.caseInsensitive().isYes() ),
             strings.minLength() <= 0 ? null : new MinLength( strings.minLength() ),
             strings.maxLength() <= 1 ? null : new MaxLength( strings.maxLength() ),
             strings.pattern().isEmpty() ? null : new Pattern( strings.pattern() ) );
@@ -230,6 +233,8 @@ record ObjectValidator(
             if ( values != null && !values.dependentRequired().isEmpty() ) {
                 values.dependentRequired().forEach( role -> {
                     String group = role.replace( "!", "" ).replace( "?", "" );
+                    if (group.startsWith( "=" )) group = group.substring( 1 );
+                    if (group.contains( "=" )) group = group.substring( 0, group.indexOf( '=' ) );
                     groupPropertyRole.computeIfAbsent( group, key -> new HashMap<>() ).put( name, role );
                 } );
             }
@@ -239,16 +244,21 @@ record ObjectValidator(
             if ( members.values().stream().noneMatch( ObjectValidator::isDependentRequiredRole ) ) {
                 all.add( new DependentRequiredCodependent( Set.copyOf( members.keySet() ) ) );
             } else {
-                List<String> present = members.entrySet().stream().filter( e ->
+                Set<Map.Entry<String, String>> memberEntries = members.entrySet();
+                List<String> present = memberEntries.stream().filter( e ->
                     e.getValue().endsWith( "!" ) ).map( Map.Entry::getKey ).toList();
-                List<String> absent = members.entrySet().stream().filter( e ->
+                List<String> absent = memberEntries.stream().filter( e ->
                     e.getValue().endsWith( "?" ) ).map( Map.Entry::getKey ).toList();
-                List<String> dependent = members.entrySet().stream().filter( e ->
+                List<String> dependent = memberEntries.stream().filter( e ->
                     !isDependentRequiredRole( e.getValue() ) ).map( Map.Entry::getKey ).toList();
-                List<String> exclusiveDependent = members.entrySet().stream().filter( e ->
+                List<String> exclusiveDependent = memberEntries.stream().filter( e ->
                     e.getValue().endsWith( "^" ) ).map( Map.Entry::getKey ).toList();
+                Map<String, String> equals = memberEntries.stream()
+                    .filter( e -> e.getValue().contains( "=" ) )
+                    .collect(
+                        toMap( Map.Entry::getKey, e -> e.getValue().substring( e.getValue().indexOf( '=' ) + 1 ) ) );
                 all.add(
-                    new DependentRequired( Set.copyOf( present ), Set.copyOf( absent ),
+                    new DependentRequired( Set.copyOf( present ), Set.copyOf( absent ), Map.copyOf( equals ),
                         Set.copyOf( dependent ), Set.copyOf( exclusiveDependent ) ) );
             }
         } );
@@ -256,7 +266,7 @@ record ObjectValidator(
     }
 
     private static boolean isDependentRequiredRole( String group ) {
-        return group.endsWith( "?" ) || group.endsWith( "!" ) || group.endsWith( "^" );
+        return group.endsWith( "?" ) || group.endsWith( "!" ) || group.endsWith( "^" ) || group.contains( "=" );
     }
 
     /*
@@ -368,15 +378,16 @@ record ObjectValidator(
     string values
      */
 
-    private record EnumAnyString(List<String> constants) implements Validator {
+    private record EnumAnyString(Set<String> constants, boolean caseInsensitive) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isString() ) return;
             String actual = value.string();
-            if ( !constants.contains( actual ) )
+            if ( !constants.contains( actual ) && !caseInsensitive
+                || caseInsensitive && constants.stream().noneMatch( name -> name.equalsIgnoreCase( actual ) ))
                 addError.accept( Error.of( Rule.ENUM, value,
-                    "must be one of %s but was: %s", constants, actual ) );
+                    "must be one of %s"+(caseInsensitive ? " (case insensitive)" : "")+" but was: %s", constants, actual ) );
         }
     }
 
@@ -554,17 +565,32 @@ record ObjectValidator(
         }
     }
 
-    private record DependentRequired(Set<String> present, Set<String> absent,
+    /**
+     * The dependent required validator.
+     *
+     * @param present a set of properties that all need to be present to trigger
+     * @param absent a set of properties that all need to be absent to trigger
+     * @param equals a map from property to value that all need to match the current value to trigger
+     * @param dependents a set of properties that become required when triggering
+     * @param exclusiveDependent a set of properties that become required when triggering but are also mutual exclusive
+     */
+    private record DependentRequired(Set<String> present, Set<String> absent, Map<String,String> equals,
                                      Set<String> dependents, Set<String> exclusiveDependent) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isObject() ) return;
-            if ( !present.isEmpty() && present.stream().anyMatch( value::isUndefined ) ) return;
-            if ( !absent.isEmpty() && absent.stream().anyMatch( not( value::isUndefined ) ) ) return;
+            boolean presentNotMet = !present.isEmpty() && present.stream().anyMatch( value::isUndefined );
+            boolean absentNotMet = !absent.isEmpty() && absent.stream().anyMatch( not( value::isUndefined ) );
+            boolean equalsNotMet = !equals.isEmpty() && equals.entrySet().stream()
+                .anyMatch( e -> !e.getValue().equals( value.getString( e.getKey() ).string() ) );
+            if ( presentNotMet || absentNotMet || equalsNotMet ) return;
             if ( !dependents.isEmpty() && dependents.stream().anyMatch( value::isUndefined ) ) {
                 Set<String> missing = Set.copyOf( dependents.stream().filter( value::isUndefined ).toList() );
-                if ( present.isEmpty() ) {
+                if (!equals.isEmpty()) {
+                    addError.accept(  Error.of( Rule.DEPENDENT_REQUIRED, value,
+                        "object with %s requires all of %s, missing: %s", equals, dependents, missing ));
+                } else if ( present.isEmpty() ) {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
                         "object without any of %s requires all of %s, missing: %s", absent, dependents, missing ) );
                 } else if ( absent.isEmpty() ) {
@@ -580,7 +606,10 @@ record ObjectValidator(
                 Set<String> defined = Set.copyOf(
                     exclusiveDependent.stream().filter( p -> !value.isUndefined( p ) ).toList() );
                 if ( defined.size() == 1 ) return; // it is exclusively defined => OK
-                if ( present.isEmpty() && absent.isEmpty() ) {
+                if ( !equals.isEmpty()) {
+                    addError.accept(  Error.of( Rule.DEPENDENT_REQUIRED, value,
+                        "object with %s requires one but only one of %s, but has: %s", equals, exclusiveDependent, defined ));
+                } else if ( present.isEmpty() && absent.isEmpty() ) {
                     addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
                         "object requires one but only one of %s, but has: %s", exclusiveDependent, defined ) );
                 } else if ( present.isEmpty() ) {

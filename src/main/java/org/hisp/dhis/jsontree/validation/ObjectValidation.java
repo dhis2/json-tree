@@ -45,6 +45,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
 /**
@@ -221,7 +222,8 @@ record ObjectValidation(
     @Surly
     private static PropertyValidation toPropertyValidation( Class<?> type ) {
         ValueValidation values = !type.isPrimitive() ? null : new ValueValidation( YES, Set.of(), Set.of(), List.of() );
-        return new PropertyValidation( anyOfTypes( type ), values, null, null, null, null, null );
+        StringValidation strings = !type.isEnum() ? null : new StringValidation( anyOfStrings( type ), AUTO,-1, -1, "" );
+        return new PropertyValidation( anyOfTypes( type ), values, strings, null, null, null, null );
     }
 
     @Surly
@@ -239,7 +241,7 @@ record ObjectValidation(
 
     @Maybe
     private static ValueValidation toValueValidation( @Surly Validation src ) {
-        boolean oneOfValuesEmpty = src.oneOfValues().length == 0;
+        boolean oneOfValuesEmpty = src.oneOfValues().length == 0 || isAutoUnquotedJsonStrings( src.oneOfValues() );
         boolean dependentRequiresEmpty = src.dependentRequired().length == 0;
         if ( src.required().isAuto() && oneOfValuesEmpty && dependentRequiresEmpty ) return null;
         Set<String> oneOfValues = oneOfValuesEmpty
@@ -248,11 +250,29 @@ record ObjectValidation(
         return new ValueValidation( src.required(), Set.of( src.dependentRequired() ), oneOfValues, List.of() );
     }
 
+    private static boolean isAutoUnquotedJsonStrings(String[] values) {
+        return values.length > 0 && Stream.of( values ).allMatch( v -> !v.isEmpty()
+                && Character.isLetter( v.charAt( 0 ) )
+                && !"true".equals( v )
+                && !"false".equals( v )
+                && !"null".equals( v ));
+    }
+
     @Maybe
     private static StringValidation toStringValidation( @Surly Validation src ) {
-        if ( src.enumeration() == Enum.class && src.minLength() < 0 && src.maxLength() < 0 && src.pattern().isEmpty() )
+        if ( src.enumeration() == Enum.class && src.minLength() < 0 && src.maxLength() < 0 && src.pattern().isEmpty()
+            && src.caseInsensitive().isAuto() && !isAutoUnquotedJsonStrings( src.oneOfValues() ))
             return null;
-        return new StringValidation( src.enumeration(), src.minLength(), src.maxLength(), src.pattern() );
+        Set<String> anyOfStrings = anyOfStrings( src.enumeration() );
+        if (anyOfStrings.isEmpty() && isAutoUnquotedJsonStrings( src.oneOfValues() ))
+            anyOfStrings = Set.of(src.oneOfValues());
+        return new StringValidation(anyOfStrings, src.caseInsensitive(), src.minLength(), src.maxLength(), src.pattern() );
+    }
+
+    private static Set<String> anyOfStrings( @Surly Class<?> type ) {
+        return type == Enum.class || !type.isEnum()
+            ? Set.of()
+            : Set.copyOf( Stream.of( type.getEnumConstants() ).map( e -> ((Enum<?>)e).name() ).toList() );
     }
 
     @Maybe

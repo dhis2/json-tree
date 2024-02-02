@@ -4,9 +4,7 @@ import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Serializable;
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -171,6 +169,9 @@ public @interface Validation {
 
     /**
      * Corresponds to JSON schema validation specified as {@code enum}.
+     * <p>
+     * If all values are strings and all start with a letter and none is {@code true}, {@code false} or {@code null}
+     * then the strings do not have to be quoted.
      *
      * @return value must be equal to one of the given JSON values
      */
@@ -182,6 +183,14 @@ public @interface Validation {
      * @return value must be equal to one of the value of the given enum
      */
     Class<? extends Enum> enumeration() default Enum.class;
+
+    /**
+     * {@link YesNo#AUTO} is not case-insensitive.
+     *
+     * @return to allow {@link #enumeration()} names to be of different case
+     * @since 1.0
+     */
+    YesNo caseInsensitive() default YesNo.AUTO;
 
     /*
      Validations for Strings

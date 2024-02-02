@@ -114,6 +114,8 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
         return JsonAbstractCollection.asMultiMap( getObject( index ), as );
     }
 
+
+
     /**
      * Maps this array to a lazy transformed list view where each element of the original array is transformed by the
      * given function when accessed.

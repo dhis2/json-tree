@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
-import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
