@@ -113,18 +113,18 @@ record PropertyValidation(
     /**
      * Validations that apply to string nodes.
      *
-     * @param anyOfNames JSON string value must be one of the enum names, {@link Enum} is off
+     * @param anyOfStrings JSON string value must be one of the enum names
+     * @param caseInsensitive test {@link #anyOfStrings} with {@link String#equalsIgnoreCase(String)}
      * @param minLength  minimum length for the JSON string, negative is off
      * @param maxLength  maximum length for the JSON string, negative is off
      * @param pattern    JSON string must match the provided pattern, empty string is off
      */
-    record StringValidation(@SuppressWarnings( "rawtypes" )
-                            @Surly Class<? extends Enum> anyOfNames, int minLength, int maxLength,
-                            @Surly String pattern) {
-
+    record StringValidation(
+        @Surly Set<String> anyOfStrings, YesNo caseInsensitive, int minLength, int maxLength, @Surly String pattern) {
         StringValidation overlay( @Maybe StringValidation with ) {
             return with == null ? this : new StringValidation(
-                overlayE( anyOfNames, with.anyOfNames ),
+                overlayC( anyOfStrings, with.anyOfStrings ),
+                overlayY( caseInsensitive, with.caseInsensitive ),
                 overlayI( minLength, with.minLength ),
                 overlayI( maxLength, with.maxLength ),
                 overlayS( pattern, with.pattern ) );

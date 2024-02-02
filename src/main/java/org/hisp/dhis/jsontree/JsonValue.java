@@ -30,6 +30,8 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
+import java.io.Reader;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -105,6 +107,24 @@ public interface JsonValue {
      */
     static JsonValue of( String json, JsonTypedAccessStore store ) {
         return json == null || "null".equals( json ) ? JsonVirtualTree.NULL : JsonMixed.of( json, store );
+    }
+
+    /**
+     * @param file a JSON file in UTF-8 encoding
+     * @return root of the virtual tree representing the given JSON input
+     * @since 1.0
+     */
+    static JsonValue of( Path file ) {
+        return of(JsonNode.of( file ));
+    }
+
+    /**
+     * @param json JSON input
+     * @return root of the virtual tree representing the given JSON input
+     * @since 1.0
+     */
+    static JsonValue of( Reader json ) {
+        return of(JsonNode.of( json, null ));
     }
 
     /**

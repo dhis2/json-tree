@@ -1,6 +1,8 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -110,5 +112,16 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
      */
     default E first( Predicate<E> test ) {
         return stream().filter( test ).findFirst().orElseGet( () -> get( size() ) );
+    }
+
+    /**
+     * @param schema the schema to validate all elements of this array against
+     * @param rules optional set of {@link Rule}s to check, empty includes all
+     * @throws JsonSchemaException      in case this value does not match the given schema
+     * @throws IllegalArgumentException in case the given schema is not an interface
+     * @since 1.0
+     */
+    default void validateEach(Class<? extends JsonAbstractObject<?>> schema, Rule... rules) {
+        forEach( e -> JsonValidator.validate( e, schema, rules ) );
     }
 }

@@ -1,6 +1,7 @@
 package org.hisp.dhis.jsontree.validation;
 
 import org.hisp.dhis.jsontree.JsonAbstractObject;
+import org.hisp.dhis.jsontree.JsonArray;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonPathException;
 import org.hisp.dhis.jsontree.JsonSchemaException;

@@ -11,7 +11,7 @@ import static org.hisp.dhis.jsontree.Validation.Rule.MAX_LENGTH;
 import static org.hisp.dhis.jsontree.Validation.Rule.MIN_LENGTH;
 import static org.hisp.dhis.jsontree.Validation.Rule.REQUIRED;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
-import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 
 class JsonValidationMiscMetaAnnotationTest {
 

@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static org.hisp.dhis.jsontree.validation.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 
 class JsonValidationMiscTypeUseTest {
 

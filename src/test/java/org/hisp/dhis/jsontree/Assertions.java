@@ -1,4 +1,4 @@
-package org.hisp.dhis.jsontree.validation;
+package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonAbstractObject;
 import org.hisp.dhis.jsontree.JsonMixed;
@@ -10,7 +10,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
-class Assertions {
+public class Assertions {
 
     public static Validation.Error assertValidationError( String actualJson,
         Class<? extends JsonAbstractObject<?>> schema,
