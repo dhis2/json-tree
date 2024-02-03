@@ -34,6 +34,7 @@ import java.io.Reader;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -293,6 +294,55 @@ public interface JsonValue {
         return isUndefined() ? List.of() : isArray()
             ? asList( elementType ).toList( toElement )
             : List.of( toElement.apply( as( elementType ) ) );
+    }
+
+    /**
+     * The same information does not imply the value is identically defined.
+     * There can be differences in formatting, the order of object members or leading or tailing zeros for numbers.
+     * <p>
+     * Equivalence is always symmetric; if A is equivalent to B then B must also be equivalent to A.
+     *
+     * @param other the value to compare with
+     * @return true, if this value represents the same information, else false
+     * @since 1.1
+     */
+    default boolean equivalentTo(JsonValue other) {
+        return equivalentTo( this, other, JsonValue::equivalentTo );
+    }
+
+    /**
+     * The two values only differ in formatting (whitespace outside of values).
+     * <p>
+     * All values that are identical are also {@link #equivalentTo(JsonValue)}.
+     * <p>
+     * Identical is always symmetric; if A is identical to B then B must also be identical to A.
+     *
+     * @param other the value to compare with
+     * @return true, if this value only differs in formatting from the other value, otherwise false
+     * @since 1.1
+     */
+    default boolean identicalTo(JsonValue other) {
+        if (!equivalentTo( this, other, JsonValue::identicalTo )) return false;
+        if (isNumber()) return toJson().equals( other.toJson() );
+        if (!isObject()) return true;
+        // keys must be in same order
+        return asObject().names().equals( other.asObject().names() );
+    }
+
+    private static boolean equivalentTo(JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> compare ) {
+        if (a.type() != b.type()) return false;
+        if (a.isUndefined()) return true; // includes null
+        if (a.isString()) return a.as( JsonString.class ).string().equals( b.as( JsonString.class ).string() );
+        if (a.isBoolean()) return a.as(JsonBoolean.class).booleanValue() == b.as( JsonBoolean.class ).booleanValue();
+        if (a.isNumber()) return a.as( JsonNumber.class ).doubleValue() == b.as( JsonNumber.class ).doubleValue();
+        if (a.isArray()) {
+            JsonArray ar = a.as( JsonArray.class );
+            JsonArray br = b.as( JsonArray.class );
+            return ar.size() == br.size() && ar.indexes().allMatch( i  -> compare.test( ar.get( i ), br.get( i ) ));
+        }
+        JsonObject ao = a.asObject();
+        JsonObject bo = b.asObject();
+        return ao.size() == bo.size() && ao.keys().allMatch( key -> compare.test( ao.get( key ), bo.get( key ) ) );
     }
 
     /**

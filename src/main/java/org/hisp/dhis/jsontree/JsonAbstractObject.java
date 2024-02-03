@@ -109,9 +109,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @throws JsonTreeException in case this value is not an JSON object
      */
     default List<String> names() {
-        List<String> names = new ArrayList<>();
-        keys().forEach( names::add );
-        return names;
+        return keys().toList();
     }
 
     /**
