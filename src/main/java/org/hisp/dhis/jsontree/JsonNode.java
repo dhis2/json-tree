@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -742,6 +743,19 @@ public interface JsonNode extends Serializable {
         } ) );
     }
 
+    sealed interface Operation { String path(); }
+    record Insert(String path, JsonNode value) implements Operation {}
+    record Remove(String path) implements Operation {}
+
+    /**
+     * Operations cannot target a path that was removed or added in the same patch.
+     *
+     *
+     * @param ops
+     * @return
+     */
+    JsonNode patch( List<Operation> ops) throws JsonPatchException;
+
     private void checkType( JsonNodeType expected, JsonNodeType actual, String operation ) {
         if ( actual != expected )
             throw new JsonTreeException(
@@ -755,4 +769,6 @@ public interface JsonNode extends Serializable {
         int end = path.lastIndexOf( '.' );
         return end < 0 ? "" : path.substring( 0, end );
     }
+
+
 }

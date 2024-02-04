@@ -17,7 +17,7 @@ class JsonPatchValidationTest {
     void testAny_InvalidPath() {
         assertValidationError( """
             { "op": "remove", "path": "hello" }""", JsonPatch.class, Rule.PATTERN,
-            "(\\/(([^\\/~])|(~[01]))*)", "hello");
+            "(/([^/~]|(~[01]))*)*", "hello");
     }
 
     @Test
@@ -78,6 +78,6 @@ class JsonPatchValidationTest {
     void testMove_InvalidFrom() {
         assertValidationError( """
             { "op": "move", "from": "hello", "path":"/" }""", JsonPatch.class, Rule.PATTERN,
-            "(\\/(([^\\/~])|(~[01]))*)", "hello");
+            "(/([^/~]|(~[01]))*)*", "hello");
     }
 }

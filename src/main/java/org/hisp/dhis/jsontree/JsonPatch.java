@@ -1,5 +1,11 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonNode.Insert;
+import org.hisp.dhis.jsontree.JsonNode.Remove;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
 /**
@@ -33,4 +39,59 @@ public interface JsonPatch extends JsonObject {
     default JsonPointer getFrom() {
         return getString( "from" ).parsed( JsonPointer::new );
     }
+
+    static JsonValue apply(JsonValue value, JsonList<JsonPatch> ops) throws JsonPatchException {
+        return JsonValue.of( value.node().patch(JsonPatch.operations( value.as( JsonMixed.class ), ops )));
+    }
+
+    /**
+     * Converts a json-patch to {@link JsonNode.Operation}s.
+     *
+     * @param value the target value
+     * @param with the patch to apply
+     * @return list of {@link JsonNode.Operation}s to apply to get the patch effect
+     */
+    private static List<JsonNode.Operation> operations(JsonMixed value, JsonList<JsonPatch> with) {
+        List<JsonNode.Operation> ops = new ArrayList<>();
+        int i = 0;
+        for (JsonPatch op : with) {
+            op.validate( JsonPatch.class );
+            String path = op.getPath().path();
+            switch ( op.getOperation() ) {
+                case ADD -> ops.add( new Insert(path, op.getValue().node() ) );
+                case REMOVE -> ops.add( new Remove( path ) );
+                case REPLACE -> {
+                    ops.add( new Remove( path ) );
+                    ops.add( new Insert( path, op.getValue().node() ));
+                }
+                case MOVE -> {
+                    String from = op.getFrom().path();
+                    ops.add( new Remove( from ) );
+                    ops.add( new Insert( path, value.get( from ).node()));
+                }
+                case COPY -> {
+                    String from = op.getFrom().path();
+                    ops.add( new Insert( path, value.get( from ).node()) );
+                }
+                case TEST -> {
+                    if ( !value.get( path ).equivalentTo( op.getValue() ) )
+                        throw new JsonPatchException("operation %d failed its test: %s".formatted( i, op.toJson() ) );
+                }
+            }
+            i++;
+        }
+        return ops;
+    }
+    // V A L I D A T I O N S
+    // pointer:
+    // leading zeros in pointer seg
+    // tailing /
+    // pointer does not start with /
+    // null as pointer path
+    // pointer + tree:
+    // pointer implies parent of different node type
+    // index must be in range 0-length (length means append new)
+
+    // operation:
+    // target does not exist (remove/replace)
 }

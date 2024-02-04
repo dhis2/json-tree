@@ -297,8 +297,8 @@ public interface JsonValue {
     }
 
     /**
-     * The same information does not imply the value is identically defined.
-     * There can be differences in formatting, the order of object members or leading or tailing zeros for numbers.
+     * The same information does not imply the value is identically defined. There can be differences in formatting, the
+     * order of object members or how the same numerical value is encoded for a number.
      * <p>
      * Equivalence is always symmetric; if A is equivalent to B then B must also be equivalent to A.
      *
@@ -343,6 +343,27 @@ public interface JsonValue {
         JsonObject ao = a.asObject();
         JsonObject bo = b.asObject();
         return ao.size() == bo.size() && ao.keys().allMatch( key -> compare.test( ao.get( key ), bo.get( key ) ) );
+    }
+
+    /**
+     * Create a new value based on this value and a patch.
+     * <p>
+     * Operations apply "as if" they were applied in sequence.
+     * However, operations that alter already altered subtrees are not allowed.
+     * This entails the following:
+     * <ul>
+     *     <li>operations must not target a parent of a prior operation</li>
+     *     <li>operations must not target a child of a prior operation</li>
+     *     <li>operations must not target same path as a prior insert</li>
+     * </ul>
+     *
+     * @param ops operations to apply "atomically"
+     * @return a new value with the effects of the patch operations (this value stays unchanged)
+     * @throws JsonPatchException when the patch fails either because the operation was incorrectly defined or could not be applied to the value. This includes the a failing test operation.
+     * @since 1.1
+     */
+    default JsonValue patch(JsonList<JsonPatch> ops) throws JsonPatchException {
+        return JsonPatch.apply( this, ops );
     }
 
     /**

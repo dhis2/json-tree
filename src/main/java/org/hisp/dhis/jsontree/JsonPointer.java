@@ -13,7 +13,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  *
  * @param value a pointer expression
  */
-@Validation( type = STRING, pattern = "(\\/(([^\\/~])|(~[01]))*)" )
+@Validation( type = STRING, pattern = "(/([^/~]|(~[01]))*)*" )
 public record JsonPointer(String value) {
 
     /**
@@ -23,6 +23,7 @@ public record JsonPointer(String value) {
      * @return the decoded segments of this pointer
      */
     public List<String> decode() {
+        if (value.isEmpty()) return List.of();
         return Stream.of(value.substring( 1 ).split( "/" )).map( JsonPointer::decode ).toList();
     }
 
@@ -34,11 +35,15 @@ public record JsonPointer(String value) {
      * @return this pointer as path as it is used in the {@link JsonValue} and {@link JsonNode} APIs
      */
     public String path() {
-        return "$."+String.join( ".", decode() );
+        if (value.isEmpty()) return "";
+        return String.join( ".", decode() );
     }
 
     @Override
     public String toString() {
-        return value;
+        return value+" = "+path();
     }
+
+    // TODO additions: when a path ends with an index and + the value should be an array,
+    // all its elements should be inserted in the target at the given index
 }
