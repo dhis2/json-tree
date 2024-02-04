@@ -350,4 +350,11 @@ public @interface Validation {
      * @return the names of the groups the annotated property belongs to
      */
     String[] dependentRequired() default {};
+
+    /**
+     * @return when {@link YesNo#YES} a JSON {@code null} value satisfies being {@link #required()} or
+     * {@link #dependentRequired()}
+     * @since 1.1
+     */
+    YesNo acceptNull() default YesNo.AUTO;
 }

@@ -30,7 +30,7 @@ public interface JsonPatch extends JsonObject {
         return getString( "path" ).parsed( JsonPointer::new );
     }
 
-    @Validation( dependentRequired = { "add", "replace", "test" } )
+    @Validation( dependentRequired = { "add", "replace", "test" }, acceptNull = YES)
     default JsonMixed getValue() {
         return get( "value", JsonMixed.class );
     }

@@ -41,6 +41,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Set;
 
 import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -88,9 +90,16 @@ class JsonValidationRequiredTest {
         }
     }
 
+    public interface JsonRequiredExampleA extends JsonObject {
+
+        @Required
+        @Validation(acceptNull = YES)
+        default JsonMixed value() { return get( "value", JsonMixed.class ); }
+    }
+
     @Test
     void testIsA() {
-        Assertions.assertTrue( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonFoo.class ) );
+        assertTrue( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonFoo.class ) );
         JsonMixed val = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" );
         JsonEntry e = val.as( JsonEntry.class );
         assertTrue( val.isA( JsonEntry.class ) );
@@ -193,6 +202,17 @@ class JsonValidationRequiredTest {
             {"a": [], "b":{"bar":""}}""";
         JsonMixed obj = JsonMixed.of( json );
         assertValidationError( json, JsonRoot.class, Rule.TYPE, Set.of( NodeType.OBJECT ), NodeType.ARRAY );
+    }
+
+    @Test
+    void testRequired_AcceptNull() {
+        Validation.Error error = assertValidationError( """
+            {"a": 1}""", JsonRequiredExampleA.class, Rule.REQUIRED, "value" );
+        assertEquals( "$.value", error.path() );
+        assertDoesNotThrow( () -> JsonMixed.of("""
+            {"value":null}""").validate( JsonRequiredExampleA.class ));
+        assertDoesNotThrow( () -> JsonMixed.of("""
+            {"value":1}""").validate( JsonRequiredExampleA.class ));
     }
 
     private static void assertAsObject( Class<? extends JsonObject> of, String actualJson ) {

@@ -221,7 +221,7 @@ record ObjectValidation(
 
     @Surly
     private static PropertyValidation toPropertyValidation( Class<?> type ) {
-        ValueValidation values = !type.isPrimitive() ? null : new ValueValidation( YES, Set.of(), Set.of(), List.of() );
+        ValueValidation values = !type.isPrimitive() ? null : new ValueValidation( YES, Set.of(), AUTO, Set.of(), List.of() );
         StringValidation strings = !type.isEnum() ? null : new StringValidation( anyOfStrings( type ), AUTO,-1, -1, "" );
         return new PropertyValidation( anyOfTypes( type ), values, strings, null, null, null, null );
     }
@@ -243,11 +243,12 @@ record ObjectValidation(
     private static ValueValidation toValueValidation( @Surly Validation src ) {
         boolean oneOfValuesEmpty = src.oneOfValues().length == 0 || isAutoUnquotedJsonStrings( src.oneOfValues() );
         boolean dependentRequiresEmpty = src.dependentRequired().length == 0;
-        if ( src.required().isAuto() && oneOfValuesEmpty && dependentRequiresEmpty ) return null;
+        if ( src.required().isAuto() && oneOfValuesEmpty && dependentRequiresEmpty && src.acceptNull().isAuto() ) return null;
         Set<String> oneOfValues = oneOfValuesEmpty
             ? Set.of()
             : Set.copyOf( Stream.of( src.oneOfValues() ).map( e -> JsonValue.of( e ).toMinimizedJson() ).toList() );
-        return new ValueValidation( src.required(), Set.of( src.dependentRequired() ), oneOfValues, List.of() );
+        return new ValueValidation( src.required(), Set.of( src.dependentRequired() ), src.acceptNull(), oneOfValues,
+            List.of() );
     }
 
     private static boolean isAutoUnquotedJsonStrings(String[] values) {

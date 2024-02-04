@@ -70,8 +70,8 @@ record PropertyValidation(
     PropertyValidation withCustoms( @Surly List<Validator> validators ) {
         if ( validators.isEmpty() && (values == null || values.customs.isEmpty()) ) return this;
         ValueValidation newValues = values == null
-            ? new ValueValidation( YesNo.AUTO, Set.of(), Set.of(), validators )
-            : new ValueValidation( values.required, values.dependentRequired, values.anyOfJsons, validators );
+            ? new ValueValidation( YesNo.AUTO, Set.of(), YesNo.AUTO, Set.of(), validators )
+            : new ValueValidation( values.required, values.dependentRequired, values.allowNull, values.anyOfJsons, validators );
         return new PropertyValidation( anyOfTypes, newValues, strings, numbers, arrays, objects, items );
     }
 
@@ -94,17 +94,20 @@ record PropertyValidation(
      *
      * @param required          is the value required to exist or is undefined/null OK, non {@link YesNo#YES} is off
      * @param dependentRequired the groups this property is a member of for dependent requires
+     * @param allowNull         when {@link YesNo#YES} a JSON {@code null} value satisfies being {@link #required()} or {@link #dependentRequired()}
      * @param anyOfJsons        the JSON value must be one of the provided JSON values, empty set is off
      * @param customs           a validator defined by class is used (custom or user defined validators), empty list is
      *                          off
      */
-    record ValueValidation(@Surly YesNo required, @Surly Set<String> dependentRequired, @Surly Set<String> anyOfJsons,
+    record ValueValidation(@Surly YesNo required, @Surly Set<String> dependentRequired, @Surly YesNo allowNull,
+                           @Surly Set<String> anyOfJsons,
                            @Surly List<Validator> customs) {
 
         ValueValidation overlay( @Maybe ValueValidation with ) {
             return with == null ? this : new ValueValidation(
                 overlayY( required, with.required ),
                 overlayC( dependentRequired, with.dependentRequired ),
+                overlayY( allowNull, with.allowNull ),
                 overlayC( anyOfJsons, with.anyOfJsons ),
                 overlayAdditive( customs, with.customs ) );
         }

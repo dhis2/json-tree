@@ -76,6 +76,17 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     }
 
     /**
+     * Test if the object property is defined which includes being defined JSON {@code null}.
+     *
+     * @param name name of the object member
+     * @return true if this object has a member of the provided name
+     * @since 1.1
+     */
+    default boolean exists(String name) {
+       return get(name).exists();
+    }
+
+    /**
      * @return The keys of this map.
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11 (as Stream)
