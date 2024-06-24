@@ -27,20 +27,23 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonNodeOperation.Insert;
+import org.hisp.dhis.jsontree.JsonNodeOperation.Remove;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Serializable;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.Predicate;
@@ -107,8 +110,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
 
         protected Integer end;
         private transient T value;
-
-        //TODO remember the index in parent array/object to improve size() performance?
 
         LazyJsonNode( JsonTree tree, String path, int start ) {
             this.tree = tree;
@@ -190,9 +191,12 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
         }
 
         @Override
-        public final JsonNode patch( List<Operation> ops ) {
-            checkPatch( ops );
-
+        public final JsonNode patch( List<JsonNodeOperation> ops ) {
+            if (ops.isEmpty()) return getRoot();
+            if (isRoot() && ops.size() == 1 && ops.get( 0 ).path().isEmpty())
+                return ops.get( 0 ) instanceof Insert i ?  i.value() : JsonNode.NULL; // root insert/remove
+            List<JsonTreeOperation> treeOps = JsonTreeOperation.of( ops, this );
+            //TODO
             return this;
         }
 
@@ -226,41 +230,21 @@ record JsonTree(@Surly char[] json, @Surly HashMap<String, JsonNode> nodesByPath
             return getDeclaration();
         }
 
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode( tree.json );
+        }
+
+        @Override
+        public boolean equals( Object obj ) {
+            return this == obj || obj instanceof LazyJsonNode<?> other && Arrays.equals(tree.json, other.tree.json);
+        }
+
         /**
          * @return parses the JSON to a value as described by {@link #value()}
          */
         abstract T parseValue();
-    }
-
-    // - operations must not target a parent of a prior operation
-    // - operations must not target a child of a prior operation
-    // - operations must not target same path as a prior insert
-    static void checkPatch( List<JsonNode.Operation> ops ) {
-        if (ops.size() < 2) return;
-        Set<String> removeTargets = new HashSet<>();
-        Set<String> insertTargets = new HashSet<>();
-        Set<String> parents = new HashSet<>();
-        int i = 0;
-        for ( JsonNode.Operation op : ops ) {
-            String path = op.path();
-            boolean isRemove = op instanceof JsonNode.Remove;
-            boolean isInsert = !isRemove;
-            if (insertTargets.contains( path ))
-                throw new JsonPatchException("operation %d targets same path of prior insert: %s".formatted( i, op ) );
-            if (parents.contains( path ))
-                throw new JsonPatchException("operation %d targets parent of prior operation: %s".formatted( i, op ) );
-            if (isInsert) insertTargets.add( path );
-            if (isRemove) removeTargets.add( path );
-            while ( path.lastIndexOf('.' ) >= 0 ) {
-                path = path.substring( 0, path.lastIndexOf( '.' ) );
-                if (insertTargets.contains( path ))
-                    throw new JsonPatchException("operation %d targets child of prior insert: %s".formatted( i, op ) );
-                if (removeTargets.contains( path ))
-                    throw new JsonPatchException("operation %d targets child of prior remove: %s".formatted( i, op ) );
-                parents.add( path );
-            }
-            i++;
-        }
     }
 
     private static final class LazyJsonObject extends LazyJsonNode<Iterable<Entry<String, JsonNode>>>

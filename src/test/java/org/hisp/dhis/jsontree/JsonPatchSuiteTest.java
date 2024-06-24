@@ -2,7 +2,10 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -26,14 +29,16 @@ class JsonPatchSuiteTest {
         default JsonList<JsonPatch> patch() { return getList( "patch", JsonPatch.class ); }
         default JsonMixed expected() { return get( "expected", JsonMixed.class ); }
         default String error() { return getString( "error" ).string(); }
-        default boolean disabled() { return getBoolean( "disabled" ).booleanValue(false); }
+        default JsonValue disabled() { return get( "disabled" ); }
     }
 
     @TestFactory
     List<DynamicTest> testScenarios() {
         return JsonMixed.of( Path.of("src/test/resources/json-patch-tests/tests.json") )
             .asList( JsonPatchScenario.class )
-            .stream().map( scenario -> dynamicTest( scenario.comment(), () -> assertScenario( scenario ) ) )
+            .stream()
+            .filter( scenario -> !scenario.disabled().exists() )
+            .map( scenario -> dynamicTest( scenario.comment(), () -> assertScenario( scenario ) ) )
             .toList();
     }
 

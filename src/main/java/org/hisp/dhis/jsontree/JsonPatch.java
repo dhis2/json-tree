@@ -1,7 +1,7 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonNode.Insert;
-import org.hisp.dhis.jsontree.JsonNode.Remove;
+import org.hisp.dhis.jsontree.JsonNodeOperation.Insert;
+import org.hisp.dhis.jsontree.JsonNodeOperation.Remove;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,24 +45,25 @@ public interface JsonPatch extends JsonObject {
     }
 
     /**
-     * Converts a json-patch to {@link JsonNode.Operation}s.
+     * Converts a json-patch to {@link JsonNodeOperation}s.
      *
      * @param value the target value
      * @param with the patch to apply
-     * @return list of {@link JsonNode.Operation}s to apply to get the patch effect
+     * @return list of {@link JsonNodeOperation}s to apply to get the patch effect
      */
-    private static List<JsonNode.Operation> operations(JsonMixed value, JsonList<JsonPatch> with) {
-        List<JsonNode.Operation> ops = new ArrayList<>();
+    private static List<JsonNodeOperation> operations(JsonMixed value, JsonList<JsonPatch> with) {
+        List<JsonNodeOperation> ops = new ArrayList<>();
         int i = 0;
         for (JsonPatch op : with) {
             op.validate( JsonPatch.class );
             String path = op.getPath().path();
+            //FIXME if path is - (append) then this must be substituted with the actual first index after the last
             switch ( op.getOperation() ) {
                 case ADD -> ops.add( new Insert(path, op.getValue().node() ) );
                 case REMOVE -> ops.add( new Remove( path ) );
                 case REPLACE -> {
-                    ops.add( new Remove( path ) );
-                    ops.add( new Insert( path, op.getValue().node() ));
+                    ops.add( new Remove( path));
+                    ops.add( new Insert( JsonNode.nextIndexPath( path ), op.getValue().node() ));
                 }
                 case MOVE -> {
                     String from = op.getFrom().path();

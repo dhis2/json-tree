@@ -1,8 +1,10 @@
 package org.hisp.dhis.jsontree;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.util.stream.Collectors.joining;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 /**
@@ -13,7 +15,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  *
  * @param value a pointer expression
  */
-@Validation( type = STRING, pattern = "(/([^/~]|(~[01]))*)*" )
+@Validation( type = STRING, pattern = "(/((~[01])|([^/~]))*)*" )
 public record JsonPointer(String value) {
 
     /**
@@ -36,7 +38,17 @@ public record JsonPointer(String value) {
      */
     public String path() {
         if (value.isEmpty()) return "";
-        return String.join( ".", decode() );
+        return decode().stream().map( JsonPointer::toPath ).collect( joining());
+    }
+
+    private static String toPath(String segment) {
+        if (segment.isEmpty()) return segment;
+        if (segment.chars().allMatch( JsonPointer::isArrayIndex )) return "["+segment+"]";
+        return "."+segment;
+    }
+
+    private static boolean isArrayIndex(int c) {
+        return c == '-' || c >= '0' && c <= '9';
     }
 
     @Override

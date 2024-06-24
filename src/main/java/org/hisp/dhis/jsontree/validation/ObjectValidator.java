@@ -31,6 +31,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.lang.Double.isNaN;
@@ -198,7 +199,7 @@ record ObjectValidator(
                 : new EnumAnyString( strings.anyOfStrings(), strings.caseInsensitive().isYes() ),
             strings.minLength() <= 0 ? null : new MinLength( strings.minLength() ),
             strings.maxLength() <= 1 ? null : new MaxLength( strings.maxLength() ),
-            strings.pattern().isEmpty() ? null : new Pattern( strings.pattern() ) );
+            strings.pattern().isEmpty() ? null : new Pattern( java.util.regex.Pattern.compile( strings.pattern() ) ) );
     }
 
     @Maybe
@@ -429,15 +430,15 @@ record ObjectValidator(
         }
     }
 
-    private record Pattern(String regex) implements Validator {
+    private record Pattern(java.util.regex.Pattern regex) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isString() ) return;
             String actual = value.string();
-            if ( !actual.matches( regex ) )
+            if ( !regex.matcher( actual ).matches() )
                 addError.accept( Error.of( Rule.PATTERN, value,
-                    "must match %s but was: %s", regex, actual ) );
+                    "must match %s but was: %s", regex.pattern(), actual ) );
         }
     }
 

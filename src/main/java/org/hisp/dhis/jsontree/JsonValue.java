@@ -33,10 +33,12 @@ import org.hisp.dhis.jsontree.internal.Surly;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode} representing an actual {@link JsonTree}.
@@ -356,6 +358,8 @@ public interface JsonValue {
      *     <li>operations must not target a child of a prior operation</li>
      *     <li>operations must not target same path as a prior insert</li>
      * </ul>
+     * That means in a valid sequence of operations all removes can be reordered to occur before any insert
+     * and can be done in a random order among the removes.
      *
      * @param ops operations to apply "atomically"
      * @return a new value with the effects of the patch operations (this value stays unchanged)
@@ -447,4 +451,5 @@ public interface JsonValue {
             ? JsonMixed.of( "{}" ).get( "notFound", type )
             : match.get().lift( store ).as( type );
     }
+
 }

@@ -34,6 +34,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 /**
@@ -42,6 +43,11 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
  * @author Jan Bernitt
  */
 class JsonNodeTest {
+
+    @Test
+    void testEquals() {
+        assertEquals( JsonNode.of( "1" ), JsonNode.of( "1" ) );
+    }
 
     @Test
     void testGet_String() {
@@ -73,6 +79,14 @@ class JsonNodeTest {
         assertEquals( 42, root.get( "a.b.c" ).value() );
         JsonNode b = root.get( "a.b" );
         assertEquals( 42, b.get( "c" ).value() );
+    }
+
+    @Test
+    void testGet_EmptyProperty() {
+        JsonNode root = JsonNode.of( """
+            {"": "hello"}""" );
+        assertSame( root, root.get( "" ) );
+        assertEquals( "hello", root.get( "{}" ).value() );
     }
 
     @Test

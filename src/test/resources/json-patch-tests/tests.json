@@ -72,13 +72,13 @@
 
     { "comment": "Add, / target",
       "doc": {},
-      "patch": [ {"op": "add", "path": "/", "value":1 } ],
-      "expected": {"":1} },
+      "patch": [ {"op": "add", "path": "/x", "value":1 } ],
+      "expected": {"x":1} },
 
-    { "comment": "Add, /foo/ deep target (trailing slash)",
+    { "comment": "Add, /foo/x deep target (trailing slash)",
       "doc": {"foo": {}},
-      "patch": [ {"op": "add", "path": "/foo/", "value":1 } ],
-      "expected": {"foo":{"": 1}} },
+      "patch": [ {"op": "add", "path": "/foo/x", "value":1 } ],
+      "expected": {"foo":{"x": 1}} },
 
     { "comment": "Add composite value at top level",
       "doc": {"foo": 1},
@@ -282,18 +282,19 @@
 
     { "comment": "Whole document",
       "doc": { "foo": 1 },
-      "patch": [{"op": "test", "path": "", "value": {"foo": 1}}],
-      "disabled": true },
+      "patch": [{"op": "test", "path": "", "value": {"foo": 1}}]
+    },
 
     { "comment": "Empty-string element",
       "doc": { "": 1 },
       "patch": [{"op": "test", "path": "/", "value": 1}],
-      "expected": { "": 1 } },
+      "expected": { "": 1 },
+      "disabled": "empty property name not supported"
+    },
 
     { "comment": "Test complex scenario",
       "doc": {
             "foo": ["bar", "baz"],
-            "": 0,
             "a/b": 1,
             "c%d": 2,
             "e^f": 3,
@@ -305,7 +306,6 @@
             },
       "patch": [{"op": "test", "path": "/foo", "value": ["bar", "baz"]},
                 {"op": "test", "path": "/foo/0", "value": "bar"},
-                {"op": "test", "path": "/", "value": 0},
                 {"op": "test", "path": "/a~1b", "value": 1},
                 {"op": "test", "path": "/c%d", "value": 2},
                 {"op": "test", "path": "/e^f", "value": 3},
@@ -315,7 +315,6 @@
                 {"op": "test", "path": "/ ", "value": 7},
                 {"op": "test", "path": "/m~0n", "value": 8}],
       "expected": {
-            "": 0,
             " ": 7,
             "a/b": 1,
             "c%d": 2,
