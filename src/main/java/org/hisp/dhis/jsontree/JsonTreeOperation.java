@@ -1,16 +1,13 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static java.lang.Integer.parseInt;
 import static java.util.Comparator.comparing;
-import static org.hisp.dhis.jsontree.JsonNode.parentPath;
+import static org.hisp.dhis.jsontree.JsonNodeOperation.parentPath;
 
 /**
  * {@link JsonTreeOperation}s are used internally to make modifications to a {@link JsonTree}.

@@ -216,7 +216,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonValue lift( JsonTypedAccessStore store ) {
         JsonVirtualTree root = new JsonVirtualTree( getRoot(), store );
-        return isRoot() ? root : root.get( getPath() );
+        return isRoot() ? root : root.get( getPath().toString() );
     }
 
     /**
@@ -225,7 +225,7 @@ public interface JsonNode extends Serializable {
      */
     @Surly
     default JsonNode getParent() {
-        return isRoot() ? this : getRoot().get( parentPath( getPath() ) );
+        return isRoot() ? this : getRoot().get( getPath().dropLastSegment().toString() );
     }
 
     /**
@@ -362,6 +362,9 @@ public interface JsonNode extends Serializable {
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      * <p>
      * The members are iterated in order of declaration in the underlying document.
+     * <p>
+     * In contrast to {@link #keys()} the entries in this method will always have the literal property as their {@link Entry#getKey()}.
+     * This means also they are not fully safe to be used for {@link #get(String)}.
      *
      * @return this {@link #value()} as a sequence of {@link Entry}
      * @throws JsonTreeException if this node is not an object node that could have members
@@ -384,6 +387,19 @@ public interface JsonNode extends Serializable {
      */
     default Iterable<String> keys() {
         throw new JsonTreeException( getType() + " node has no keys property." );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
+     * The names are iterated in order of declaration in the underlying document.
+     *
+     * @return the raw property names of this object node
+     * @throws JsonTreeException if this node is not an object node that could have members
+     * @since 1.1
+     */
+    default Iterable<String> names() {
+        throw new JsonTreeException( getType() + " node has no names property." );
     }
 
     /**
@@ -517,7 +533,7 @@ public interface JsonNode extends Serializable {
     /**
      * @return path within the overall content this node represents
      */
-    String getPath();
+    JsonPath getPath();
 
     /**
      * @return the plain JSON of this node as defined in the overall content
@@ -784,18 +800,6 @@ public interface JsonNode extends Serializable {
         if ( actual != expected )
             throw new JsonTreeException(
                 format( "`%s` only allowed for %s but was: %s", operation, expected, actual ) );
-    }
-
-    static String parentPath( String path ) {
-        if ( path.endsWith( "]" ) ) {
-            return path.substring( 0, path.lastIndexOf( '[' ) );
-        }
-        int end = path.lastIndexOf( '.' );
-        return end < 0 ? "" : path.substring( 0, end );
-    }
-
-    static String nextIndexPath(String path) {
-        return path;
     }
 
 }

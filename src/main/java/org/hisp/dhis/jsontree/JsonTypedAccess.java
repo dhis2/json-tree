@@ -220,9 +220,8 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
         Function<String, Object> toKey = getKeyMapper( rawKeyType );
         @SuppressWarnings( { "rawtypes", "unchecked" } )
         Map<Object, Object> res = rawKeyType.isEnum() ? new EnumMap( rawKeyType ) : new HashMap<>();
-        for ( String member : map.names() ) {
-            res.put( toKey.apply( member ), valueAccess.access( map, member, valueType, store ) );
-        }
+        map.keys().forEach( key ->
+            res.put( toKey.apply( key ), valueAccess.access( map, key, valueType, store ) ));
         return res;
     }
 

@@ -454,7 +454,7 @@ class JsonTreeTest {
     void testArray_NegativeIndex() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
         JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.get( ".a.b[-1]" ) );
-        assertEquals( "Path `.a.b` does not exist, array index is negative: -1",
+        assertEquals( "Path `.a.b[-1]` does not exist, object `.a` does not have a property `b[-1]`",
             ex.getMessage() );
     }
 

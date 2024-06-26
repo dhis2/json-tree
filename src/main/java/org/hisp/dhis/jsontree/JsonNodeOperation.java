@@ -29,6 +29,11 @@ import static org.hisp.dhis.jsontree.JsonPatchException.clash;
  */
 sealed public interface JsonNodeOperation {
 
+    static String parentPath( String path ) {
+        //TODO move callers to JsonPath
+        return JsonPath.of( path ).dropLastSegment().toString();
+    }
+
     /**
      * @return the target of the operation
      */
@@ -126,7 +131,7 @@ sealed public interface JsonNodeOperation {
                 checkPatchParents( ops, op, path, opsByPath, parents );
             } else {
                 checkPatchPath( ops, op, path, opsByPath, parents );
-                checkPatchParents( ops, op, JsonNode.parentPath( path ), opsByPath, parents );
+                checkPatchParents( ops, op, parentPath( path ), opsByPath, parents );
             }
         }
     }
@@ -143,7 +148,7 @@ sealed public interface JsonNodeOperation {
         while ( !path.isEmpty() ) {
             if ( opsByPath.containsKey( path ) ) throw clash( ops, opsByPath.get( path ), op );
             parents.add( path );
-            path = JsonNode.parentPath( path );
+            path = parentPath( path );
         }
     }
 }

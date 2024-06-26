@@ -17,6 +17,11 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  */
 public interface JsonPatch extends JsonObject {
 
+    static String nextIndexPath( String path ) {
+        //FIXME implement properly
+        return path;
+    }
+
     enum Op {ADD, REMOVE, REPLACE, COPY, MOVE, TEST}
 
     @Required
@@ -63,7 +68,7 @@ public interface JsonPatch extends JsonObject {
                 case REMOVE -> ops.add( new Remove( path ) );
                 case REPLACE -> {
                     ops.add( new Remove( path));
-                    ops.add( new Insert( JsonNode.nextIndexPath( path ), op.getValue().node() ));
+                    ops.add( new Insert( nextIndexPath( path ), op.getValue().node() ));
                 }
                 case MOVE -> {
                     String from = op.getFrom().path();
