@@ -4,7 +4,6 @@ import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import static java.lang.Integer.parseInt;
 import static java.util.stream.Stream.concat;
@@ -39,7 +38,7 @@ public record JsonPath(List<String> segments) {
     /**
      * A path pointing to the root or self
      */
-    public static final JsonPath EMPTY = new JsonPath( List.of() );
+    public static final JsonPath ROOT = new JsonPath( List.of() );
 
     /**
      * @param path a JSON path string
@@ -76,12 +75,22 @@ public record JsonPath(List<String> segments) {
     /**
      * Extends this path on the right (end)
      *
+     * @param subPath the path to add to the end of this one
+     * @return a new path instance that starts with all segments of this path followed by all segments of the provided sub-path
+     */
+    public JsonPath extendedWith( JsonPath subPath ) {
+        return extendedWith( subPath.segments );
+    }
+
+    /**
+     * Extends this path on the right (end)
+     *
      * @param name a plain object member name
      * @return a new path instance that adds the provided object member name segment to this path to create a new
      * absolute path for the same root
      */
     public JsonPath extendedWith( String name ) {
-        return extendedWithSegment( keyOf( name, true ) );
+        return extendedWith( List.of(keyOf( name, true )) );
     }
 
     /**
@@ -94,11 +103,13 @@ public record JsonPath(List<String> segments) {
     public JsonPath extendedWith( int index ) {
         if ( index < 0 ) throw new JsonPathException( this,
             "Path array index must be zero or positive but was: %d".formatted( index ) );
-        return extendedWithSegment( "[" + index + "]" );
+        return extendedWith( List.of("[" + index + "]"));
     }
 
-    private JsonPath extendedWithSegment( String segment ) {
-        return new JsonPath( concat( segments.stream(), Stream.of( segment ) ).toList() );
+    private JsonPath extendedWith( List<String> subSegments ) {
+        return subSegments.isEmpty()
+            ? this
+            : new JsonPath( concat( segments.stream(), subSegments.stream() ).toList() );
     }
 
     /**
@@ -126,7 +137,7 @@ public record JsonPath(List<String> segments) {
     public JsonPath dropFirstSegment() {
         if ( isEmpty() ) throw new JsonPathException( this, "Root/self path does not have a child." );
         int size = segments.size();
-        return size == 1 ? EMPTY : new JsonPath( segments.subList( 1, size ) );
+        return size == 1 ? ROOT : new JsonPath( segments.subList( 1, size ) );
     }
 
     /**
@@ -141,7 +152,7 @@ public record JsonPath(List<String> segments) {
         if ( isEmpty() )
             throw new JsonPathException( this, "Root/self path does not have a parent." );
         int size = segments.size();
-        return size == 1 ? EMPTY : new JsonPath( segments.subList( 0, size - 1 ) );
+        return size == 1 ? ROOT : new JsonPath( segments.subList( 0, size - 1 ) );
     }
 
     /**
@@ -224,7 +235,8 @@ public record JsonPath(List<String> segments) {
             res.add( path.substring( s, i ) );
             s = i;
         }
-        return res;
+        // make immutable
+        return List.copyOf( res );
     }
 
     private static boolean isDotSegmentOpen( String path, int index ) {

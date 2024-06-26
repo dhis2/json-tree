@@ -327,7 +327,7 @@ public interface JsonValue {
         if (!equivalentTo( this, other, JsonValue::identicalTo )) return false;
         if (isNumber()) return toJson().equals( other.toJson() );
         if (!isObject()) return true;
-        // keys must be in same order
+        // names must be in same order
         return asObject().names().equals( other.asObject().names() );
     }
 

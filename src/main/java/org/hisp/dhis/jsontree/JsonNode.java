@@ -125,7 +125,7 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode ofNonStandard( String json ) {
-        return JsonTree.ofNonStandard( json ).get( "$" );
+        return JsonTree.ofNonStandard( json ).get( JsonPath.ROOT );
     }
 
     /**
@@ -137,7 +137,7 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode of( String json, GetListener onGet ) {
-        return JsonTree.of( json, onGet ).get( "$" );
+        return JsonTree.of( json, onGet ).get( JsonPath.ROOT );
     }
 
     /**
@@ -237,11 +237,24 @@ public interface JsonNode extends Serializable {
      * @throws JsonPathException when no such node exists in the subtree of this node
      */
     @Surly
-    default JsonNode get( String path )
+    default JsonNode get(@Surly String path )
         throws JsonPathException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
         if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
+        if (!path.startsWith( "{" ) && !path.startsWith( "[" ) && !path.startsWith( "." ))
+            path = "."+path;
+        return get( JsonPath.of( path ) );
+    }
+
+    /**
+     *
+     * @param path a path understood relative to this node's {@link #getPath()}
+     * @return the node at the given path
+     * @since 1.1
+     */
+    @Surly
+    default JsonNode get(@Surly JsonPath path) {
         throw new JsonPathException( path,
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
@@ -532,6 +545,7 @@ public interface JsonNode extends Serializable {
 
     /**
      * @return path within the overall content this node represents
+     * @since 1.1 (with {@link JsonPath} type)
      */
     JsonPath getPath();
 

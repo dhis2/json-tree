@@ -109,7 +109,7 @@ class JsonNodeTest {
 
     @Test
     void testGet_Array_NoValueAtPath() {
-        assertGetThrowsJsonPathException( "[1,2]", "a", "Malformed path a, invalid start of segment at position 0." );
+        assertGetThrowsJsonPathException( "[1,2]", "a", "Path `.a` does not exist, parent `` is not an OBJECT but a ARRAY node." );
         assertGetThrowsJsonPathException( "[1,2]", ".a", "Path `.a` does not exist, parent `` is not an OBJECT but a ARRAY node." );
         assertGetThrowsJsonPathException( "[[1,2],[]]", "[1][0]",
             "Path `[1][0]` does not exist, array `[1]` has only `0` elements." );

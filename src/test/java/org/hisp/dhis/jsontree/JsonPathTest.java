@@ -87,7 +87,7 @@ class JsonPathTest {
 
     @Test
     void testParent_Root() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.EMPTY::dropLastSegment );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.ROOT::dropLastSegment );
         assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
     }
 

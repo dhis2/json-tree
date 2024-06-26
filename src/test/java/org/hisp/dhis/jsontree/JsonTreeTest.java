@@ -481,7 +481,7 @@ class JsonTreeTest {
         JsonNode doc = JsonNode.of( "{\"a\": hello }" );
 
         JsonFormatException ex = assertThrowsExactly( JsonFormatException.class, () -> doc.get( ".a" ) );
-        String nl = System.getProperty( "line.separator" );
+        String nl = System.lineSeparator();
         assertEquals(
             "Unexpected character at position 6," + nl + "{\"a\": hello }"
                 + nl + "      ^ expected start of a JSON value but found: `h`",

@@ -116,7 +116,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public final JsonNode getRoot() {
-            return tree.get( "$" );
+            return tree.get( JsonPath.ROOT );
         }
 
         @Override
@@ -264,13 +264,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Surly @Override
-        public JsonNode get( String path ) {
-            if ( path.isEmpty() ) return this;
-            if ( "$".equals( path ) ) return getRoot();
-            if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
-            if ( path.startsWith( "{" ) ) return tree.get( this.path + path );
-            // trim any leading . of the relative path
-            return tree.get( this.path + "." + (path.startsWith( "." ) ? path.substring( 1 ) : path) );
+        public JsonNode get(@Surly JsonPath path ) {
+            return tree.get( this.path.extendedWith( path ) );
         }
 
         @Override
@@ -430,11 +425,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Surly @Override
-        public JsonNode get( String path ) {
-            if ( path.isEmpty() ) return this;
-            if ( "$".equals( path ) ) return getRoot();
-            if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
-            return tree.get( this.path + path );
+        public JsonNode get( @Surly JsonPath path ) {
+            return tree.get( this.path.extendedWith( path ) );
         }
 
         @Override
@@ -693,46 +685,32 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
      *                             given path is not a valid path expression
      * @throws JsonFormatException when this document contains malformed JSON that confuses the parser
      */
-    JsonNode get( String path ) {
+    JsonNode get( JsonPath path ) {
         if ( nodesByPath.isEmpty() )
-            nodesByPath.put( JsonPath.EMPTY, autoDetect( JsonPath.EMPTY, skipWhitespace( json, 0 ) ) );
-        if ( path.startsWith( "$" ) ) {
-            path = path.substring( 1 );
-        }
-        if ( onGet != null && !path.isEmpty() ) onGet.accept( path );
-        JsonPath fullPath =  JsonPath.of( path );
-        JsonNode node = nodesByPath.get( fullPath );
-        if ( node != null ) {
+            nodesByPath.put( JsonPath.ROOT, autoDetect( JsonPath.ROOT, skipWhitespace( json, 0 ) ) );
+        if ( onGet != null && !path.isEmpty() ) onGet.accept( path.toString() );
+        JsonNode node = nodesByPath.get( path );
+        if ( node != null )
             return node;
-        }
-        JsonNode parent = getClosestIndexedParent( fullPath, nodesByPath );
-        JsonPath pathToGo = fullPath.shortenedBy( parent.getPath() );
-        while ( !pathToGo.isEmpty() ) { // root here is relative, meaning: have we navigated to the target
+        // find by finding the closest already indexed parent and navigate down from there...
+        JsonNode parent = getClosestIndexedParent( path, nodesByPath );
+        JsonPath pathToGo = path.shortenedBy( parent.getPath() );
+        while ( !pathToGo.isEmpty() ) { // meaning: are we at the target node? (self)
             if ( pathToGo.startsWithArray() ) {
-                checkNodeIs( parent, JsonNodeType.ARRAY, fullPath );
+                checkNodeIs( parent, JsonNodeType.ARRAY, path );
                 int index = pathToGo.arrayIndexAtStart();
                 parent = parent.element( index );
                 pathToGo = pathToGo.dropFirstSegment();
             } else if ( pathToGo.startsWithObject() ) {
-                checkNodeIs( parent, JsonNodeType.OBJECT, fullPath );
+                checkNodeIs( parent, JsonNodeType.OBJECT, path );
                 String property = pathToGo.objectMemberAtStart();
                 parent = parent.member( property );
                 pathToGo = pathToGo.dropFirstSegment();
             } else {
-                throw new JsonPathException( fullPath, format( "Malformed path %s at %s.", path, pathToGo ) );
+                throw new JsonPathException( path, format( "Malformed path %s at %s.", path, pathToGo ) );
             }
         }
         return parent;
-    }
-
-    @Deprecated // replace with JsonPath
-    private static String getHeadProperty( String path ) {
-        int index = 1;
-        while ( index < path.length()
-            && path.charAt( index ) != '.' && path.charAt( index ) != '[' && path.charAt( index ) != '{' ) {
-            index++;
-        }
-        return path.substring( 1, index );
     }
 
     private JsonNode autoDetect( JsonPath path, int atIndex ) {
