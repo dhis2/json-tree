@@ -41,7 +41,8 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * The {@link JsonValue} is a virtual read-only view for {@link JsonNode} representing an actual {@link JsonTree}.
+ * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which
+ * is representing an actual {@link JsonTree}.
  * <p>
  * As usual there are specific node type for the JSON building blocks:
  * <ul>
@@ -64,9 +65,10 @@ import java.util.stream.Stream;
  * The API is designed to:
  * <ul>
  * <li>be extended by further type extending {@link JsonValue}, such as
- * {@link JsonDate} but also further specific object type</li>
- * <li>fail at point of assertion. This means traversing the virtual tree does
- * not cause errors unless explicitly provoked.</li>
+ * {@link JsonDate}, but also further specific object types</li>
+ * <li>fail at the point of assertion/use not traversal.
+ * This means traversing the virtual tree does not cause errors unless explicitly
+ * provoked by a "terminal operation" or malformed input</li>
  * <li>be implemented by a single class which only builds a lookup path and
  * checks or provides the leaf values on demand. Interfaces not directly
  * implemented by this class are dynamically created using a

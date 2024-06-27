@@ -41,12 +41,24 @@ public record JsonPath(List<String> segments) {
     public static final JsonPath ROOT = new JsonPath( List.of() );
 
     /**
+     * "Parse" a path {@link String} into its {@link JsonPath} form
+     *
      * @param path a JSON path string
      * @return the provided path as {@link JsonPath} object
      * @throws JsonPathException when the path cannot be split into segments as it is not a valid path
      */
     public static JsonPath of( String path ) {
         return new JsonPath( splitIntoSegments( path ) );
+    }
+
+    /**
+     * Create a path for an array index
+     *
+     * @param index array index
+     * @return an array index selecting path
+     */
+    public static JsonPath of(int index) {
+        return ROOT.extendedWith( index );
     }
 
     /**
@@ -188,8 +200,9 @@ public record JsonPath(List<String> segments) {
         return parseInt( seg0.substring( 1, seg0.length() - 1 ) );
     }
 
+    @Surly
     public String objectMemberAtStart() {
-        if ( isEmpty() ) throw new JsonPathException( this, "Root/self path does not designate a property name." );
+        if ( isEmpty() ) throw new JsonPathException( this, "Root/self path does not designate a object member name." );
         if ( !startsWithObject() )
             throw new JsonPathException( this, "Path %s does not start with an object.".formatted( toString() ) );
         String seg0 = segments.get( 0 );
@@ -203,7 +216,8 @@ public record JsonPath(List<String> segments) {
 
     @Override
     public boolean equals( Object obj ) {
-        return obj instanceof JsonPath && segments.equals( ((JsonPath) obj).segments );
+        if (!(obj instanceof JsonPath other)) return false;
+        return segments.equals( other.segments );
     }
 
     /**
