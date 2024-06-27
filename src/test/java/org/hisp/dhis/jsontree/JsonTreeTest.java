@@ -454,7 +454,7 @@ class JsonTreeTest {
     void testArray_NegativeIndex() {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
         JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.get( ".a.b[-1]" ) );
-        assertEquals( "Path `.a.b` does not exist, array index is negative: -1",
+        assertEquals( "Path `.a.b[-1]` does not exist, object `.a` does not have a property `b[-1]`",
             ex.getMessage() );
     }
 
@@ -481,7 +481,7 @@ class JsonTreeTest {
         JsonNode doc = JsonNode.of( "{\"a\": hello }" );
 
         JsonFormatException ex = assertThrowsExactly( JsonFormatException.class, () -> doc.get( ".a" ) );
-        String nl = System.getProperty( "line.separator" );
+        String nl = System.lineSeparator();
         assertEquals(
             "Unexpected character at position 6," + nl + "{\"a\": hello }"
                 + nl + "      ^ expected start of a JSON value but found: `h`",

@@ -2,13 +2,16 @@ package org.hisp.dhis.jsontree.validation;
 
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.Required;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
 import java.util.Set;
 
 import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
@@ -62,6 +65,19 @@ class JsonValidationDependentRequiredTest {
         }
     }
 
+    public interface JsonDependentRequiredExampleD extends JsonObject {
+
+        @Required
+        @Validation(dependentRequired = "=update")
+        default String getOp() { return getString( "op" ).string(); }
+
+        @Validation(dependentRequired = "update")
+        default String getPath() { return getString( "path" ).string(); }
+
+        @Validation(dependentRequired = "update", acceptNull = YES)
+        default JsonMixed getValue() { return get( "value", JsonMixed.class ); }
+    }
+
     @Test
     void testDependentRequired_Codependent() {
         assertValidationError( """
@@ -69,6 +85,9 @@ class JsonValidationDependentRequiredTest {
             Set.of( "firstName", "lastName" ), Set.of( "lastName" ) );
         assertValidationError( """
                 {"lastName":"peter"}""", JsonDependentRequiredExampleA.class, Rule.DEPENDENT_REQUIRED,
+            Set.of( "firstName", "lastName" ), Set.of( "firstName" ) );
+        assertValidationError( """
+                {"lastName":"peter", "firstName": null}""", JsonDependentRequiredExampleA.class, Rule.DEPENDENT_REQUIRED,
             Set.of( "firstName", "lastName" ), Set.of( "firstName" ) );
 
         assertDoesNotThrow( () -> JsonMixed.of( """
@@ -100,4 +119,22 @@ class JsonValidationDependentRequiredTest {
         assertDoesNotThrow( () -> JsonMixed.of( """
             {"street":"main", "no":"11"}""" ).validate( JsonDependentRequiredExampleC.class ) );
     }
+
+    @Test
+    void testDependentRequired_AllowNull() {
+        assertValidationError( """
+                {"op":"update"}""", JsonDependentRequiredExampleD.class, Rule.DEPENDENT_REQUIRED,
+            Map.of("op", "update"), Set.of("value", "path"), Set.of("value", "path") );
+        assertValidationError( """
+                {"op":"update", "value": null}""", JsonDependentRequiredExampleD.class, Rule.DEPENDENT_REQUIRED,
+            Map.of("op", "update"), Set.of("value", "path"), Set.of("path") );
+
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"op":"other"}""" ).validate( JsonDependentRequiredExampleD.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"op":"update", "path": "x", "value": null}""" ).validate( JsonDependentRequiredExampleD.class ) );
+        assertDoesNotThrow( () -> JsonMixed.of( """
+            {"op":"update", "path": "x", "value": 1}""" ).validate( JsonDependentRequiredExampleD.class ) );
+    }
+
 }

@@ -38,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -124,7 +125,7 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode ofNonStandard( String json ) {
-        return JsonTree.ofNonStandard( json ).get( "$" );
+        return JsonTree.ofNonStandard( json ).get( JsonPath.ROOT );
     }
 
     /**
@@ -136,7 +137,7 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode of( String json, GetListener onGet ) {
-        return JsonTree.of( json, onGet ).get( "$" );
+        return JsonTree.of( json, onGet ).get( JsonPath.ROOT );
     }
 
     /**
@@ -215,7 +216,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonValue lift( JsonTypedAccessStore store ) {
         JsonVirtualTree root = new JsonVirtualTree( getRoot(), store );
-        return isRoot() ? root : root.get( getPath() );
+        return isRoot() ? root : root.get( getPath().toString() );
     }
 
     /**
@@ -224,7 +225,7 @@ public interface JsonNode extends Serializable {
      */
     @Surly
     default JsonNode getParent() {
-        return isRoot() ? this : getRoot().get( parentPath( getPath() ) );
+        return isRoot() ? this : getRoot().get( getPath().dropLastSegment().toString() );
     }
 
     /**
@@ -236,13 +237,42 @@ public interface JsonNode extends Serializable {
      * @throws JsonPathException when no such node exists in the subtree of this node
      */
     @Surly
-    default JsonNode get( String path )
+    default JsonNode get(@Surly String path )
         throws JsonPathException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
         if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
+        if (!path.startsWith( "{" ) && !path.startsWith( "[" ) && !path.startsWith( "." ))
+            path = "."+path;
+        return get( JsonPath.of( path ) );
+    }
+
+    /**
+     *
+     * @param path a path understood relative to this node's {@link #getPath()}
+     * @return the node at the given path
+     * @since 1.1
+     */
+    @Surly
+    default JsonNode get(@Surly JsonPath path) {
         throw new JsonPathException( path,
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+    }
+
+    /**
+     * Access node by path with default.
+     *
+     * @param path      a simple or nested path relative to this node
+     * @param orDefault value to return in no node at the given path exist in this subtree
+     * @return the node at path or the provided default if no such node exists
+     * @since 1.1
+     */
+    default JsonNode getOrDefault( String path, JsonNode orDefault ) {
+        try {
+            return get( path );
+        } catch ( JsonPathException ex ) {
+            return orDefault;
+        }
     }
 
     /**
@@ -345,6 +375,9 @@ public interface JsonNode extends Serializable {
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      * <p>
      * The members are iterated in order of declaration in the underlying document.
+     * <p>
+     * In contrast to {@link #keys()} the entries in this method will always have the literal property as their {@link Entry#getKey()}.
+     * This means also they are not fully safe to be used for {@link #get(String)}.
      *
      * @return this {@link #value()} as a sequence of {@link Entry}
      * @throws JsonTreeException if this node is not an object node that could have members
@@ -367,6 +400,19 @@ public interface JsonNode extends Serializable {
      */
     default Iterable<String> keys() {
         throw new JsonTreeException( getType() + " node has no keys property." );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
+     * The names are iterated in order of declaration in the underlying document.
+     *
+     * @return the raw property names of this object node
+     * @throws JsonTreeException if this node is not an object node that could have members
+     * @since 1.1
+     */
+    default Iterable<String> names() {
+        throw new JsonTreeException( getType() + " node has no names property." );
     }
 
     /**
@@ -499,8 +545,9 @@ public interface JsonNode extends Serializable {
 
     /**
      * @return path within the overall content this node represents
+     * @since 1.1 (with {@link JsonPath} type)
      */
-    String getPath();
+    JsonPath getPath();
 
     /**
      * @return the plain JSON of this node as defined in the overall content
@@ -748,11 +795,4 @@ public interface JsonNode extends Serializable {
                 format( "`%s` only allowed for %s but was: %s", operation, expected, actual ) );
     }
 
-    static String parentPath( String path ) {
-        if ( path.endsWith( "]" ) ) {
-            return path.substring( 0, path.lastIndexOf( '[' ) );
-        }
-        int end = path.lastIndexOf( '.' );
-        return end < 0 ? "" : path.substring( 0, end );
-    }
 }

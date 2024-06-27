@@ -51,6 +51,15 @@ class JsonObjectTest {
     }
 
     @Test
+    void testNames_Special() {
+        //language=json
+        String json = """
+            {".":1,"{uid}":2,"[0]": 3}""";
+        JsonMixed value = JsonMixed.of( json );
+        assertEquals( List.of( ".", "{uid}", "[0]" ), value.names() );
+    }
+
+    @Test
     void testProject() {
         //language=json
         String json = """

@@ -76,8 +76,25 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     }
 
     /**
+     * Test if the object property is defined which includes being defined JSON {@code null}.
+     *
+     * @param name name of the object member
+     * @return true if this object has a member of the provided name
+     * @since 1.1
+     */
+    default boolean exists(String name) {
+       return get(name).exists();
+    }
+
+    /**
+     * Note that keys may differ from the member names as defined in the JSON document in case that their literal
+     * interpretation would have clashed with key syntax. In that case the object member name is "escaped" so that using
+     * the returned key with {@link #get(String)} will return the value. Use {@link #names()} to receive the literal
+     * object member names as defined in the document.
+     *
      * @return The keys of this map.
      * @throws JsonTreeException in case this node does exist but is not an object node
+     * @see #names()
      * @since 0.11 (as Stream)
      */
     default Stream<String> keys() {
@@ -103,15 +120,14 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     }
 
     /**
-     * Lists JSON object property names in order of declaration.
+     * Lists raw JSON object member names in order of declaration.
      *
-     * @return The list of property names in the order they were defined.
-     * @throws JsonTreeException in case this value is not an JSON object
+     * @return The list of object member names in the order they were defined.
+     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @see #keys()
      */
     default List<String> names() {
-        List<String> names = new ArrayList<>();
-        keys().forEach( names::add );
-        return names;
+        return isUndefined() || isEmpty() ? List.of() : stream( node().names().spliterator(), false ).toList();
     }
 
     /**

@@ -33,12 +33,16 @@ import org.hisp.dhis.jsontree.internal.Surly;
 import java.io.Reader;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
- * The {@link JsonValue} is a virtual read-only view for {@link JsonNode} representing an actual {@link JsonTree}.
+ * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which
+ * is representing an actual {@link JsonTree}.
  * <p>
  * As usual there are specific node type for the JSON building blocks:
  * <ul>
@@ -61,9 +65,10 @@ import java.util.function.Predicate;
  * The API is designed to:
  * <ul>
  * <li>be extended by further type extending {@link JsonValue}, such as
- * {@link JsonDate} but also further specific object type</li>
- * <li>fail at point of assertion. This means traversing the virtual tree does
- * not cause errors unless explicitly provoked.</li>
+ * {@link JsonDate}, but also further specific object types</li>
+ * <li>fail at the point of assertion/use not traversal.
+ * This means traversing the virtual tree does not cause errors unless explicitly
+ * provoked by a "terminal operation" or malformed input</li>
  * <li>be implemented by a single class which only builds a lookup path and
  * checks or provides the leaf values on demand. Interfaces not directly
  * implemented by this class are dynamically created using a
@@ -296,6 +301,55 @@ public interface JsonValue {
     }
 
     /**
+     * The same information does not imply the value is identically defined. There can be differences in formatting, the
+     * order of object members or how the same numerical value is encoded for a number.
+     * <p>
+     * Equivalence is always symmetric; if A is equivalent to B then B must also be equivalent to A.
+     *
+     * @param other the value to compare with
+     * @return true, if this value represents the same information, else false
+     * @since 1.1
+     */
+    default boolean equivalentTo(JsonValue other) {
+        return equivalentTo( this, other, JsonValue::equivalentTo );
+    }
+
+    /**
+     * The two values only differ in formatting (whitespace outside of values).
+     * <p>
+     * All values that are identical are also {@link #equivalentTo(JsonValue)}.
+     * <p>
+     * Identical is always symmetric; if A is identical to B then B must also be identical to A.
+     *
+     * @param other the value to compare with
+     * @return true, if this value only differs in formatting from the other value, otherwise false
+     * @since 1.1
+     */
+    default boolean identicalTo(JsonValue other) {
+        if (!equivalentTo( this, other, JsonValue::identicalTo )) return false;
+        if (isNumber()) return toJson().equals( other.toJson() );
+        if (!isObject()) return true;
+        // names must be in same order
+        return asObject().names().equals( other.asObject().names() );
+    }
+
+    private static boolean equivalentTo(JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> compare ) {
+        if (a.type() != b.type()) return false;
+        if (a.isUndefined()) return true; // includes null
+        if (a.isString()) return a.as( JsonString.class ).string().equals( b.as( JsonString.class ).string() );
+        if (a.isBoolean()) return a.as(JsonBoolean.class).booleanValue() == b.as( JsonBoolean.class ).booleanValue();
+        if (a.isNumber()) return a.as( JsonNumber.class ).doubleValue() == b.as( JsonNumber.class ).doubleValue();
+        if (a.isArray()) {
+            JsonArray ar = a.as( JsonArray.class );
+            JsonArray br = b.as( JsonArray.class );
+            return ar.size() == br.size() && ar.indexes().allMatch( i  -> compare.test( ar.get( i ), br.get( i ) ));
+        }
+        JsonObject ao = a.asObject();
+        JsonObject bo = b.asObject();
+        return ao.size() == bo.size() && ao.keys().allMatch( key -> compare.test( ao.get( key ), bo.get( key ) ) );
+    }
+
+    /**
      * Access the node in the JSON document. This can be the low level API that is concerned with extraction by path.
      * <p>
      * This might be useful in test to access the {@link JsonNode#getDeclaration()} to modify and reuse it.
@@ -376,4 +430,5 @@ public interface JsonValue {
             ? JsonMixed.of( "{}" ).get( "notFound", type )
             : match.get().lift( store ).as( type );
     }
+
 }

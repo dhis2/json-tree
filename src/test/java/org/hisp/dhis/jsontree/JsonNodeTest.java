@@ -34,6 +34,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 /**
@@ -44,27 +45,32 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 class JsonNodeTest {
 
     @Test
+    void testEquals() {
+        assertEquals( JsonNode.of( "1" ), JsonNode.of( "1" ) );
+    }
+
+    @Test
     void testGet_String() {
         assertGetThrowsJsonPathException( "\"hello\"",
-            "This is a leaf node of type STRING that does not have any children at path: foo" );
+            "This is a leaf node of type STRING that does not have any children at path: .foo" );
     }
 
     @Test
     void testGet_Number() {
         assertGetThrowsJsonPathException( "42",
-            "This is a leaf node of type NUMBER that does not have any children at path: foo" );
+            "This is a leaf node of type NUMBER that does not have any children at path: .foo" );
     }
 
     @Test
     void testGet_Boolean() {
         assertGetThrowsJsonPathException( "true",
-            "This is a leaf node of type BOOLEAN that does not have any children at path: foo" );
+            "This is a leaf node of type BOOLEAN that does not have any children at path: .foo" );
     }
 
     @Test
     void testGet_Null() {
         assertGetThrowsJsonPathException( "null",
-            "This is a leaf node of type NULL that does not have any children at path: foo" );
+            "This is a leaf node of type NULL that does not have any children at path: .foo" );
     }
 
     @Test
@@ -73,6 +79,14 @@ class JsonNodeTest {
         assertEquals( 42, root.get( "a.b.c" ).value() );
         JsonNode b = root.get( "a.b" );
         assertEquals( 42, b.get( "c" ).value() );
+    }
+
+    @Test
+    void testGet_EmptyProperty() {
+        JsonNode root = JsonNode.of( """
+            {"": "hello"}""" );
+        assertSame( root, root.get( "" ) );
+        assertEquals( "hello", root.get( "{}" ).value() );
     }
 
     @Test
@@ -95,7 +109,8 @@ class JsonNodeTest {
 
     @Test
     void testGet_Array_NoValueAtPath() {
-        assertGetThrowsJsonPathException( "[1,2]", "a", "Malformed path a at a." );
+        assertGetThrowsJsonPathException( "[1,2]", "a", "Path `.a` does not exist, parent `` is not an OBJECT but a ARRAY node." );
+        assertGetThrowsJsonPathException( "[1,2]", ".a", "Path `.a` does not exist, parent `` is not an OBJECT but a ARRAY node." );
         assertGetThrowsJsonPathException( "[[1,2],[]]", "[1][0]",
             "Path `[1][0]` does not exist, array `[1]` has only `0` elements." );
         assertGetThrowsJsonPathException( "[[1,2],[]]", "[0].a",
@@ -194,7 +209,7 @@ class JsonNodeTest {
     }
 
     private static void assertGetThrowsJsonPathException( String json, String expected ) {
-        assertGetThrowsJsonPathException( json, "foo", expected );
+        assertGetThrowsJsonPathException( json, ".foo", expected );
     }
 
     private static void assertGetThrowsJsonPathException( String json, String path, String expected ) {

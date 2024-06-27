@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Map.entry;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
@@ -134,5 +135,31 @@ class JsonMapTest {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
         JsonMap<JsonNumber> view = obj.project( arr -> arr.getNumber( 0 ) );
         assertEquals( List.of( 1, 2 ), view.values().map( JsonNumber::intValue ).toList() );
+    }
+
+    @Test
+    void testKeys_Special() {
+        String json = """
+            {".":1, "{uid}":2, "[6]":3, "x{y}z": 4}""";
+        JsonMap<JsonNumber> map = JsonMixed.of( json ).asMap( JsonNumber.class );
+        assertEquals( List.of( "{.}", ".{uid}", ".[6]", "x{y}z" ), map.keys().toList() );
+    }
+
+    @Test
+    void testValues_Special() {
+        String json = """
+            {".":1, "{uid}":2, "[6]":3, "x{y}z": 4}""";
+        JsonMap<JsonNumber> map = JsonMixed.of( json ).asMap( JsonNumber.class );
+        assertEquals( List.of( 1, 2, 3, 4 ), map.values().map( JsonNumber::intValue ).toList() );
+    }
+
+    @Test
+    void testEntries_Special() {
+        String json = """
+            {".":1, "{uid}":2, "[6]":3, "x{y}z": 4}""";
+        JsonMap<JsonNumber> map = JsonMixed.of( json ).asMap( JsonNumber.class );
+        assertEquals( List.of( entry( "{.}", 1 ), entry( ".{uid}", 2 ),
+                entry( ".[6]", 3 ), entry( "x{y}z", 4 ) ),
+            map.entries().map( e -> entry( e.getKey(), e.getValue().intValue() ) ).toList() );
     }
 }

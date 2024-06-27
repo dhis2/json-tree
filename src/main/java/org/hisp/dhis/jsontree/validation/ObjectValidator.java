@@ -27,9 +27,11 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.lang.Double.isNaN;
@@ -162,7 +164,10 @@ record ObjectValidator(
         PropertyValidation.ValueValidation values = node.values();
         boolean isRequiredYes = values != null && values.required().isYes();
         boolean isRequiredAuto = (values == null || values.required().isAuto()) && isRequiredImplicitly( node, anyOf );
-        Validator required = !isRequiredYes && !isRequiredAuto ? null : new Required( property );
+        boolean isAllowNull = values != null && values.allowNull().isYes();
+        Validator required = !isRequiredYes && !isRequiredAuto
+            ? null
+            : new Required( isAllowNull ? not(JsonValue::exists) : JsonValue::isUndefined, property );
         return Guard.of( required, whenDefined );
     }
 
@@ -194,7 +199,7 @@ record ObjectValidator(
                 : new EnumAnyString( strings.anyOfStrings(), strings.caseInsensitive().isYes() ),
             strings.minLength() <= 0 ? null : new MinLength( strings.minLength() ),
             strings.maxLength() <= 1 ? null : new MaxLength( strings.maxLength() ),
-            strings.pattern().isEmpty() ? null : new Pattern( strings.pattern() ) );
+            strings.pattern().isEmpty() ? null : new Pattern( java.util.regex.Pattern.compile( strings.pattern() ) ) );
     }
 
     @Maybe
@@ -228,8 +233,10 @@ record ObjectValidator(
         if ( properties.values().stream()
             .allMatch( p -> p.values() == null || p.values().dependentRequired().isEmpty() ) ) return null;
         Map<String, Map<String, String>> groupPropertyRole = new HashMap<>();
+        Map<String, BiPredicate<JsonMixed, String>> isUndefined = new HashMap<>();
         properties.forEach( ( name, property ) -> {
             PropertyValidation.ValueValidation values = property.values();
+            isUndefined.put( name, isUndefined( values ) );
             if ( values != null && !values.dependentRequired().isEmpty() ) {
                 values.dependentRequired().forEach( role -> {
                     String group = role.replace( "!", "" ).replace( "?", "" );
@@ -242,7 +249,7 @@ record ObjectValidator(
         List<Validator> all = new ArrayList<>();
         groupPropertyRole.forEach( ( group, members ) -> {
             if ( members.values().stream().noneMatch( ObjectValidator::isDependentRequiredRole ) ) {
-                all.add( new DependentRequiredCodependent( Set.copyOf( members.keySet() ) ) );
+                all.add( new DependentRequiredCodependent(Map.copyOf( isUndefined ), Set.copyOf( members.keySet() ) ) );
             } else {
                 Set<Map.Entry<String, String>> memberEntries = members.entrySet();
                 List<String> present = memberEntries.stream().filter( e ->
@@ -258,11 +265,19 @@ record ObjectValidator(
                     .collect(
                         toMap( Map.Entry::getKey, e -> e.getValue().substring( e.getValue().indexOf( '=' ) + 1 ) ) );
                 all.add(
-                    new DependentRequired( Set.copyOf( present ), Set.copyOf( absent ), Map.copyOf( equals ),
+                    new DependentRequired( Map.copyOf( isUndefined ),
+                        Set.copyOf( present ), Set.copyOf( absent ), Map.copyOf( equals ),
                         Set.copyOf( dependent ), Set.copyOf( exclusiveDependent ) ) );
             }
         } );
         return All.of( all.toArray( Validator[]::new ) );
+    }
+
+    @Surly
+    private static BiPredicate<JsonMixed, String> isUndefined( PropertyValidation.ValueValidation values ) {
+        if (values == null || !values.allowNull().isYes()) return JsonMixed::isUndefined;
+        BiPredicate<JsonMixed,String> test = JsonMixed::exists;
+        return test.negate();
     }
 
     private static boolean isDependentRequiredRole( String group ) {
@@ -347,11 +362,11 @@ record ObjectValidator(
         }
     }
 
-    private record Required(String property) implements Validator {
+    private record Required(Predicate<JsonMixed> isUndefined, String property) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( value.isUndefined() )
+            if ( isUndefined.test( value ) )
                 addError.accept( Error.of( Rule.REQUIRED, value,
                     "%s is required but was " + (value.isNull() ? "null" : "undefined"), property ) );
         }
@@ -415,15 +430,15 @@ record ObjectValidator(
         }
     }
 
-    private record Pattern(String regex) implements Validator {
+    private record Pattern(java.util.regex.Pattern regex) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isString() ) return;
             String actual = value.string();
-            if ( !actual.matches( regex ) )
+            if ( !regex.matcher( actual ).matches() )
                 addError.accept( Error.of( Rule.PATTERN, value,
-                    "must match %s but was: %s", regex, actual ) );
+                    "must match %s but was: %s", regex.pattern(), actual ) );
         }
     }
 
@@ -574,19 +589,20 @@ record ObjectValidator(
      * @param dependents a set of properties that become required when triggering
      * @param exclusiveDependent a set of properties that become required when triggering but are also mutual exclusive
      */
-    private record DependentRequired(Set<String> present, Set<String> absent, Map<String,String> equals,
+    private record DependentRequired(Map<String, BiPredicate<JsonMixed, String>> isUndefined,
+        Set<String> present, Set<String> absent, Map<String,String> equals,
                                      Set<String> dependents, Set<String> exclusiveDependent) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isObject() ) return;
-            boolean presentNotMet = !present.isEmpty() && present.stream().anyMatch( value::isUndefined );
-            boolean absentNotMet = !absent.isEmpty() && absent.stream().anyMatch( not( value::isUndefined ) );
+            boolean presentNotMet = !present.isEmpty() && present.stream().anyMatch( p -> isUndefined.get( p ).test( value, p ));
+            boolean absentNotMet = !absent.isEmpty() && absent.stream().anyMatch( p -> !isUndefined.get( p ).test( value, p ));
             boolean equalsNotMet = !equals.isEmpty() && equals.entrySet().stream()
                 .anyMatch( e -> !e.getValue().equals( value.getString( e.getKey() ).string() ) );
             if ( presentNotMet || absentNotMet || equalsNotMet ) return;
-            if ( !dependents.isEmpty() && dependents.stream().anyMatch( value::isUndefined ) ) {
-                Set<String> missing = Set.copyOf( dependents.stream().filter( value::isUndefined ).toList() );
+            if ( !dependents.isEmpty() && dependents.stream().anyMatch( p -> isUndefined.get( p ).test( value, p ))) {
+                Set<String> missing = Set.copyOf( dependents.stream().filter( p -> isUndefined.get( p ).test( value, p )).toList());
                 if (!equals.isEmpty()) {
                     addError.accept(  Error.of( Rule.DEPENDENT_REQUIRED, value,
                         "object with %s requires all of %s, missing: %s", equals, dependents, missing ));
@@ -604,7 +620,7 @@ record ObjectValidator(
             }
             if ( !exclusiveDependent.isEmpty() ) {
                 Set<String> defined = Set.copyOf(
-                    exclusiveDependent.stream().filter( p -> !value.isUndefined( p ) ).toList() );
+                    exclusiveDependent.stream().filter( p -> !isUndefined.get( p ).test( value, p )).toList() );
                 if ( defined.size() == 1 ) return; // it is exclusively defined => OK
                 if ( !equals.isEmpty()) {
                     addError.accept(  Error.of( Rule.DEPENDENT_REQUIRED, value,
@@ -630,15 +646,15 @@ record ObjectValidator(
         }
     }
 
-    private record DependentRequiredCodependent(Set<String> codependent) implements Validator {
+    private record DependentRequiredCodependent(Map<String, BiPredicate<JsonMixed, String>> isUndefined, Set<String> codependent) implements Validator {
 
         @Override public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isObject() ) return;
-            if ( codependent.stream().anyMatch( value::isUndefined ) && codependent.stream()
-                .anyMatch( not( value::isUndefined ) ) )
+            if ( codependent.stream().anyMatch( p -> isUndefined.get( p ).test( value, p )) && codependent.stream()
+                .anyMatch( p -> !isUndefined.get( p ).test( value, p )))
                 addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
                     "object with any of %1$s all of %1$s are required, missing: %s", codependent,
-                    Set.copyOf( codependent.stream().filter( value::isUndefined ).toList() ) ) );
+                    Set.copyOf( codependent.stream().filter( p -> isUndefined.get( p ).test( value, p ) ).toList() ) ) );
         }
     }
 

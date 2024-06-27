@@ -43,7 +43,7 @@ import java.lang.reflect.Type;
  * While they "map" values this mapping takes place on access only. Everything before that is just as virtual (a view)
  * as the {@link JsonValue} tree.
  * <p>
- * One could also think of accessors as "automatic" implementation of an abstract method as if it became a default
+ * One could also think of accessors as an "automatic" implementation of an abstract method as if it became a default
  * method in an interface. The "implementation" here is derived from the return type of the method. Each accessor knows
  * how to access and map to a particular java tye. The store then contains the set of known java target type and their
  * way to access them given a {@link JsonValue} tree.

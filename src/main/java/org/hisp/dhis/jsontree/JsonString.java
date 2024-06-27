@@ -27,6 +27,9 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
+
 import java.util.function.Function;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
@@ -64,7 +67,8 @@ public interface JsonString extends JsonPrimitive {
      * @return {@code null} when {@link #string()} returns {@code null} otherwise the result of calling provided parser
      * with result of {@link #string()}.
      */
-    default <T> T parsed( Function<String, T> parser ) {
+    @Maybe
+    default <T> T parsed( @Surly Function<String, T> parser ) {
         String value = string();
         return value == null ? null : parser.apply( value );
     }
