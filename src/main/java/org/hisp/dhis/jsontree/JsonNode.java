@@ -789,27 +789,6 @@ public interface JsonNode extends Serializable {
         } ) );
     }
 
-    /**
-     * A {@link JsonNode} is an immutable value. For similar reasons all operations in a patch apply to the same target
-     * value state. The state does not "update" in-between the operations. This means a set of operations can be
-     * considered declarative. Inserts and removes that contradict each other make the patch invalid and a
-     * {@link JsonPatchException} is thrown.
-     * <p>
-     * <h4>Patching array elements</h4>
-     * The immutable nature is especially relevant for operations targeting arrays. For example, to insert 3 element at
-     * position 4 it is not correct to generate 3 insert operations at index 4,5,6 as each of these indexes refers to
-     * the array before the change. Instead, use a single operation with {@link JsonNodeOperation.Insert#merge()} and a
-     * value array containing the three elements.
-     *
-     * @param ops the set of patch operations to apply (paths are relative to this node)
-     * @return the root node of the patched tree (this node and tree stay unchanged); removing the root results in
-     * {@link JsonNode#NULL}
-     * @throws JsonPatchException when any two of the given operations contradict each other (for example removing parts
-     *                            of an insert or inserting into a removed subtree) or when any of the arrays
-     *                            or objects targeted for insert do not exist
-     */
-    JsonNode patch( List<JsonNodeOperation> ops) throws JsonPatchException;
-
     private void checkType( JsonNodeType expected, JsonNodeType actual, String operation ) {
         if ( actual != expected )
             throw new JsonTreeException(

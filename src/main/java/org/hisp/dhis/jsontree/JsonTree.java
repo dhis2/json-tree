@@ -188,16 +188,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        public final JsonNode patch( List<JsonNodeOperation> ops ) {
-            if (ops.isEmpty()) return getRoot();
-            if (isRoot() && ops.size() == 1 && ops.get( 0 ).path().isEmpty())
-                return ops.get( 0 ) instanceof Insert i ?  i.value() : JsonNode.NULL; // root insert/remove
-            List<JsonTreeOperation> treeOps = JsonTreeOperation.of( ops, this );
-            //TODO
-            return this;
-        }
-
-        @Override
         public final void visit( JsonNodeType type, Consumer<JsonNode> visitor ) {
             if ( type == null || type == getType() ) {
                 visitor.accept( this );

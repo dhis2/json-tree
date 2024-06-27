@@ -18,6 +18,8 @@
 
 > [!Warning]
 > ### Breaking Changes 
+> * **Changed**: `JsonNode#getPath` returns a `JsonPath` (`String` before)
+> * **Changed**: `JsonNode#keys` returns paths with escaping when needed
 
 > [!Caution]
 > ### Bugfixes
