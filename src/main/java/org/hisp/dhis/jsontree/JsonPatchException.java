@@ -6,7 +6,7 @@ import org.hisp.dhis.jsontree.internal.Surly;
 import java.util.List;
 
 /**
- * When a {@link JsonPatch} operation fails.
+ * When a patch operation fails.
  *
  * @author Jan Bernitt
  * @since 1.1

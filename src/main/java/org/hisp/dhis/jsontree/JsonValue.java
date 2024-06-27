@@ -350,29 +350,6 @@ public interface JsonValue {
     }
 
     /**
-     * Create a new value based on this value and a patch.
-     * <p>
-     * Operations apply "as if" they were applied in sequence.
-     * However, operations that alter already altered subtrees are not allowed.
-     * This entails the following:
-     * <ul>
-     *     <li>operations must not target a parent of a prior operation</li>
-     *     <li>operations must not target a child of a prior operation</li>
-     *     <li>operations must not target same path as a prior insert</li>
-     * </ul>
-     * That means in a valid sequence of operations all removes can be reordered to occur before any insert
-     * and can be done in a random order among the removes.
-     *
-     * @param ops operations to apply "atomically"
-     * @return a new value with the effects of the patch operations (this value stays unchanged)
-     * @throws JsonPatchException when the patch fails either because the operation was incorrectly defined or could not be applied to the value. This includes the a failing test operation.
-     * @since 1.1
-     */
-    default JsonValue patch(JsonList<JsonPatch> ops) throws JsonPatchException {
-        return JsonPatch.apply( this, ops );
-    }
-
-    /**
      * Access the node in the JSON document. This can be the low level API that is concerned with extraction by path.
      * <p>
      * This might be useful in test to access the {@link JsonNode#getDeclaration()} to modify and reuse it.
