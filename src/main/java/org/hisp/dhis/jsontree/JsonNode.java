@@ -404,6 +404,17 @@ public interface JsonNode extends Serializable {
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     *
+     * @return the absolute paths of the members of this object in order of declaration
+     * @throws JsonTreeException if this node is not an object node that could have members
+     * @since 1.2
+     */
+    default Iterable<JsonPath> paths() {
+        throw new JsonTreeException( getType() + " node has no paths property." );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
      * <p>
      * The names are iterated in order of declaration in the underlying document.
      *

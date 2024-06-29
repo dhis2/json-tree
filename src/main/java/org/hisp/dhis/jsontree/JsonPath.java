@@ -4,8 +4,10 @@ import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static java.lang.Integer.parseInt;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Stream.concat;
 
 /**
@@ -82,6 +84,10 @@ public record JsonPath(List<String> segments) {
         if ( name.startsWith( "{" ) || name.startsWith( "[" ) ) return "." + name;
         if ( name.indexOf( '.' ) >= 0 ) return "{" + name + "}";
         return forceSegment ? "." + name : name;
+    }
+
+    public JsonPath {
+        requireNonNull( segments );
     }
 
     /**

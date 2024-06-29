@@ -60,6 +60,17 @@ class JsonObjectTest {
     }
 
     @Test
+    void testPaths_Special() {
+        //language=json
+        String json = """
+            {"root": {".":1,"{uid}":2,"[0]": 3,"normal":4}}""";
+        JsonObject value = JsonMixed.of( json ).getObject( "root" );
+        assertEquals( List.of( JsonPath.of( ".root{.}" ), JsonPath.of( ".root.{uid}" ), JsonPath.of( ".root.[0]" ),
+                JsonPath.of( ".root.normal" ) ),
+            value.paths().toList() );
+    }
+
+    @Test
     void testProject() {
         //language=json
         String json = """

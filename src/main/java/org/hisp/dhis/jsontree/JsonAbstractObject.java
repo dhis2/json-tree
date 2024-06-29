@@ -116,6 +116,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @since 0.11
      */
     default Stream<Map.Entry<String, E>> entries() {
+        //TODO use members internally to have names as entry key?
         return keys().map( key -> Map.entry( key, get( key ) ) );
     }
 
@@ -128,6 +129,15 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      */
     default List<String> names() {
         return isUndefined() || isEmpty() ? List.of() : stream( node().names().spliterator(), false ).toList();
+    }
+
+    /**
+     * @return a stream of the absolute paths of the map/object members in oder of their declaration
+     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @since 1.2
+     */
+    default Stream<JsonPath> paths() {
+        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().paths().spliterator(), false );
     }
 
     /**
