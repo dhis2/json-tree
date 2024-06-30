@@ -35,7 +35,7 @@ class JuonTest {
     }
 
     @Test
-    @DisplayName( "In contrast to JSON an undefined, empty or blank value is considered null" )
+    @DisplayName( "In contrast to JSON, in JUON an undefined, empty or blank value is considered null" )
     void testNull_Omit() {
         assertEquals( JsonNode.of( "null" ), JsonNode.ofUrlObjectNotation( null ) );
         assertEquals( JsonNode.of( "null" ), JsonNode.ofUrlObjectNotation( "" ) );
@@ -47,16 +47,18 @@ class JuonTest {
         assertEquals( JsonNode.of( "1234" ), JsonNode.ofUrlObjectNotation( "1234" ) );
         assertEquals( JsonNode.of( "42.12" ), JsonNode.ofUrlObjectNotation( "42.12" ) );
         assertEquals( JsonNode.of( "-0.12" ), JsonNode.ofUrlObjectNotation( "-0.12" ) );
+        assertEquals( JsonNode.of( "-0.12e-3" ), JsonNode.ofUrlObjectNotation( "-0.12e-3" ) );
+        assertEquals( JsonNode.of( "0.12E12" ), JsonNode.ofUrlObjectNotation( "0.12E12" ) );
     }
 
     @Test
-    @DisplayName( "In contrast to JSON floating point numbers can start with a dot" )
+    @DisplayName( "In contrast to JSON, in JUON floating point numbers can start with a dot" )
     void testNumber_OmitLeadingZero() {
         assertEquals( JsonNode.of( "0.12" ), JsonNode.ofUrlObjectNotation( ".12" ) );
     }
 
     @Test
-    @DisplayName( "In contrast to JSON floating point numbers can end with a dot" )
+    @DisplayName( "In contrast to JSON, in JUON floating point numbers can end with a dot" )
     void testNumber_OmitTailingZero() {
         assertEquals( JsonNode.of( "0.0" ), JsonNode.ofUrlObjectNotation( "0." ) );
     }
@@ -78,7 +80,7 @@ class JuonTest {
     }
 
     @Test
-    @DisplayName( "In contrast to JSON nulls in arrays can be omitted (left empty)" )
+    @DisplayName( "In contrast to JSON, in JUON nulls in arrays can be omitted (left empty)" )
     void testArray_OmitNulls() {
         assertEquals( JsonNode.of( "[null,null]" ), JsonNode.ofUrlObjectNotation( "(,)" ) );
         assertEquals( JsonNode.of( "[null,null,3]" ), JsonNode.ofUrlObjectNotation( "(,,3)" ) );
@@ -92,6 +94,27 @@ class JuonTest {
         assertEquals( JsonNode.of( "{\"hi\":\"ho\"}" ), JsonNode.ofUrlObjectNotation( "(hi:'ho')" ) );
         assertEquals( JsonNode.of( "{\"no\":1,\"surprises\":{\"please\":true}}" ),
             JsonNode.ofUrlObjectNotation( "(no:1,surprises:(please:true))" ) );
+    }
+
+    @Test
+    @DisplayName( "In contrast to JSON, in JUON nulls in objects can be omitted (left empty)" )
+    void testObject_OmitNulls() {
+        assertEquals( JsonNode.of( "{\"a\":null}" ), JsonNode.ofUrlObjectNotation( "(a:)" ) );
+        assertEquals( JsonNode.of( "{\"a\":null,\"b\":null}" ), JsonNode.ofUrlObjectNotation( "(a:,b:)" ) );
+        assertEquals( JsonNode.of( "{\"a\":null,\"b\":null,\"c\":3}" ), JsonNode.ofUrlObjectNotation( "(a:,b:,c:3)" ) );
+        assertEquals( JsonNode.of( "{\"a\":1,\"b\":null,\"c\":3}" ), JsonNode.ofUrlObjectNotation( "(a:1,b:,c:3)" ) );
+        assertEquals( JsonNode.of( "{\"a\":1,\"b\":null,\"c\":null}" ), JsonNode.ofUrlObjectNotation( "(a:1,b:,c:)" ) );
+        assertEquals( JsonNode.of( "{\"a\":1,\"b\":null,\"c\":0.3,\"d\":null,\"e\":5}" ), JsonNode.ofUrlObjectNotation( "(a:1,b:,c:.3,d:,e:5)" ) );
+    }
+
+    @Test
+    void testObject_Object() {
+        assertEquals( JsonNode.of( "{\"a\":{\"b\":null}}" ), JsonNode.ofUrlObjectNotation( "(a:(b:))" ) );
+        assertEquals( JsonNode.of( "{\"a\":{\"b\":null},\"c\":{\"d\":null}}" ), JsonNode.ofUrlObjectNotation( "(a:(b:),c:(d:))" ) );
+        assertEquals( JsonNode.of( "{\"a\":{\"b\":{\"c\":null}}}" ), JsonNode.ofUrlObjectNotation( "(a:(b:(c:)))" ) );
+        String json = """
+        {"a":{"b":{"c":1,"d":2},"e":{"f":3,"g":4}},"h":{"i":5,"k":6}}""";
+        assertEquals( JsonNode.of( json ), JsonNode.ofUrlObjectNotation( "(a:(b:(c:1,d:2),e:(f:3,g:4)),h:(i:5,k:6))" ) );
     }
 
     @Test

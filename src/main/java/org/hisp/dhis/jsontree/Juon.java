@@ -10,6 +10,13 @@ package org.hisp.dhis.jsontree;
  */
 record Juon(char[] juon, StringBuilder json) {
 
+    /**
+     * Converts JUON to JSON.
+     *
+     * @param juon the JUON input
+     * @return the equivalent JSON
+     * @since 1.2
+     */
     public static String toJSON(String juon) {
         if (juon == null || juon.isEmpty() || juon.isBlank())
             return "null";
@@ -58,16 +65,39 @@ record Juon(char[] juon, StringBuilder json) {
     private int toJsonObject(int index) {
         index = toJsonSymbol( index, '(', '{' );
         char c = ',';
-        while ( hasNext( index ) && c == ',' ) {
+        while ( hasChar( index ) && c == ',' ) {
             index = toJsonMemberName( index );
             index = toJsonSymbol( index, ':', ':' );
+            if (peek( index ) == ')') { // trailing omitted null...
+                append( "null" );
+            } else {
+                index = toJsonAutoDetect( index );
+                index = toJsonWhitespace( index );
+            }
+            c = peek( index );
+            if (c == ',') {
+                index = toJsonSymbol( index, ',', ',' );
+            }
+        }
+        return toJsonSymbol( index, ')', '}' );
+    }
+
+    private int toJsonArray(int index) {
+        index = toJsonSymbol( index, '(', '[' );
+        char c = peek( index ) == ')' ? ')' : ',';
+        while ( hasChar( index ) && c == ',') {
             index = toJsonAutoDetect( index );
             index = toJsonWhitespace( index );
             c = peek( index );
-            if (c == ',')
-                index = toJsonSymbol( index, ',', ',');
+            if (c == ',') {
+                index = toJsonSymbol( index, ',', ',' );
+                if ( peek( index ) == ')' ) { // trailing omitted null...
+                    c = ')';
+                    append( "null" );
+                }
+            }
         }
-        return toJsonSymbol( index, ')', '}' );
+        return toJsonSymbol( index, ')', ']' );
     }
 
     private int toJsonMemberName(int index) {
@@ -81,27 +111,9 @@ record Juon(char[] juon, StringBuilder json) {
         return index;
     }
 
-    private int toJsonArray(int index) {
-        index = toJsonSymbol( index, '(', '[' );
-        char c = peek( index ) == ')' ? ')' : ',';
-        while (c == ',') {
-            index = toJsonAutoDetect( index );
-            index = toJsonWhitespace( index );
-            c = peek( index );
-            if (c == ',') {
-                index = toJsonSymbol( index, ',', ',' );
-                if ( peek( index ) == ')' ) { // tailing omitted null...
-                    c = ')';
-                    append( "null" );
-                }
-            }
-        }
-        return toJsonSymbol( index, ')', ']' );
-    }
-
     private int toJsonString(int index) {
         index = toJsonSymbol( index, '\'', '"' );
-        while ( hasNext( index ) ) {
+        while ( hasChar( index ) ) {
             char c = peek( index++ );
             if (c == '\'') {
                 append( '"' );
@@ -132,23 +144,35 @@ record Juon(char[] juon, StringBuilder json) {
 
     private int toJsonNumber(int index) {
         char c = peek( index );
+        // sign
         if ( c == '-') {
             append( '-' );
             return toJsonNumber( index + 1 );
         }
+        // integer part
         if (c == '.') {
             append( '0' );
         } else {
-            while ( hasNext( index ) && isDigit( peek( index ) ) )
+            while ( hasChar( index ) && isDigit( peek( index ) ) )
                 index = toJsonChar( index );
         }
-        if (hasNext( index ) && peek( index ) == '.') {
+        // fraction part
+        if ( hasChar( index ) && peek( index ) == '.') {
             index = toJsonChar( index ); // transfer .
-            if (!hasNext( index ) || !isDigit( peek( index ) )) {
+            if (!hasChar( index ) || !isDigit( peek( index ) )) {
                 append( "0" ); // auto-add zero after decimal point when no digits follow
                 return index;
             }
-            while ( hasNext( index ) && isDigit( peek( index ) ) )
+            while ( hasChar( index ) && isDigit( peek( index ) ) )
+                index = toJsonChar( index );
+        }
+        // exponent part
+        c = hasChar( index ) ? peek( index ) : 'x';
+        if (c == 'e' || c == 'E') {
+            index = toJsonChar( index ); // e/E
+            if (peek( index ) == '-')
+                index = toJsonChar( index ); // -
+            while ( hasChar( index ) && isDigit( peek( index ) ) )
                 index = toJsonChar( index );
         }
         return index;
@@ -162,15 +186,16 @@ record Juon(char[] juon, StringBuilder json) {
     }
 
     private int toJsonNull(int index) {
+        // omitted null (we see the comma after)
         if (peek( index ) == ',') {
             append( "null" );
-            return index;
+            return index; // the comma needs to be processed elsewhere
         }
         return toJsonLiteral( index, "null" );
     }
 
     private int toJsonWhitespace(int index) {
-        while (hasNext( index ) && isWhitespace( peek( index ) )  ) append( peek( index++ ) );
+        while ( hasChar( index ) && isWhitespace( peek( index ) )  ) append( peek( index++ ) );
         return index;
     }
 
@@ -187,7 +212,7 @@ record Juon(char[] juon, StringBuilder json) {
     }
 
     private int toJsonLiteral( int index, String literal ) {
-        boolean isShort = !hasNext( index+1 ) || !isLowerLetter( juon[index+1]);
+        boolean isShort = !hasChar( index+1 ) || !isLowerLetter( juon[index+1]);
         if (isShort) {
             append( literal );
             return toJsonWhitespace( index+1 );
@@ -204,12 +229,12 @@ record Juon(char[] juon, StringBuilder json) {
         return toJsonWhitespace( index + l );
     }
 
-    private boolean hasNext(int index) {
+    private boolean hasChar(int index) {
         return index < juon.length;
     }
 
     private char peek( int index ) {
-        if (!hasNext( index )) throw new JsonFormatException( "Unexpected end of input at index: %d".formatted( index ) );
+        if (!hasChar( index )) throw new JsonFormatException( "Unexpected end of input at index: %d".formatted( index ) );
         return juon[index];
     }
 
