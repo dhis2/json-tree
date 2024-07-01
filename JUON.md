@@ -64,3 +64,7 @@ In a URL parameter the entire value would be URL encoded, resulting in:
 (name:'Freddy',age:30,car:,addresses:((street:'Elm+Street',zip:1428,city:'Springwood',invoice:t)))
 ```
 (Note: the `+` could also be `%20`)
+
+
+## Specification
+

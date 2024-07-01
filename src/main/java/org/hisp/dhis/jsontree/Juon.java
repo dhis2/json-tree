@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.function.Consumer;
+
 /**
  * JUON is short for JS URL Object Notation.
  * <p>
@@ -10,6 +12,55 @@ package org.hisp.dhis.jsontree;
  */
 record Juon(char[] juon, StringBuilder json) {
 
+    record Format(boolean booleanShorthands, Nulls nullsInArrays, Nulls nullsInObjects) {
+        enum Nulls { PLAIN("null"), SHORTHAND("n"), EMPTY(""), OMIT(null);
+            final String value;
+
+            Nulls( String value ) {
+                this.value = value;
+            }
+        }
+    }
+
+    public static final Format MINIMAL = new Format(true, Format.Nulls.EMPTY, Format.Nulls.OMIT);
+    public static final Format PLAIN = new Format(false, Format.Nulls.PLAIN, Format.Nulls.PLAIN);
+
+    public static String of(JsonValue value) {
+        return of( value.node() );
+    }
+
+    public static String of(JsonNode value) {
+        return of( value, MINIMAL );
+    }
+
+    public static String of(JsonValue value, Format format) {
+        return of( value.node(), format );
+    }
+
+    public static String of(JsonNode value, Format format) {
+        return JuonAppender.toJuon( format, value );
+    }
+
+    static String createObject(Consumer<JsonBuilder.JsonObjectBuilder> obj) {
+        return createObject( MINIMAL, obj );
+    }
+
+    static String createObject(Format format, Consumer<JsonBuilder.JsonObjectBuilder> obj) {
+        JuonAppender bld = new JuonAppender(format);
+        bld.addObject( obj );
+        return bld.toString();
+    }
+
+    static String createArray(Consumer<JsonBuilder.JsonArrayBuilder> arr) {
+        return createArray( MINIMAL, arr );
+    }
+
+    static String createArray(Format format, Consumer<JsonBuilder.JsonArrayBuilder> arr) {
+        JuonAppender bld = new JuonAppender(format);
+        bld.addArray( arr );
+        return bld.toString();
+    }
+
     /**
      * Converts JUON to JSON.
      *
@@ -17,7 +68,7 @@ record Juon(char[] juon, StringBuilder json) {
      * @return the equivalent JSON
      * @since 1.2
      */
-    public static String toJSON(String juon) {
+    public static String toJson(String juon) {
         if (juon == null || juon.isEmpty() || juon.isBlank())
             return "null";
         StringBuilder json = new StringBuilder( juon.length() * 2 );

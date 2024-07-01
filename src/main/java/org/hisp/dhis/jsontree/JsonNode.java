@@ -138,7 +138,7 @@ public interface JsonNode extends Serializable {
      * @since 1.2
      */
     static JsonNode ofUrlObjectNotation(String juon) {
-        return of( Juon.toJSON( juon ));
+        return of( Juon.toJson( juon ));
     }
 
     /**
