@@ -63,7 +63,27 @@ class JuonTest {
         assertEquals( JsonNode.of( "0.0" ), JsonNode.ofUrlObjectNotation( "0." ) );
     }
 
+
     @Test
+    void testString() {
+        assertEquals( JsonNode.of( "\"\"" ), JsonNode.ofUrlObjectNotation( "''" ) );
+        assertEquals( JsonNode.of( "\"a\"" ), JsonNode.ofUrlObjectNotation( "'a'" ) );
+        assertEquals( JsonNode.of( "\"hello world\"" ), JsonNode.ofUrlObjectNotation( "'hello world'" ) );
+    }
+
+    @Test
+    void testString_Unicode() {
+        assertEquals( JsonNode.of( "\"Star \\uD83D\\uDE80 ship\"" ),
+            JsonNode.ofUrlObjectNotation( "'Star \\uD83D\\uDE80 ship'" ) );
+    }
+
+    @Test
+    void testString_Escapes() {
+        assertEquals( JsonNode.of( "\"\\\\\\/\\t\\r\\n\\f\\b\\\"\"" ),
+            JsonNode.ofUrlObjectNotation( "'\\\\\\/\\t\\r\\n\\f\\b\\''" ) );
+    }
+
+        @Test
     void testArray() {
         assertEquals( JsonNode.of( "[]" ), JsonNode.ofUrlObjectNotation( "()" ) );
         assertEquals( JsonNode.of( "[1,2,3]" ), JsonNode.ofUrlObjectNotation( "(1,2,3)" ) );
@@ -119,12 +139,19 @@ class JuonTest {
 
     @Test
     void testMixed_Minimal() {
-        JsonNode json = JsonNode.ofUrlObjectNotation( """
-            (name:'John',age:42,license:false,keywords:('hello','world'),void:null)
-            """ );
+        JsonNode json = JsonNode.ofUrlObjectNotation(
+            "(name:'John',age:42,license:false,keywords:('hello','world'),void:null)" );
         String expected = """
-            {"name":"John","age":42,"license":false,"keywords":["hello","world"],"void":null}
-            """;
+            {"name":"John","age":42,"license":false,"keywords":["hello","world"],"void":null}""";
+        assertEquals( JsonNode.of( expected ), json );
+    }
+
+    @Test
+    void testMixed_Example() {
+        JsonNode json = JsonNode.ofUrlObjectNotation(
+            "(name:'Freddy',age:30,car:,addresses:((street:'Elm Street',zip:1428,city:'Springwood',invoice:t)))" );
+        String expected = """
+            {"name":"Freddy","age":30,"car":null,"addresses":[{"street":"Elm Street","zip":1428,"city":"Springwood","invoice":true}]}""";
         assertEquals( JsonNode.of( expected ), json );
     }
 }

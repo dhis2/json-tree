@@ -119,6 +119,8 @@ record Juon(char[] juon, StringBuilder json) {
                 append( '"' );
                 return index; // found end of string literal
             }
+            // 1:1 transfer (default case)
+            append( c );
             if (c == '\\') {
                 char escape = peek( index );
                 index++; // move beyond the first escaped char
@@ -133,9 +135,6 @@ record Juon(char[] juon, StringBuilder json) {
                         append( peek( index++ ) );
                     }
                 }
-            } else {
-                // 1:1 transfer (default case)
-                append( c );
             }
         }
         // this is only to fail at end of input from exiting the while loop
