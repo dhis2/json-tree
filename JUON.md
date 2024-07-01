@@ -37,7 +37,7 @@ In summary, JUON can express everything JSON can, except the empty object `{}`.
 Some characters in strings obviously will need URL encoding to be allowed in URLs.
 
 ## Example
-The following JSON
+Here is a JSON example:
 ```json
 {
   "name": "Freddy",
@@ -51,13 +51,16 @@ The following JSON
   }]
 }
 ```
-would look like this in JUON 
-(all non-significant whitespace removed as it is not valid in URLs and easier to read without %-escaping)
+In JUON the equivalent Java `String` would be (formatting whitespace removed): 
 ```
-(name:'Freddy',age:30,car:null,addresses:((street:'Elm+Street',zip:1428,city:'Springwood',invoice:true)))
+(name:'Freddy',age:30,car:null,addresses:((street:'Elm Street',zip:1428,city:'Springwood',invoice:true)))
 ```
-Note that the `+` could also be `%20`. 
-This could be further shortened by using shorthands and omitting `null`
+This could be further shortened by using shorthands and omitting `null` values:
+```
+(name:'Freddy',age:30,car:,addresses:((street:'Elm Street',zip:1428,city:'Springwood',invoice:t)))
+```
+In a URL parameter the entire value would be URL encoded, resulting in:
 ```
 (name:'Freddy',age:30,car:,addresses:((street:'Elm+Street',zip:1428,city:'Springwood',invoice:t)))
 ```
+(Note: the `+` could also be `%20`)
