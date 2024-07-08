@@ -27,21 +27,19 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonNodeOperation.Insert;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Serializable;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntConsumer;
 import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
@@ -352,25 +350,30 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     } else if ( member.endIndex() < startIndexVal ) {
                         // duplicate keys case: just skip the duplicate
                         startIndex = expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, startIndexVal ), '}' );
-                        return new SimpleEntry<>( name, member );
+                        return Map.entry( name, member );
                     }
                     startIndex = expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
-                    return new SimpleEntry<>( name, member );
+                    return Map.entry( name, member );
                 }
             };
         }
 
         @Override
+        public Iterable<JsonPath> paths() {
+            return keys(path::extendedWith);
+        }
+
+        @Override
         public Iterable<String> names() {
-            return keys(false);
+            return keys(name -> name);
         }
 
         @Override
         public Iterable<String> keys() {
-            return keys(true);
+            return keys(JsonPath::keyOf);
         }
 
-        private Iterable<String> keys(boolean escape) {
+        private <E> Iterable<E> keys( Function<String, E> toKey) {
             return () -> new Iterator<>() {
                 private final char[] json = tree.json;
                 private final Map<JsonPath, JsonNode> nodesByPath = tree.nodesByPath;
@@ -382,7 +385,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 }
 
                 @Override
-                public String next() {
+                public E next() {
                     if ( !hasNext() )
                         throw new NoSuchElementException( "next() called without checking hasNext()" );
                     LazyJsonString.Span property = LazyJsonString.parseString( json, startIndex );
@@ -395,7 +398,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     startIndex = member == null || member.endIndex() < startIndex // (duplicates)
                         ? expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, startIndex ), '}' )
                         : expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
-                    return escape ? JsonPath.keyOf( name ) : name;
+                    return toKey.apply( name );
                 }
             };
         }

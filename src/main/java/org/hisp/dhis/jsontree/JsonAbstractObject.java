@@ -3,7 +3,6 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -111,12 +110,15 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     }
 
     /**
-     * @return a stream of map/object entries in order of their declaration
+     * @return a stream of map/object entries in order of their declaration. the entry keys are the raw {@link #names()}
+     * as given in the original JSON document (not the {@link #keys()})
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11
      */
     default Stream<Map.Entry<String, E>> entries() {
-        return keys().map( key -> Map.entry( key, get( key ) ) );
+        if ( isUndefined() || isEmpty() ) return Stream.empty();
+        return stream( node().names().spliterator(), false ).map(
+            name -> Map.entry( name, get( JsonPath.keyOf( name ) ) ) );
     }
 
     /**
@@ -128,6 +130,15 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      */
     default List<String> names() {
         return isUndefined() || isEmpty() ? List.of() : stream( node().names().spliterator(), false ).toList();
+    }
+
+    /**
+     * @return a stream of the absolute paths of the map/object members in oder of their declaration
+     * @throws JsonTreeException in case this node does exist but is not an object node
+     * @since 1.2
+     */
+    default Stream<JsonPath> paths() {
+        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().paths().spliterator(), false );
     }
 
     /**
