@@ -3,7 +3,6 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -111,13 +110,15 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     }
 
     /**
-     * @return a stream of map/object entries in order of their declaration
+     * @return a stream of map/object entries in order of their declaration. the entry keys are the raw {@link #names()}
+     * as given in the original JSON document (not the {@link #keys()})
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11
      */
     default Stream<Map.Entry<String, E>> entries() {
-        //TODO use members internally to have names as entry key?
-        return keys().map( key -> Map.entry( key, get( key ) ) );
+        if ( isUndefined() || isEmpty() ) return Stream.empty();
+        return stream( node().names().spliterator(), false ).map(
+            name -> Map.entry( name, get( JsonPath.keyOf( name ) ) ) );
     }
 
     /**
