@@ -171,12 +171,16 @@ record Juon(char[] juon, StringBuilder json) {
                 return index; // found end of string literal
             }
             // 1:1 transfer (default case)
-            append( c );
+            if (c == '"') {
+                append( "\\\"" ); // needs escaping in JSON
+            } else {
+                append( c );
+            }
             if (c == '\\') {
                 char escape = peek( index );
                 index++; // move beyond the first escaped char
                 if (escape == '\'') {
-                    append( '"' );
+                    append( '\'' ); // does not need escaping in JSON
                 } else {
                     append( escape );
                     if (escape == 'u') {

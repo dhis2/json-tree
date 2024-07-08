@@ -79,8 +79,8 @@ class JuonTest {
 
     @Test
     void testString_Escapes() {
-        assertEquals( JsonNode.of( "\"\\\\\\/\\t\\r\\n\\f\\b\\\"\"" ),
-            JsonNode.ofUrlObjectNotation( "'\\\\\\/\\t\\r\\n\\f\\b\\''" ) );
+        assertEquals( JsonNode.of( "\"\\\\\\/\\t\\r\\n\\f\\b\\'\\\"\"" ),
+            JsonNode.ofUrlObjectNotation( "'\\\\\\/\\t\\r\\n\\f\\b\\'\"'" ) );
     }
 
         @Test
