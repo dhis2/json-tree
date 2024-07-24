@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.Integer.parseInt;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Stream.concat;
 
 /**
@@ -34,6 +35,8 @@ import static java.util.stream.Stream.concat;
  * @since 1.1
  */
 public record JsonPath(List<String> segments) {
+
+    private static final System.Logger log = System.getLogger( JsonPath.class.getName() );
 
     /**
      * A path pointing to the root or self
@@ -79,9 +82,61 @@ public record JsonPath(List<String> segments) {
      * @return the plain name when possible and no segment is forced, otherwise the corresponding segment key
      */
     private static String keyOf( String name, boolean forceSegment ) {
-        if ( name.startsWith( "{" ) || name.startsWith( "[" ) ) return "." + name;
-        if ( name.indexOf( '.' ) >= 0 ) return "{" + name + "}";
-        return forceSegment ? "." + name : name;
+        boolean hasCurly = name.indexOf( '{' ) >= 0;
+        boolean hasSquare = name.indexOf( '[' ) >= 0;
+        boolean hasDot = name.indexOf( '.' ) >= 0;
+        // default case: no special characters in name
+        if (!hasCurly && !hasSquare && !hasDot) return forceSegment ? "." + name : name;
+        // common special case: has a dot (and possibly square) => needs curly escape
+        if ( !hasCurly && hasDot ) return curlyEscapeWithCheck( name );
+        // common special case: has a square but no curly or dot => only needs escaping when open + close square
+        if ( !hasCurly ) return hasInnerSquareSegment( name ) ? "{"+name+"}" : "." + name;
+        // edge special case: [...] but only opens at the start => dot works
+        if ( !hasDot && name.charAt( 0 ) == '[' && name.indexOf( '[', 1 ) < 0 ) return "."+name;
+        // edge special case: {...} but only opens at the start => dot works
+        if ( !hasDot && name.charAt( 0 ) == '{' && name.indexOf( '{', 1 ) < 0 ) return "."+name;
+        // special case: has curly open but no valid curly close => plain or dot works
+        if (indexOfInnerCurlySegmentEnd( name ) < 1) return name.charAt( 0 ) == '{' ? "."+name : name;
+        return curlyEscapeWithCheck( name );
+    }
+
+    private static boolean hasInnerSquareSegment(String name) {
+        int i = name.indexOf( '[', 1 );
+        while ( i >= 0 ) {
+            if (isSquareSegmentOpen( name, i )) return true;
+            i = name.indexOf( '[', i+1 );
+        }
+        return false;
+    }
+
+    /**
+     * Searches for the end since possibly a curly escape is used and a valid inner curly end would be misunderstood.
+     */
+    private static int indexOfInnerCurlySegmentEnd(String name) {
+        int i = name.indexOf( '}', 1 );
+        while ( i >= 0 ) {
+            if (isCurlySegmentClose( name, i )) return i;
+            i = name.indexOf( '}', i+1 );
+        }
+        return -1;
+    }
+
+    private static String curlyEscapeWithCheck( String name ) {
+        int end = indexOfInnerCurlySegmentEnd( name );
+        if (end > 0) {
+            // a } at the very end is ok since escaping that again {...} makes it an invalid end
+            // so then effectively there is no valid on in the escaped name
+            if (end < name.length()-1) {
+                log.log( System.Logger.Level.WARNING,
+                    "Path segment escape required but not supported for name `%s`, character at %d will be misunderstood as segment end".formatted(
+                        name, end ) );
+            }
+        }
+        return "{"+name+"}";
+    }
+
+    public JsonPath {
+        requireNonNull( segments );
     }
 
     /**
@@ -235,7 +290,7 @@ public record JsonPath(List<String> segments) {
             if ( isDotSegmentOpen( path, i ) ) {
                 i++; // advance past the .
                 if ( i < len && path.charAt( i ) != '.' ) {
-                    i++; // if it is not a dot the first char after the . is never the end
+                    i++; // if it is not a dot the first char after the . is never a start of next segment
                     while ( i < len && !isDotSegmentClose( path, i ) ) i++;
                 }
             } else if ( isSquareSegmentOpen( path, i ) ) {
