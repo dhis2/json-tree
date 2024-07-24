@@ -38,7 +38,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -126,6 +125,20 @@ public interface JsonNode extends Serializable {
      */
     static JsonNode ofNonStandard( String json ) {
         return JsonTree.ofNonStandard( json ).get( JsonPath.ROOT );
+    }
+
+    /**
+     * Creates a new lazily parsed {@link JsonNode} tree from special URL object notation.
+     * <p>
+     * Note that the {@link JsonNode}'s {@link JsonNode#getDeclaration()} will be the equivalent JSON, not the original
+     * URL notation.
+     *
+     * @param juon a value in URL notation
+     * @return the given URL notation input as {@link JsonNode}
+     * @since 1.3
+     */
+    static JsonNode ofUrlObjectNotation(String juon) {
+        return of( Juon.toJson( juon ));
     }
 
     /**
