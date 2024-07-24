@@ -133,9 +133,9 @@ public interface JsonNode extends Serializable {
      * Note that the {@link JsonNode}'s {@link JsonNode#getDeclaration()} will be the equivalent JSON, not the original
      * URL notation.
      *
-     * @param juon
+     * @param juon a value in URL notation
      * @return the given URL notation input as {@link JsonNode}
-     * @since 1.2
+     * @since 1.3
      */
     static JsonNode ofUrlObjectNotation(String juon) {
         return of( Juon.toJson( juon ));

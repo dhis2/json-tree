@@ -8,7 +8,7 @@ import java.util.function.Consumer;
  * JS here is used in the same vain as it is used in JSON. Meaning the fundamental types of JUON are the same as those used by JSON.
  *
  * @author Jan Bernitt
- * @since 1.2
+ * @since 1.3
  */
 record Juon(char[] juon, StringBuilder json) {
 
@@ -66,7 +66,7 @@ record Juon(char[] juon, StringBuilder json) {
      *
      * @param juon the JUON input
      * @return the equivalent JSON
-     * @since 1.2
+     * @since 1.3
      */
     public static String toJson(String juon) {
         if (juon == null || juon.isEmpty() || juon.isBlank())

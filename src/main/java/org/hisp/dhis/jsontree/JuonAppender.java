@@ -10,7 +10,7 @@ import java.util.function.Consumer;
  * Builder for JUON
  *
  * @author Jan Bernitt
- * @since 1.2
+ * @since 1.3
  */
 final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 

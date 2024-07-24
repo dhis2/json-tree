@@ -96,7 +96,7 @@ public record JsonPath(List<String> segments) {
         // edge special case: {...} but only opens at the start => dot works
         if ( !hasDot && name.charAt( 0 ) == '{' && name.indexOf( '{', 1 ) < 0 ) return "."+name;
         // special case: has curly open but no valid curly close => plain or dot works
-        if (indexOfInnerCurlySegmentEnd( name ) < 1) return name.charAt( 0 ) == '{' ? "."+name : name;
+        if (!hasDot && indexOfInnerCurlySegmentEnd( name ) < 1) return name.charAt( 0 ) == '{' ? "."+name : name;
         return curlyEscapeWithCheck( name );
     }
 
