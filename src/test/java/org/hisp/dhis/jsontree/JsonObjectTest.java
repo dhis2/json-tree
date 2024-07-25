@@ -71,6 +71,18 @@ class JsonObjectTest {
     }
 
     @Test
+    void testPaths_OpenAPI() {
+        //language=json
+        String json = """
+            {"paths": {"/api/dataElements/{uid:[a-zA-Z0-9]{11}}": {"get": {"id": "opx"}, "delete": {"id":"opy"}}}}""";
+        JsonObject paths = JsonMixed.of( json ).getObject( "paths" );
+        assertEquals( List.of("/api/dataElements/{uid:[a-zA-Z0-9]{11}}"), paths.names() );
+        JsonObject ops = paths.getObject( JsonPath.keyOf( "/api/dataElements/{uid:[a-zA-Z0-9]{11}}" ) );
+        assertEquals( List.of("get", "delete"), ops.keys().toList() );
+        assertEquals( "opy", ops.getObject( "delete" ).getString( "id" ).string() );
+    }
+
+    @Test
     void testProject() {
         //language=json
         String json = """
