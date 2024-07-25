@@ -27,16 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonNodeOperation.Insert;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Serializable;
-import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -354,10 +351,10 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     } else if ( member.endIndex() < startIndexVal ) {
                         // duplicate keys case: just skip the duplicate
                         startIndex = expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, startIndexVal ), '}' );
-                        return new SimpleEntry<>( name, member );
+                        return Map.entry( name, member );
                     }
                     startIndex = expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
-                    return new SimpleEntry<>( name, member );
+                    return Map.entry( name, member );
                 }
             };
         }

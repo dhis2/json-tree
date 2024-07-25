@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
     <name>DHIS JSON Tree</name>
     <url>https://github.com/dhis2/json-tree</url>
-    <version>1.2-SNAPSHOT</version>
+    <version>1.4-SNAPSHOT</version>
 
     <developers>
         <developer>
@@ -154,7 +154,7 @@
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.13</version>
+                <version>1.7.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>

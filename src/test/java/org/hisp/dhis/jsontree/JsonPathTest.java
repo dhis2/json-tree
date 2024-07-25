@@ -19,6 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JsonPathTest {
 
     @Test
+    void testKeyOf() {
+        assertEquals( "{/api/openapi/{path}/openapi.html}", JsonPath.keyOf( "/api/openapi/{path}/openapi.html" ) );
+    }
+
+    @Test
     void testSegments_Dot_Uniform() {
         assertSegments(".xxx", List.of(".xxx"));
         assertSegments(".xxx.yyy", List.of(".xxx", ".yyy"));
