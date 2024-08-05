@@ -29,6 +29,9 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.Surly;
 
+import java.lang.reflect.Method;
+import java.util.function.BiPredicate;
+
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
@@ -174,6 +177,11 @@ public interface JsonAbstractCollection extends JsonValue {
         @Override
         public final <V extends JsonValue> V as( Class<V> as ) {
             return viewed.as( as );
+        }
+
+        @Override
+        public <V extends JsonValue> V as( Class<V> as, BiPredicate<Method, Object[]> onCall ) {
+            return viewed.as( as, onCall );
         }
 
         @Override

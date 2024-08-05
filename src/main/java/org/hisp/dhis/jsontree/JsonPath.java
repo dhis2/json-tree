@@ -4,7 +4,6 @@ import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static java.lang.Integer.parseInt;
 import static java.util.Objects.requireNonNull;
@@ -134,10 +133,6 @@ public record JsonPath(List<String> segments) {
             }
         }
         return "{"+name+"}";
-    }
-
-    public JsonPath {
-        requireNonNull( segments );
     }
 
     public JsonPath {

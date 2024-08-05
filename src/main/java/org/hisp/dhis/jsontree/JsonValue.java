@@ -31,6 +31,9 @@ import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Reader;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -110,7 +113,7 @@ public interface JsonValue {
      *              {@code null} default mapping is used
      * @return virtual JSON tree root {@link JsonValue}
      */
-    static JsonValue of( String json, JsonTypedAccessStore store ) {
+    static JsonValue of( String json, @Surly JsonTypedAccessStore store ) {
         return json == null || "null".equals( json ) ? JsonVirtualTree.NULL : JsonMixed.of( json, store );
     }
 
@@ -240,6 +243,19 @@ public interface JsonValue {
      * literally cast.
      */
     <T extends JsonValue> T as( Class<T> as );
+
+    /**
+     * Same as {@link #as(Class)} but with an additional parameter to pass a callback function. This allows to observe
+     * the API calls for meta-programming. This should not be used in "normal" API usage.
+     *
+     * @param as     assumed value type for this value
+     * @param onCall a function that is called before the proxy handles an API call that allows to observe and bypass
+     *               calls (predicate returns false) in which case the result is always {@code null}
+     * @param <T>    value type returned
+     * @return this object as the provided type, this might mean this object is wrapped as the provided type or
+     * @since 1.4
+     */
+    <T extends JsonValue> T as( Class<T> as, BiPredicate<Method, Object[]> onCall );
 
     /**
      * @return This value as {@link JsonObject} (same as {@code as(JsonObject.class)})

@@ -3,6 +3,7 @@ package org.hisp.dhis.jsontree.validation;
 import org.hisp.dhis.jsontree.JsonAbstractObject;
 import org.hisp.dhis.jsontree.JsonArray;
 import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonPathException;
 import org.hisp.dhis.jsontree.JsonSchemaException;
 import org.hisp.dhis.jsontree.JsonSchemaException.Info;
@@ -22,15 +23,15 @@ import java.util.Set;
  */
 public final class JsonValidator {
 
-    public static void validate( JsonValue value, Class<? extends JsonAbstractObject<?>> schema ) {
+    public static void validate( JsonValue value, Class<? extends JsonObject> schema ) {
         validate( value, schema, Set.of() );
     }
 
-    public static void validate( JsonValue value, Class<? extends JsonAbstractObject<?>> schema, Validation.Rule... rules ) {
+    public static void validate( JsonValue value, Class<? extends JsonObject> schema, Validation.Rule... rules ) {
         validate( value, schema, Set.of( rules ) );
     }
 
-    public static void validate( JsonValue value, Class<? extends JsonAbstractObject<?>> schema, Set<Validation.Rule> rules ) {
+    public static void validate( JsonValue value, Class<? extends JsonObject> schema, Set<Validation.Rule> rules ) {
         if (!schema.isInterface())
             throw new IllegalArgumentException("Must be an interface bust was: "+schema);
         if ( !value.exists() )
