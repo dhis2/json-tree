@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -247,15 +248,17 @@ public interface JsonValue {
     /**
      * Same as {@link #as(Class)} but with an additional parameter to pass a callback function. This allows to observe
      * the API calls for meta-programming. This should not be used in "normal" API usage.
+     * <p>
+     * Not all methods can be observed as some are handled internally without ever going via the proxy. However, in
+     * contrast to {@link #as(Class)} when using this method any call of a default method is handled via proxy.
      *
      * @param as     assumed value type for this value
-     * @param onCall a function that is called before the proxy handles an API call that allows to observe and bypass
-     *               calls (predicate returns false) in which case the result is always {@code null}
+     * @param onCall a function that is called before the proxy handles an API call that allows to observe calls
      * @param <T>    value type returned
      * @return this object as the provided type, this might mean this object is wrapped as the provided type or
      * @since 1.4
      */
-    <T extends JsonValue> T as( Class<T> as, BiPredicate<Method, Object[]> onCall );
+    <T extends JsonValue> T as( Class<T> as, BiConsumer<Method, Object[]> onCall );
 
     /**
      * @return This value as {@link JsonObject} (same as {@code as(JsonObject.class)})

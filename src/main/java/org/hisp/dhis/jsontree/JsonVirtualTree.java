@@ -39,7 +39,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +46,7 @@ import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -176,11 +176,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     @SuppressWarnings( "unchecked" )
-    public <T extends JsonValue> T as( Class<T> as, BiPredicate<Method, Object[]> onCall ) {
+    public <T extends JsonValue> T as( Class<T> as, BiConsumer<Method, Object[]> onCall ) {
         return (T) Proxy.newProxyInstance(
             Thread.currentThread().getContextClassLoader(), new Class[] { as },
             ( proxy, method, args ) -> {
-                if (!onCall.test( method, args )) return null;
+                onCall.accept( method, args );
                 return onInvoke( proxy, as, this, method, args, true );
             } );
     }
@@ -439,7 +439,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     private static List<Property> captureProperties(Class<? extends JsonObject> of) {
-        Map<String, Property> res = new TreeMap<>();
+        List<Property> res = new ArrayList<>();
         propertyMethods(of).forEach( m -> {
             @SuppressWarnings( "unchecked" )
             Class<? extends JsonObject> in = (Class<? extends JsonObject>) m.getDeclaringClass();
@@ -448,14 +448,12 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                     String name = (String) args[0];
                     @SuppressWarnings( "unchecked" )
                     Class<? extends JsonValue> type = (Class<? extends JsonValue>) args[1];
-                    res.computeIfAbsent( name, n -> new Property( in, n, type, m, m.getAnnotatedReturnType() ) );
-                    return false;
+                    res.add( new Property( in, name, type, m.getName(), m.getAnnotatedReturnType(), m ) );
                 }
-                return true;
             });
-            invokePropertyMethod( obj, m );
+            invokePropertyMethod( obj, m ); // may add zero, one or more properties via the callback
         } );
-        return List.copyOf( res.values() );
+        return List.copyOf( res );
     }
 
     private static boolean isJsonObjectGetAs( Method method ) {

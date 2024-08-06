@@ -82,8 +82,8 @@ record ObjectValidation(
         Map<String, PropertyValidation> properties = new HashMap<>();
         Map<String, Type> types = new HashMap<>();
         JsonObject.properties( schema ).stream().filter( ObjectValidation::isNotIgnored ).forEach( p -> {
-            properties.put(p.name(), fromProperty( p ));
-            types.put( p.name(), p.sourceType().getType() );
+            properties.put(p.jsonName(), fromProperty( p ));
+            types.put( p.jsonName(), p.javaType().getType() );
         } );
         return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( properties ) );
     }
@@ -96,7 +96,7 @@ record ObjectValidation(
     @Maybe
     private static PropertyValidation fromProperty( JsonObject.Property p ) {
         PropertyValidation onMethod = fromAnnotations( p.source() );
-        PropertyValidation onReturnType = fromValueTypeUse( p.sourceType() );
+        PropertyValidation onReturnType = fromValueTypeUse( p.javaType() );
         if ( onMethod == null ) return onReturnType;
         if ( onReturnType == null ) return onMethod;
         return onMethod.overlay( onReturnType );
