@@ -1,8 +1,6 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonNode;
-import org.hisp.dhis.jsontree.JsonPathException;
+import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
@@ -15,11 +13,9 @@ import org.hisp.dhis.jsontree.validation.PropertyValidation.StringValidation;
 import org.hisp.dhis.jsontree.validation.PropertyValidation.ValueValidation;
 
 import java.lang.annotation.Annotation;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedParameterizedType;
 import java.lang.reflect.AnnotatedType;
-import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
@@ -36,7 +32,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
 
 import static java.lang.Double.isNaN;
-import static java.lang.reflect.Modifier.isAbstract;
 import static java.util.Comparator.comparing;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
@@ -59,7 +54,7 @@ record ObjectValidation(
     @Surly Map<String, Type> types,
     @Surly Map<String, PropertyValidation> properties) {
 
-    private static final Map<Class<? extends JsonValue>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends JsonObject>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
 
     private static final Map<Class<?>, PropertyValidation> RECORD_BY_JAVA_TYPE = new ConcurrentSkipListMap<>(
         comparing( Class::getName ) );
@@ -78,52 +73,30 @@ record ObjectValidation(
      * string property)
      */
     @Surly
-    public static ObjectValidation getInstance( Class<? extends JsonValue> schema ) {
+    public static ObjectValidation getInstance( Class<? extends JsonObject> schema ) {
         if ( !schema.isInterface() ) throw new IllegalArgumentException( "Schema must be an interface" );
         return INSTANCES.computeIfAbsent( schema, ObjectValidation::createInstance );
     }
 
-    private static ObjectValidation createInstance( Class<? extends JsonValue> schema ) {
+    private static ObjectValidation createInstance( Class<? extends JsonObject> schema ) {
         Map<String, PropertyValidation> properties = new HashMap<>();
         Map<String, Type> types = new HashMap<>();
-        propertyMethods( schema )
-            .forEach( m -> {
-                String property = captureProperty( m, schema );
-                if ( property != null ) {
-                    properties.put( property, fromMethod( m ) );
-                    types.put( property, m.getGenericReturnType() );
-                }
-            } );
+        JsonObject.properties( schema ).stream().filter( ObjectValidation::isNotIgnored ).forEach( p -> {
+            properties.put(p.jsonName(), fromProperty( p ));
+            types.put( p.jsonName(), p.javaType().getType() );
+        } );
         return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( properties ) );
     }
 
-    private static <T extends JsonValue> String captureProperty( Method m, Class<T> schema ) {
-        String[] box = new String[1];
-        T value = JsonMixed.of( JsonNode.of( "{}", path -> box[0] = path.substring( 1 ) ) ).as( schema );
-        try {
-            Object res = MethodHandles.lookup().unreflect( m ).invokeWithArguments( value );
-            // for virtual nodes force lookup by resolving the underlying node in the actual tree
-            if ( res instanceof JsonValue node ) node.node();
-            return box[0];
-        } catch ( JsonPathException e ) {
-            return box[0];
-        } catch ( Throwable ex ) {
-            return null;
-        }
-    }
-
-    private static Stream<Method> propertyMethods( Class<?> schema ) {
-        return Stream.of( schema.getMethods() )
-            .filter( m -> m.getDeclaringClass().isInterface() && !m.getDeclaringClass()
-                .isAnnotationPresent( Validation.Ignore.class ) )
-            .filter( m -> m.getReturnType() != void.class && !m.isAnnotationPresent( Validation.Ignore.class ) )
-            .filter( m -> m.getParameterCount() == 0 && (m.isDefault()) || isAbstract( m.getModifiers() ) );
+    private static boolean isNotIgnored( JsonObject.Property p ) {
+        return !p.source().isAnnotationPresent( Validation.Ignore.class )
+            && !p.in().isAnnotationPresent( Validation.Ignore.class );
     }
 
     @Maybe
-    private static PropertyValidation fromMethod( Method src ) {
-        PropertyValidation onMethod = fromAnnotations( src );
-        PropertyValidation onReturnType = fromValueTypeUse( src.getAnnotatedReturnType() );
+    private static PropertyValidation fromProperty( JsonObject.Property p ) {
+        PropertyValidation onMethod = fromAnnotations( p.source() );
+        PropertyValidation onReturnType = fromValueTypeUse( p.javaType() );
         if ( onMethod == null ) return onReturnType;
         if ( onReturnType == null ) return onMethod;
         return onMethod.overlay( onReturnType );

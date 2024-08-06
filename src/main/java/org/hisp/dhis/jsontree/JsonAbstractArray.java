@@ -121,7 +121,7 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
      * @throws IllegalArgumentException in case the given schema is not an interface
      * @since 1.0
      */
-    default void validateEach(Class<? extends JsonAbstractObject<?>> schema, Rule... rules) {
+    default void validateEach(Class<? extends JsonObject> schema, Rule... rules) {
         forEach( e -> JsonValidator.validate( e, schema, rules ) );
     }
 }

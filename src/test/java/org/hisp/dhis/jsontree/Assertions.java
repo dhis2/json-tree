@@ -13,13 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 public class Assertions {
 
     public static Validation.Error assertValidationError( String actualJson,
-        Class<? extends JsonAbstractObject<?>> schema,
+        Class<? extends JsonObject> schema,
         Validation.Rule expected, Object... args ) {
         return assertValidationError( JsonMixed.of( actualJson ), schema, expected, args );
     }
 
-    public static Validation.Error assertValidationError( JsonAbstractObject<?> actual,
-        Class<? extends JsonAbstractObject<?>> schema,
+    public static Validation.Error assertValidationError( JsonObject actual,
+        Class<? extends JsonObject> schema,
         Validation.Rule expected, Object... args ) {
         JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> actual.validate( schema ),
             "expected an error of type " + expected );

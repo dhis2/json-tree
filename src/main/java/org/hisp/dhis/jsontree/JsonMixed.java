@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Surly;
+
 import java.io.Reader;
 import java.nio.file.Path;
 
@@ -57,7 +59,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      *              {@code null} default mapping is used
      * @return root of the virtual tree representing the given JSON input
      */
-    static JsonMixed of( String json, JsonTypedAccessStore store ) {
+    static JsonMixed of( String json, @Surly JsonTypedAccessStore store ) {
         return new JsonVirtualTree( json, store );
     }
 

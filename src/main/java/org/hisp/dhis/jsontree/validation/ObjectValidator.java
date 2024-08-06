@@ -5,6 +5,7 @@ import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonNodeType;
+import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation.Error;
 import org.hisp.dhis.jsontree.Validation.NodeType;
@@ -77,12 +78,12 @@ record ObjectValidator(
         Comparator.comparing( Class::getName ) );
 
     @Surly
-    public static ObjectValidator getInstance( Class<? extends JsonValue> schema ) {
+    public static ObjectValidator getInstance( Class<? extends JsonObject> schema ) {
         return getInstance( schema, new HashSet<>() );
     }
 
     @Surly
-    private static ObjectValidator getInstance( Class<? extends JsonValue> schema, Set<Class<?>> currentlyResolved ) {
+    private static ObjectValidator getInstance( Class<? extends JsonObject> schema, Set<Class<?>> currentlyResolved ) {
         return getInstance( schema, () -> ObjectValidation.getInstance( schema ), currentlyResolved );
     }
 
@@ -123,9 +124,9 @@ record ObjectValidator(
     @Maybe
     private static Validator getInstance( java.lang.reflect.Type type, Set<Class<?>> currentlyResolved ) {
         if ( type instanceof Class<?> cType ) {
-            if ( JsonAbstractObject.class.isAssignableFrom( cType ) ) {
+            if ( JsonObject.class.isAssignableFrom( cType ) ) {
                 @SuppressWarnings( "unchecked" )
-                Class<? extends JsonValue> schema = (Class<? extends JsonValue>) cType;
+                Class<? extends JsonObject> schema = (Class<? extends JsonObject>) cType;
                 if ( currentlyResolved.contains( schema ) ) return new Lazy( schema, new AtomicReference<>() );
                 return getInstance( schema, currentlyResolved );
             }
@@ -658,7 +659,7 @@ record ObjectValidator(
         }
     }
 
-    private record Lazy(Class<? extends JsonValue> of, AtomicReference<Validator> instance) implements Validator {
+    private record Lazy(Class<? extends JsonObject> of, AtomicReference<Validator> instance) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {

@@ -30,7 +30,10 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Function;
 
 import static java.util.Arrays.stream;
@@ -47,6 +50,32 @@ import static java.util.Arrays.stream;
  */
 @Validation.Ignore
 public interface JsonObject extends JsonAbstractObject<JsonValue> {
+
+    /**
+     * An object property based on a default method declared in a type extending {@link JsonObject}.
+     *
+     * @param in       the {@link JsonObject} type that declared the property
+     * @param jsonName of the property
+     * @param jsonType the type the property is resolved to internally when calling {@link #get(String, Class)}
+     * @param javaName the name of the java property accessed that caused the JSON property to be resolved
+     * @param javaType the return type of the underlying method that declares the property
+     * @param source   the underlying method that declared the property
+     * @since 1.4
+     */
+    record Property(Class<? extends JsonObject> in, String jsonName, Class<? extends JsonValue> jsonType,
+                    String javaName, AnnotatedType javaType, AnnotatedElement source) {}
+
+    /**
+     * Note that there can be more than one property with the same {@link Property#javaName()} in case the method it
+     * reflects accesses more than one member from the JSON object. In such a case each access is a property of the
+     * accessed {@link Property#jsonName()}  with the same {@link Property#javaName()}.
+     *
+     * @return a model of this object in form its properties in no particular order
+     * @since 1.4
+     */
+    static List<Property> properties(Class<? extends JsonObject> of) {
+        return JsonVirtualTree.properties( of );
+    }
 
     /**
      * Access to object fields by name.

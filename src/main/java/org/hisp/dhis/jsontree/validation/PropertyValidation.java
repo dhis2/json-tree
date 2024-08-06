@@ -34,9 +34,6 @@ record PropertyValidation(
     @Maybe ArrayValidation arrays,
     @Maybe ObjectValidation objects,
     @Maybe PropertyValidation items
-    //TODO maybe add a Map<Rule, Set<Class<?>>> origin,
-    // which remembers where (annotation or validators) a validation originates from
-    // but this is difficult to keep accurate with the overlay
 ) {
 
     /**
