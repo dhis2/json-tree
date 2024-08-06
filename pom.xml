@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
     <name>DHIS JSON Tree</name>
     <url>https://github.com/dhis2/json-tree</url>
-    <version>1.4</version>
+    <version>1.5-SNAPSHOT</version>
 
     <developers>
         <developer>
