@@ -885,11 +885,17 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     }
 
     private static int skipWhitespace( char[] json, int fromIndex ) {
-        return skipWhile( json, fromIndex, JsonTree::isWhitespace );
+        int index = fromIndex;
+        while ( index < json.length && isWhitespace( json[index] ) )
+            index++;
+        return index;
     }
 
     private static int skipDigits( char[] json, int fromIndex ) {
-        return skipWhile( json, fromIndex, JsonTree::isDigit );
+        int index = fromIndex;
+        while ( index < json.length && isDigit( json[index] ) )
+            index++;
+        return index;
     }
 
     /**
@@ -909,14 +915,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     private static boolean isEscapableLetter( char c ) {
         return c == '"' || c == '\\' || c == '/' || c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't'
             || c == 'u';
-    }
-
-    private static int skipWhile( char[] json, int fromIndex, CharPredicate whileTrue ) {
-        int index = fromIndex;
-        while ( index < json.length && whileTrue.test( json[index] ) ) {
-            index++;
-        }
-        return index;
     }
 
     private static int skipChar( char[] json, int index, char c ) {
@@ -1033,7 +1031,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         if ( json[index] == '"' ) return skipString( json, fromIndex );
         index = expectChar( json, index, '\'' );
         json[index - 1] = '"';
-        index = skipWhile( json, index, c -> c != '\'' );
+        while ( index < json.length && json[index] != '\'')
+            index++;
         index = expectChar( json, index, '\'' );
         json[index - 1] = '"';
         return index;
