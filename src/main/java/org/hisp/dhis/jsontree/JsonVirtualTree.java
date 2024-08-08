@@ -32,6 +32,7 @@ import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Serializable;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
@@ -43,11 +44,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -82,6 +81,13 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     public static List<Property> properties(Class<? extends JsonObject> of) {
         return PROPERTIES.computeIfAbsent( of, JsonVirtualTree::captureProperties );
     }
+
+    private static final ClassValue<Map<String, MethodHandle>> MH_CACHE = new ClassValue<>() {
+        @Override
+        protected Map<String, MethodHandle> computeValue( Class declaringClass ) {
+            return new ConcurrentHashMap<>();
+        }
+    };
 
     /**
      * The access support is shared by all values that are derived from the same initial virtual tree.
@@ -332,11 +338,22 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
      */
     private static Object callDefaultMethod( Object proxy, Method method, Class<?> declaringClass, Object[] args )
         throws Throwable {
-        return MethodHandles.lookup()
-            .findSpecial( declaringClass, method.getName(),
-                MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
-                declaringClass )
-            .bindTo( proxy ).invokeWithArguments( args );
+        MethodHandle handle = method.getParameterCount() == 0
+            ? MH_CACHE.get( declaringClass )
+            .computeIfAbsent( method.getName(), name -> getDefaultMethodHandle( declaringClass, method ) )
+            : getDefaultMethodHandle( declaringClass, method );
+        return handle.bindTo( proxy ).invokeWithArguments( args );
+    }
+
+    private static MethodHandle getDefaultMethodHandle( Class<?> declaringClass, Method method ) {
+        try {
+            return MethodHandles.lookup()
+                .findSpecial( declaringClass, method.getName(),
+                    MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
+                    declaringClass );
+        } catch ( Exception ex ) {
+            throw new RuntimeException(ex);
+        }
     }
 
     /**
