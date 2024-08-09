@@ -34,6 +34,7 @@ import java.util.LinkedList;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
@@ -53,6 +54,15 @@ class JsonNodeTest {
     void testGet_String() {
         assertGetThrowsJsonPathException( "\"hello\"",
             "This is a leaf node of type STRING that does not have any children at path: .foo" );
+    }
+
+    @Test
+    void testGetOrNull() {
+        assertNull( JsonNode.of( "{}" ).getOrNull( "foo" ) );
+        assertNull( JsonNode.of( "[]" ).getOrNull( "[1]" ) );
+        assertThrowsExactly( JsonPathException.class, () -> JsonNode.of( "true" ).getOrNull( "foo" ) );
+        assertThrowsExactly( JsonPathException.class, () -> JsonNode.of( "1" ).getOrNull( "foo" ) );
+        assertThrowsExactly( JsonPathException.class, () -> JsonNode.of( "\"x\"" ).getOrNull( "foo" ) );
     }
 
     @Test

@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
@@ -257,6 +256,11 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return tree.get( this.path.extendedWith( path ) );
         }
 
+        @Maybe @Override
+        public JsonNode getOrNull( @Surly JsonPath path ) {
+            return tree.getOrNull( this.path.extendedWith( path ) );
+        }
+
         @Override
         public Iterable<Entry<String, JsonNode>> members() {
             return requireNonNull( value() );
@@ -270,8 +274,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public int size() {
-            if (isEmpty()) return 0;
             if (size != null) return size;
+            if (isEmpty()) return 0;
             size = (int) StreamSupport.stream( spliterator(), false ).count();
             return size;
         }
@@ -297,30 +301,46 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return this;
         }
 
+        @Surly @Override
+        public JsonNode member( String name )  throws JsonPathException {
+            return requireNonNull( member( name, () -> {
+                JsonPath memberPath = path.extendedWith( name );
+                throw new JsonPathException( memberPath,
+                    format( "Path `%s` does not exist, object `%s` does not have a property `%s`", memberPath, path,
+                        name ) );
+            } ) );
+        }
+
         @Override
-        public JsonNode member( String name )
-            throws JsonPathException {
-            JsonPath propertyPath =  path.extendedWith( name );
-            JsonNode member = tree.nodesByPath.get( propertyPath );
-            if ( member != null ) {
-                return member;
+        public JsonNode memberOrNull( String name )  throws JsonPathException {
+            return member( name, () -> {} );
+        }
+
+        public JsonNode member( String name, Runnable noSuchElement )  throws JsonPathException {
+            JsonPath memberPath =  path.extendedWith( name );
+            JsonNode member = tree.nodesByPath.get( memberPath );
+            if ( member != null ) return member;
+            if (size != null) {
+                // if size is known all members are in the tree map
+                // so a miss means there is no such member
+                noSuchElement.run();
+                return null;
             }
             char[] json = tree.json;
             int index = skipWhitespace( json, expectChar( json, start, '{' ) );
             while ( index < json.length && json[index] != '}' ) {
                 LazyJsonString.Span property = LazyJsonString.parseString( json, index );
-                index = expectColonSeparator( json, property.endIndex() );
+                index = expectColon( json, property.endIndex() );
                 if ( name.equals( property.value() ) ) {
                     int mStart = index;
-                    return tree.nodesByPath.computeIfAbsent( propertyPath,
-                        key -> tree.autoDetect( key, mStart ) );
+                    return tree.nodesByPath.computeIfAbsent( memberPath, key -> tree.autoDetect( key, mStart ) );
                 } else {
                     index = skipNodeAutodetect( json, index );
-                    index = expectCommaSeparatorOrEnd( json, index, '}' );
+                    index = expectCommaOrEnd( json, index, '}' );
                 }
             }
-            throw new JsonPathException( propertyPath,
-                format( "Path `%s` does not exist, object `%s` does not have a property `%s`", propertyPath, path, name ) );
+            noSuchElement.run();
+            return null;
         }
 
         @Override
@@ -328,11 +348,15 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return new Iterator<>() {
                 private final char[] json = tree.json;
                 private final Map<JsonPath, JsonNode> nodesByPath = tree.nodesByPath;
+
                 private int startIndex = skipWhitespace( json, expectChar( json, start, '{' ) );
+                private int n = 0;
 
                 @Override
                 public boolean hasNext() {
-                    return startIndex < json.length && json[startIndex] != '}';
+                    boolean hasNext = startIndex < json.length && json[startIndex] != '}';
+                    if (!hasNext && cacheNodes) size = n;
+                    return hasNext;
                 }
 
                 @Override
@@ -342,7 +366,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     LazyJsonString.Span property = LazyJsonString.parseString( json, startIndex );
                     String name = property.value();
                     JsonPath propertyPath = path.extendedWith( name );
-                    int startIndexVal = expectColonSeparator( json, property.endIndex() );
+                    int startIndexVal = expectColon( json, property.endIndex() );
                     JsonNode member = cacheNodes
                         ? nodesByPath.computeIfAbsent( propertyPath, key -> tree.autoDetect( key, startIndexVal ) )
                         : nodesByPath.get( propertyPath );
@@ -350,10 +374,11 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                         member = tree.autoDetect( propertyPath, startIndexVal );
                     } else if ( member.endIndex() < startIndexVal ) {
                         // duplicate keys case: just skip the duplicate
-                        startIndex = expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, startIndexVal ), '}' );
+                        startIndex = expectCommaOrEnd( json, skipNodeAutodetect( json, startIndexVal ), '}' );
                         return Map.entry( name, member );
                     }
-                    startIndex = expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
+                    n++;
+                    startIndex = expectCommaOrEnd( json, member.endIndex(), '}' );
                     return Map.entry( name, member );
                 }
             };
@@ -394,11 +419,11 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     // advance to next member or end...
                     JsonPath propertyPath = path.extendedWith( name );
                     JsonNode member = nodesByPath.get( propertyPath );
-                    startIndex = expectColonSeparator( json, property.endIndex() ); // move after :
+                    startIndex = expectColon( json, property.endIndex() ); // move after :
                     // move after value
                     startIndex = member == null || member.endIndex() < startIndex // (duplicates)
-                        ? expectCommaSeparatorOrEnd( json, skipNodeAutodetect( json, startIndex ), '}' )
-                        : expectCommaSeparatorOrEnd( json, member.endIndex(), '}' );
+                        ? expectCommaOrEnd( json, skipNodeAutodetect( json, startIndex ), '}' )
+                        : expectCommaOrEnd( json, member.endIndex(), '}' );
                     return toKey.apply( name );
                 }
             };
@@ -423,6 +448,11 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return tree.get( this.path.extendedWith( path ) );
         }
 
+        @Maybe @Override
+        public JsonNode getOrNull( @Surly JsonPath path ) {
+            return tree.getOrNull( this.path.extendedWith( path ) );
+        }
+
         @Override
         public JsonNodeType getType() {
             return JsonNodeType.ARRAY;
@@ -441,8 +471,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public int size() {
-            if (isEmpty()) return 0;
             if (size != null) return size;
+            if (isEmpty()) return 0;
             size = (int) StreamSupport.stream( spliterator(), false ).count();
             return size;
         }
@@ -466,29 +496,68 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return this;
         }
 
-        @Override
-        public JsonNode element( int index )
-            throws JsonPathException {
-            if ( index < 0 ) {
-                throw new JsonPathException( path,
-                    format( "Path `%s` does not exist, array index is negative: %d", path, index ) );
-            }
-            char[] json = tree.json;
-            JsonNode predecessor = index == 0 ? null : tree.nodesByPath.get( path.extendedWith( index - 1) );
-            int s = predecessor != null
-                ? skipWhitespace( json, expectCommaSeparatorOrEnd( json, predecessor.endIndex(), ']' ) )
-                : skipWhitespace( json, expectChar( json, start, '[' ) );
-            int skipN = predecessor != null ? 0 : index;
-            int startIndex = predecessor == null ? 0 : index - 1;
-            return tree.nodesByPath.computeIfAbsent( path.extendedWith( index),
-                key -> tree.autoDetect( key, skipWhitespace( json, skipToElement( skipN, json, s,
-                    skipped -> checkIndexExists( this, skipped + startIndex, key ) ) ) ) );
+        @Surly @Override
+        public JsonNode element( int index ) {
+            return requireNonNull( element( index, length -> {
+                JsonPath elementPath = path.extendedWith( index );
+                throw new JsonPathException( elementPath,
+                    format( "Path `%s` does not exist, array `%s` has only `%d` elements.",
+                        elementPath, getPath(), length ) );
+            } ) );
         }
 
-        private static void checkIndexExists( JsonNode parent, int length, JsonPath path ) {
-            throw new JsonPathException( path,
-                format( "Path `%s` does not exist, array `%s` has only `%d` elements.",
-                    path, parent.getPath(), length ) );
+        @Override
+        public JsonNode elementOrNull(int index) {
+            return element( index, length -> {} );
+        }
+
+        private JsonNode element( int index, IntConsumer indexOutOfBounds )
+            throws JsonPathException {
+            if ( index < 0 )
+                throw new JsonPathException( path,
+                    format( "Path `%s` does not exist, array index is negative: %d", path, index ) );
+            if (size != null && index >= size) {
+                // early exit for a miss
+                indexOutOfBounds.accept( size );
+                return null;
+            }
+            JsonPath elementPath = path.extendedWith( index );
+            JsonNode e = tree.nodesByPath.get( elementPath );
+            if (e != null) return e;
+            char[] json = tree.json;
+            if (index == 0) {
+                int i = skipWhitespace( json, expectChar( json, start, '[' ) );
+                if (json[i] == ']') {
+                    indexOutOfBounds.accept( 0 );
+                    return null;
+                }
+                return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, i ) );
+            }
+            // maybe the element before it exists? (iteration in a counter loop)
+            JsonNode predecessor = tree.nodesByPath.get( path.extendedWith( index - 1) );
+            if (predecessor != null) {
+                int i = skipWhitespace( json, expectCommaOrEnd( json, predecessor.endIndex(), ']' ));
+                if (json[i] == ']') {
+                    indexOutOfBounds.accept( index - 1 );
+                    return null;
+                }
+                return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, i ) );
+            }
+            // go there from the start of the array
+            int i = skipWhitespace( json, expectChar( json, start, '[' ) );
+            int elementsToSkip = index;
+            while ( elementsToSkip > 0 && i < json.length && json[i] != ']' ) {
+                i = skipWhitespace( json, i );
+                i = skipNodeAutodetect( json, i );
+                i = expectCommaOrEnd( json, i, ']' );
+                elementsToSkip--;
+            }
+            if ( json[i] == ']' ) {
+                indexOutOfBounds.accept(index - elementsToSkip );
+                return null;
+            }
+            int eStart = i;
+            return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, eStart ));
         }
 
         @Override
@@ -502,40 +571,28 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
                 @Override
                 public boolean hasNext() {
-                    return startIndex < json.length && json[startIndex] != ']';
+                    boolean hasNext = startIndex < json.length && json[startIndex] != ']';
+                    if (!hasNext && cacheNodes) size = n;
+                    return hasNext;
                 }
 
                 @Override
                 public JsonNode next() {
                     if ( !hasNext() )
                         throw new NoSuchElementException( "next() called without checking hasNext()" );
-                    JsonPath ePath = path.extendedWith( n );
+                    JsonPath elementPath = path.extendedWith( n );
                     JsonNode e = cacheNodes
-                        ? nodesByPath.computeIfAbsent( ePath,
+                        ? nodesByPath.computeIfAbsent( elementPath,
                         key -> tree.autoDetect( key, startIndex ) )
-                        : nodesByPath.get( ePath );
+                        : nodesByPath.get( elementPath );
                     if ( e == null ) {
-                        e = tree.autoDetect( ePath, startIndex );
+                        e = tree.autoDetect( elementPath, startIndex );
                     }
                     n++;
-                    startIndex = expectCommaSeparatorOrEnd( json, e.endIndex(), ']' );
+                    startIndex = expectCommaOrEnd( json, e.endIndex(), ']' );
                     return e;
                 }
             };
-        }
-
-        private static int skipToElement( int n, char[] json, int index, IntConsumer onEndOfArray ) {
-            int elementsToSkip = n;
-            while ( elementsToSkip > 0 && index < json.length && json[index] != ']' ) {
-                index = skipWhitespace( json, index );
-                index = skipNodeAutodetect( json, index );
-                index = expectCommaSeparatorOrEnd( json, index, ']' );
-                elementsToSkip--;
-            }
-            if ( json[index] == ']' ) {
-                onEndOfArray.accept( n - elementsToSkip );
-            }
-            return index;
         }
     }
 
@@ -680,6 +737,14 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
      * @throws JsonFormatException when this document contains malformed JSON that confuses the parser
      */
     JsonNode get( JsonPath path ) {
+        return get( path, false );
+    }
+
+    JsonNode getOrNull( JsonPath path ) {
+        return get( path, true );
+    }
+
+    private JsonNode get( JsonPath path, boolean orNull ) {
         if ( nodesByPath.isEmpty() )
             nodesByPath.put( JsonPath.ROOT, autoDetect( JsonPath.ROOT, skipWhitespace( json, 0 ) ) );
         if ( onGet != null && !path.isEmpty() ) onGet.accept( path.toString() );
@@ -689,16 +754,16 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         // find by finding the closest already indexed parent and navigate down from there...
         JsonNode parent = getClosestIndexedParent( path, nodesByPath );
         JsonPath pathToGo = path.shortenedBy( parent.getPath() );
-        while ( !pathToGo.isEmpty() ) { // meaning: are we at the target node? (self)
+        while (parent != null && !pathToGo.isEmpty() ) { // meaning: are we at the target node? (self)
             if ( pathToGo.startsWithArray() ) {
                 checkNodeIs( parent, JsonNodeType.ARRAY, path );
                 int index = pathToGo.arrayIndexAtStart();
-                parent = parent.element( index );
+                parent = orNull ? parent.elementOrNull( index ) : parent.element( index );
                 pathToGo = pathToGo.dropFirstSegment();
             } else if ( pathToGo.startsWithObject() ) {
                 checkNodeIs( parent, JsonNodeType.OBJECT, path );
                 String property = pathToGo.objectMemberAtStart();
-                parent = parent.member( property );
+                parent = orNull ? parent.memberOrNull( property ) : parent.member( property );
                 pathToGo = pathToGo.dropFirstSegment();
             } else {
                 throw new JsonPathException( path, format( "Malformed path %s at %s.", path, pathToGo ) );
@@ -716,27 +781,16 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             throw new JsonFormatException( json, atIndex, "a JSON value but found EOI" );
         }
         char c = json[atIndex];
-        switch ( c ) {
-            case '{' -> {
-                return new LazyJsonObject( this, path, atIndex );
-            }
-            case '[' -> {
-                return new LazyJsonArray( this, path, atIndex );
-            }
-            case '"' -> {
-                return new LazyJsonString( this, path, atIndex );
-            }
-            case 't', 'f' -> {
-                return new LazyJsonBoolean( this, path, atIndex );
-            }
-            case 'n' -> {
-                return new LazyJsonNull( this, path, atIndex );
-            }
-            case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {
-                return new LazyJsonNumber( this, path, atIndex );
-            }
+        return switch ( c ) {
+            case '{' -> new LazyJsonObject( this, path, atIndex );
+            case '[' -> new LazyJsonArray( this, path, atIndex );
+            case '"' -> new LazyJsonString( this, path, atIndex );
+            case 't', 'f' -> new LazyJsonBoolean( this, path, atIndex );
+            case 'n' -> new LazyJsonNull( this, path, atIndex );
+            case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ->
+                 new LazyJsonNumber( this, path, atIndex );
             default -> throw new JsonFormatException( json, atIndex, "start of a JSON value but found: `" + c + "`" );
-        }
+        };
     }
 
     private static void checkNodeIs( JsonNode parent, JsonNodeType expected, JsonPath path ) {
@@ -802,9 +856,9 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         index = skipWhitespace( json, index );
         while ( index < json.length && json[index] != '}' ) {
             index = skipString( json, index );
-            index = expectColonSeparator( json, index );
+            index = expectColon( json, index );
             index = skipNodeAutodetect( json, index );
-            index = expectCommaSeparatorOrEnd( json, index, '}' );
+            index = expectCommaOrEnd( json, index, '}' );
         }
         return expectChar( json, index, '}' );
     }
@@ -815,23 +869,21 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         index = skipWhitespace( json, index );
         while ( index < json.length && json[index] != ']' ) {
             index = skipNodeAutodetect( json, index );
-            index = expectCommaSeparatorOrEnd( json, index, ']' );
+            index = expectCommaOrEnd( json, index, ']' );
         }
         return expectChar( json, index, ']' );
     }
 
-    private static int expectColonSeparator( char[] json, int index ) {
+    private static int expectColon( char[] json, int index ) {
         return skipWhitespace( json, expectChar( json, skipWhitespace( json, index ), ':' ) );
     }
 
-    private static int expectCommaSeparatorOrEnd( char[] json, int index, char end ) {
+    private static int expectCommaOrEnd( char[] json, int index, char end ) {
         index = skipWhitespace( json, index );
-        if ( json[index] == ',' ) {
+        if ( json[index] == ',' )
             return skipWhitespace( json, index + 1 );
-        }
-        if ( json[index] != end ) {
-            return expectChar( json, index, end ); // cause fail
-        }
+        if ( json[index] != end )
+            return expectChar( json, index, end ); // causes fail
         return index; // found end, return index pointing to it
     }
 
@@ -885,11 +937,17 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     }
 
     private static int skipWhitespace( char[] json, int fromIndex ) {
-        return skipWhile( json, fromIndex, JsonTree::isWhitespace );
+        int index = fromIndex;
+        while ( index < json.length && isWhitespace( json[index] ) )
+            index++;
+        return index;
     }
 
     private static int skipDigits( char[] json, int fromIndex ) {
-        return skipWhile( json, fromIndex, JsonTree::isDigit );
+        int index = fromIndex;
+        while ( index < json.length && isDigit( json[index] ) )
+            index++;
+        return index;
     }
 
     /**
@@ -909,14 +967,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     private static boolean isEscapableLetter( char c ) {
         return c == '"' || c == '\\' || c == '/' || c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't'
             || c == 'u';
-    }
-
-    private static int skipWhile( char[] json, int fromIndex, CharPredicate whileTrue ) {
-        int index = fromIndex;
-        while ( index < json.length && whileTrue.test( json[index] ) ) {
-            index++;
-        }
-        return index;
     }
 
     private static int skipChar( char[] json, int index, char c ) {
@@ -944,22 +994,18 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     }
 
     private static int expectChar( char[] json, int index, CharPredicate expected ) {
-        if ( index >= json.length ) {
+        if ( index >= json.length )
             throw new JsonFormatException( "Expected character but reached EOI: " + getEndSection( json, index ) );
-        }
-        if ( !expected.test( json[index] ) ) {
+        if ( !expected.test( json[index] ) )
             throw new JsonFormatException( json, index, '~' );
-        }
         return index + 1;
     }
 
     private static int expectChar( char[] json, int index, char expected ) {
-        if ( index >= json.length ) {
+        if ( index >= json.length )
             throw new JsonFormatException( "Expected " + expected + " but reach EOI: " + getEndSection( json, index ) );
-        }
-        if ( json[index] != expected ) {
+        if ( json[index] != expected )
             throw new JsonFormatException( json, index, expected );
-        }
         return index + 1;
     }
 
@@ -1005,11 +1051,11 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         index = skipWhitespace( json, index );
         while ( index < json.length && json[index] != '}' ) {
             index = adjustString( json, index );
-            index = expectColonSeparator( json, index );
+            index = expectColon( json, index );
             index = adjustNodeAutodetect( json, index );
             // blank dangling ,
             if ( json[index] == ',' && json[index + 1] == '}' ) json[index++] = ' ';
-            index = expectCommaSeparatorOrEnd( json, index, '}' );
+            index = expectCommaOrEnd( json, index, '}' );
         }
         return expectChar( json, index, '}' );
     }
@@ -1023,7 +1069,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             // blank dangling ,
             if ( json[index] == ',' && json[index + 1] == ']' )
                 json[index++] = ' ';
-            index = expectCommaSeparatorOrEnd( json, index, ']' );
+            index = expectCommaOrEnd( json, index, ']' );
         }
         return expectChar( json, index, ']' );
     }
@@ -1033,7 +1079,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         if ( json[index] == '"' ) return skipString( json, fromIndex );
         index = expectChar( json, index, '\'' );
         json[index - 1] = '"';
-        index = skipWhile( json, index, c -> c != '\'' );
+        while ( index < json.length && json[index] != '\'')
+            index++;
         index = expectChar( json, index, '\'' );
         json[index - 1] = '"';
         return index;

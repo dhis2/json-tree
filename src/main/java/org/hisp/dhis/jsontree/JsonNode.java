@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.IOException;
@@ -250,42 +251,56 @@ public interface JsonNode extends Serializable {
      * @throws JsonPathException when no such node exists in the subtree of this node
      */
     @Surly
-    default JsonNode get(@Surly String path )
-        throws JsonPathException {
+    default JsonNode get(@Surly String path ) throws JsonPathException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
-        if ( path.startsWith( "$" ) ) return getRoot().get( path.substring( 1 ) );
-        if (!path.startsWith( "{" ) && !path.startsWith( "[" ) && !path.startsWith( "." ))
-            path = "."+path;
+        char c0 = path.charAt( 0 );
+        if ( c0 ==  '$' ) return getRoot().get( path.substring( 1 ) );
+        if ( c0 !=  '{' && c0 != '[' && c0 != '.' ) path = "."+path;
         return get( JsonPath.of( path ) );
     }
 
     /**
+     * Access the node at the given path in the subtree of this node.
      *
+     * @param path a simple or nested path relative to this node. A path starting with {@code $} is relative to the root
+     *             node of this node, in other words it is an absolute path
+     * @return the node at the given path or {@code null} if no such node exists
+     * @throws JsonPathException when the provided path is malformed
+     * @since 1.5
+     */
+    @Maybe
+    default JsonNode getOrNull(@Surly String path ) throws JsonPathException {
+        if ( path.isEmpty() ) return this;
+        if ( "$".equals( path ) ) return getRoot();
+        char c0 = path.charAt( 0 );
+        if ( c0 ==  '$' ) return getRoot().getOrNull( path.substring( 1 ) );
+        if ( c0 !=  '{' && c0 != '[' && c0 != '.' ) path = "."+path;
+        return getOrNull( JsonPath.of( path ) );
+    }
+
+    /**
      * @param path a path understood relative to this node's {@link #getPath()}
      * @return the node at the given path
+     * @throws JsonPathException when no such node exists in the subtree of this node
      * @since 1.1
      */
     @Surly
-    default JsonNode get(@Surly JsonPath path) {
+    default JsonNode get(@Surly JsonPath path) throws JsonPathException {
         throw new JsonPathException( path,
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 
     /**
-     * Access node by path with default.
-     *
-     * @param path      a simple or nested path relative to this node
-     * @param orDefault value to return in no node at the given path exist in this subtree
-     * @return the node at path or the provided default if no such node exists
-     * @since 1.1
+     * @param path a path understood relative to this node's {@link #getPath()}
+     * @return the node at the given path or {@code null} if no such node exists
+     * @throws JsonPathException when the provided path is malformed
+     * @since 1.5
      */
-    default JsonNode getOrDefault( String path, JsonNode orDefault ) {
-        try {
-            return get( path );
-        } catch ( JsonPathException ex ) {
-            return orDefault;
-        }
+    @Maybe
+    default JsonNode getOrNull(@Surly JsonPath path) throws JsonPathException {
+        throw new JsonPathException( path,
+            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 
     /**
@@ -332,7 +347,7 @@ public interface JsonNode extends Serializable {
      */
     default boolean isMember( String name ) {
         try {
-            return member( name ) != null;
+            return memberOrNull( name ) != null;
         } catch ( JsonPathException ex ) {
             return false;
         }
@@ -347,7 +362,7 @@ public interface JsonNode extends Serializable {
      */
     default boolean isElement( int index ) {
         try {
-            return element( index ) != null;
+            return elementOrNull( index ) != null;
         } catch ( JsonPathException ex ) {
             return false;
         }
@@ -379,7 +394,23 @@ public interface JsonNode extends Serializable {
      * @throws JsonPathException when no such member exists
      * @throws JsonTreeException if this node is not an object node that could have members
      */
+    @Surly
     default JsonNode member( String name )
+        throws JsonPathException {
+        throw new JsonTreeException( getType() + " node has no member property: " + name );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     *
+     * @param name name of the member to access
+     * @return the member with the given name or {@code null} if no such member exists
+     * @throws JsonPathException when the path is malformed
+     * @throws JsonTreeException if this node is not an object node that could have members
+     * @since 1.5
+     */
+    @Maybe
+    default JsonNode memberOrNull( String name )
         throws JsonPathException {
         throw new JsonTreeException( getType() + " node has no member property: " + name );
     }
@@ -463,7 +494,23 @@ public interface JsonNode extends Serializable {
      * @throws JsonPathException when no such element exists
      * @throws JsonTreeException if this node is not an array node that could have elements
      */
+    @Surly
     default JsonNode element( int index )
+        throws JsonPathException {
+        throw new JsonTreeException( getType() + " node has no element property for index: " + index );
+    }
+
+    /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY}).
+     *
+     * @param index index of the element to access
+     * @return the node at the given array index or {@code null} if no such element exists
+     * @throws JsonPathException when the index is negative (invalid)
+     * @throws JsonTreeException if this node is not an array node that could have elements
+     * @since 1.5
+     */
+    @Maybe
+    default JsonNode elementOrNull( int index )
         throws JsonPathException {
         throw new JsonTreeException( getType() + " node has no element property for index: " + index );
     }
