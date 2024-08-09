@@ -82,12 +82,24 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         return PROPERTIES.computeIfAbsent( of, JsonVirtualTree::captureProperties );
     }
 
-    private static final ClassValue<Map<String, MethodHandle>> MH_CACHE = new ClassValue<>() {
+    /**
+     * {@link MethodHandle} cache for zero-args default methods as usually used by the properties declared in
+     * {@link JsonObject} sub-types. Each subtype has its on map with the method name as key as that is already unique.
+     */
+    private static final ClassValue<Map<String, MethodHandle>> PROPERTY_MH_CACHE = new ClassValue<>() {
         @Override
         protected Map<String, MethodHandle> computeValue( Class declaringClass ) {
             return new ConcurrentHashMap<>();
         }
     };
+
+    /**
+     * {@link MethodHandle} cache used for any method that does not match conditions for {@link #PROPERTY_MH_CACHE}.
+     * <p>
+     * {@link MethodHandle}s are cached as a performance optimisation, in particular because during the MH resolve
+     * exceptions might be thrown and caught internally which has shown to be costly compared to a cache lookup.
+     */
+    private static final Map<Method, MethodHandle> OTHER_MH_CACHE = new ConcurrentHashMap<>();
 
     /**
      * The access support is shared by all values that are derived from the same initial virtual tree.
@@ -140,9 +152,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         return JsonMixed.class;
     }
 
-    private <T> T value( JsonNodeType expected, Function<JsonNode, T> get, Function<JsonPathException, T> orElse ) {
+    private <T> T value( JsonNodeType expected, Function<JsonNode, T> get, T orElse ) {
         try {
-            JsonNode node = root.get( path );
+            JsonNode node = root.getOrNull( path );
+            if (node == null) return orElse;
             JsonNodeType actualType = node.getType();
             if ( actualType == JsonNodeType.NULL ) {
                 return null;
@@ -154,7 +167,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             }
             return get.apply( node );
         } catch ( JsonPathException ex ) {
-            return orElse.apply( ex );
+            return orElse;
         }
     }
 
@@ -242,7 +255,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                 res.add( (T) value );
             }
             return res;
-        }, ex -> List.of() );
+        }, List.of() );
     }
 
     @Override
@@ -252,23 +265,23 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public Boolean bool() {
-        return (Boolean) value( JsonNodeType.BOOLEAN, JsonNode::value, ex -> null );
+        return (Boolean) value( JsonNodeType.BOOLEAN, JsonNode::value, null );
     }
 
     @Override
     public Number number() {
-        return (Number) value( JsonNodeType.NUMBER, JsonNode::value, ex -> null );
+        return (Number) value( JsonNodeType.NUMBER, JsonNode::value, null );
     }
 
     @Override
     public String string() {
-        return (String) value( JsonNodeType.STRING, JsonNode::value, ex -> null );
+        return (String) value( JsonNodeType.STRING, JsonNode::value, null );
     }
 
     @Override
     public boolean exists() {
         try {
-            return root.get( path ) != null;
+            return root.getOrNull( path ) != null;
         } catch ( JsonPathException ex ) {
             return false;
         }
@@ -320,10 +333,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             && method.getParameterCount() == 0 ) {
             return as;
         }
-        if ( isJsonMixedSubType( declaringClass ) || method.isDefault() && alwaysCallDefault ) {
-            if ( method.isDefault() ) {
+        boolean isDefault = method.isDefault();
+        if ( isJsonMixedSubType( declaringClass ) || isDefault && alwaysCallDefault ) {
+            if ( isDefault ) {
                 // call the default method of the proxied type itself
-                return callDefaultMethod( proxy, method, declaringClass, args );
+                return callDefaultMethod( proxy, method, args );
             }
             // abstract extending interface method?
             return callAbstractMethod( target, method, args );
@@ -336,17 +350,43 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
      * Any default methods implemented by an extension of the {@link JsonValue} class tree is run by calling the default
      * as defined in the interface. This is sadly not as straight forward as it might sound.
      */
-    private static Object callDefaultMethod( Object proxy, Method method, Class<?> declaringClass, Object[] args )
+    private static Object callDefaultMethod( Object proxy, Method method, Object[] args )
         throws Throwable {
-        MethodHandle handle = method.getParameterCount() == 0
-            ? MH_CACHE.get( declaringClass )
-            .computeIfAbsent( method.getName(), name -> getDefaultMethodHandle( declaringClass, method ) )
-            : getDefaultMethodHandle( declaringClass, method );
-        return handle.bindTo( proxy ).invokeWithArguments( args );
+        if (method.getParameterCount() == 0)
+            return PROPERTY_MH_CACHE.get( method.getDeclaringClass() )
+                .computeIfAbsent( method.getName(), name -> getDefaultMethodHandle( method ) )
+                .bindTo( proxy ).invoke();
+        return OTHER_MH_CACHE.computeIfAbsent( method, JsonVirtualTree::getDefaultMethodHandle )
+            .bindTo( proxy ).invokeWithArguments( args );
     }
 
-    private static MethodHandle getDefaultMethodHandle( Class<?> declaringClass, Method method ) {
+    /**
+     * All methods by the core API of the general JSON tree represented as {@link JsonValue}s (and the general
+     * subclasses) are implemented by the {@link JsonVirtualTree} wrapper, so they can be called directly.
+     */
+    private static Object callCoreApiMethod( JsonVirtualTree target, Method method, Object[] args )
+        throws Throwable {
+        if (args == null || args.length == 0)
+            return OTHER_MH_CACHE.computeIfAbsent( method, JsonVirtualTree::getCoreApiMethodHandle )
+                .bindTo( target ).invoke();
+        if (method.isDefault())
+            return OTHER_MH_CACHE.computeIfAbsent( method, JsonVirtualTree::getDefaultMethodHandle )
+                .bindTo( target ).invokeWithArguments( args );
+        return OTHER_MH_CACHE.computeIfAbsent(method, JsonVirtualTree::getCoreApiMethodHandle )
+            .bindTo( target ).invokeWithArguments( args );
+    }
+
+    private static MethodHandle getCoreApiMethodHandle( Method m ) {
         try {
+            return MethodHandles.lookup().unreflect( m );
+        } catch ( IllegalAccessException e ) {
+            throw new RuntimeException( e );
+        }
+    }
+
+    private static MethodHandle getDefaultMethodHandle( Method method ) {
+        try {
+            Class<?> declaringClass = method.getDeclaringClass();
             return MethodHandles.lookup()
                 .findSpecial( declaringClass, method.getName(),
                     MethodType.methodType( method.getReturnType(), method.getParameterTypes() ),
@@ -381,17 +421,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         if ( accessor != null )
             return accessor.access( obj, name, genericType, access.store );
         throw new UnsupportedOperationException( "No accessor registered for type: " + genericType );
-    }
-
-    /**
-     * All methods by the core API of the general JSON tree represented as {@link JsonValue}s (and the general
-     * subclasses) are implemented by the {@link JsonVirtualTree} wrapper, so they can be called directly.
-     */
-    private static Object callCoreApiMethod( JsonVirtualTree target, Method method, Object[] args )
-        throws Throwable {
-        return args == null || args.length == 0
-            ? MethodHandles.lookup().unreflect( method ).invokeWithArguments( target )
-            : MethodHandles.lookup().unreflect( method ).bindTo( target ).invokeWithArguments( args );
     }
 
     /**
