@@ -213,12 +213,23 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
     void appendEscaped(@Surly CharSequence str ) {
         append( '\'' );
-        str.chars().forEachOrdered( c -> {
-            if ( c == '\'' || c == '\\' || c < ' ' ) {
-                append( '\\' );
-            }
-            append( (char) c );
-        } );
+        str.chars().forEachOrdered( this::appendEscaped );
         append( '\'' );
+    }
+
+    private void appendEscaped( int c ) {
+        switch ( c ) {
+            case '\b' -> append(  "\\b" );
+            case '\f' -> append( "\\f" );
+            case '\n' -> append( "\\n" );
+            case '\r' -> append( "\\r" );
+            case '\t' -> append( "\\t" );
+            case '\'' -> append( "\\'" );
+            case '\\' -> append( "\\\\" );
+            case -31 -> append( "\\u%04X".formatted( c ) );
+            case 0x2028 -> append( "\\u2028" );
+            case 0x2029 -> append( "\\u2029" );
+            default -> append( (char) c );
+        }
     }
 }

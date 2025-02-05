@@ -35,8 +35,9 @@ class JsonTest {
     void testOf_String() {
         assertJson( "null", Json.of( (String) null ) );
         assertJson( "\"hello\"", Json.of( "hello" ) );
-        assertJson( "\"hello\\\n"
-            + "world\"", Json.of( "hello\nworld" ) );
+        JsonString hello = Json.of( "hello\nworld" );
+        assertJson( "\"hello\\nworld\"", hello );
+        assertEquals( "hello\nworld", hello.string() );
     }
 
     @Test

@@ -269,6 +269,25 @@ class JsonAppenderTest {
             .addElement( JsonNode.of( "[\"a\",\"b\"]" ) ) ) );
     }
 
+    @Test
+    void testNewlines() {
+        //language=JSON
+        String json = """
+            {"id":"woOg1dUFoX0","time":1738685143915,"message":"com.fasterxml.jackson.core.JsonParseException: Unexpected character ('<' (code 60)): expected a valid value (JSON String, Number, Array, Object or token 'null', 'true' or 'false')\\n at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]","level":"ERROR"}""";
+        JsonObject msg = JsonMixed.of( json );
+        String message = msg.getString( "message" ).string();
+        assertEquals( """
+                com.fasterxml.jackson.core.JsonParseException: Unexpected character ('<' (code 60)): expected a valid value (JSON String, Number, Array, Object or token 'null', 'true' or 'false')
+                 at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1]""",
+            message );
+        JsonObject actual = Json.object( obj ->
+            obj.addString( "id", "woOg1dUFoX0" )
+                .addNumber( "time", 1738685143915L )
+                .addString( "message", message )
+                .addString( "level", "ERROR" ));
+        assertEquals( json, actual.toJson() );
+    }
+
     private static void assertJson( String expected, JsonNode actual ) {
         assertEquals( expected.replace( '\'', '"' ), actual.getDeclaration() );
     }
