@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonDiff.Mode;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
@@ -367,6 +368,33 @@ public interface JsonValue {
         JsonObject bo = b.asObject();
         return ao.size() == bo.size() && ao.keys().allMatch( key -> compare.test( ao.get( key ), bo.get( key ) ) );
     }
+
+  /**
+   * Compare this value (expected) with the given value (actual) using {@link Mode#DEFAULT}.
+   *
+   * @since 1.7
+   * @param with the JSON to compare this JSON value with. To benefit from annotation specific
+   *     handling the value must be "cast" to the root object type using {@link #as(Class)} prior to
+   *     calling this method
+   * @return the differences
+   */
+  default JsonDiff diff(JsonValue with) {
+    return diff(with, Mode.DEFAULT);
+  }
+
+  /**
+   * Compare this value (expected) with the given value (actual) using the provided mode.
+   *
+   * @since 1.7
+   * @param with the JSON to compare this JSON value with. To benefit from annotation specific
+   *     handling the value must be "cast" to the root object type using {@link #as(Class)} prior to
+   *     calling this method
+   * @param mode of how strict to make the comparison
+   * @return the differences
+   */
+  default JsonDiff diff(JsonValue with, Mode mode) {
+    return JsonDiff.of(this, with, mode);
+  }
 
     /**
      * Access the node in the JSON document. This can be the low level API that is concerned with extraction by path.
