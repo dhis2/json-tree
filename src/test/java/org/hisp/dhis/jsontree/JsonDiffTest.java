@@ -126,6 +126,15 @@ class JsonDiffTest {
   }
 
   @Test
+  void testAnyOrder_JsonListSubObject() {
+    // checks that the "typing" as JsonAnyAnnotationObject also works when the value
+    // that is compared is only a part of another JSON value
+    assertNoDiff(
+        JsonValue.of("{\"versions\":[1,2,3]}"),
+        JsonMixed.of("[{\"versions\":[2,3,1]}]").get(0).as(JsonAnyAnnotationObject.class));
+  }
+
+  @Test
   void testAnyOrder_JsonListList() {
     assertNoDiff(
         JsonValue.of("{\"numbers\":[[1],[1,2],[1,2,3]]}"),
