@@ -214,3 +214,51 @@ JsonAddress a = obj.asA(JsonAddress.class); // throws exception, no < 1
 ```
 Both `isA` and `asA` can also be limited to a given set of validation `Rule`
 types.
+
+
+## Comparing JSON values (diff)
+When asserting that the JSON returned by a service contains
+the expected information a usual challenge is that the
+comparison cannot rely on a specifics such as
+
+* the whitespace (formatting)
+* the order of properties in objects
+* the order of elements in an array that is a "set"
+* the presence of additional object properties
+* the exact way numbers are formatted
+
+To make such comparisons easy the `diff` method can be used
+to find the differences between two `JsonValue` instances.
+When computing the difference the comparison can be configured
+using the `JsonDiff.Mode`.
+
+```java
+JsonValue expected = JsonValue.of( "[1,2,3]" );
+JsonValue actual = JsonValue.of( "[1,3,2]" );
+
+JsonDiff diff1 = expected.diff( actual ); // is different
+JsonDiff diff2 = expected.diff( actual, JsonDiff.Mode.LENIENT); // same
+```
+
+To adjust individual properties of `JsonObject` subtypes the `default` 
+methods of its properties can be annotated with `@AnyOrder` and 
+`@AnyAdditional` to opt into a lenient handling.
+
+```java
+interface MyObject extends JsonObject {
+
+    @JsonDiff.AnyOrder
+    default JsonArray tags() {
+        return getArray( "tags" );
+    }
+}
+```
+The used `Mode` is now overridden for the annotated property:
+```java
+MyObject expected = JsonValue.of( """
+    {"tags": ["hello", "intro"]}""" ).as( MyObject.clas );
+MyObject actual = JsonValue.of( """
+    {"tags": ["intro", "hello"]}""" ).as( MyObject.clas );
+
+JsonDiff diff1 = expected.diff( actual ); // same
+```

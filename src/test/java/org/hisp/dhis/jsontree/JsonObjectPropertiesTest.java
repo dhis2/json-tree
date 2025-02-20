@@ -61,6 +61,43 @@ class JsonObjectPropertiesTest {
             properties );
     }
 
+    private interface Recursive extends JsonObject {
+
+        default JsonList<Recursive> others() {
+            return getList("others", Recursive.class );
+        }
+
+        default Recursive direct() {
+            return get( "direct", Recursive.class );
+        }
+    }
+
+    @Test
+    void testRecursiveDataStructure() {
+        List<Property> properties = JsonObject.properties( Recursive.class );
+        assertEquals( 2, properties.size() );
+    }
+
+    private interface CyclicA extends JsonObject {
+
+        default CyclicB sub() {
+            return get("sub", CyclicB.class);
+        }
+    }
+
+    private interface CyclicB extends JsonObject {
+
+        default CyclicA parent() {
+            return get( "parent", CyclicA.class );
+        }
+    }
+
+    @Test
+    void testCyclicDataStructure() {
+        List<Property> properties = JsonObject.properties( CyclicA.class );
+        assertEquals( 1, properties.size() );
+    }
+
     private void assertPropertyExists( String jsonName, Property expected, List<Property> actual ) {
         Property prop = actual.stream().filter( p -> p.jsonName().equals( jsonName ) ).findFirst()
             .orElse( null );
