@@ -77,6 +77,18 @@ class JsonDiffTest {
     assertDiff("{\"a\":[1,2,3]}", "{\"a\":[1,5,3]}", "!= $.a[1]: 2 <> 5");
   }
 
+  @Test
+  void testObject_Pager() {
+    assertDiff(
+        """
+      {"page":1, "pageSize":50}""",
+        """
+      {"paga":1, "pageSize":50.0}""",
+        DEFAULT,
+        "++ $.paga: ? <> 1",
+        "-- $.page: 1 <> ?");
+  }
+
   private interface JsonAnyAnnotationObject extends JsonObject {
 
     @JsonDiff.AnyOrder

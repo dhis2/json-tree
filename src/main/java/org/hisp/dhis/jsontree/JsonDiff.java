@@ -197,7 +197,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
 
   private static void diffObject(
       JsonObject e, JsonObject a, Mode mode, Consumer<Difference> add, PropertyInfo p) {
-    if (!p.anyAdditional(mode.objects.anyAdditional) && e.size() != a.size()) {
+    if (!p.anyAdditional(mode.objects.anyAdditional)) {
       // list all extra members
       a.keys()
           .filter(not(e::has))
