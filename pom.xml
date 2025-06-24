@@ -148,6 +148,7 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
+                    <deploymentName>DHIS JSON Tree</deploymentName>
                 </configuration>
             </plugin>
         </plugins>
