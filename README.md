@@ -262,3 +262,7 @@ MyObject actual = JsonValue.of( """
 
 JsonDiff diff1 = expected.diff( actual ); // same
 ```
+
+## Maven cooordinates
+
+The maven coordinates are [`org.hisp.dhis:json-tree`](https://search.maven.org/artifact/org.hisp.dhis/json-tree).
