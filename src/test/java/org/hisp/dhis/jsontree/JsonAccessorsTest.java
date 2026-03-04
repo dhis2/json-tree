@@ -27,7 +27,12 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
+import static java.util.stream.Collectors.toList;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,21 +40,17 @@ import java.time.ZoneOffset;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link JsonAccessors} implementation {@link JsonAccess} by using it via {@link JsonVirtualTree}
@@ -130,7 +131,7 @@ class JsonAccessorsTest {
     @Test
     void testAccess_IntegerNonExistent() {
         PrimitivesBean obj = JsonMixed.of( "{}" ).as( PrimitivesBean.class );
-        assertThrowsExactly( JsonPathException.class, obj::aInt );
+        assertThrowsExactly( JsonAccessException.class, obj::aInt );
         assertEquals( 8, obj.aInt( 8 ) );
         assertNull( obj.aBigInteger() );
         assertEquals( Integer.valueOf( 22 ), obj.aBigInteger( 22 ) );
@@ -148,7 +149,7 @@ class JsonAccessorsTest {
     @Test
     void testAccess_LongNonExistent() {
         PrimitivesBean obj = JsonMixed.of( "{}" ).as( PrimitivesBean.class );
-        assertThrowsExactly( JsonPathException.class, obj::aLong );
+        assertThrowsExactly( JsonAccessException.class, obj::aLong );
         assertEquals( 8L, obj.aLong( 8L ) );
         assertNull( obj.aBigLong() );
         assertEquals( Long.valueOf( 22 ), obj.aBigLong( 22L ) );
@@ -166,7 +167,7 @@ class JsonAccessorsTest {
     @Test
     void testAccess_FloatNonExistent() {
         PrimitivesBean obj = JsonMixed.of( "{}" ).as( PrimitivesBean.class );
-        assertThrowsExactly( JsonPathException.class, obj::aFloat );
+        assertThrowsExactly( JsonAccessException.class, obj::aFloat );
         assertEquals( 8f, obj.aFloat( 8f ), 0.01f );
         assertNull( obj.aBigFloat() );
         assertEquals( Float.valueOf( 22f ), obj.aBigFloat( 22f ) );
@@ -185,7 +186,7 @@ class JsonAccessorsTest {
     @Test
     void testAccess_DoubleNonExistent() {
         PrimitivesBean obj = JsonMixed.of( "{}" ).as( PrimitivesBean.class );
-        assertThrowsExactly( JsonPathException.class, obj::aDouble );
+        assertThrowsExactly( JsonAccessException.class, obj::aDouble );
         assertEquals( 8d, obj.aDouble( 8d ), 0.01d );
         assertNull( obj.aBigDouble() );
         assertEquals( Double.valueOf( 22d ), obj.aBigDouble( 22d ) );
@@ -204,7 +205,7 @@ class JsonAccessorsTest {
     @Test
     void testAccess_CharNonExistent() {
         PrimitivesBean obj = JsonMixed.of( "{}" ).as( PrimitivesBean.class );
-        assertThrowsExactly( JsonPathException.class, obj::aChar );
+        assertThrowsExactly( JsonAccessException.class, obj::aChar );
         assertEquals( 'x', obj.aChar( 'x' ) );
         assertNull( obj.aBigCharacter() );
         assertEquals( Character.valueOf( 'Y' ), obj.aBigCharacter( 'Y' ) );
@@ -223,7 +224,7 @@ class JsonAccessorsTest {
     @Test
     void testAccess_BooleanNonExistent() {
         PrimitivesBean obj = JsonMixed.of( "{}" ).as( PrimitivesBean.class );
-        assertThrowsExactly( JsonPathException.class, obj::aBoolean );
+        assertThrowsExactly( JsonAccessException.class, obj::aBoolean );
         assertTrue( obj.aBoolean( true ) );
         assertNull( obj.aBigBoolean() );
         assertEquals( Boolean.TRUE, obj.aBigBoolean( true ) );
@@ -345,6 +346,11 @@ class JsonAccessorsTest {
     }
 
     @Test
+    void testAccess_ListAutoBox() {
+        assertEquals( List.of("foo"), JsonMixed.ofNonStandard( "{'names':'foo'}" ).as( ListBean.class ).names() );
+    }
+
+    @Test
     void testAccess_ListString() {
         assertEquals( List.of( "foo", "bar" ),
             JsonMixed.ofNonStandard( "{'names':['foo','bar']}" ).as( ListBean.class ).names() );
@@ -404,6 +410,11 @@ class JsonAccessorsTest {
     }
 
     @Test
+    void testAccess_SetAutoBox() {
+        assertEquals( Set.of( 1 ), JsonMixed.ofNonStandard( "{'ages':1}" ).as( SetBean.class ).ages() );
+    }
+
+    @Test
     void testAccess_SetInteger() {
         assertEquals( Set.of( 1, 2, 3 ), JsonMixed.ofNonStandard( "{'ages':[1,2,3,3]}" ).as( SetBean.class ).ages() );
     }
@@ -411,7 +422,18 @@ class JsonAccessorsTest {
     @Test
     void testAccess_SetSetEnum() {
         SetBean obj = JsonMixed.ofNonStandard( "{'styles':[['FULL', 'SHORT'], ['NARROW']]}" ).as( SetBean.class );
-        assertEquals( Set.of( Set.of( TextStyle.FULL, TextStyle.SHORT ), Set.of( TextStyle.NARROW ) ), obj.styles() );
+        Set<Set<TextStyle>> actual = obj.styles();
+        assertEquals( Set.of( Set.of( TextStyle.FULL, TextStyle.SHORT ), Set.of( TextStyle.NARROW ) ), actual );
+        assertInstanceOf( LinkedHashSet.class, actual );
+        assertInstanceOf( EnumSet.class, actual.iterator().next() );
+    }
+
+    @Test
+    void testAccess_SetRecursiveDefinition() {
+        Set<SetBean> root = JsonMixed.ofNonStandard( "{'recursive':[{'ages':[1,2,3]}]}" ).as( SetBean.class )
+            .recursive();
+        assertEquals( 1, root.size() );
+        assertEquals( Set.of(1,2,3), root.iterator().next().ages() );
     }
 
     interface MapBean extends JsonObject {
@@ -456,15 +478,19 @@ class JsonAccessorsTest {
     @Test
     void testAccess_MapCharacterValues() {
         MapBean obj = JsonMixed.ofNonStandard( "{'digits':{'A':'1', 'B':'2'}}" ).as( MapBean.class );
-        assertEquals( Map.of( "A", '1', "B", '2' ), obj.digits() );
+        Map<String, Character> actual = obj.digits();
+        assertEquals( Map.of( "A", '1', "B", '2' ), actual );
+        assertInstanceOf( LinkedHashMap.class, actual );
     }
 
     @Test
     void testAccess_MapEnumKeys() {
         MapBean obj = JsonMixed.ofNonStandard( "{'argsByType': {'FULL': ['hey', 'ho'], 'SHORT': ['lets', 'go']}}" )
             .as( MapBean.class );
+        Map<TextStyle, List<String>> actual = obj.argsByType();
         assertEquals( Map.of( TextStyle.FULL, List.of( "hey", "ho" ), TextStyle.SHORT, List.of( "lets", "go" ) ),
-            obj.argsByType() );
+            actual );
+        assertInstanceOf( EnumMap.class, actual );
     }
 
     @Test
@@ -490,15 +516,27 @@ class JsonAccessorsTest {
     }
 
     @Test
+    void testAccess_StreamEmpty() {
+        StreamBean obj = JsonMixed.ofNonStandard( "{'numbers':[]}" ).as( StreamBean.class );
+        assertEquals( Stream.empty().toList(), obj.numbers().toList() );
+    }
+
+    @Test
+    void testAccess_StreamAutoBox() {
+        StreamBean obj = JsonMixed.ofNonStandard( "{'numbers':1}" ).as( StreamBean.class );
+        assertEquals( Stream.of(1).toList(), obj.numbers().toList() );
+    }
+
+    @Test
     void testAccess_StreamOfNumbers() {
         StreamBean obj = JsonMixed.ofNonStandard( "{'numbers':[1,2,3]}" ).as( StreamBean.class );
-        assertEquals( Stream.of( 1, 2, 3 ).collect( toList() ), obj.numbers().collect( toList() ) );
+        assertEquals( Stream.of( 1, 2, 3 ).toList(), obj.numbers().toList() );
     }
 
     @Test
     void testAccess_StreamOfListOfStrings() {
         StreamBean obj = JsonMixed.ofNonStandard( "{'lists':[['a','b'],['1','2']]}" ).as( StreamBean.class );
-        assertEquals( List.of( List.of( "a", "b" ), List.of( "1", "2" ) ), obj.lists().collect( toList() ) );
+        assertEquals( List.of( List.of( "a", "b" ), List.of( "1", "2" ) ), obj.lists().toList() );
     }
 
     @Test

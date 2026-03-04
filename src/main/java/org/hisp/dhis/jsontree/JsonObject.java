@@ -161,6 +161,8 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
         return obj;
     }
 
+    //TODO <T extends Record> T asRecord(Class<T> type); // uses the accessors to map the object to a record type
+
     /**
      * Maps this object's members to a lazy transformed object view where each property value of the original object is
      * transformed by the given function when accessed.

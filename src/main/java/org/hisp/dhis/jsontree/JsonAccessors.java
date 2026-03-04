@@ -53,7 +53,7 @@ import java.lang.reflect.Type;
  * JsonValue} tree.
  *
  * @author Jan Bernitt
- * @since 1.9 (in the refactored form, earlier version had a similar concept)
+ * @since 1.9 (in the refactored form, earlier version had a similar concept since 0.4)
  */
 public interface JsonAccessors {
 
@@ -83,12 +83,14 @@ public interface JsonAccessors {
          * Accesses value at the path as the target type.
          *
          * @param parent the parent object containing the accessed value at the given path
-         * @param path  path relative to the parent to access the value
-         * @param to    fully generic target type for the value of type {@code T}
+         * @param path path relative to the parent to access the value
+         * @param to fully generic target type for the value of type {@code T}
          * @param accessors in case the conversion is based upon other conversions
          * @return the value at path converted to target type
+         * @throws JsonAccessException in case the JSON value found at the given path cannot be
+         *     converted to the target type
          */
-        T access( JsonObject parent, String path, Type to, JsonAccessors accessors );
+        T access(JsonObject parent, String path, Type to, JsonAccessors accessors);
     }
 
   /**
