@@ -122,7 +122,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Serial
     private void readObject( ObjectInputStream in) throws IOException, ClassNotFoundException {
-        in.defaultReadObject();             // restore non‑transient fields
+        in.defaultReadObject();        // restore non‑transient fields
         accessors = JsonAccess.GLOBAL; // set transient field
     }
 
@@ -385,11 +385,12 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         }
     }
 
-    /**
-     * Abstract interface methods are "implemented" by deriving an {@link JsonAccessor} from the method's
-     * return type and have the accessor extract the value by using the underlying {@link JsonValue} API.
-     */
-    private Object callAbstractMethod( JsonVirtualTree target, Method method, Object[] args ) {
+  /**
+   * Abstract interface methods are "implemented" by mapping the JSON value to the method's return
+   * type using an {@link JsonAccessor}. The path/name is extracted from the abstract method's
+   * property name.
+   */
+  private Object callAbstractMethod(JsonVirtualTree target, Method method, Object[] args) {
         JsonObject obj = target.asObject();
         Class<?> resType = method.getReturnType();
         String name = stripGetterPrefix( method );
@@ -486,9 +487,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         }
     }
 
-    private static Stream<Method> propertyMethods( Class<?> of ) {
-        return Stream.of( of.getMethods() )
-            .filter( JsonVirtualTree::isJsonObjectSubTypeProperty );
+  private static Stream<Method> propertyMethods(Class<?> of) {
+    return Stream.of(of.getMethods()).filter(JsonVirtualTree::isJsonObjectSubTypeProperty);
     }
 
     /**

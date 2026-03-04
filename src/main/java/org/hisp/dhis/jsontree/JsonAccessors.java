@@ -31,25 +31,29 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 /**
- * The {@link JsonAccessors} is a registry for accessor functions.
- * <p>
- * These come in a simple form {@link SimpleJsonAccessor} for non-generic type, and a generic form
- * {@link JsonAccessor} for complex types.
- * <p>
- * Conceptually accessors are the POJO "mappers" of this library. Just that instead of using POJOs data structures are
- * defined by their "getters" in an interface. The accessors then bridge the gap between the view the generic JSON tree
- * provided in form of {@link JsonValue}s and the non-JSON java type returned by getters.
- * <p>
- * While they "map" values this mapping takes place on access only. Everything before that is just as virtual (a view)
- * as the {@link JsonValue} tree.
- * <p>
- * One could also think of accessors as an "automatic" implementation of an abstract method as if it became a default
- * method in an interface. The "implementation" here is derived from the return type of the method. Each accessor knows
- * how to access and map to a particular java tye. The store then contains the set of known java target type and their
- * way to access them given a {@link JsonValue} tree.
+ * The {@link JsonAccessors} is a registry for accessor functions which are used to map JSON to Java
+ * types in case of abstract interface methods in a {@link JsonObject}. In contrast to classic
+ * mapping the conversion takes place on access only and is localized to the accessed values.
+ *
+ * <p>These come in a simple form {@link SimpleJsonAccessor} for non-generic type, and a generic
+ * form {@link JsonAccessor} for complex types.
+ *
+ * <p>Conceptually accessors are the POJO "mappers" of this library. Just that instead of using
+ * POJOs data structures are defined by their "getters" in an interface. The accessors then bridge
+ * the gap between the view the generic JSON tree provided in form of {@link JsonValue}s and the
+ * non-JSON java type returned by getters.
+ *
+ * <p>While they "map" values this mapping takes place on access only. Everything before that is
+ * just as virtual (a view) as the {@link JsonValue} tree.
+ *
+ * <p>One could also think of accessors as an "automatic" implementation of an abstract method as if
+ * it became a default method in an interface. The "implementation" here is derived from the return
+ * type of the method. Each accessor knows how to access and map to a particular java tye. The store
+ * then contains the set of known java target type and their way to access them given a {@link
+ * JsonValue} tree.
  *
  * @author Jan Bernitt
- * @since 1.9
+ * @since 1.9 (in the refactored form, earlier version had a similar concept)
  */
 public interface JsonAccessors {
 

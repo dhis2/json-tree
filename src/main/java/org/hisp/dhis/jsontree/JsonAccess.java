@@ -65,7 +65,13 @@ import static java.util.Spliterators.spliteratorUnknownSize;
  */
 public final class JsonAccess implements JsonAccessors {
 
-    public static final JsonAccess GLOBAL = new JsonAccess().init();
+  /**
+   * Default {@link JsonAccessors} repository. This will be used for all {@link JsonValue} instances
+   * that have been de-serialized from Java's serialisation. Which is why even this instances still
+   * allows to add {@link JsonAccessor} functions. While this instance is initialized with default
+   * functions they can be overridden by registering another function for the same type.
+   */
+  public static final JsonAccess GLOBAL = new JsonAccess().init();
 
     private final Map<Class<?>, JsonAccessor<?>> byResultType = new ConcurrentHashMap<>();
 
