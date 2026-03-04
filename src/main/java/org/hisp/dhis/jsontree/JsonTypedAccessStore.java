@@ -51,7 +51,7 @@ import java.lang.reflect.Type;
  * @author Jan Bernitt
  * @since 0.4
  */
-public interface JsonTypedAccessStore {
+public interface JsonTypedAccessStore { //TODO rename to JsonAccessors
 
     /**
      * A function that given a parent object knows how to access a value at a certain path as a certain type.
@@ -64,13 +64,13 @@ public interface JsonTypedAccessStore {
         /**
          * Accesses value at the path as the target type.
          *
-         * @param from  the parent object containing the value at path
-         * @param path  path to access the value
+         * @param parent  the parent object containing the value at path
+         * @param path  path relative to the parent to access the value
          * @param to    fully generic target type for the value of type {@code T}
          * @param store in case further conversions are needed
          * @return the value at path converted to target type
          */
-        T access( JsonObject from, String path, Type to, JsonTypedAccessStore store );
+        T access( JsonObject parent, String path, Type to, JsonTypedAccessStore store );
     }
 
     /**
@@ -93,8 +93,8 @@ public interface JsonTypedAccessStore {
         T access( JsonObject from, String path );
 
         @Override
-        default T access( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
-            return access( from, path );
+        default T access( JsonObject parent, String path, Type to, JsonTypedAccessStore store ) {
+            return access( parent, path );
         }
     }
 

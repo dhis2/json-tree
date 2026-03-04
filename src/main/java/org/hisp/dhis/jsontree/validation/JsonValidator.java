@@ -1,7 +1,5 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonAbstractObject;
-import org.hisp.dhis.jsontree.JsonArray;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonPathException;
@@ -43,7 +41,7 @@ public final class JsonValidator {
                     value.type() ) );
         }
 
-        ObjectValidator validator = ObjectValidator.getInstance( schema );
+        ObjectValidator validator = ObjectValidator.ofJsonObject( schema );
         List<Error> errors = new ArrayList<>();
         for ( Map.Entry<String, Validation.Validator> e : validator.properties().entrySet() ) {
             JsonValue property = value.asObject().get( e.getKey() );

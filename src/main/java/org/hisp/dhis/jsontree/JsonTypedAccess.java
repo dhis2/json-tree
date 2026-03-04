@@ -183,12 +183,8 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
     @SuppressWarnings( { "java:S1168", "java:S1452" } )
     public static List<?> accessList( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
         JsonList<?> list = from.getList( path, JsonValue.class );
-        if ( list.isUndefined() ) {
-            return null;
-        }
-        if ( list.isEmpty() ) {
-            return List.of();
-        }
+        if (list.isUndefined()) return null;
+        if (list.isEmpty()) return List.of();
         Type elementType = extractTypeParameter( to, 0 );
         JsonGenericTypedAccessor<?> elementAccess = store.accessor( getRawType( elementType ) );
         int size = list.size();
@@ -266,29 +262,15 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
      * Therefore, a handful of type are supported explicitly.
      */
     private static Function<String, Object> getKeyMapper( Class<?> rawKeyType ) {
-        if ( rawKeyType.isEnum() ) {
-            return key -> asEnumConstant( rawKeyType, key );
-        }
-        if ( String.class == rawKeyType ) {
-            return key -> key;
-        }
-        if ( Integer.class == rawKeyType ) {
-            return Integer::parseInt;
-        }
-        if ( Long.class == rawKeyType ) {
-            return Long::parseLong;
-        }
+        if (rawKeyType.isEnum()) return key -> asEnumConstant(rawKeyType, key);
+        if (String.class == rawKeyType) return key -> key;
+        if (Integer.class == rawKeyType) return Integer::parseInt;
+        if (Long.class == rawKeyType) return Long::parseLong;
         // any other number as long as Double works
-        if ( rawKeyType.isAssignableFrom( Double.class ) ) {
-            return Double::parseDouble;
-        }
-        if ( Character.class == rawKeyType ) {
-            return str -> str.charAt( 0 );
-        }
-        if ( Boolean.class == rawKeyType ) {
-            return Boolean::getBoolean;
-        }
-        throw new UnsupportedOperationException( "Unsupported map key type: " + rawKeyType );
+        if (rawKeyType.isAssignableFrom(Double.class)) return Double::parseDouble;
+        if (Character.class == rawKeyType) return str -> str.charAt(0);
+        if (Boolean.class == rawKeyType) return Boolean::getBoolean;
+        throw new UnsupportedOperationException("Unsupported map key type: " + rawKeyType);
     }
 
     public static Class<?> getRawType( Type type ) {

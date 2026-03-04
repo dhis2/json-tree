@@ -1,6 +1,5 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonAbstractObject;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
 import org.hisp.dhis.jsontree.JsonMixed;
@@ -32,7 +31,6 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static java.lang.Double.isNaN;
@@ -48,13 +46,13 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 /**
  * A validator that Contains one {@link Validator} for each property of the schema that needs validation.
  *
- * @param schema     that JSON type that was used as the basis to create the property validators from
+ * @param schema     that source used to extract {@link JsonObject.Property} list from
  * @param properties one validator for each property
  * @author Jan Bernitt
  * @since 0.11
  */
 record ObjectValidator(
-    @Surly Class<? extends JsonValue> schema,
+    @Surly Class<?> schema,
     @Surly Map<String, Validator> properties
 ) implements Validator {
 
@@ -78,18 +76,13 @@ record ObjectValidator(
         Comparator.comparing( Class::getName ) );
 
     @Surly
-    public static ObjectValidator getInstance( Class<? extends JsonObject> schema ) {
+    public static ObjectValidator ofJsonObject( Class<? extends JsonObject> schema ) {
         return getInstance( schema, new HashSet<>() );
     }
 
     @Surly
     private static ObjectValidator getInstance( Class<? extends JsonObject> schema, Set<Class<?>> currentlyResolved ) {
-        return getInstance( schema, () -> ObjectValidation.getInstance( schema ), currentlyResolved );
-    }
-
-    @Surly
-    public static ObjectValidator getInstance( ObjectValidation obj ) {
-        return getInstance( obj.schema(), () -> obj, new HashSet<>() );
+        return getInstance( schema, () -> ObjectValidation.ofJsonObject( schema ), currentlyResolved );
     }
 
     private static ObjectValidator getInstance( Class<? extends JsonValue> schema,
@@ -665,7 +658,7 @@ record ObjectValidator(
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             Validator validator = instance.get();
             if ( validator == null ) {
-                validator = getInstance( of );
+                validator = ofJsonObject( of );
                 instance.set( validator );
             }
             validator.validate( value, addError );

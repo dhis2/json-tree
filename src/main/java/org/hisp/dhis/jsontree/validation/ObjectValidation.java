@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.lang.Double.isNaN;
@@ -50,7 +51,7 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  * @since 0.11
  */
 record ObjectValidation(
-    @Surly Class<? extends JsonValue> schema,
+    @Surly Class<?> schema,
     @Surly Map<String, Type> types,
     @Surly Map<String, PropertyValidation> properties) {
 
@@ -73,19 +74,19 @@ record ObjectValidation(
      * string property)
      */
     @Surly
-    public static ObjectValidation getInstance( Class<? extends JsonObject> schema ) {
+    public static ObjectValidation ofJsonObject( Class<? extends JsonObject> schema ) {
         if ( !schema.isInterface() ) throw new IllegalArgumentException( "Schema must be an interface" );
-        return INSTANCES.computeIfAbsent( schema, ObjectValidation::createInstance );
+        return INSTANCES.computeIfAbsent( schema, t -> createInstance( t, JsonObject.properties( t ) ) );
     }
 
-    private static ObjectValidation createInstance( Class<? extends JsonObject> schema ) {
-        Map<String, PropertyValidation> properties = new HashMap<>();
+    private static ObjectValidation createInstance( Class<?> schema, List<JsonObject.Property> properties ) {
+        Map<String, PropertyValidation> validations = new HashMap<>();
         Map<String, Type> types = new HashMap<>();
-        JsonObject.properties( schema ).stream().filter( ObjectValidation::isNotIgnored ).forEach( p -> {
-            properties.put(p.jsonName(), fromProperty( p ));
+        properties.stream().filter( ObjectValidation::isNotIgnored ).forEach( p -> {
+            validations.put(p.jsonName(), fromProperty( p ));
             types.put( p.jsonName(), p.javaType().getType() );
         } );
-        return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( properties ) );
+        return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( validations ) );
     }
 
     private static boolean isNotIgnored( JsonObject.Property p ) {
