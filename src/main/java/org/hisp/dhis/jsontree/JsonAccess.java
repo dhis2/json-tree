@@ -55,52 +55,52 @@ import java.util.stream.StreamSupport;
 import static java.util.Spliterators.spliteratorUnknownSize;
 
 /**
- * Standard implementation of the {@link JsonTypedAccessStore}.
+ * Standard implementation of the {@link JsonAccessors}.
  * <p>
- * On top of the {@link JsonGenericTypedAccessor}s that were added it automatically creates and adds an accessor for any
+ * On top of the {@link JsonAccessor}s that were added it automatically creates and adds an accessor for any
  * {@code enum} and any subtype of {@link JsonValue} when it is resolved via {@link #accessor(Class)}.
  *
  * @author Jan Bernitt
  * @since 0.4
  */
-public final class JsonTypedAccess implements JsonTypedAccessStore {
+public final class JsonAccess implements JsonAccessors {
 
-    public static final JsonTypedAccess GLOBAL = new JsonTypedAccess().init();
+    public static final JsonAccess GLOBAL = new JsonAccess().init();
 
-    private final Map<Class<?>, JsonGenericTypedAccessor<?>> byResultType = new ConcurrentHashMap<>();
+    private final Map<Class<?>, JsonAccessor<?>> byResultType = new ConcurrentHashMap<>();
 
     @Override
     @SuppressWarnings( "unchecked" )
-    public <T> JsonGenericTypedAccessor<T> accessor( Class<T> type ) {
-        JsonGenericTypedAccessor<T> res = (JsonGenericTypedAccessor<T>) byResultType.get( type );
+    public <T> JsonAccessor<T> accessor( Class<T> type ) {
+        JsonAccessor<T> res = (JsonAccessor<T>) byResultType.get( type );
         if ( res != null ) {
             return res;
         }
         if ( type.isEnum() ) {
             // automatically provide enum mapping
-            return (JsonGenericTypedAccessor<T>) byResultType.get( Enum.class );
+            return (JsonAccessor<T>) byResultType.get( Enum.class );
         }
         if ( JsonValue.class.isAssignableFrom( type ) ) {
             // automatically provide JsonValue subtype mapping
-            return (JsonGenericTypedAccessor<T>) byResultType.get( JsonValue.class );
+            return (JsonAccessor<T>) byResultType.get( JsonValue.class );
         }
-        return null;
+        throw new UnsupportedOperationException( "No accessor registered for type: " + type );
     }
 
-    public <T> JsonTypedAccess add( Class<T> returnType, JsonTypedAccessor<T> accessor ) {
+    public <T> JsonAccess add( Class<T> returnType, SimpleJsonAccessor<T> accessor ) {
         byResultType.put( returnType, accessor );
         return this;
     }
 
-    public <T> JsonTypedAccess add( Class<T> returnType, JsonGenericTypedAccessor<T> accessor ) {
+    public <T> JsonAccess add( Class<T> returnType, JsonAccessor<T> accessor ) {
         byResultType.put( returnType, accessor );
         return this;
     }
 
-    public JsonTypedAccess init() {
+    public JsonAccess init() {
         return add( String.class, ( obj, name ) -> obj.getString( name ).string() )
             .add( boolean.class, ( obj, name ) -> obj.getBoolean( name ).booleanValue() )
-            .add( char.class, JsonTypedAccess::accessChar )
+            .add( char.class, JsonAccess::accessChar )
             .add( int.class, ( obj, name ) -> obj.getNumber( name ).intValue() )
             .add( long.class, ( obj, name ) -> obj.getNumber( name ).longValue() )
             .add( float.class, ( obj, name ) -> obj.getNumber( name ).floatValue() )
@@ -117,7 +117,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
             .add( LocalDateTime.class, ( obj, name ) -> obj.get( name, JsonDate.class ).date() )
             .add( LocalDate.class, ( obj, name ) -> obj.get( name, JsonDate.class ).dateOnly() )
             .add( LocalTime.class, ( obj, name ) -> obj.get( name, JsonDate.class ).timeOnly() )
-            .add( Date.class, JsonTypedAccess::accessDate )
+            .add( Date.class, JsonAccess::accessDate )
 
             // JSON generic type
             .add( JsonList.class,
@@ -128,13 +128,13 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
                 ( obj, name, to, store ) -> obj.getMultiMap( name, extractJsonValueTypeParameter( to, 0 ) ) )
 
             // JDK generic type
-            .add( List.class, JsonTypedAccess::accessList )
-            .add( Iterable.class, JsonTypedAccess::accessList )
-            .add( Set.class, JsonTypedAccess::accessSet )
-            .add( Map.class, JsonTypedAccess::accessMap )
-            .add( Stream.class, JsonTypedAccess::accessStream )
-            .add( Iterator.class, JsonTypedAccess::accessIterator )
-            .add( Optional.class, JsonTypedAccess::accessOptional )
+            .add( List.class, JsonAccess::accessList )
+            .add( Iterable.class, JsonAccess::accessList )
+            .add( Set.class, JsonAccess::accessSet )
+            .add( Map.class, JsonAccess::accessMap )
+            .add( Stream.class, JsonAccess::accessStream )
+            .add( Iterator.class, JsonAccess::accessIterator )
+            .add( Optional.class, JsonAccess::accessOptional )
 
             // type-sets
             .add( Enum.class, ( obj, name, to, store ) -> obj.getString( name ).parsed(
@@ -166,13 +166,13 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
         return Date.from( LocalDateTime.parse( date.as( JsonString.class ).string() ).toInstant( ZoneOffset.UTC ) );
     }
 
-    public static Optional<?> accessOptional( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
+    public static Optional<?> accessOptional( JsonObject from, String path, Type to, JsonAccessors store ) {
         JsonValue v = from.get( path );
         if ( v.isUndefined() ) {
             return Optional.empty();
         }
         Type valueType = extractTypeParameter( to, 0 );
-        JsonGenericTypedAccessor<?> accessor = store.accessor( getRawType( valueType ) );
+        JsonAccessor<?> accessor = store.accessor( getRawType( valueType ) );
         return Optional.ofNullable( accessor.access( from, path, valueType, store ) );
     }
 
@@ -181,12 +181,12 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
      * resolution is not using the list as root but the object that contains the list.
      */
     @SuppressWarnings( { "java:S1168", "java:S1452" } )
-    public static List<?> accessList( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
+    public static List<?> accessList( JsonObject from, String path, Type to, JsonAccessors store ) {
         JsonList<?> list = from.getList( path, JsonValue.class );
         if (list.isUndefined()) return null;
         if (list.isEmpty()) return List.of();
         Type elementType = extractTypeParameter( to, 0 );
-        JsonGenericTypedAccessor<?> elementAccess = store.accessor( getRawType( elementType ) );
+        JsonAccessor<?> elementAccess = store.accessor( getRawType( elementType ) );
         int size = list.size();
         List<Object> res = new ArrayList<>( size );
         for ( int i = 0; i < size; i++ ) {
@@ -196,13 +196,13 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
     }
 
     @SuppressWarnings( "java:S1452" )
-    public static Set<?> accessSet( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
+    public static Set<?> accessSet( JsonObject from, String path, Type to, JsonAccessors store ) {
         List<?> list = accessList( from, path, to, store );
         return list == null ? null : new HashSet<>( list );
     }
 
     @SuppressWarnings( { "java:S1168", "java:S1452" } )
-    public static Map<?, ?> accessMap( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
+    public static Map<?, ?> accessMap( JsonObject from, String path, Type to, JsonAccessors store ) {
         JsonObject map = from.getObject( path );
         if ( map.isUndefined() ) {
             return null;
@@ -211,7 +211,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
             return Map.of();
         }
         Type valueType = extractTypeParameter( to, 1 );
-        JsonGenericTypedAccessor<?> valueAccess = store.accessor( getRawType( valueType ) );
+        JsonAccessor<?> valueAccess = store.accessor( getRawType( valueType ) );
         Class<?> rawKeyType = getRawType( extractTypeParameter( to, 0 ) );
         Function<String, Object> toKey = getKeyMapper( rawKeyType );
         @SuppressWarnings( { "rawtypes", "unchecked" } )
@@ -221,7 +221,7 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
         return res;
     }
 
-    public static Stream<?> accessStream( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
+    public static Stream<?> accessStream( JsonObject from, String path, Type to, JsonAccessors store ) {
         JsonList<?> seq = from.getList( path, JsonValue.class );
         if ( seq.isUndefined() ) {
             return Stream.empty();
@@ -230,14 +230,14 @@ public final class JsonTypedAccess implements JsonTypedAccessStore {
         return StreamSupport.stream( spliteratorUnknownSize( iter, Spliterator.ORDERED ), false );
     }
 
-    public static Iterator<?> accessIterator( JsonObject from, String path, Type to, JsonTypedAccessStore store ) {
+    public static Iterator<?> accessIterator( JsonObject from, String path, Type to, JsonAccessors store ) {
         JsonList<?> seq = from.getList( path, JsonValue.class );
         if ( seq.isUndefined() ) {
             return List.of().listIterator();
         }
         int size = seq.size();
         Type elementType = extractTypeParameter( to, 0 );
-        JsonGenericTypedAccessor<?> elementAccess = store.accessor( getRawType( elementType ) );
+        JsonAccessor<?> elementAccess = store.accessor( getRawType( elementType ) );
         return new Iterator<>() {
             int i = 0;
 

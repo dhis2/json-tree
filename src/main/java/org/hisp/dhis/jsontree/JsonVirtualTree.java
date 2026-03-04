@@ -27,10 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonTypedAccessStore.JsonGenericTypedAccessor;
+import org.hisp.dhis.jsontree.JsonAccessors.JsonAccessor;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -40,12 +43,10 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -74,7 +75,7 @@ import static java.lang.Character.toLowerCase;
  */
 final class JsonVirtualTree implements JsonMixed, Serializable {
 
-    public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, "$", new Access( JsonTypedAccess.GLOBAL, null) );
+    public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonAccess.GLOBAL );
 
     private static final Map<Class<? extends JsonObject>, List<Property>> PROPERTIES = new ConcurrentHashMap<>();
 
@@ -101,28 +102,28 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
      */
     private static final Map<Method, MethodHandle> OTHER_MH_CACHE = new ConcurrentHashMap<>();
 
-    /**
-     * The access support is shared by all values that are derived from the same initial virtual tree.
-     * Therefore, it makes sense to group them in a single object to reduce the fields needed for each node.
-     */
-    private record Access(@Surly JsonTypedAccessStore store, @Maybe ConcurrentMap<String, Object> cache) {}
-
     private final @Surly JsonNode root;
     private final @Surly String path;
-    private final transient @Surly Access access;
+    private transient @Surly JsonAccessors accessors;
 
-    public JsonVirtualTree( @Maybe String json, @Surly JsonTypedAccessStore store ) {
-        this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), "$", new Access(  store, null ));
+    public JsonVirtualTree( @Maybe String json, @Surly JsonAccessors accessors ) {
+        this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), "$", accessors);
     }
 
-    public JsonVirtualTree( @Surly JsonNode root, @Surly JsonTypedAccessStore store ) {
-        this( root, "$", new Access( store, null) );
+    public JsonVirtualTree( @Surly JsonNode root, @Surly JsonAccessors accessors ) {
+        this( root, "$", accessors );
     }
 
-    private JsonVirtualTree( @Surly JsonNode root, @Surly String path, @Surly Access access ) {
+    private JsonVirtualTree( @Surly JsonNode root, @Surly String path, @Surly JsonAccessors accessors ) {
         this.root = root;
         this.path = path;
-        this.access = access;
+        this.accessors = accessors;
+    }
+
+    @Serial
+    private void readObject( ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();             // restore non‑transient fields
+        accessors = JsonAccess.GLOBAL; // set transient field
     }
 
     @Surly @Override
@@ -131,20 +132,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Surly @Override
-    public JsonTypedAccessStore getAccessStore() {
-        return access.store;
-    }
-
-    @Override
-    public boolean isAccessCached() {
-        return access.cache != null;
-    }
-
-    @Override
-    public JsonVirtualTree withAccessCached() {
-        return isAccessCached()
-            ? this
-            : new JsonVirtualTree( root, path, new Access( access.store, new ConcurrentHashMap<>() ) );
+    public JsonAccessors getAccessors() {
+        return accessors;
     }
 
     @Override
@@ -177,7 +166,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public <T extends JsonValue> T get( int index, Class<T> as ) {
-        return asType( as, new JsonVirtualTree( root, path + "[" + index + "]", access ) );
+        return asType( as, new JsonVirtualTree( root, path + "[" + index + "]", accessors ) );
     }
 
     @Override
@@ -185,7 +174,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         if ( name.isEmpty() ) return as( as );
         boolean isQualified = name.startsWith( "{" ) || name.startsWith( "." ) || name.startsWith( "[" );
         String canonicalPath = isQualified ? path + name : path + "." + name;
-        return asType( as, new JsonVirtualTree( root, canonicalPath, access) );
+        return asType( as, new JsonVirtualTree( root, canonicalPath, accessors) );
     }
 
     @Override
@@ -397,7 +386,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     /**
-     * Abstract interface methods are "implemented" by deriving an {@link JsonGenericTypedAccessor} from the method's
+     * Abstract interface methods are "implemented" by deriving an {@link JsonAccessor} from the method's
      * return type and have the accessor extract the value by using the underlying {@link JsonValue} API.
      */
     private Object callAbstractMethod( JsonVirtualTree target, Method method, Object[] args ) {
@@ -408,32 +397,13 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         if ( obj.get( name ).isUndefined() && hasDefault ) {
             return args[0];
         }
-        if ( access.cache != null && isCacheable( resType ) ) {
-            String keyId = target.path + "." + name + ":" + toSignature( method.getGenericReturnType() );
-            return access.cache.computeIfAbsent( keyId, key -> access( method, obj, name ) );
-        }
         return access( method, obj, name );
     }
 
     private Object access( Method method, JsonObject obj, String name ) {
         Type genericType = method.getGenericReturnType();
-        JsonGenericTypedAccessor<?> accessor = access.store.accessor( method.getReturnType() );
-        if ( accessor != null )
-            return accessor.access( obj, name, genericType, access.store );
-        throw new UnsupportedOperationException( "No accessor registered for type: " + genericType );
-    }
-
-    /**
-     * This is twofold: Concepts like {@link Stream} and {@link Iterator} should not be cached to work correctly.
-     * <p>
-     * For all other types this is about reaching a balance between memory usage and CPU usage. Simple objects are
-     * recomputed whereas complex objects are not.
-     */
-    private boolean isCacheable( Class<?> resType ) {
-        return resType.isInterface()
-            && !Stream.class.isAssignableFrom( resType )
-            && !Iterator.class.isAssignableFrom( resType )
-            && !JsonPrimitive.class.isAssignableFrom( resType );
+        JsonAccessor<?> accessor = accessors.accessor( method.getReturnType() );
+        return accessor.access( obj, name, genericType, accessors );
     }
 
     /**

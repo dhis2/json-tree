@@ -52,12 +52,12 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Tests the {@link JsonTypedAccessStore} implementation {@link JsonTypedAccess} by using it via {@link JsonVirtualTree}
+ * Tests the {@link JsonAccessors} implementation {@link JsonAccess} by using it via {@link JsonVirtualTree}
  * (it is the default implementation).
  *
  * @author Jan Bernitt
  */
-class JsonTypedAccessTest {
+class JsonAccessorsTest {
 
     interface PrimitivesBean extends JsonObject {
 
@@ -533,88 +533,5 @@ class JsonTypedAccessTest {
     void testAccess_OptionalListString() {
         OptionalBean obj = JsonMixed.ofNonStandard( "{'maybeList':['hello']}" ).as( OptionalBean.class );
         assertEquals( List.of( "hello" ), obj.maybeList().orElse( List.of() ) );
-    }
-
-    @Test
-    void testAccess_ListsAreCached() {
-        //language=json
-        String json = """
-            {
-            "names":["John", "Paul", "Ringo"],
-            "ages":[1,2,3],
-            "flags":[[true],[false]]
-            }""";
-        ListBean obj = JsonMixed.of( json ).as( ListBean.class );
-
-        assertFalse( obj.isAccessCached() );
-        assertNotSame( obj.names(), obj.names() );
-        ListBean cached = obj.withAccessCached().as( ListBean.class );
-        assertTrue( cached.isAccessCached() );
-        assertSame( cached.names(), cached.names() );
-        assertEquals( List.of( "John", "Paul", "Ringo" ), cached.names() );
-        // some more tests of the same
-        assertSame( cached.ages(), cached.ages() );
-        assertSame( cached.flags(), cached.flags() );
-        assertSame( cached.flags().get( 0 ), cached.flags().get( 0 ) );
-    }
-
-    @Test
-    void testAccess_ObjectsAreCached() {
-        SetBean obj = JsonMixed.ofNonStandard( "{'recursive': [{'ages':[1,2,3]}]}" ).withAccessCached()
-            .as( SetBean.class );
-        assertTrue( obj.isAccessCached() );
-        assertSame( obj.recursive().iterator().next().ages(), obj.recursive().iterator().next().ages() );
-
-        NestedBean obj2 = JsonMixed.ofNonStandard( "{'list':[{'b':{},'a':5}]}" ).withAccessCached()
-            .as( NestedBean.class );
-        assertSame( obj2.list(), obj2.list() );
-        assertTrue( obj2.isAccessCached() );
-        assertSame( obj2.list().get( 0 ).getB(), obj2.list().get( 0 ).getB() );
-        assertTrue( obj2.list().get( 0 ).isAccessCached() );
-    }
-
-    @Test
-    void testAccess_StreamsAreNeverCached() {
-        StreamBean obj = JsonMixed.ofNonStandard( "{'numbers':[1,2,3], 'names':['Tim', 'Tom']}" ).withAccessCached()
-            .as( StreamBean.class );
-
-        assertTrue( obj.isAccessCached() );
-        assertNotSame( obj.numbers(), obj.numbers() );
-        assertNotSame( obj.names(), obj.names() );
-    }
-
-    interface UncachedBean extends JsonPrimitive {
-
-        JsonNumber n();
-
-        Long time();
-
-        UncachedBean next();
-
-        JsonList<UncachedBean> list();
-
-        List<UncachedBean> list2();
-    }
-
-    @Test
-    void testAccess_PrimitivesAreNeverCached() {
-        //language=json
-        String json = """
-            {"n":42, "time": 123456789, "next":{"n":2}, "list":[{"n":3}], "list2":[{"n":4}]}""";
-        UncachedBean obj = JsonMixed.of( json ).withAccessCached().as( UncachedBean.class );
-
-        assertTrue( obj.isAccessCached() );
-        assertNotSame( obj.n(), obj.n() );
-        assertNotSame( obj.time(), obj.time() );
-        assertNotSame( obj.next(), obj.next() );
-
-        // in contrast:
-        assertSame( obj.list(), obj.list() );
-        // JsonList is still lazy => not cached
-        assertNotSame( obj.list().get( 0 ), obj.list().get( 0 ) );
-
-        assertSame( obj.list2(), obj.list2() );
-        // List is not lazy, elements are part of the cached List
-        assertSame( obj.list2().get( 0 ), obj.list2().get( 0 ) );
     }
 }

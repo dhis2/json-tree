@@ -37,7 +37,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @return the provided {@link JsonNode} as virtual {@link JsonMixed}
      */
     static JsonMixed of( JsonNode node ) {
-        return new JsonVirtualTree( node.extract(), JsonTypedAccess.GLOBAL );
+        return new JsonVirtualTree( node.extract(), JsonAccess.GLOBAL );
     }
 
     /**
@@ -47,11 +47,11 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @return root of the virtual tree representing the given JSON input
      */
     static JsonMixed of( String json ) {
-        return of( json, JsonTypedAccess.GLOBAL );
+        return of( json, JsonAccess.GLOBAL );
     }
 
     /**
-     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
+     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonAccessors} for
      * mapping to Java method return type.
      *
      * @param json  a standard conform JSON string
@@ -59,7 +59,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      *              {@code null} default mapping is used
      * @return root of the virtual tree representing the given JSON input
      */
-    static JsonMixed of( String json, @Surly JsonTypedAccessStore store ) {
+    static JsonMixed of( String json, @Surly JsonAccessors store ) {
         return new JsonVirtualTree( json, store );
     }
 

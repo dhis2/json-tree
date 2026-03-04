@@ -31,7 +31,6 @@ import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
@@ -165,14 +164,9 @@ public interface JsonAbstractCollection extends JsonValue {
             return viewed.exists();
         }
 
-        @Override
-        public final boolean isAccessCached() {
-            return viewed.isAccessCached();
-        }
-
         @Surly @Override
-        public JsonTypedAccessStore getAccessStore() {
-            return viewed.getAccessStore();
+        public JsonAccessors getAccessors() {
+            return viewed.getAccessors();
         }
 
         @Override

@@ -228,8 +228,8 @@ public interface JsonNode extends Serializable {
      * @return this node as {@link JsonValue} as it is contained in its current tree
      * @since 0.11
      */
-    default JsonValue lift( JsonTypedAccessStore store ) {
-        JsonVirtualTree root = new JsonVirtualTree( getRoot(), store );
+    default JsonValue lift( JsonAccessors accessors ) {
+        JsonVirtualTree root = new JsonVirtualTree( getRoot(), accessors );
         return isRoot() ? root : root.get( getPath().toString() );
     }
 

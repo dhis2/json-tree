@@ -32,18 +32,14 @@ import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 import java.io.Reader;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which
@@ -103,11 +99,11 @@ public interface JsonValue {
      * @return virtual JSON tree root {@link JsonValue}
      */
     static JsonValue of( String json ) {
-        return of( json, JsonTypedAccess.GLOBAL );
+        return of( json, JsonAccess.GLOBAL );
     }
 
     /**
-     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
+     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonAccessors} for
      * mapping to Java method return type.
      *
      * @param json  a valid JSON string
@@ -115,7 +111,7 @@ public interface JsonValue {
      *              {@code null} default mapping is used
      * @return virtual JSON tree root {@link JsonValue}
      */
-    static JsonValue of( String json, @Surly JsonTypedAccessStore store ) {
+    static JsonValue of( String json, @Surly JsonAccessors store ) {
         return json == null || "null".equals( json ) ? JsonVirtualTree.NULL : JsonMixed.of( json, store );
     }
 
@@ -430,26 +426,11 @@ public interface JsonValue {
     }
 
     /**
-     * @return true, if results of JSON to Java method return type mapping via {@link JsonTypedAccessStore} are cached
-     * so that complex return values are only computed once. Any interface return type is considered a complex type.
-     */
-    default boolean isAccessCached() {
-        return false;
-    }
-
-    /**
-     * @return This value but with typed access cached if supported. Check using {@link #isAccessCached()} on result.
-     */
-    default JsonValue withAccessCached() {
-        return this;
-    }
-
-    /**
-     * @return the store used by this instance
-     * @since 0.11
+     * @return the accessor mappings/factory used
+     * @since 1.9
      */
     @Surly
-    JsonTypedAccessStore getAccessStore();
+    JsonAccessors getAccessors();
 
     /**
      * Finds the first value that satisfies the given test.
@@ -463,11 +444,11 @@ public interface JsonValue {
      */
     default <T extends JsonValue> T find( Class<T> type, Predicate<T> test ) {
         if ( isUndefined() ) return JsonMixed.of( "{}" ).get( "notFound", type );
-        JsonTypedAccessStore store = getAccessStore();
+        JsonAccessors accessors = getAccessors();
         Optional<JsonNode> match = node().find(
             node -> {
                 try {
-                    return test.test( node.lift( store ).as( type ) );
+                    return test.test( node.lift( accessors ).as( type ) );
                 } catch ( JsonTreeException | JsonPathException ex ) {
                     // the test called a method that was not supported by the tested node
                     return false;
@@ -475,7 +456,7 @@ public interface JsonValue {
             } );
         return match.isEmpty()
             ? JsonMixed.of( "{}" ).get( "notFound", type )
-            : match.get().lift( store ).as( type );
+            : match.get().lift( accessors ).as( type );
     }
 
 }

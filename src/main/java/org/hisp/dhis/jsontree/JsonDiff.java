@@ -143,8 +143,8 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
 
   static JsonDiff of(JsonValue e, JsonValue a, Mode mode) {
     List<Difference> differences = new ArrayList<>();
-    if (!e.node().isRoot()) e = e.node().extract().lift(e.getAccessStore());
-    if (!a.node().isRoot()) a = a.node().extract().lift(a.getAccessStore()).as(a.asType());
+    if (!e.node().isRoot()) e = e.node().extract().lift(e.getAccessors());
+    if (!a.node().isRoot()) a = a.node().extract().lift(a.getAccessors()).as(a.asType());
     diff(e, a, mode, differences::add, getRootInfo(a.asType()));
     return new JsonDiff(e, a, List.copyOf(differences));
   }
