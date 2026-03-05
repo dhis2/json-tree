@@ -21,17 +21,15 @@ import java.util.Set;
  */
 public final class JsonValidator {
 
-    public static void validate( JsonValue value, Class<? extends JsonObject> schema ) {
+    public static void validate( JsonValue value, Class<?> schema ) {
         validate( value, schema, Set.of() );
     }
 
-    public static void validate( JsonValue value, Class<? extends JsonObject> schema, Validation.Rule... rules ) {
+    public static void validate( JsonValue value, Class<?> schema, Validation.Rule... rules ) {
         validate( value, schema, Set.of( rules ) );
     }
 
-    public static void validate( JsonValue value, Class<? extends JsonObject> schema, Set<Validation.Rule> rules ) {
-        if (!schema.isInterface())
-            throw new IllegalArgumentException("Must be an interface bust was: "+schema);
+    public static void validate( JsonValue value, Class<?> schema, Set<Validation.Rule> rules ) {
         if ( !value.exists() )
             throw new JsonPathException( value.path(),
                 String.format( "Value %s %s node does not exist", value.path(), schema.getSimpleName() ) );
@@ -40,8 +38,9 @@ public final class JsonValidator {
                 String.format( "Value %s %s node is not an object but a %s", value.path(), schema.getSimpleName(),
                     value.type() ) );
         }
+        ObjectValidator validator = ObjectValidator.of( schema );
+        if (validator.properties().isEmpty()) return;
 
-        ObjectValidator validator = ObjectValidator.ofJsonObject( schema );
         List<Error> errors = new ArrayList<>();
         for ( Map.Entry<String, Validation.Validator> e : validator.properties().entrySet() ) {
             JsonValue property = value.asObject().get( e.getKey() );

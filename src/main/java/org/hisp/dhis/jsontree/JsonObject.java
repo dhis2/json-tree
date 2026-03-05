@@ -54,7 +54,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
     /**
      * An object property based on a default method declared in a type extending {@link JsonObject}.
      *
-     * @param in       the {@link JsonObject} type that declared the property
+     * @param in       the {@link JsonObject} or {@link Record} type that declared the property
      * @param jsonName of the property
      * @param jsonType the type the property is resolved to internally when calling {@link #get(String, Class)}
      * @param javaName the name of the java property accessed that caused the JSON property to be resolved
@@ -62,7 +62,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @param source   the underlying method that declared the property
      * @since 1.4
      */
-    record Property(Class<? extends JsonObject> in, String jsonName, Class<? extends JsonValue> jsonType,
+    record Property(Class<?> in, String jsonName, Class<? extends JsonValue> jsonType,
                     String javaName, AnnotatedType javaType, AnnotatedElement source) {}
 
     /**
@@ -73,9 +73,10 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @return a model of this object in form its properties in no particular order
      * @since 1.4
      */
-    static List<Property> properties(Class<? extends JsonObject> of) {
+    static List<Property> properties(Class<?> of) {
         return JsonVirtualTree.properties( of );
     }
+
 
     /**
      * Access to object fields by name.

@@ -1,10 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonAbstractObject;
-import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonSchemaException;
-import org.hisp.dhis.jsontree.Validation;
-
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -13,13 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 public class Assertions {
 
     public static Validation.Error assertValidationError( String actualJson,
-        Class<? extends JsonObject> schema,
+        Class<?> schema,
         Validation.Rule expected, Object... args ) {
         return assertValidationError( JsonMixed.of( actualJson ), schema, expected, args );
     }
 
     public static Validation.Error assertValidationError( JsonObject actual,
-        Class<? extends JsonObject> schema,
+        Class<?> schema,
         Validation.Rule expected, Object... args ) {
         JsonSchemaException ex = assertThrowsExactly( JsonSchemaException.class, () -> actual.validate( schema ),
             "expected an error of type " + expected );

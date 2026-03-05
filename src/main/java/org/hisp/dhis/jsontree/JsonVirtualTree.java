@@ -78,10 +78,20 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, "$", JsonAccess.GLOBAL );
 
-    private static final Map<Class<? extends JsonObject>, List<Property>> PROPERTIES = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, List<Property>> PROPERTIES = new ConcurrentHashMap<>();
 
-    public static List<Property> properties(Class<? extends JsonObject> of) {
-        return PROPERTIES.computeIfAbsent( of, JsonVirtualTree::captureProperties );
+    static List<Property> properties(Class<?> of) {
+        if (JsonObject.class.isAssignableFrom(of)) {
+            @SuppressWarnings( "unchecked" )
+            Class<? extends JsonObject> type = (Class<? extends JsonObject>) of;
+            return PROPERTIES.computeIfAbsent(type, t -> captureProperties( type ));
+        }
+        if (Record.class.isAssignableFrom( of )) {
+            @SuppressWarnings( "unchecked" )
+            Class<? extends Record> type = (Class<? extends Record>) of;
+            return PROPERTIES.computeIfAbsent(type, t -> componentProperties( type ));
+        }
+        throw new UnsupportedOperationException("Must be a subtype of JsonObject or Record but was: "+of);
     }
 
     /**
@@ -475,6 +485,13 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         } else {
             str.append( '?' );
         }
+    }
+
+    private static List<Property> componentProperties(Class<? extends Record> of) {
+        return Stream.of( of.getRecordComponents() )
+            .map( c ->  new JsonObject.Property(
+                of, c.getName(), JsonMixed.class, c.getName(), c.getAnnotatedType(), c ))
+            .toList();
     }
 
     private static List<Property> captureProperties(Class<? extends JsonObject> of) {

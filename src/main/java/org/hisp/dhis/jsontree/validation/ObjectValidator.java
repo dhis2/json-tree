@@ -72,20 +72,18 @@ record ObjectValidator(
      * {@code ConcurrentHashMap} because while computing an entry another entry might be added within (as a consequence
      * of) the computation.
      */
-    private static final Map<Class<? extends JsonValue>, ObjectValidator> BY_SCHEMA_TYPE = new ConcurrentSkipListMap<>(
+    private static final Map<Class<?>, ObjectValidator> BY_SCHEMA_TYPE = new ConcurrentSkipListMap<>(
         Comparator.comparing( Class::getName ) );
 
-    @Surly
-    public static ObjectValidator ofJsonObject( Class<? extends JsonObject> schema ) {
-        return getInstance( schema, new HashSet<>() );
+    public static ObjectValidator of(Class<?> schema) {
+        return of( schema, new HashSet<>() );
     }
 
-    @Surly
-    private static ObjectValidator getInstance( Class<? extends JsonObject> schema, Set<Class<?>> currentlyResolved ) {
-        return getInstance( schema, () -> ObjectValidation.ofJsonObject( schema ), currentlyResolved );
+    private static ObjectValidator of( Class<?> schema, Set<Class<?>> currentlyResolved ) {
+        return getInstance( schema, () -> ObjectValidation.of( schema ), currentlyResolved );
     }
 
-    private static ObjectValidator getInstance( Class<? extends JsonValue> schema,
+    private static ObjectValidator getInstance( Class<?> schema,
         Supplier<ObjectValidation> analyse, Set<Class<?>> currentlyResolved ) {
         return BY_SCHEMA_TYPE.computeIfAbsent( schema,
             type -> {
@@ -116,12 +114,10 @@ record ObjectValidator(
      */
     @Maybe
     private static Validator getInstance( java.lang.reflect.Type type, Set<Class<?>> currentlyResolved ) {
-        if ( type instanceof Class<?> cType ) {
-            if ( JsonObject.class.isAssignableFrom( cType ) ) {
-                @SuppressWarnings( "unchecked" )
-                Class<? extends JsonObject> schema = (Class<? extends JsonObject>) cType;
+        if ( type instanceof Class<?> schema ) {
+            if ( JsonObject.class.isAssignableFrom( schema ) || Record.class.isAssignableFrom( schema ) ) {
                 if ( currentlyResolved.contains( schema ) ) return new Lazy( schema, new AtomicReference<>() );
-                return getInstance( schema, currentlyResolved );
+                return of( schema, currentlyResolved );
             }
         }
         if ( type instanceof ParameterizedType pt ) {
@@ -652,13 +648,13 @@ record ObjectValidator(
         }
     }
 
-    private record Lazy(Class<? extends JsonObject> of, AtomicReference<Validator> instance) implements Validator {
+    private record Lazy(Class<?> of, AtomicReference<Validator> instance) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             Validator validator = instance.get();
             if ( validator == null ) {
-                validator = ofJsonObject( of );
+                validator =  ObjectValidator.of( of );
                 instance.set( validator );
             }
             validator.validate( value, addError );

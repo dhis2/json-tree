@@ -49,13 +49,17 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  *
  * @author Jan Bernitt
  * @since 0.11
+ *
+ * @param schema the type the validation is based upon
+ * @param types Java target type by JSON name
+ * @param properties validation for each property by JSON name
  */
 record ObjectValidation(
     @Surly Class<?> schema,
     @Surly Map<String, Type> types,
     @Surly Map<String, PropertyValidation> properties) {
 
-    private static final Map<Class<? extends JsonObject>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
 
     private static final Map<Class<?>, PropertyValidation> RECORD_BY_JAVA_TYPE = new ConcurrentSkipListMap<>(
         comparing( Class::getName ) );
@@ -74,9 +78,10 @@ record ObjectValidation(
      * string property)
      */
     @Surly
-    public static ObjectValidation ofJsonObject( Class<? extends JsonObject> schema ) {
-        if ( !schema.isInterface() ) throw new IllegalArgumentException( "Schema must be an interface" );
-        return INSTANCES.computeIfAbsent( schema, t -> createInstance( t, JsonObject.properties( t ) ) );
+    public static ObjectValidation of( Class<?> schema ) {
+        if (!JsonObject.class.isAssignableFrom( schema ) && !Record.class.isAssignableFrom( schema ))
+            throw new UnsupportedOperationException("Must be a subtype of JsonObject or Record but was: "+schema);
+        return INSTANCES.computeIfAbsent( schema, t -> createInstance( t, JsonObject.properties( schema ) ) );
     }
 
     private static ObjectValidation createInstance( Class<?> schema, List<JsonObject.Property> properties ) {
