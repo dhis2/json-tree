@@ -66,7 +66,7 @@ public interface JsonAccessors {
    *     JsonAccessors)}
    * @param <T> type of the value provided by the returned accessor
    * @return the accessor to use, never null
-   * @throws UnsupportedOperationException in case no accessor function is know to convert to the
+   * @throws JsonAccessException in case no accessor function is know to convert to the
    *     given type
    */
   <T> JsonAccessor<T> accessor(Class<T> type);
@@ -82,15 +82,14 @@ public interface JsonAccessors {
         /**
          * Accesses value at the path as the target type.
          *
-         * @param parent the parent object containing the accessed value at the given path
-         * @param path path relative to the parent to access the value
-         * @param to fully generic target type for the value of type {@code T}
+         * @param value     the value being accessed (that is mapped to the target Java type)
+         * @param as        fully generic target type for the value of type {@code T}
          * @param accessors in case the conversion is based upon other conversions
          * @return the value at path converted to target type
-         * @throws JsonAccessException in case the JSON value found at the given path cannot be
-         *     converted to the target type
+         * @throws JsonAccessException in case the JSON value found at the given path cannot be converted to the target
+         *                             type
          */
-        T access(JsonObject parent, String path, Type to, JsonAccessors accessors);
+        T access(JsonMixed value, Type as, JsonAccessors accessors) throws JsonAccessException;
     }
 
   /**
@@ -103,17 +102,18 @@ public interface JsonAccessors {
   interface SimpleJsonAccessor<T> extends JsonAccessor<T> {
 
         /**
-         * Accesses value the path as the type implicitly assumed by this accessor.
+         * Accesses the given value as the type implicitly assumed by this accessor.
          *
-         * @param parent the parent object containing the accessed value at the given path
-         * @param path path relative to the parent to access the value
+         * @param value the value being accessed (that is mapped to the target Java type)
          * @return the value at path with the type implicitly assumed by this accessor.
+         * @throws JsonAccessException in case the JSON value found at the given path cannot be
+         *     converted to the target type
          */
-        T access( JsonObject parent, String path );
+        T access( JsonMixed value ) throws JsonAccessException;
 
         @Override
-        default T access( JsonObject parent, String path, Type to, JsonAccessors accessors ) {
-            return access( parent, path );
+        default T access( JsonMixed value, Type as, JsonAccessors accessors ) {
+            return access( value );
         }
     }
 }

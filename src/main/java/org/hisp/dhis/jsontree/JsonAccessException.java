@@ -13,4 +13,8 @@ public class JsonAccessException extends IllegalStateException {
     public JsonAccessException( String message ) {
         super( message );
     }
+
+    public JsonAccessException( String message, RuntimeException cause ) {
+        super( message, cause );
+    }
 }

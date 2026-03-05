@@ -137,6 +137,19 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
+    public <T> T to( Class<T> type ) {
+        try {
+            return accessors.accessor( type ).access( this, type, accessors );
+        } catch ( JsonAccessException ex ) {
+            throw ex; // keep it
+        } catch ( RuntimeException ex ) {
+            // wrap it
+            throw new JsonAccessException(
+                "JSON does not map to a Java %s: %s".formatted(type.getSimpleName(), toJson()), ex);
+        }
+    }
+
+    @Override
     public Class<? extends JsonValue> asType() {
         return JsonMixed.class;
     }
@@ -404,7 +417,14 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     private Object access( Method method, JsonObject obj, String name ) {
         Type genericType = method.getGenericReturnType();
         JsonAccessor<?> accessor = accessors.accessor( method.getReturnType() );
-        return accessor.access( obj, name, genericType, accessors );
+        try {
+            return accessor.access( obj.get( name, JsonMixed.class ), genericType, accessors );
+        } catch ( JsonAccessException ex ) {
+            throw ex;
+        } catch ( RuntimeException ex ) {
+            throw new JsonAccessException(
+                "JSON does not map to a Java %s: %s".formatted(genericType.getTypeName(), toJson()), ex);
+        }
     }
 
     /**

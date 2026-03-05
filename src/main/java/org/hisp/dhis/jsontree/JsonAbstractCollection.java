@@ -140,8 +140,13 @@ public interface JsonAbstractCollection extends JsonValue {
         }
 
         @Surly @Override
-        public String path() {
+        public final String path() {
             return viewed.path();
+        }
+
+        @Override
+        public final <V> V to( Class<V> type ) {
+            return viewed.to( type );
         }
 
         @Override

@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URL;
@@ -35,7 +36,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -44,19 +44,18 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.Collections.emptyIterator;
 import static java.util.Spliterators.spliterator;
-import static java.util.Spliterators.spliteratorUnknownSize;
 
 /**
  * Standard implementation of the {@link JsonAccessors}.
@@ -83,59 +82,51 @@ public final class JsonAccess implements JsonAccessors {
     @SuppressWarnings( "unchecked" )
     public <T> JsonAccessor<T> accessor( Class<T> type ) {
         JsonAccessor<T> res = (JsonAccessor<T>) byResultType.get( type );
-        if ( res != null ) {
-            return res;
-        }
-        if ( type.isEnum() ) {
-            // automatically provide enum mapping
-            return (JsonAccessor<T>) byResultType.get( Enum.class );
-        }
-        if ( JsonValue.class.isAssignableFrom( type ) ) {
-            // automatically provide JsonValue subtype mapping
+        if ( res != null ) return res;
+        // automatically provide enum, record and array mappings
+        if (type.isEnum()) return (JsonAccessor<T>) byResultType.get( Enum.class );
+        if (type.isRecord()) return (JsonAccessor<T>) byResultType.get( Record.class );
+        if (type.isArray())  return (JsonAccessor<T>) byResultType.get( Object[].class );
+        // automatically provide JsonValue subtype mapping (as forward)
+        if ( JsonValue.class.isAssignableFrom( type ) )
             return (JsonAccessor<T>) byResultType.get( JsonValue.class );
-        }
-        throw new UnsupportedOperationException( "No accessor registered for type: " + type );
+        throw new JsonAccessException("No accessor registered for type: " + type);
     }
 
-    public <T> JsonAccess add( Class<T> returnType, SimpleJsonAccessor<T> accessor ) {
-        byResultType.put( returnType, accessor );
+    public <T> JsonAccess add( Class<T> as, JsonAccessor<T> accessor ) {
+        byResultType.put( as, accessor );
         return this;
     }
 
-    public <T> JsonAccess add( Class<T> returnType, JsonAccessor<T> accessor ) {
-        byResultType.put( returnType, accessor );
-        return this;
+    public <T> JsonAccess add( Class<T> as, SimpleJsonAccessor<T> accessor ) {
+        return add( as, (JsonAccessor<T>) accessor );
+    }
+
+    public <T> JsonAccess addKey(Class<T> as, Function<String, T> parse) {
+        return add(as, value -> accessAsString( value, parse ));
     }
 
     public JsonAccess init() {
         return add( String.class, JsonAccess::accessAsString )
             .add( boolean.class, JsonAccess::accessAsPrimitiveBoolean )
             .add( char.class, JsonAccess::accessAsPrimitiveCharacter )
-            .add( int.class, ( obj, name ) -> accessAsPrimitiveNumber(obj, name, Number::intValue) )
-            .add( long.class, ( obj, name ) -> accessAsPrimitiveNumber(obj, name, Number::longValue) )
-            .add( float.class, ( obj, name ) -> accessAsPrimitiveNumber(obj, name, Number::floatValue) )
-            .add( double.class, ( obj, name ) -> accessAsPrimitiveNumber(obj, name, Number::doubleValue) )
+            .add( int.class, value -> accessAsPrimitiveNumber(value, Number::intValue) )
+            .add( long.class, value -> accessAsPrimitiveNumber(value, Number::longValue) )
+            .add( float.class, value -> accessAsPrimitiveNumber(value, Number::floatValue) )
+            .add( double.class, value -> accessAsPrimitiveNumber(value, Number::doubleValue) )
             .add( Boolean.class, JsonAccess::accessAsBoolean )
             .add( Character.class, JsonAccess::accessAsCharacter )
-            .add( Integer.class, ( obj, name ) -> accessAsNumber( obj, name, Number::intValue ) )
-            .add( Long.class, ( obj, name ) -> accessAsNumber( obj, name, Number::longValue ) )
-            .add( Float.class, ( obj, name ) -> accessAsNumber( obj, name, Number::floatValue ) )
-            .add( Double.class, ( obj, name ) -> accessAsNumber( obj, name, Number::doubleValue ) )
-            .add( Number.class, ( obj, name ) -> accessAsNumber( obj, name, Function.identity() ) )
-            .add( URL.class, ( obj, name ) -> obj.get( name, JsonURL.class ).url() )
-            .add( UUID.class, ( obj, name ) -> obj.getString( name ).parsed( UUID::fromString ) )
-            .add( LocalDateTime.class, ( obj, name ) -> obj.get( name, JsonDate.class ).date() )
-            .add( LocalDate.class, ( obj, name ) -> obj.get( name, JsonDate.class ).dateOnly() )
-            .add( LocalTime.class, ( obj, name ) -> obj.get( name, JsonDate.class ).timeOnly() )
+            .add( Integer.class, value -> accessAsNumber(value, Number::intValue ) )
+            .add( Long.class, value -> accessAsNumber(value, Number::longValue ) )
+            .add( Float.class, value -> accessAsNumber(value, Number::floatValue ) )
+            .add( Double.class, value -> accessAsNumber(value, Number::doubleValue ) )
+            .add( Number.class, value -> accessAsNumber(value, Function.identity() ) )
+            .add( URL.class, value -> value.as(JsonURL.class ).url() )
+            .add( UUID.class, value -> value.parsed( UUID::fromString ) )
+            .add( LocalDateTime.class, value -> value.as(JsonDate.class ).date() )
+            .add( LocalDate.class, value -> value.as(JsonDate.class ).dateOnly() )
+            .add( LocalTime.class, value -> value.as(JsonDate.class ).timeOnly() )
             .add( Date.class, JsonAccess::accessAsDate )
-
-            // JSON generic type
-            .add( JsonList.class,
-                ( obj, name, to, store ) -> obj.getList( name, extractJsonValueTypeParameter( to, 0 ) ) )
-            .add( JsonMap.class,
-                ( obj, name, to, store ) -> obj.getMap( name, extractJsonValueTypeParameter( to, 0 ) ) )
-            .add( JsonMultiMap.class,
-                ( obj, name, to, store ) -> obj.getMultiMap( name, extractJsonValueTypeParameter( to, 0 ) ) )
 
             // JDK generic type
             .add( List.class, JsonAccess::accessAsList )
@@ -147,28 +138,66 @@ public final class JsonAccess implements JsonAccessors {
             .add( Optional.class, JsonAccess::accessAsOptional )
 
             // type-families
-            .add( Enum.class, ( obj, name, to, store ) -> obj.getString( name ).parsed(
-                str -> asEnumConstant( getRawType( to, Enum.class ), str ) ) )
+            .add(Enum.class, JsonAccess::accessAsEnum )
+            .add(Object[].class, JsonAccess::accessAsArray )
+            .add(Record.class, JsonAccess::accessAsRecord )
+
+            // JSON forwards
+            .add( JsonList.class,
+                ( value, as, accessors ) -> value.asList( extractJsonValueTypeParameter( as, 0 ) ) )
+            .add( JsonMap.class,
+                ( value, as, accessors ) -> value.asMap( extractJsonValueTypeParameter( as, 0 ) ) )
+            .add( JsonMultiMap.class,
+                ( value, as, accessors ) -> value.asMultiMap( extractJsonValueTypeParameter( as, 0 ) ) )
             .add( JsonValue.class,
-                ( obj, name, to, store ) -> obj.get( name ).as( getRawType( to, JsonValue.class ) ) );
+                ( value, as, accessors ) -> value.as( getRawType( as, JsonValue.class ) ) );
     }
 
-    public static String accessAsString(JsonObject obj, String path) {
-        JsonString str = obj.getString( path );
+    public static String accessAsString(JsonMixed str) {
         if (str.isUndefined()) return null;
         if (str.isString()) return str.string();
         if (str.isNumber() || str.isBoolean()) return str.toJson();
         throw new JsonAccessException( "JSON does not map to a Java String: "+str );
     }
 
-    public static Boolean accessAsPrimitiveBoolean(JsonObject obj, String path) {
-        Boolean val = accessAsBoolean( obj, path );
+    public static <T> T accessAsString(JsonMixed str, Function<String, T> as) {
+        String val = accessAsString( str );
+        if (val == null) return null;
+        return as.apply( val );
+    }
+
+    public static Enum<?> accessAsEnum(JsonMixed str, Type as, JsonAccessors accessors) {
+        if (str.isUndefined()) return null;
+        String name = str.string();
+        @SuppressWarnings( "rawtypes" )
+        Class<? extends Enum> enumType = getRawType( as, Enum.class );
+        try {
+            return toEnumConstant( enumType, name );
+        } catch ( IllegalArgumentException ex ) {
+            // try most adjusted to Java naming conventions:
+            // upper case and dash to underscore, trimmed
+            try {
+                return toEnumConstant( enumType, name.toUpperCase().replace( '-', '_' ).trim() );
+            } catch ( IllegalArgumentException ex2 ) {
+                throw new JsonAccessException(
+                    "JSON does not map to Java enum %s: %s%n\tValid values are: %s"
+                        .formatted(
+                            enumType.getSimpleName(),
+                            name,
+                            Stream.of(enumType.getEnumConstants())
+                                .map(Enum::name)
+                                .collect(Collectors.joining(","))));
+            }
+        }
+    }
+
+    public static Boolean accessAsPrimitiveBoolean(JsonMixed bool) {
+        Boolean val = accessAsBoolean( bool );
         if (val == null) throw new JsonAccessException( "JSON is undefined, Java is a primitive boolean" );
         return val;
     }
 
-    public static Boolean accessAsBoolean(JsonObject obj, String path) {
-        JsonBoolean bool = obj.getBoolean( path );
+    public static Boolean accessAsBoolean(JsonMixed bool) {
         if (bool.isUndefined()) return null;
         if (bool.isBoolean()) return bool.booleanValue();
         if (bool.isNumber()) {
@@ -183,14 +212,13 @@ public final class JsonAccess implements JsonAccessors {
         throw new JsonAccessException( "JSON does not map to a Java Boolean: "+bool );
     }
 
-    public static <T extends Number> T accessAsPrimitiveNumber(JsonObject obj, String path, Function<Number, T> as) {
-        T val = accessAsNumber( obj, path, as );
+    public static <T extends Number> T accessAsPrimitiveNumber(JsonMixed number, Function<Number, T> as) {
+        T val = accessAsNumber( number, as );
         if (val == null) throw new JsonAccessException( "JSON is undefined, Java is a primitive number" );
         return val;
     }
 
-    public static <T extends Number> T accessAsNumber(JsonObject obj, String path, Function<Number, T> as) {
-        JsonNumber number = obj.getNumber( path );
+    public static <T extends Number> T accessAsNumber(JsonMixed number, Function<Number, T> as) {
         if (number.isUndefined()) return null;
         if (number.isNumber()) return as.apply( number.number() );
         if (number.isString()) return as.apply( Double.parseDouble( number.as( JsonString.class).string() ));
@@ -198,14 +226,13 @@ public final class JsonAccess implements JsonAccessors {
         throw new JsonAccessException( "JSON does not map to a Java Number: "+number );
     }
 
-    public static Character accessAsPrimitiveCharacter( JsonObject obj, String path ) {
-        Character val = accessAsCharacter( obj, path );
+    public static Character accessAsPrimitiveCharacter( JsonMixed str ) {
+        Character val = accessAsCharacter( str );
         if (val == null) throw new JsonAccessException( "JSON is undefined, Java is a primitive char" );
         return val;
     }
 
-    public static Character accessAsCharacter( JsonObject obj, String path ) {
-        JsonString str = obj.getString( path );
+    public static Character accessAsCharacter( JsonMixed str ) {
         if (str.isUndefined()) return null;
         if (str.isString()) {
             String val = str.string();
@@ -215,8 +242,7 @@ public final class JsonAccess implements JsonAccessors {
         throw new JsonAccessException( "JSON does not map to a Java Character: "+str );
     }
 
-    public static Date accessAsDate(JsonObject obj, String path) {
-        JsonValue date = obj.get(path);
+    public static Date accessAsDate(JsonMixed date) {
         if (date.isUndefined()) return null;
         if (date.isNumber()) return new Date(date.as(JsonNumber.class).longValue());
         if (date.isString())
@@ -225,87 +251,105 @@ public final class JsonAccess implements JsonAccessors {
         throw new JsonAccessException( "JSON does not map to a Java Date: "+date );
     }
 
-    public static Optional<?> accessAsOptional(
-        JsonObject obj, String path, Type to, JsonAccessors store) {
-        JsonValue v = obj.get( path );
-        if ( v.isUndefined() )  return Optional.empty();
-        Type valueType = extractTypeParameter( to, 0 );
-        JsonAccessor<?> value = store.accessor( getRawType( valueType ) );
-        return Optional.ofNullable( value.access( obj, path, valueType, store ) );
+    public static Optional<?> accessAsOptional(JsonMixed value, Type as, JsonAccessors accessors) {
+        if ( value.isUndefined() )  return Optional.empty();
+        Type valueType = extractTypeParameter( as, 0 );
+        JsonAccessor<?> valueAccess = accessors.accessor( getRawType( valueType ) );
+        return Optional.ofNullable( valueAccess.access( value, valueType, accessors ) );
     }
 
     @SuppressWarnings( { "java:S1168", "java:S1452" } )
-    public static List<?> accessAsList( JsonObject obj, String path, Type to, JsonAccessors store ) {
-        JsonList<?> list = obj.getList( path, JsonValue.class );
+    public static List<?> accessAsList( JsonMixed list, Type as, JsonAccessors accessors ) {
         if (list.isUndefined()) return null;
         if (list.isArray() && list.isEmpty()) return List.of();
         int size = list.isArray() ? list.size() : 1;
         List<Object> res = new ArrayList<>( size );
-        accessAsIterator( obj, path, to, store ).forEachRemaining( res::add );
+        accessAsIterator( list, as, accessors ).forEachRemaining( res::add );
         return res;
     }
 
     @SuppressWarnings( "java:S1452" )
-    public static Set<?> accessAsSet( JsonObject obj, String path, Type to, JsonAccessors store ) {
-        JsonList<?> list = obj.getList( path, JsonValue.class );
-        if (list.isUndefined()) return null;
-        if (list.isArray() && list.isEmpty()) return Set.of();
-        Class<?> eRawType = getRawType( extractTypeParameter( to, 0 ) );
+    public static Set<?> accessAsSet( JsonMixed set, Type as, JsonAccessors accessors ) {
+        if (set.isUndefined()) return null;
+        if (set.isArray() && set.isEmpty()) return Set.of();
+        Class<?> eRawType = getRawType( extractTypeParameter( as, 0 ) );
         @SuppressWarnings({"unchecked", "rawtypes"})
         Set<Object> res =
             eRawType.isEnum() ? (Set) EnumSet.noneOf((Class<Enum>) eRawType) : new LinkedHashSet<>();
-        accessAsIterator( obj, path, to, store ).forEachRemaining( res::add );
+        accessAsIterator( set, as, accessors ).forEachRemaining( res::add );
+        return res;
+    }
+
+    public static Object[] accessAsArray(JsonMixed array, Type as, JsonAccessors accessors ) {
+        if (array.isUndefined()) return null;
+        Class<?> type = getRawType( as );
+        if (array.isArray() && array.isEmpty())
+            return (Object[]) Array.newInstance( type.getComponentType(), 0 );
+        int size = array.isArray() ? array.size() : 1;
+        Object[] res = (Object[]) Array.newInstance( type.getComponentType(), size );
+        int i = 0;
+        for ( Iterator<?> it = accessAsIterator( array, as, accessors ); it.hasNext(); )
+            res[i++] = it.next();
         return res;
     }
 
     @SuppressWarnings( { "java:S1168", "java:S1452" } )
-    public static Map<?, ?> accessAsMap( JsonObject obj, String path, Type to, JsonAccessors store ) {
-        JsonObject map = obj.getObject( path );
+    public static Map<?, ?> accessAsMap( JsonMixed map, Type as, JsonAccessors accessors ) {
         if (map.isUndefined()) return null;
         if (map.isEmpty()) return Map.of();
-        Type valueType = extractTypeParameter( to, 1 );
-        JsonAccessor<?> valueAccess = store.accessor( getRawType( valueType ) );
-        Class<?> rawKeyType = getRawType( extractTypeParameter( to, 0 ) );
+        Type valueType = extractTypeParameter( as, 1 );
+        JsonAccessor<?> valueAccess = accessors.accessor( getRawType( valueType ) );
+        Class<?> rawKeyType = getRawType( extractTypeParameter( as, 0 ) );
+        try {
+            JsonAccessor<?> keyAccess = accessors.accessor( rawKeyType );
+            //TODO use
+        } catch ( JsonAccessException ex ) {
+            // default to build-in support types
+        }
         Function<String, ?> toKey = getKeyMapper( rawKeyType );
         @SuppressWarnings({"rawtypes", "unchecked"})
         Map<Object, Object> res = rawKeyType.isEnum() ? new EnumMap(rawKeyType) : new LinkedHashMap<>();
-        map.keys().forEach( key ->
-            res.put( toKey.apply( key ), valueAccess.access( map, key, valueType, store ) ));
+        map.entries().forEach( e ->
+            res.put(
+                toKey.apply( e.getKey() ),
+                valueAccess.access( e.getValue().as( JsonMixed.class ), valueType, accessors ) ));
         return res;
     }
 
-    public static Stream<?> accessAsStream( JsonObject obj, String path, Type to, JsonAccessors store ) {
-        JsonList<?> seq = obj.getList( path, JsonValue.class );
-        if ( seq.isUndefined() || seq.isArray() && seq.isEmpty() ) return Stream.empty();
-        if (seq.isObject()) throw new JsonAccessException( "JSON does not map to Java Stream: "+seq );
-        int size = seq.isArray() ? seq.size() : 1;
-        Iterator<?> iter = accessAsIterator( obj, path, to, store );
+    public static Stream<?> accessAsStream( JsonMixed stream, Type as, JsonAccessors accessors ) {
+        if ( stream.isUndefined() || stream.isArray() && stream.isEmpty() ) return Stream.empty();
+        if (stream.isObject()) throw new JsonAccessException( "JSON does not map to Java Stream: "+stream );
+        int size = stream.isArray() ? stream.size() : 1;
+        Iterator<?> iter = accessAsIterator( stream, as, accessors );
         return StreamSupport.stream( spliterator( iter, size, Spliterator.ORDERED ), false );
     }
 
-    public static Iterator<?> accessAsIterator( JsonObject obj, String path, Type to, JsonAccessors store ) {
-        JsonList<?> seq = obj.getList( path, JsonValue.class );
+    public static Iterator<?> accessAsIterator( JsonMixed seq, Type as, JsonAccessors accessors ) {
         if ( seq.isUndefined() || seq.isArray() && seq.isEmpty() ) return emptyIterator();
         if (seq.isObject()) throw new JsonAccessException( "JSON does not map to Java Iterator: "+seq );
-        Type elementType = extractTypeParameter( to, 0 );
-        JsonAccessor<?> elements = store.accessor( getRawType( elementType ) );
-        if (!seq.isArray()) return List.of(elements.access( obj, path, to, store )).iterator();
-        int size = seq.size();
-        return new Iterator<>() {
-            int i = 0;
+        Class<?> seqType = getRawType( as );
+        Type elementType = seqType.isArray() ? seqType.getComponentType() : extractTypeParameter( as, 0 );
+        JsonAccessor<?> elements = accessors.accessor( getRawType( elementType ) );
+        // auto-box simple values in a 1 element sequence
+        if (!seq.isArray()) return List.of(elements.access( seq, as, accessors )).iterator();
+        return seq.stream().map( e -> elements.access( e.as( JsonMixed.class ), elementType, accessors ) ).iterator();
+    }
 
-            @Override
-            public boolean hasNext() {
-                return i < size;
-            }
+    public static Record accessAsRecord( JsonMixed value, Type as, JsonAccessors accessors ) {
+        if (value.isUndefined()) return null;
+        if (value.isString()) {
+            // check if a dedicated accessor was registered => use it
 
-            @Override
-            public Object next() {
-                if ( !hasNext() )
-                    throw new NoSuchElementException( "next() called without checking hasNext()" );
-                return elements.access( obj, path + "[" + i++ + "]", elementType, store );
-            }
-        };
+            // or look for a constructor accepting only 1 String
+        }
+        Class<? extends Record> type = getRawType( as, Record.class );
+        //TODO support mapping from array by index
+        if (!value.isObject())
+            throw new JsonAccessException(
+                "JSON does not map to Java record %s, object expected but got: %s"
+                    .formatted(type.getSimpleName(), value));
+
+        return null;
     }
 
     /**
@@ -313,7 +357,7 @@ public final class JsonAccess implements JsonAccessors {
      * Therefore, a handful of type are supported explicitly.
      */
     private static Function<String, ?> getKeyMapper( Class<?> rawKeyType ) {
-        if (rawKeyType.isEnum()) return key -> asEnumConstant(rawKeyType, key);
+        if (rawKeyType.isEnum()) return key -> toEnumConstant(rawKeyType, key);
         if (String.class == rawKeyType) return key -> key;
         if (Integer.class == rawKeyType) return Integer::parseInt;
         if (Long.class == rawKeyType) return Long::parseLong;
@@ -343,7 +387,7 @@ public final class JsonAccess implements JsonAccessors {
     }
 
     @SuppressWarnings( { "rawtypes", "unchecked" } )
-    private static Enum<?> asEnumConstant( Class type, String str ) {
+    private static Enum<?> toEnumConstant( Class type, String str ) {
         return Enum.valueOf( type, str );
     }
 }

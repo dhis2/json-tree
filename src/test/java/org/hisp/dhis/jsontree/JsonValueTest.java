@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -211,5 +212,12 @@ class JsonValueTest {
         JsonObject undefined = JsonMixed.of( "{}" ).getObject( "x" );
         assertFalse( undefined.find( JsonObject.class, obj -> obj.containsKey( "y" ) ).exists() );
         assertFalse( undefined.find( JsonValue.class, JsonValue::exists ).exists() );
+    }
+
+    @Test
+    void testTo() {
+        assertEquals( 1, JsonMixed.of( "1" ).to( Integer.class ) );
+        assertArrayEquals(new Integer[] { 1 }, JsonMixed.of("1").to(Integer[].class));
+        assertEquals( 99, JsonMixed.of( "[1,42,99]" ).get( 2 ).to( int.class ) );
     }
 }

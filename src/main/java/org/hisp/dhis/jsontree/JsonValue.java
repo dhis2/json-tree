@@ -151,6 +151,18 @@ public interface JsonValue {
     String path();
 
     /**
+     * The "mapping" uses the node's {@link #getAccessors()} to map the JSON to the given Java target type.
+     *
+     * @param type target Java type
+     * @return the JSON of this node accessed as the given Java type
+     * @param <T> target Java type the JSON value of this node is mapped to (accessed as)
+     * @throws JsonAccessException in case no accessor function is know to convert to the
+     *     given type or the conversion is not possible from the actual JSON value
+     * @since 1.9
+     */
+    <T> T to(Class<T> type) throws JsonAccessException;
+
+    /**
      * @return this node's type or null if this node does not exist in the actual tree
      * @since 0.11
      */
