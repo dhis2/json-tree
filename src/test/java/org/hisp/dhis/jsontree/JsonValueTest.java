@@ -35,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -215,9 +216,51 @@ class JsonValueTest {
     }
 
     @Test
-    void testTo() {
+    void testTo_AutoBox() {
         assertEquals( 1, JsonMixed.of( "1" ).to( Integer.class ) );
         assertArrayEquals(new Integer[] { 1 }, JsonMixed.of("1").to(Integer[].class));
         assertEquals( 99, JsonMixed.of( "[1,42,99]" ).get( 2 ).to( int.class ) );
+    }
+
+    record Address(String street, int zip, String city) {
+        static Address of(String address) {
+            String[] parts = address.split( "\\s*,\\s*" );
+            return new Address( parts[0], Integer.parseInt( parts[1] ), parts[2] );
+        }
+    }
+    record Person(String name, int age, Address billing, Address shipping) {}
+
+    @Test
+    void testTo_RecordFromObject() {
+        String json = """
+            {
+              "name": "Sky Lukewalker",
+              "age": 10,
+              "billing": { "street": "Memory Lane 2", "zip": 1234, "city": "Paramount" },
+              "shipping": { "street": "Backyard 44", "zip": 4444, "city": "Hillsville" }
+            }
+            """;
+        Person actual = JsonMixed.of( json ).to( Person.class );
+        assertEquals(new Person("Sky Lukewalker", 10,
+            new Address("Memory Lane 2", 1234, "Paramount"),
+            new Address("Backyard 44", 4444, "Hillsville")), actual);
+    }
+
+    @Test
+    void testTo_RecordFromArray() {
+        String json = """
+            ["Backyard 44", 4444, "Hillsville"]
+            """;
+        Address actual = JsonMixed.of( json ).to( Address.class );
+        assertEquals(new Address("Backyard 44", 4444, "Hillsville"), actual);
+    }
+
+    @Test
+    void testTo_RecordFromSimple() {
+        String json = """
+            "Backyard 44, 4444, Hillsville"
+            """;
+        Address actual = JsonMixed.of( json ).to( Address.class );
+        assertEquals(new Address("Backyard 44", 4444, "Hillsville"), actual);
     }
 }

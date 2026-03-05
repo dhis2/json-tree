@@ -62,7 +62,7 @@ public interface JsonAccessors {
    *
    * @param type the target type of access, if the generic {@link Type} is a {@link
    *     ParameterizedType} this should be the {@link ParameterizedType#getRawType()}. The generic
-   *     part is then handled on {@link JsonAccessor#access(JsonObject, String, Type,
+   *     part is then handled on {@link JsonAccessor#access(JsonMixed, Type,
    *     JsonAccessors)}
    * @param <T> type of the value provided by the returned accessor
    * @return the accessor to use, never null

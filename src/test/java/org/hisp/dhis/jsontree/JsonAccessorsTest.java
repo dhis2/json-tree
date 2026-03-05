@@ -583,4 +583,5 @@ class JsonAccessorsTest {
         OptionalBean obj = JsonMixed.ofNonStandard( "{'maybeList':['hello']}" ).as( OptionalBean.class );
         assertEquals( List.of( "hello" ), obj.maybeList().orElse( List.of() ) );
     }
+
 }

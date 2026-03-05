@@ -27,8 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.time.LocalDate;
@@ -69,6 +75,14 @@ public final class JsonAccess implements JsonAccessors {
      * functions they can be overridden by registering another function for the same type.
      */
     public static final JsonAccess GLOBAL = new JsonAccess().init();
+
+    private record RecordFactory(
+        MethodHandle constructor,
+        RecordComponent[] components,
+        MethodHandle factory1,
+        Type component1) {}
+
+    private static final Map<Class<? extends Record>, RecordFactory> RECORD_FACTORY_BY_TYPE = new ConcurrentHashMap<>();
 
     private final Map<Class<?>, JsonAccessor<?>> byResultType = new ConcurrentHashMap<>();
 
@@ -311,19 +325,46 @@ public final class JsonAccess implements JsonAccessors {
         return res;
     }
 
-    public static Record accessAsRecord( JsonMixed value, Type as, JsonAccessors accessors ) {
-        if (value.isUndefined()) return null;
-        if (value.isString()) {
-            // look for a constructor accepting only 1 String
-        }
+    public static Record accessAsRecord( JsonMixed obj, Type as, JsonAccessors accessors ) {
+        if (obj.isUndefined()) return null;
         Class<? extends Record> type = getRawType( as, Record.class );
-        //TODO support mapping from array by index
-        if (!value.isObject())
-            throw new JsonAccessException(
-                "JSON does not map to Java record %s, object expected but got: %s"
-                    .formatted(type.getSimpleName(), value));
 
-        return null;
+        RecordFactory factory = RECORD_FACTORY_BY_TYPE.computeIfAbsent( type,
+            t -> createRecordFactory( MethodHandles.lookup(), t ) );
+        if (!obj.isObject() && !obj.isArray()) {
+            if (factory.factory1 == null)
+                throw new JsonAccessException(
+                    "JSON does not map to Java record %s, object or array expected".formatted( type.getSimpleName() ) );
+            Object arg =
+                accessors
+                    .accessor(getRawType(factory.component1))
+                    .access(obj, factory.component1, accessors);
+            try {
+                return type.cast( factory.factory1.invokeWithArguments( arg ));
+            } catch ( Throwable ex ) {
+                throw new JsonAccessException( "JSON does not map to Java record %s, construction from single value failed", ex );
+            }
+        }
+
+        Object[] args = new Object[factory.components.length];
+
+        if (obj.isObject()) {
+            int i = 0;
+            for (RecordComponent c : factory.components) {
+                args[i++] = accessors.accessor( c.getType() )
+                    .access( obj.get( c.getName(), JsonMixed.class ), c.getGenericType(), accessors );
+            }
+        } else if (obj.isArray()) {
+            int i = 0;
+            for (RecordComponent c : factory.components)
+                args[i] = accessors.accessor( c.getType() )
+                    .access( obj.get( i++, JsonMixed.class ), c.getGenericType(), accessors );
+        }
+        try {
+            return type.cast( factory.constructor.invokeWithArguments( args ));
+        } catch ( Throwable ex ) {
+            throw new JsonAccessException( "JSON does not map to Java record %s, construction failed", ex );
+        }
     }
 
     public static Class<?> getRawType( Type type ) {
@@ -348,5 +389,41 @@ public final class JsonAccess implements JsonAccessors {
     @SuppressWarnings( { "rawtypes", "unchecked" } )
     private static Enum<?> toEnumConstant( Class type, String str ) {
         return Enum.valueOf( type, str );
+    }
+
+    private static RecordFactory createRecordFactory( MethodHandles.Lookup lookup, Class<? extends Record> type) {
+        RecordComponent[] components = type.getRecordComponents();
+        Class<?>[] types = Stream.of(components)
+            .map(RecordComponent::getType)
+            .toArray(Class<?>[]::new);
+
+        MethodHandle canonical = constructor( lookup, type, types );
+        if (canonical == null) throw new JsonAccessException(
+            "JSON cannot be mapped to Java record %s, canonical constructor is not accessible".formatted( type.getSimpleName() ) );
+        MethodHandle c1 = null;
+        Type c1Type = null;
+        for ( Method m : type.getDeclaredMethods()) {
+            if (m.getParameterCount() == 1 && m.getReturnType() == type && Modifier.isStatic( m.getModifiers() ) ) {
+                c1 = ofStatic(lookup, type, m.getName(), m.getParameterTypes()[0]);
+                if (c1 != null) c1Type = m.getGenericParameterTypes()[0];
+            }
+        }
+        return new RecordFactory( canonical, components, c1, c1Type );
+    }
+
+    private static MethodHandle constructor(MethodHandles.Lookup lookup, Class<? extends Record> type, Class<?>[] types) {
+        try {
+            return lookup.findConstructor(type, MethodType.methodType(void.class, types)).asFixedArity();
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            return null;
+        }
+    }
+
+    private static MethodHandle ofStatic(MethodHandles.Lookup lookup, Class<? extends Record> type, String name, Class<?> param) {
+        try {
+            return lookup.findStatic(type, name, MethodType.methodType(type, param));
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            return null;
+        }
     }
 }
