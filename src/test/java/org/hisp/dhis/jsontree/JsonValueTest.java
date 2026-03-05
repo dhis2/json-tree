@@ -263,4 +263,34 @@ class JsonValueTest {
         Address actual = JsonMixed.of( json ).to( Address.class );
         assertEquals(new Address("Backyard 44", 4444, "Hillsville"), actual);
     }
+
+    interface JsonAddress extends JsonArray {
+        String street();
+        int zip();
+    }
+
+    @Test
+    void testTo_JsonValue() {
+        String json = """
+            { "street": "Backyard 44", "zip": 4444, "city": "Hillsville" }
+            """;
+        JsonAddress actual = JsonMixed.of( json ).to( JsonAddress.class );
+        assertEquals( "Backyard 44", actual.street() );
+        assertEquals( 4444, actual.zip() );
+    }
+
+    interface JsonAddressPlain {
+        String street();
+        int zip();
+    }
+
+    @Test
+    void testTo_PlainInterface() {
+        String json = """
+            { "street": "Backyard 44", "zip": 4444, "city": "Hillsville" }
+            """;
+        JsonAddressPlain actual = JsonMixed.of( json ).to( JsonAddressPlain.class );
+        assertEquals( "Backyard 44", actual.street() );
+        assertEquals( 4444, actual.zip() );
+    }
 }

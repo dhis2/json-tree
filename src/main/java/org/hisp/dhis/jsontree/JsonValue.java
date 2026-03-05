@@ -151,13 +151,21 @@ public interface JsonValue {
     String path();
 
     /**
-     * The "mapping" uses the node's {@link #getAccessors()} to map the JSON to the given Java target type.
+     * The "mapping" uses the node's {@link #getAccessors()} to map the JSON to the given Java target
+     * type.
+     *
+     * <p>When called with a subtype of {@link JsonValue} this is equivalent to calling {@link
+     * #as(Class)}.
+     *
+     * <p>When calling with an interface that does not extend {@link JsonValue} this is still
+     * equivalent to calling {@link #as(Class)} except that the API no longer gives access to the
+     * methods that would be inherited from the {@link JsonValue} base.
      *
      * @param type target Java type
      * @return the JSON of this node accessed as the given Java type
      * @param <T> target Java type the JSON value of this node is mapped to (accessed as)
-     * @throws JsonAccessException in case no accessor function is know to convert to the
-     *     given type or the conversion is not possible from the actual JSON value
+     * @throws JsonAccessException in case no accessor function is know to convert to the given type
+     *     or the conversion is not possible from the actual JSON value
      * @since 1.9
      */
     <T> T to(Class<T> type) throws JsonAccessException;

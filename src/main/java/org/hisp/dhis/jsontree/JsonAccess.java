@@ -332,15 +332,18 @@ public final class JsonAccess implements JsonAccessors {
         RecordFactory factory = RECORD_FACTORY_BY_TYPE.computeIfAbsent( type,
             t -> createRecordFactory( MethodHandles.lookup(), t ) );
         if (!obj.isObject() && !obj.isArray()) {
-            if (factory.factory1 == null)
+            boolean wrapper = factory.components.length == 1;
+            MethodHandle c1 = wrapper ? factory.constructor : factory.factory1;
+            if (c1 == null)
                 throw new JsonAccessException(
                     "JSON does not map to Java record %s, object or array expected".formatted( type.getSimpleName() ) );
+            Type type1 = wrapper ? factory.components[0].getGenericType() : factory.component1;
             Object arg =
                 accessors
-                    .accessor(getRawType(factory.component1))
-                    .access(obj, factory.component1, accessors);
+                    .accessor(getRawType(type1))
+                    .access(obj, type1, accessors);
             try {
-                return type.cast( factory.factory1.invokeWithArguments( arg ));
+                return type.cast( c1.invokeWithArguments( arg ));
             } catch ( Throwable ex ) {
                 throw new JsonAccessException( "JSON does not map to Java record %s, construction from single value failed", ex );
             }
@@ -402,10 +405,14 @@ public final class JsonAccess implements JsonAccessors {
             "JSON cannot be mapped to Java record %s, canonical constructor is not accessible".formatted( type.getSimpleName() ) );
         MethodHandle c1 = null;
         Type c1Type = null;
-        for ( Method m : type.getDeclaredMethods()) {
-            if (m.getParameterCount() == 1 && m.getReturnType() == type && Modifier.isStatic( m.getModifiers() ) ) {
-                c1 = ofStatic(lookup, type, m.getName(), m.getParameterTypes()[0]);
-                if (c1 != null) c1Type = m.getGenericParameterTypes()[0];
+        if (components.length > 1) {
+            for (Method m : type.getDeclaredMethods()) {
+                if (m.getParameterCount() == 1
+                    && m.getReturnType() == type
+                    && Modifier.isStatic(m.getModifiers())) {
+                    c1 = ofStatic(lookup, type, m.getName(), m.getParameterTypes()[0]);
+                    if (c1 != null) c1Type = m.getGenericParameterTypes()[0];
+                }
             }
         }
         return new RecordFactory( canonical, components, c1, c1Type );

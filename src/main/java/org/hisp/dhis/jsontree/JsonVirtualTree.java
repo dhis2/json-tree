@@ -39,6 +39,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
@@ -138,6 +139,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public <T> T to( Class<T> type ) {
+        if (type.isInterface()) return createProxy( type, this );
         try {
             return accessors.accessor( type ).access( this, type, accessors );
         } catch ( JsonAccessException ex ) {
@@ -311,7 +313,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @SuppressWarnings( "unchecked" )
-    private <E extends JsonValue> E createProxy( Class<E> as, JsonVirtualTree target ) {
+    private <E> E createProxy( Class<E> as, JsonVirtualTree target ) {
         return (E) Proxy.newProxyInstance(
             Thread.currentThread().getContextClassLoader(), new Class[] { as },
             ( proxy, method, args ) -> onInvoke( proxy, as, target, method, args, false ) );
@@ -326,7 +328,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
      * @return the result of the method call
      * @param <E> type of the proxy
      */
-    private <E extends JsonValue> Object onInvoke( Object proxy, Class<E> as, JsonVirtualTree target, Method method,
+    private <E> Object onInvoke( Object proxy, Class<E> as, JsonVirtualTree target, Method method,
         Object[] args, boolean alwaysCallDefault )
         throws Throwable {
         // are we dealing with a default method in the extending class?
@@ -516,7 +518,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
      * excluded.
      */
     private static boolean isJsonObjectSubTypeProperty(Method m) {
-        return m.isDefault()
+        return m.isDefault() || Modifier.isAbstract( m.getModifiers() )
             && m.getParameterCount() == 0
             && isJsonMixedSubType( m.getDeclaringClass() )
             && m.getReturnType() != void.class;
