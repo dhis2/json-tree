@@ -35,7 +35,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -46,16 +45,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Spliterator;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import static java.util.Collections.emptyIterator;
-import static java.util.Spliterators.spliterator;
 
 /**
  * Standard implementation of the {@link JsonAccessors}.
@@ -262,10 +256,7 @@ public final class JsonAccess implements JsonAccessors {
     public static List<?> accessAsList( JsonMixed list, Type as, JsonAccessors accessors ) {
         if (list.isUndefined()) return null;
         if (list.isArray() && list.isEmpty()) return List.of();
-        int size = list.isArray() ? list.size() : 1;
-        List<Object> res = new ArrayList<>( size );
-        accessAsIterator( list, as, accessors ).forEachRemaining( res::add );
-        return res;
+        return accessAsStream( list, as, accessors ).toList();
     }
 
     @SuppressWarnings( "java:S1452" )
@@ -276,21 +267,30 @@ public final class JsonAccess implements JsonAccessors {
         @SuppressWarnings({"unchecked", "rawtypes"})
         Set<Object> res =
             eRawType.isEnum() ? (Set) EnumSet.noneOf((Class<Enum>) eRawType) : new LinkedHashSet<>();
-        accessAsIterator( set, as, accessors ).forEachRemaining( res::add );
+        accessAsStream( set, as, accessors ).forEach( res::add );
         return res;
     }
 
     public static Object[] accessAsArray(JsonMixed array, Type as, JsonAccessors accessors ) {
         if (array.isUndefined()) return null;
         Class<?> type = getRawType( as );
-        if (array.isArray() && array.isEmpty())
-            return (Object[]) Array.newInstance( type.getComponentType(), 0 );
-        int size = array.isArray() ? array.size() : 1;
-        Object[] res = (Object[]) Array.newInstance( type.getComponentType(), size );
-        int i = 0;
-        for ( Iterator<?> it = accessAsIterator( array, as, accessors ); it.hasNext(); )
-            res[i++] = it.next();
-        return res;
+        return accessAsStream( array, as, accessors )
+            .toArray(len -> (Object[]) Array.newInstance( type.getComponentType(), len ));
+    }
+
+    public static Iterator<?> accessAsIterator( JsonMixed seq, Type as, JsonAccessors accessors ) {
+        return accessAsStream( seq, as, accessors ).iterator();
+    }
+
+    public static Stream<?> accessAsStream( JsonMixed stream, Type as, JsonAccessors accessors ) {
+        if ( stream.isUndefined() || stream.isArray() && stream.isEmpty() ) return Stream.empty();
+        if (stream.isObject()) throw new JsonAccessException( "JSON does not map to Java Stream: "+stream );
+        Class<?> seqType = getRawType( as );
+        Type elementType = seqType.isArray() ? seqType.getComponentType() : extractTypeParameter( as, 0 );
+        JsonAccessor<?> elements = accessors.accessor( getRawType( elementType ) );
+        // auto-box simple values in a 1 element sequence
+        if (!stream.isArray()) return Stream.of(elements.access( stream, as, accessors ));
+        return stream.stream().map( e -> elements.access( e.as( JsonMixed.class ), elementType, accessors ) );
     }
 
     @SuppressWarnings( { "java:S1168", "java:S1452" } )
@@ -300,13 +300,8 @@ public final class JsonAccess implements JsonAccessors {
         Type valueType = extractTypeParameter( as, 1 );
         JsonAccessor<?> valueAccess = accessors.accessor( getRawType( valueType ) );
         Class<?> rawKeyType = getRawType( extractTypeParameter( as, 0 ) );
-        try {
-            JsonAccessor<?> keyAccess = accessors.accessor( rawKeyType );
-            //TODO use
-        } catch ( JsonAccessException ex ) {
-            // default to build-in support types
-        }
-        Function<String, ?> toKey = getKeyMapper( rawKeyType );
+        JsonAccessor<?> keyAccess = accessors.accessor( rawKeyType );
+        Function<String, ?>    toKey = name -> keyAccess.access( Json.of( name ).as( JsonMixed.class ), rawKeyType, accessors );
         @SuppressWarnings({"rawtypes", "unchecked"})
         Map<Object, Object> res = rawKeyType.isEnum() ? new EnumMap(rawKeyType) : new LinkedHashMap<>();
         map.entries().forEach( e ->
@@ -316,31 +311,10 @@ public final class JsonAccess implements JsonAccessors {
         return res;
     }
 
-    public static Stream<?> accessAsStream( JsonMixed stream, Type as, JsonAccessors accessors ) {
-        if ( stream.isUndefined() || stream.isArray() && stream.isEmpty() ) return Stream.empty();
-        if (stream.isObject()) throw new JsonAccessException( "JSON does not map to Java Stream: "+stream );
-        int size = stream.isArray() ? stream.size() : 1;
-        Iterator<?> iter = accessAsIterator( stream, as, accessors );
-        return StreamSupport.stream( spliterator( iter, size, Spliterator.ORDERED ), false );
-    }
-
-    public static Iterator<?> accessAsIterator( JsonMixed seq, Type as, JsonAccessors accessors ) {
-        if ( seq.isUndefined() || seq.isArray() && seq.isEmpty() ) return emptyIterator();
-        if (seq.isObject()) throw new JsonAccessException( "JSON does not map to Java Iterator: "+seq );
-        Class<?> seqType = getRawType( as );
-        Type elementType = seqType.isArray() ? seqType.getComponentType() : extractTypeParameter( as, 0 );
-        JsonAccessor<?> elements = accessors.accessor( getRawType( elementType ) );
-        // auto-box simple values in a 1 element sequence
-        if (!seq.isArray()) return List.of(elements.access( seq, as, accessors )).iterator();
-        return seq.stream().map( e -> elements.access( e.as( JsonMixed.class ), elementType, accessors ) ).iterator();
-    }
-
     public static Record accessAsRecord( JsonMixed value, Type as, JsonAccessors accessors ) {
         if (value.isUndefined()) return null;
         if (value.isString()) {
-            // check if a dedicated accessor was registered => use it
-
-            // or look for a constructor accepting only 1 String
+            // look for a constructor accepting only 1 String
         }
         Class<? extends Record> type = getRawType( as, Record.class );
         //TODO support mapping from array by index
@@ -350,21 +324,6 @@ public final class JsonAccess implements JsonAccessors {
                     .formatted(type.getSimpleName(), value));
 
         return null;
-    }
-
-    /**
-     * Map keys are really object member names and as such not values so accessors cannot be used to map them.
-     * Therefore, a handful of type are supported explicitly.
-     */
-    private static Function<String, ?> getKeyMapper( Class<?> rawKeyType ) {
-        if (rawKeyType.isEnum()) return key -> toEnumConstant(rawKeyType, key);
-        if (String.class == rawKeyType) return key -> key;
-        if (Integer.class == rawKeyType) return Integer::parseInt;
-        if (Long.class == rawKeyType) return Long::parseLong;
-        if (Double.class == rawKeyType) return Double::parseDouble;
-        if (Character.class == rawKeyType) return str -> str.charAt(0);
-        if (Boolean.class == rawKeyType) return Boolean::getBoolean;
-        throw new UnsupportedOperationException("Unsupported map key type: " + rawKeyType);
     }
 
     public static Class<?> getRawType( Type type ) {

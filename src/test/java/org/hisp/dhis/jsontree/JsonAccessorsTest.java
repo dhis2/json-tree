@@ -436,6 +436,8 @@ class JsonAccessorsTest {
         assertEquals( Set.of(1,2,3), root.iterator().next().ages() );
     }
 
+    record ID(String val) {}
+
     interface MapBean extends JsonObject {
 
         Map<String, TextStyle> styles();
@@ -449,6 +451,8 @@ class JsonAccessorsTest {
         Map<TextStyle, List<String>> argsByType();
 
         Map<Integer, MapBean> recursive();
+
+        Map<ID, Integer> customKeyType();
     }
 
     @Test
@@ -491,6 +495,13 @@ class JsonAccessorsTest {
         assertEquals( Map.of( TextStyle.FULL, List.of( "hey", "ho" ), TextStyle.SHORT, List.of( "lets", "go" ) ),
             actual );
         assertInstanceOf( EnumMap.class, actual );
+    }
+
+    @Test
+    void testAccess_MapCustomKeyType() {
+        JsonAccess.GLOBAL.addKey( ID.class, ID::new );
+        MapBean obj = JsonMixed.ofNonStandard( "{'customKeyType':{'A':1, 'B':2}}" ).as( MapBean.class );
+        assertEquals( Map.of( new ID("A"), 1, new ID("B"), 2 ), obj.customKeyType() );
     }
 
     @Test
