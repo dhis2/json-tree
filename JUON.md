@@ -30,8 +30,8 @@ to allow shorter URLs though the use of shorthands and omissions:
 * `null` can be encoded as the empty string or shortened to `n`
 * `true` can be shortened to `t`
 * `false` can be shortened to `f`
-* numbers can start with `.` (= `0.`)
-* numbers can end with `.` (= `.0`)
+* numbers can start with `.` (= `0.xxx`)
+* numbers can end with `.` (= `xxx.0`)
 
 In summary, JUON can express everything JSON can, except the empty object `{}`.
 Some characters in strings obviously will need URL encoding to be allowed in URLs.
