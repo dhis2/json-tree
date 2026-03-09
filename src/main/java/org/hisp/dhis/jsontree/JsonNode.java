@@ -39,6 +39,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -99,7 +101,7 @@ public interface JsonNode extends Serializable {
         /**
          * @param path absolute path in the tree that is resolved
          */
-        void accept( String path );
+        void accept( String path ); //TODO change to JsonPath
     }
 
     /**
@@ -115,6 +117,7 @@ public interface JsonNode extends Serializable {
     static JsonNode of( String json ) {
         return of( json, null );
     }
+    //TODO add overload with Text
 
     /**
      * Create a new lazily parsed {@link JsonNode} tree.
@@ -125,7 +128,7 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode ofNonStandard( String json ) {
-        return JsonTree.ofNonStandard( json ).get( JsonPath.ROOT );
+        return JsonTree.ofNonStandard( json );
     }
 
     /**
@@ -151,7 +154,7 @@ public interface JsonNode extends Serializable {
      * @since 0.10
      */
     static JsonNode of( String json, GetListener onGet ) {
-        return JsonTree.of( json, onGet ).get( JsonPath.ROOT );
+        return JsonTree.of( json, onGet );
     }
 
     /**
@@ -243,20 +246,45 @@ public interface JsonNode extends Serializable {
     }
 
     /**
+     *
+     * @param name exact name of the object member accessed
+     * @return the node at the given path
+     * @throws JsonPathException when no such member exists in the in this object node
+     * @throws JsonTreeException when the operation is called on a non-object node
+     * @since 1.9
+     */
+    default JsonNode get(Text name) throws JsonPathException, JsonTreeException {
+        JsonPath path = getPath().extendedWith( name );
+        throw new JsonTreeException(
+            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+    }
+
+    /**
+     *
+     * @param name exact name of the object member accessed
+     * @return the node at the given path or null if no such node exists
+     * @throws JsonTreeException when the operation is called on a non-object node
+     */
+    default JsonNode getOrNull(Text name) throws JsonTreeException {
+        JsonPath path = getPath().extendedWith( name );
+        throw new JsonTreeException(
+            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+    }
+
+    /**
      * Access the node at the given path in the subtree of this node.
      *
      * @param path a simple or nested path relative to this node. A path starting with {@code $} is relative to the root
      *             node of this node, in other words it is an absolute path
      * @return the node at the given path
      * @throws JsonPathException when no such node exists in the subtree of this node
+     * @throws JsonTreeException when the operation is called on a non-object node
      */
     @Surly
-    default JsonNode get(@Surly String path ) throws JsonPathException {
+    default JsonNode get(@Surly String path) throws JsonPathException, JsonTreeException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
-        char c0 = path.charAt( 0 );
-        if ( c0 ==  '$' ) return getRoot().get( path.substring( 1 ) );
-        if ( c0 !=  '{' && c0 != '[' && c0 != '.' ) path = "."+path;
+        if ( path.charAt( 0 ) ==  '$' ) return getRoot().get( path.substring( 1 ) );
         return get( JsonPath.of( path ) );
     }
 
@@ -273,33 +301,34 @@ public interface JsonNode extends Serializable {
     default JsonNode getOrNull(@Surly String path ) throws JsonPathException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
-        char c0 = path.charAt( 0 );
-        if ( c0 ==  '$' ) return getRoot().getOrNull( path.substring( 1 ) );
-        if ( c0 !=  '{' && c0 != '[' && c0 != '.' ) path = "."+path;
+        if ( path.charAt( 0 ) ==  '$' ) return getRoot().getOrNull( path.substring( 1 ) );
         return getOrNull( JsonPath.of( path ) );
     }
 
     /**
-     * @param path a path understood relative to this node's {@link #getPath()}
+     * @param subPath a path understood relative to this node's {@link #getPath()}
      * @return the node at the given path
      * @throws JsonPathException when no such node exists in the subtree of this node
+     * @throws JsonTreeException when the operation is called on a non-object node
      * @since 1.1
      */
     @Surly
-    default JsonNode get(@Surly JsonPath path) throws JsonPathException {
-        throw new JsonPathException( path,
+    default JsonNode get(@Surly JsonPath subPath) throws JsonTreeException, JsonPathException {
+        JsonPath path = getPath().extendedWith( subPath );
+        throw new JsonTreeException(
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 
     /**
-     * @param path a path understood relative to this node's {@link #getPath()}
+     * @param subPath a path understood relative to this node's {@link #getPath()}
      * @return the node at the given path or {@code null} if no such node exists
-     * @throws JsonPathException when the provided path is malformed
+     * @throws JsonTreeException when the operation is called on a non-object node
      * @since 1.5
      */
     @Maybe
-    default JsonNode getOrNull(@Surly JsonPath path) throws JsonPathException {
-        throw new JsonPathException( path,
+    default JsonNode getOrNull(@Surly JsonPath subPath) throws JsonTreeException {
+        JsonPath path = getPath().extendedWith( subPath );
+        throw new JsonTreeException(
             format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
     }
 
@@ -343,14 +372,22 @@ public interface JsonNode extends Serializable {
      * @param name of the member in this object node
      * @return true, if the member exists, false otherwise
      * @throws JsonTreeException if this is not an object node
-     * @since 0.6
+     * @since 1.9
      */
-    default boolean isMember( String name ) {
+    default boolean isMember( Text name ) {
         try {
             return memberOrNull( name ) != null;
         } catch ( JsonPathException ex ) {
             return false;
         }
+    }
+
+    /**
+     * @see #isMember(Text)
+     * @since 0.6
+     */
+    default boolean isMember( String name ) {
+        return isMember( Text.of( name ) );
     }
 
     /**
@@ -373,13 +410,13 @@ public interface JsonNode extends Serializable {
      * <ul>
      * <li>{@link JsonNodeType#NULL} returns {@code null}</li>
      * <li>{@link JsonNodeType#BOOLEAN} returns {@link Boolean}</li>
-     * <li>{@link JsonNodeType#STRING} returns {@link String}</li>
+     * <li>{@link JsonNodeType#STRING} returns {@link Text}</li>
      * <li>{@link JsonNodeType#NUMBER} returns either {@link Integer},
      * {@link Long} or {@link Double}</li>
      * <li>{@link JsonNodeType#ARRAY} returns an {@link Iterable} of
      * {@link JsonNode}, same as {@link #elements()}</li>
      * <li>{@link JsonNodeType#OBJECT} returns a {@link Iterable} of {@link Entry}
-     * with {@link String} keys and {@link JsonNode} values, same as {@link #members()}</li>
+     * with {@link Text} keys and {@link JsonNode} values, same as {@link #members()}</li>
      * </ul>
      *
      * @return the nodes value as described in the above table
@@ -393,10 +430,10 @@ public interface JsonNode extends Serializable {
      * @return the member with the given name
      * @throws JsonPathException when no such member exists
      * @throws JsonTreeException if this node is not an object node that could have members
+     * @since 1.9
      */
     @Surly
-    default JsonNode member( String name )
-        throws JsonPathException {
+    default JsonNode member( Text name ) throws JsonPathException {
         throw new JsonTreeException( getType() + " node has no member property: " + name );
     }
 
@@ -407,11 +444,10 @@ public interface JsonNode extends Serializable {
      * @return the member with the given name or {@code null} if no such member exists
      * @throws JsonPathException when the path is malformed
      * @throws JsonTreeException if this node is not an object node that could have members
-     * @since 1.5
+     * @since 1.9
      */
     @Maybe
-    default JsonNode memberOrNull( String name )
-        throws JsonPathException {
+    default JsonNode memberOrNull( Text name ) throws JsonPathException {
         throw new JsonTreeException( getType() + " node has no member property: " + name );
     }
 
@@ -426,7 +462,8 @@ public interface JsonNode extends Serializable {
      * @return this {@link #value()} as a sequence of {@link Entry}
      * @throws JsonTreeException if this node is not an object node that could have members
      */
-    default Iterable<Entry<String, JsonNode>> members() {
+    //TODO change to Text (this is alos a name => key change)
+    default Iterable<Entry<Text, JsonNode>> members() {
         throw new JsonTreeException( getType() + " node has no members property." );
     }
 
@@ -438,11 +475,11 @@ public interface JsonNode extends Serializable {
      * The main reason to use this method over {@link #members()} is that values are not yet parsed into tree nodes if
      * they haven't been parsed already. In that regard this can be more lightweight than using {@link #members()}.
      *
-     * @return this {@link #value()} as a sequence of {@link String} keys
+     * @return this {@link #value()} as a sequence of {@link Text} keys
      * @throws JsonTreeException if this node is not an object node that could have members
      * @since 0.11
      */
-    default Iterable<String> keys() {
+    default Iterable<Text> keys() {
         throw new JsonTreeException( getType() + " node has no keys property." );
     }
 
@@ -482,7 +519,8 @@ public interface JsonNode extends Serializable {
      * iterator.
      * @throws JsonTreeException if this node is not an object node that could have members
      */
-    default Iterator<Entry<String, JsonNode>> members( boolean cacheNodes ) {
+    //TODO change to Text (this is alos a name => key change)
+    default Iterator<Entry<Text, JsonNode>> members( boolean cacheNodes ) {
         throw new JsonTreeException( getType() + " node has no members property." );
     }
 
@@ -493,11 +531,18 @@ public interface JsonNode extends Serializable {
      * @return the node at the given array index
      * @throws JsonPathException when no such element exists
      * @throws JsonTreeException if this node is not an array node that could have elements
+     * @since 1.9
      */
     @Surly
-    default JsonNode element( int index )
-        throws JsonPathException {
+    default JsonNode element( Text index ) throws JsonPathException, JsonTreeException {
         throw new JsonTreeException( getType() + " node has no element property for index: " + index );
+    }
+
+    /**
+     * @see #element(Text)
+     */
+    default JsonNode element( int index ) throws JsonPathException, JsonTreeException {
+        return element( Text.of( index ) );
     }
 
     /**
@@ -507,12 +552,19 @@ public interface JsonNode extends Serializable {
      * @return the node at the given array index or {@code null} if no such element exists
      * @throws JsonPathException when the index is negative (invalid)
      * @throws JsonTreeException if this node is not an array node that could have elements
-     * @since 1.5
+     * @since 1.9
      */
     @Maybe
-    default JsonNode elementOrNull( int index )
-        throws JsonPathException {
+    default JsonNode elementOrNull( Text index ) throws JsonPathException, JsonTreeException {
         throw new JsonTreeException( getType() + " node has no element property for index: " + index );
+    }
+
+    /**
+     * @see #elementOrNull(Text)
+     * @since 1.5
+     */
+    default JsonNode elementOrNull( int index ) throws JsonPathException, JsonTreeException {
+        return elementOrNull( Text.of( index ) );
     }
 
     /**
@@ -624,6 +676,7 @@ public interface JsonNode extends Serializable {
      * @return the plain JSON of this node as defined in the overall content
      */
     String getDeclaration();
+    //TODO change to Text
 
     /**
      * @return offset or index in the overall content where this node starts (inclusive, points to first index that
@@ -734,12 +787,20 @@ public interface JsonNode extends Serializable {
         checkType( JsonNodeType.OBJECT, obj.getType(), "addMembers" );
         if ( obj.isEmpty() ) return getRoot();
         if ( isEmpty() && isRoot() ) return obj;
-        return replaceWith( JsonBuilder.createObject( merged -> {
-            merged.addMembers(
-                StreamSupport.stream( members().spliterator(), false ).filter( e -> !obj.isMember( e.getKey() ) ),
-                JsonBuilder.JsonObjectBuilder::addMember );
-            merged.addMembers( obj.members(), JsonBuilder.JsonObjectBuilder::addMember );
-        } ) );
+    return replaceWith(
+        JsonBuilder.createObject(
+            merged -> {
+                //TODO use Text API when available
+              merged.addMembers(
+                  StreamSupport.stream(members().spliterator(), false)
+                      .filter(e -> !obj.isMember(e.getKey()))
+                      .map(e -> Map.entry(e.getKey().toString(), e.getValue())),
+                  JsonBuilder.JsonObjectBuilder::addMember);
+              merged.addMembers(
+                  StreamSupport.stream(obj.members().spliterator(), false)
+                      .map(e -> Map.entry(e.getKey().toString(), e.getValue()))
+                  , JsonBuilder.JsonObjectBuilder::addMember);
+            }));
     }
 
     /**
@@ -761,9 +822,12 @@ public interface JsonNode extends Serializable {
         checkType( JsonNodeType.OBJECT, getType(), "removeMembers" );
         if ( isEmpty() || names.isEmpty() ) return getRoot();
         return replaceWith( JsonBuilder.createObject(
+            //TODO use Text API when available
             obj -> obj.addMembers(
-                StreamSupport.stream( members().spliterator(), false ).filter( e -> !names.contains( e.getKey() ) ),
-                JsonBuilder.JsonObjectBuilder::addMember ) ) );
+                StreamSupport.stream( members().spliterator(), false )
+                    .map(e -> Map.entry(e.getKey().toString(), e.getValue()))
+                    .filter( e -> !names.contains( e.getKey() ) ),
+            JsonBuilder.JsonObjectBuilder::addMember ) ) );
     }
 
     /**

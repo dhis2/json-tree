@@ -43,7 +43,7 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  * @author Jan Bernitt
  * @since 0.11 (renamed from Expected in prior versions)
  */
-@Target( ElementType.METHOD )
+@Target( { ElementType.TYPE, ElementType.TYPE_USE} )
 @Retention( RetentionPolicy.RUNTIME )
 @Validation( required = YES )
 public @interface Required {}

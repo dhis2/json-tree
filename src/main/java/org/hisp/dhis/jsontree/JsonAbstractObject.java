@@ -96,8 +96,8 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @see #names()
      * @since 0.11 (as Stream)
      */
-    default Stream<String> keys() {
-        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().keys().spliterator(), false );
+    default Stream<String> keys() { //TODO change to Text
+        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().keys().spliterator(), false ).map( Text::toString );
     }
 
     /**
@@ -115,10 +115,11 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11
      */
+    //TODO change to Text (this is alos a name => key change)
     default Stream<Map.Entry<String, E>> entries() {
         if ( isUndefined() || isEmpty() ) return Stream.empty();
-        return stream( node().names().spliterator(), false ).map(
-            name -> Map.entry( name, get( JsonPath.keyOf( name ) ) ) );
+        return stream( node().keys().spliterator(), false ).map(
+            name -> Map.entry( name.toString(), get( name.toString() ) ) );
     }
 
     /**

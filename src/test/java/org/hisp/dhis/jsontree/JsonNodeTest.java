@@ -130,7 +130,7 @@ class JsonNodeTest {
     @Test
     void testMember_NoObject() {
         JsonNode val = JsonNode.of( "1" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.member( "a" ) );
+        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.member( Text.of("a") ) );
         assertEquals( "NUMBER node has no member property: a", ex.getMessage() );
     }
 

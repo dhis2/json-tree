@@ -43,6 +43,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 @Validation.Ignore
 public interface JsonString extends JsonPrimitive {
 
+    //TODO Text text(); // Text being an interface extending CharSequence
+
     /**
      * @return string value of the property or {@code null} when this property is undefined or defined as JSON
      * {@code null}.

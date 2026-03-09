@@ -375,20 +375,20 @@ class JsonTreeTest {
 
         JsonNode root = doc.get( "$" );
 
-        Iterator<Entry<String, JsonNode>> members = root.members( false );
-        Entry<String, JsonNode> m1 = members.next();
-        Entry<String, JsonNode> m2 = members.next();
-        Entry<String, JsonNode> m3 = members.next();
-        Entry<String, JsonNode> m4 = members.next();
+        Iterator<Entry<Text, JsonNode>> members = root.members( false );
+        Entry<Text, JsonNode> m1 = members.next();
+        Entry<Text, JsonNode> m2 = members.next();
+        Entry<Text, JsonNode> m3 = members.next();
+        Entry<Text, JsonNode> m4 = members.next();
         assertFalse( members.hasNext() );
         assertThrows( NoSuchElementException.class, members::next );
-        assertEquals( "a", m1.getKey() );
+        assertEquals( "a", m1.getKey().toString() );
         assertEquals( 1, m1.getValue().value() );
-        assertEquals( "b", m2.getKey() );
+        assertEquals( "b", m2.getKey().toString() );
         assertEquals( 2, m2.getValue().value() );
-        assertEquals( "c", m3.getKey() );
+        assertEquals( "c", m3.getKey().toString() );
         assertEquals( true, m3.getValue().value() );
-        assertEquals( "d", m4.getKey() );
+        assertEquals( "d", m4.getKey().toString() );
         assertEquals( false, m4.getValue().value() );
 
         JsonNode m1kept = root.members( true ).next().getValue();
@@ -400,17 +400,17 @@ class JsonTreeTest {
     void testObject_Member() {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
-        assertEquals( 1, doc.member( "a" ).value() );
-        assertEquals( 2, doc.member( "b" ).value() );
-        assertEquals( false, doc.member( "d" ).value() );
-        assertEquals( true, doc.member( "c" ).value() );
+        assertEquals( 1, doc.member( Text.of("a") ).value() );
+        assertEquals( 2, doc.member( Text.of("b") ).value() );
+        assertEquals( false, doc.member( Text.of("d") ).value() );
+        assertEquals( true, doc.member( Text.of("c") ).value() );
     }
 
     @Test
     void testObject_MemberDoesNotExist() {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.member( "missing" ) );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.member( Text.of("missing") ) );
         assertEquals( "Path `.missing` does not exist, object `` does not have a property `missing`", ex.getMessage() );
     }
 
@@ -419,9 +419,9 @@ class JsonTreeTest {
         JsonNode doc = JsonNode.of( "{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}" );
 
         doc.members(); // make sure value is set
-        assertNotNull( doc.member( "a" ) );
+        assertNotNull( doc.member( Text.of("a") ) );
 
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.member( "no" ) );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.member( Text.of("no") ) );
         assertEquals( "Path `.no` does not exist, object `` does not have a property `no`", ex.getMessage() );
     }
 
@@ -501,7 +501,7 @@ class JsonTreeTest {
         JsonNode onlyA = doc.get( "$.a" ).extract();
         assertEquals( "{ \"b\" : [12, false] }", onlyA.toString() );
         assertEquals( "{ \"b\" : [42, false] }",
-            onlyA.member( "b" ).element( 0 ).replaceWith( "42" ).toString() );
+            onlyA.member( Text.of("b") ).element( 0 ).replaceWith( "42" ).toString() );
     }
 
     @Test

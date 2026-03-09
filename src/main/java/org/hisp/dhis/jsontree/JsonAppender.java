@@ -182,7 +182,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
             return addRawMember( name, value.getDeclaration() );
         return switch ( type ) {
             case OBJECT ->
-                addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+                addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey().toString(), e.getValue() ) ) );
             case ARRAY -> addArray( name, arr -> value.elements().forEach( arr::addElement ) );
             case NUMBER -> addNumber( name, (Number) value.value() );
             case STRING -> addString( name, (String) value.value() );
@@ -281,7 +281,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
             return addRawElement( value.getDeclaration() );
         return switch ( type ) {
             case OBJECT ->
-                addObject( obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+                addObject( obj -> value.members().forEach( e -> obj.addMember( e.getKey().toString(), e.getValue() ) ) );
             case ARRAY -> addArray( arr -> value.elements().forEach( arr::addElement ) );
             case NUMBER -> addNumber( (Number) value.value() );
             case STRING -> addString( (String) value.value() );

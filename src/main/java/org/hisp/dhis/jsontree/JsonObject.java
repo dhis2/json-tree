@@ -127,16 +127,16 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
     }
 
     /**
-     * Uses the {@link Required} annotations present to check whether this object conforms to the provided type
+     * Uses the JSON schema validation to check whether this object conforms to the provided type
      *
-     * @param type object type to check
+     * @param schema a subtype of {@link JsonObject} or {@link Record} to check agsinst
      * @param rules optional set of {@link Rule}s to check, empty includes all
-     * @return true if this is an object and has all {@link Required} members of the provided type
+     * @return true if this is an object is valid against the provided schema
      * @since 0.11 (in this form with rules parameter)
      */
-    default boolean isA( Class<? extends JsonObject> type, Rule... rules ) {
+    default boolean isA( Class<?> schema, Rule... rules ) {
         try {
-            asA( type, rules );
+            JsonValidator.validate( this, schema, rules );
             return true;
         } catch ( JsonPathException | JsonTreeException | JsonSchemaException ex ) {
             return false;
@@ -146,7 +146,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
     /**
      * "Cast" and check against provided object shape.
      *
-     * @param type expected object type
+     * @param schema a subtype of {@link JsonObject} or {@link Record} to check agsinst
      * @param rules optional set of {@link Rule}s to check, empty includes all
      * @param <T>  type check and of the result
      * @return this node as the provided object type
@@ -155,10 +155,10 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
      * @since 0.11 (in this form with rules parameter)
      */
-    default <T extends JsonObject> T asA( Class<T> type, Rule... rules )
+    default <T extends JsonObject> T asA( Class<T> schema, Rule... rules )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
-        T obj = as( type );
-        JsonValidator.validate( obj, type, rules );
+        T obj = as( schema );
+        JsonValidator.validate( obj, schema, rules );
         return obj;
     }
 

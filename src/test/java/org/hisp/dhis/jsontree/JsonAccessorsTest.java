@@ -27,7 +27,6 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -499,7 +498,7 @@ class JsonAccessorsTest {
 
     @Test
     void testAccess_MapCustomKeyType() {
-        JsonAccess.GLOBAL.addKey( ID.class, ID::new );
+        JsonAccess.GLOBAL.addStringAs( ID.class, ID::new );
         MapBean obj = JsonMixed.ofNonStandard( "{'customKeyType':{'A':1, 'B':2}}" ).as( MapBean.class );
         assertEquals( Map.of( new ID("A"), 1, new ID("B"), 2 ), obj.customKeyType() );
     }

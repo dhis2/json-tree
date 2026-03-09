@@ -110,7 +110,7 @@ public final class JsonAccess implements JsonAccessors {
         return add( as, (JsonAccessor<T>) accessor );
     }
 
-    public <T> JsonAccess addKey(Class<T> as, Function<String, T> parse) {
+    public <T> JsonAccess addStringAs(Class<T> as, Function<String, T> parse) {
         return add(as, value -> accessAsString( value, parse ));
     }
 

@@ -42,6 +42,10 @@ public final class JsonValidator {
         if (validator.properties().isEmpty()) return;
 
         List<Error> errors = new ArrayList<>();
+
+        //TODO add a fail-fast (1st error) mode
+        //TODO strict types vs convertable types mode
+
         for ( Map.Entry<String, Validation.Validator> e : validator.properties().entrySet() ) {
             JsonValue property = value.asObject().get( e.getKey() );
             e.getValue().validate( property.as( JsonMixed.class ), errors::add );
@@ -51,4 +55,11 @@ public final class JsonValidator {
         if ( !errors.isEmpty() ) throw new JsonSchemaException( "%d errors".formatted( errors.size() ),
             new Info( value, schema, errors ) );
     }
+
+    //TODO a publicly accessible way to get the JSON Schema validation description (JSON) for a schema class
+    // and also for classes used as values like UID to get what the validation is on these in isolation for OpenAPI
+
+    //TODO a mode or setting that allows to skip validation on parts that are about stream processing
+    // like Stream<X> or Iterator<X> types where the validation would rack the benefits
+    // of stream processing the items
 }

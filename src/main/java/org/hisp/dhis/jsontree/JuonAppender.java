@@ -39,7 +39,7 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
         if ( type == JsonNodeType.NULL )
             return addRawMember( name,  format.nullsInObjects().value );
         return switch ( type ) {
-            case OBJECT -> addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+            case OBJECT -> addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey().toString(), e.getValue() ) ) );
             case ARRAY -> addArray( name, arr -> value.elements().forEach( arr::addElement ) );
             case STRING -> addString( name, (String)value.value() );
             case NUMBER -> addNumber( name, (Number) value.value() );
@@ -121,7 +121,7 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
         if ( type == JsonNodeType.NULL )
             return addRawElement( format.nullsInArrays().value );
         return switch ( type ) {
-            case OBJECT -> addObject(obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+            case OBJECT -> addObject(obj -> value.members().forEach( e -> obj.addMember( e.getKey().toString(), e.getValue() ) ) );
             case ARRAY -> addArray(  arr -> value.elements().forEach( arr::addElement ) );
             case STRING -> addString(  (String)value.value() );
             case NUMBER -> addNumber( (Number) value.value() );

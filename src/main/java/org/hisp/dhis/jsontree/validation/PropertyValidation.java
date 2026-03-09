@@ -229,10 +229,4 @@ record PropertyValidation(
         return Stream.concat( b.stream(), a.stream().filter( e -> !bs.contains( e.getClass() ) ) ).toList();
     }
 
-    @SuppressWarnings( "rawtypes" )
-    private static Class<? extends Enum> overlayE( Class<? extends Enum> a, Class<? extends Enum> b ) {
-        if ( b != Enum.class ) return b;
-        if ( a != Enum.class ) return a;
-        return b;
-    }
 }

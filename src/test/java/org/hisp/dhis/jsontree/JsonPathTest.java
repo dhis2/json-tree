@@ -20,7 +20,7 @@ class JsonPathTest {
 
     @Test
     void testKeyOf() {
-        assertEquals( "{/api/openapi/{path}/openapi.html}", JsonPath.keyOf( "/api/openapi/{path}/openapi.html" ) );
+        assertEquals( "{/api/openapi/{path}/openapi.html}", JsonPath.of( "/api/openapi/{path}/openapi.html" ).toString() );
     }
 
     @Test
@@ -149,24 +149,6 @@ class JsonPathTest {
     }
 
     @Test
-    void testDropFirstSegment() {
-        assertEquals( JsonPath.of( ".two" ), JsonPath.of( ".one.two" ).dropFirstSegment() );
-        assertEquals( JsonPath.of( ".yeah.yeahs" ), JsonPath.of( ".yeah.yeah.yeahs" ).dropFirstSegment() );
-    }
-
-    @Test
-    void testDropFirstSegment_Empty() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            JsonPath.ROOT::dropFirstSegment );
-        assertEquals( "Root/self path does not have a child.", ex.getMessage() );
-    }
-
-    @Test
-    void testDropFirstSegment_One() {
-        assertSame( JsonPath.ROOT, JsonPath.of( ".hello" ).dropFirstSegment() );
-    }
-
-    @Test
     void testDropLastSegment() {
         assertEquals( JsonPath.of( ".one" ), JsonPath.of( ".one.two" ).dropLastSegment() );
         assertEquals( JsonPath.of( ".yeah.yeah" ), JsonPath.of( ".yeah.yeah.yeahs" ).dropLastSegment() );
@@ -186,9 +168,9 @@ class JsonPathTest {
 
     @Test
     void testExtendedWith_Name() {
-        assertEquals( JsonPath.of(".abc.def"), JsonPath.of( ".abc" ).extendedWith( "def" ) );
-        assertEquals( JsonPath.of(".abc{.}"), JsonPath.of( ".abc" ).extendedWith( "." ) );
-        assertEquals( JsonPath.of(".abc.[42]"), JsonPath.of( ".abc" ).extendedWith( "[42]" ) );
+        assertEquals( JsonPath.of(".abc.def"), JsonPath.of( ".abc" ).extendedWith(Text.of("def") ) );
+        assertEquals( JsonPath.of(".abc{.}"), JsonPath.of( ".abc" ).extendedWith( Text.of(".") ) );
+        assertEquals( JsonPath.of(".abc.[42]"), JsonPath.of( ".abc" ).extendedWith( Text.of("[42]") ) );
     }
 
     @Test
@@ -206,65 +188,6 @@ class JsonPathTest {
         JsonPathException ex = assertThrowsExactly( JsonPathException.class,
             () -> JsonPath.of( ".x" ).extendedWith( -1 ) );
         assertEquals( "Path array index must be zero or positive but was: -1", ex.getMessage() );
-    }
-
-    @Test
-    void testShortenedBy() {
-        assertEquals( JsonPath.of( ".bar" ), JsonPath.of( ".foo.bar" ).shortenedBy( JsonPath.of( ".foo" ) ) );
-    }
-
-    @Test
-    void testShortenedBy_NoParent() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            () -> JsonPath.of( ".foo.bar" ).shortenedBy( JsonPath.of( ".xyz" ) ) );
-        assertEquals( "Path .xyz is not a parent of .foo.bar", ex.getMessage() );
-    }
-
-    @Test
-    void testArrayIndexAtStart() {
-        assertEquals( 42, JsonPath.of( "[42]" ).arrayIndexAtStart()  );
-        assertEquals( 42, JsonPath.of( "[42].foo" ).arrayIndexAtStart()  );
-        assertEquals( 42, JsonPath.of( "[42]{foo}" ).arrayIndexAtStart()  );
-        assertEquals( 42, JsonPath.of( "[42][0]" ).arrayIndexAtStart()  );
-    }
-
-    @Test
-    void testArrayIndexAtStart_Empty() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            JsonPath.ROOT::arrayIndexAtStart );
-        assertEquals( "Root/self path does not designate an array index.", ex.getMessage() );
-    }
-
-    @Test
-    void testArrayIndexAtStart_NoArray() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () ->
-            JsonPath.of(".foo").arrayIndexAtStart() );
-        assertEquals( "Path .foo does not start with an array.", ex.getMessage() );
-    }
-
-    @Test
-    void testObjectMemberAtStart() {
-        assertEquals( "foo", JsonPath.of( ".foo" ).objectMemberAtStart()  );
-        assertEquals( "foo", JsonPath.of( ".foo[42]" ).objectMemberAtStart()  );
-        assertEquals( "foo", JsonPath.of( ".foo{bar}" ).objectMemberAtStart()  );
-        assertEquals( "foo", JsonPath.of( ".foo.bar" ).objectMemberAtStart()  );
-        assertEquals( ".", JsonPath.of( "{.}.bar" ).objectMemberAtStart()  );
-        assertEquals( "{", JsonPath.of( ".{.}.bar" ).objectMemberAtStart()  );
-        assertEquals( "[3]", JsonPath.of( ".[3].bar" ).objectMemberAtStart()  );
-    }
-
-    @Test
-    void testObjectMemberAtStart_Empty() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            JsonPath.ROOT::objectMemberAtStart );
-        assertEquals( "Root/self path does not designate a object member name.", ex.getMessage() );
-    }
-
-    @Test
-    void testObjectMemberAtStart_NoObject() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () ->
-            JsonPath.of("[42].foo").objectMemberAtStart() );
-        assertEquals( "Path [42].foo does not start with an object.", ex.getMessage() );
     }
 
     private void assertSegments( String path, List<Object> segments ) {
