@@ -116,7 +116,7 @@ public @interface Validation {
         void validate( JsonMixed value, Consumer<Error> addError );
     }
 
-    record Error(Rule rule, String path, JsonValue value, String template, List<Object> args) implements Serializable {
+    record Error(Rule rule, JsonPath path, JsonValue value, String template, List<Object> args) implements Serializable {
 
         public static Error of( Rule rule, JsonValue value, String template, Object... args ) {
             return new Error( rule, value.path(), value, template, List.of( args ) );

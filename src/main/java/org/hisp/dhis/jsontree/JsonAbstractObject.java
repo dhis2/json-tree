@@ -23,13 +23,21 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCollection {
 
     /**
-     * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd
-     * parameter is the type parameter E.
-     *
      * @param key property to access
      * @return value at the provided property
+     * @since 1.9
      */
-    E get( String key );
+    E get(Text key);
+
+    /**
+     * A typed variant of {@link JsonObject#get(CharSequence)}, equivalent to {@link JsonObject#get(CharSequence, Class)} where 2nd
+     * parameter is the type parameter E.
+     *
+     * @see #get(Text)
+     */
+    default E get( CharSequence key ) {
+        return get( Text.of( key ) );
+    }
 
     /**
      * Test an object for property names.
@@ -38,7 +46,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true if this object has (at least) all the given names
      * @throws JsonTreeException in case this value is not an JSON object
      */
-    default boolean has( String... names ) {
+    default boolean has( CharSequence... names ) {
         return has( List.of( names ) );
     }
 
@@ -50,7 +58,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @throws JsonTreeException in case this value is not an JSON object
      * @since 0.10
      */
-    default boolean has( Collection<String> names ) {
+    default boolean has( Collection<? extends CharSequence> names ) {
         return exists() && names.stream().allMatch( node()::isMember );
     }
 
@@ -59,7 +67,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true, if the provided key is defined, false otherwise
      * @since 0.11
      */
-    default boolean containsKey( String key ) {
+    default boolean containsKey( CharSequence key ) {
         return !isUndefined( key );
     }
 
@@ -70,7 +78,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true if this object does not have a member of the provided name
      * @since 0.11
      */
-    default boolean isUndefined( String name ) {
+    default boolean isUndefined( CharSequence name ) {
         return get( name ).isUndefined();
     }
 
@@ -81,14 +89,14 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true if this object has a member of the provided name
      * @since 1.1
      */
-    default boolean exists(String name) {
+    default boolean exists(CharSequence name) {
        return get(name).exists();
     }
 
     /**
      * Note that keys may differ from the member names as defined in the JSON document in case that their literal
      * interpretation would have clashed with key syntax. In that case the object member name is "escaped" so that using
-     * the returned key with {@link #get(String)} will return the value. Use {@link #names()} to receive the literal
+     * the returned key with {@link #get(CharSequence)} will return the value. Use {@link #names()} to receive the literal
      * object member names as defined in the document.
      *
      * @return The keys of this map.

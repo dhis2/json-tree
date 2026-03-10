@@ -249,6 +249,21 @@ public interface Text extends CharSequence {
     }
 
     /**
+     *
+     * @param text
+     * @return
+     * @since 1.9
+     */
+    static Text of(CharSequence text) {
+        if (text instanceof Text t) return t;
+        if (text instanceof String s) return of(s);
+        int len = text.length();
+        char[] buffer = new char[len];
+        for (int i = 0; i < len; i++) buffer[i] = text.charAt( i );
+        return of(buffer, 0, len );
+    }
+
+    /**
      * @return The string's characters as {@link Text} mainly for user space API uses, tests and such.
      *     Internally it should be avoided to use this whenever a {@link Text} can be received from
      *     the {@link JsonNode} API instead.

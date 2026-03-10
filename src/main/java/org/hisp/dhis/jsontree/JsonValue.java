@@ -148,7 +148,7 @@ public interface JsonValue {
      * @since 0.11
      */
     @Surly
-    String path();
+    JsonPath path();
 
     /**
      * The "mapping" uses the node's {@link #getAccessors()} to map the JSON to the given Java target

@@ -22,7 +22,7 @@ class JsonBooleanTest {
     void testBooleanValue_WithDefaultNoBoolean() {
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class,
             () -> JsonMixed.of( "1" ).booleanValue( true ) );
-        assertEquals( "Path `$` does not contain an BOOLEAN but a(n) NUMBER: 1", ex.getMessage() );
+        assertEquals( "Path `` does not contain an BOOLEAN but a(n) NUMBER: 1", ex.getMessage() );
     }
 
     @Test

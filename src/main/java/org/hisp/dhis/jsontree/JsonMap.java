@@ -71,7 +71,7 @@ public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
             }
 
             @Override
-            public V get( String key ) {
+            public V get( Text key ) {
                 return projection.apply( viewed.get( key ) );
             }
 

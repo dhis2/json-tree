@@ -66,7 +66,7 @@ class JsonVirtualTreeTest {
         assertFalse( JsonMixed.of( "[]" ).getObject( "undefined" ).has( "foo" ) );
         JsonObject bar = obj.getObject( "users" ).getObject( "bar" );
         Exception ex = assertThrowsExactly( JsonTreeException.class, () -> bar.has( "is-array" ) );
-        assertEquals( "ARRAY node has no member property: is-array", ex.getMessage() );
+        assertEquals( "ARRAY node has no keys property.", ex.getMessage() );
     }
 
     @Test
@@ -310,7 +310,7 @@ class JsonVirtualTreeTest {
     @Test
     void testToString_NonExistingPath() {
         JsonList<JsonNumber> list = JsonMixed.of( "[12,42]" ).getObject( "non-existing" ).asList( JsonNumber.class );
-        assertEquals( "Path `.non-existing` does not exist, parent `` is not an OBJECT but a ARRAY node.",
+        assertEquals( "Path `.non-existing` does not exist, array `` does not contain non-numeric elements: non-existing",
             list.toString() );
     }
 

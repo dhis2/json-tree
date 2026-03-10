@@ -69,6 +69,6 @@ class JsonValidationMiscCollectionTest {
         Validation.Error error = assertValidationError( """
                 {"pages": { "title": {"entries": [13, 42.5]}}}""", JsonBook.class, Rule.TYPE, Set.of( NodeType.INTEGER ),
             NodeType.NUMBER );
-        assertEquals( "$.pages.title.entries[1]", error.path() );
+        assertEquals( ".pages.title.entries.1", error.path().toString() );
     }
 }

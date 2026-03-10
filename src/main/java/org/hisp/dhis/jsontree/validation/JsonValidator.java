@@ -32,11 +32,12 @@ public final class JsonValidator {
     public static void validate( JsonValue value, Class<?> schema, Set<Validation.Rule> rules ) {
         if ( !value.exists() )
             throw new JsonPathException( value.path(),
-                String.format( "Value %s %s node does not exist", value.path(), schema.getSimpleName() ) );
+                String.format( "Value at path `%s` is not a %s object as it does not exist",
+                    value.path(), schema.getSimpleName() ) );
         if ( !value.isObject() ) {
             throw new JsonTreeException(
-                String.format( "Value %s %s node is not an object but a %s", value.path(), schema.getSimpleName(),
-                    value.type() ) );
+                String.format( "Value at path `%s` is not a %s object but a %s",
+                    value.path(), schema.getSimpleName(), value.type() ) );
         }
         ObjectValidator validator = ObjectValidator.of( schema );
         if (validator.properties().isEmpty()) return;

@@ -98,7 +98,7 @@ public interface JsonAbstractCollection extends JsonValue {
             }
 
             @Override
-            public E get( String key ) {
+            public E get( Text key ) {
                 return viewed.get( key, as );
             }
 
@@ -118,7 +118,7 @@ public interface JsonAbstractCollection extends JsonValue {
             }
 
             @Override
-            public JsonList<E> get( String key ) {
+            public JsonList<E> get( Text key ) {
                 return viewed.getList( key, as );
             }
 
@@ -140,7 +140,7 @@ public interface JsonAbstractCollection extends JsonValue {
         }
 
         @Surly @Override
-        public final String path() {
+        public final JsonPath path() {
             return viewed.path();
         }
 

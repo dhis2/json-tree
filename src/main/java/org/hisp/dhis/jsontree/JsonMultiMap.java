@@ -109,7 +109,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonAbstractObject<Js
             }
 
             @Override
-            public JsonList<V> get( String key ) {
+            public JsonList<V> get( Text key ) {
                 return viewed.get( key ).project( projection );
             }
 

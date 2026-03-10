@@ -56,7 +56,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      *
      * @param in       the {@link JsonObject} or {@link Record} type that declared the property
      * @param jsonName of the property
-     * @param jsonType the type the property is resolved to internally when calling {@link #get(String, Class)}
+     * @param jsonType the type the property is resolved to internally when calling {@link #get(CharSequence, Class)}
      * @param javaName the name of the java property accessed that caused the JSON property to be resolved
      * @param javaType the return type of the underlying method that declares the property
      * @param source   the underlying method that declared the property
@@ -87,42 +87,57 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @param as   assumed type of the field
      * @param <T>  returned field type
      * @return field value for the given name
+     * @since 1.9
      */
-    <T extends JsonValue> T get( String name, Class<T> as );
-
-    default JsonValue get( String name ) {
+    <T extends JsonValue> T get( Text name, Class<T> as );
+    default JsonValue get( Text name ) {
         return get( name, JsonValue.class );
     }
 
-    default JsonObject getObject( String name ) {
+    <T extends JsonValue> T get( JsonPath subPath, Class<T> as );
+
+    /**
+     * @see #get(Text, Class)
+     */
+    default <T extends JsonValue> T get( CharSequence name, Class<T> as ) {
+        if (name instanceof String s && JsonPath.isSyntaxPresent( s ))
+            return get( JsonPath.of( s ), as );
+        return get( Text.of( name ), as );
+    }
+
+    default JsonValue get( CharSequence name ) {
+        return get( name, JsonValue.class );
+    }
+
+    default JsonObject getObject( CharSequence name ) {
         return get( name, JsonObject.class );
     }
 
-    default JsonNumber getNumber( String name ) {
+    default JsonNumber getNumber( CharSequence name ) {
         return get( name, JsonNumber.class );
     }
 
-    default JsonArray getArray( String name ) {
+    default JsonArray getArray( CharSequence name ) {
         return get( name, JsonArray.class );
     }
 
-    default JsonString getString( String name ) {
+    default JsonString getString( CharSequence name ) {
         return get( name, JsonString.class );
     }
 
-    default JsonBoolean getBoolean( String name ) {
+    default JsonBoolean getBoolean( CharSequence name ) {
         return get( name, JsonBoolean.class );
     }
 
-    default <E extends JsonValue> JsonList<E> getList( String name, Class<E> as ) {
+    default <E extends JsonValue> JsonList<E> getList( CharSequence name, Class<E> as ) {
         return JsonAbstractCollection.asList( getArray( name ), as );
     }
 
-    default <E extends JsonValue> JsonMap<E> getMap( String name, Class<E> as ) {
+    default <E extends JsonValue> JsonMap<E> getMap( CharSequence name, Class<E> as ) {
         return JsonAbstractCollection.asMap( getObject( name ), as );
     }
 
-    default <E extends JsonValue> JsonMultiMap<E> getMultiMap( String name, Class<E> as ) {
+    default <E extends JsonValue> JsonMultiMap<E> getMultiMap( CharSequence name, Class<E> as ) {
         return JsonAbstractCollection.asMultiMap( getObject( name ), as );
     }
 
@@ -180,12 +195,17 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
             }
 
             @Override
-            public <T extends JsonValue> T get( String name, Class<T> as ) {
+            public <T extends JsonValue> T get( Text name, Class<T> as ) {
                 return projection.apply( viewed.get( name ) ).as( as );
             }
 
             @Override
-            public boolean has( Collection<String> names ) {
+            public <T extends JsonValue> T get( JsonPath subPath, Class<T> as ) {
+                return projection.apply( viewed.get( subPath, JsonValue.class ) ).as( as );
+            }
+
+            @Override
+            public boolean has( Collection<? extends CharSequence> names ) {
                 return viewed.has( names );
             }
 

@@ -179,7 +179,7 @@ class JsonValueTest {
         JsonMixed root = JsonMixed.of( json );
         JsonObject foo = root.find( JsonObject.class, obj -> obj.has( "foo" ) );
         assertTrue( foo.isObject() );
-        assertEquals( "$.x", foo.path() );
+        assertEquals( ".x", foo.path().toString() );
         assertFalse( root.find( JsonObject.class, obj -> obj.has( "bar" ) ).exists() );
     }
 

@@ -53,7 +53,7 @@ class JsonNodeTest {
     @Test
     void testGet_String() {
         assertGetThrowsJsonTreeException( "\"hello\"",
-            "This is a leaf node of type STRING that does not have any children at path: .foo" );
+            "STRING node is not an object, no member at path: .foo" );
     }
 
     @Test
@@ -68,19 +68,19 @@ class JsonNodeTest {
     @Test
     void testGet_Number() {
         assertGetThrowsJsonTreeException( "42",
-            "This is a leaf node of type NUMBER that does not have any children at path: .foo" );
+            "NUMBER node is not an object, no member at path: .foo" );
     }
 
     @Test
     void testGet_Boolean() {
         assertGetThrowsJsonTreeException( "true",
-            "This is a leaf node of type BOOLEAN that does not have any children at path: .foo" );
+            "BOOLEAN node is not an object, no member at path: .foo" );
     }
 
     @Test
     void testGet_Null() {
         assertGetThrowsJsonTreeException( "null",
-            "This is a leaf node of type NULL that does not have any children at path: .foo" );
+            "NULL node is not an object, no member at path: .foo" );
     }
 
     @Test
@@ -119,12 +119,11 @@ class JsonNodeTest {
 
     @Test
     void testGet_Array_NoValueAtPath() {
-        assertGetThrowsJsonTreeException( "[1,2]", "a", "ARRAY node is not an object, no member at path: .a" );
-        assertGetThrowsJsonTreeException( "[1,2]", ".a", "ARRAY node is not an object, no member at path: .a" );
-        assertGetThrowsJsonTreeException( "[[1,2],[]]", "[1][0]",
-            "Path `[1][0]` does not exist, array `[1]` has only `0` elements." );
-        assertGetThrowsJsonTreeException( "[[1,2],[]]", "[0].a",
-            "Path `[0].a` does not exist, parent `[0]` is not an OBJECT but a ARRAY node." );
+        assertGetThrowsJsonTreeException( "[1,2]", "a", "ARRAY node has no element property for index: a" );
+        assertGetThrowsJsonTreeException( "[1,2]", ".a", "ARRAY node has no element property for index: a" );
+        assertGetThrowsJsonPathException( "[[1,2],[]]", "[1][0]",
+            "Path `.1.0` does not exist, array `.1` has only `0` elements." );
+        assertGetThrowsJsonTreeException( "[[1,2],[]]", "[0].a", "ARRAY node has no element property for index: a" );
     }
 
     @Test
@@ -209,13 +208,13 @@ class JsonNodeTest {
 
     @Test
     void testPathCanBeRecorded() {
-        Deque<String> rec = new LinkedList<>();
+        Deque<JsonPath> rec = new LinkedList<>();
         JsonObject obj = JsonMixed.of( JsonNode.of( "{}", rec::add ) );
 
         obj.as( JsonBean.class ).getFoo();
-        assertEquals( ".foo", rec.getLast() );
+        assertEquals( ".foo", rec.getLast().toString() );
         obj.as( JsonBean.class ).bar();
-        assertEquals( ".bar", rec.getLast() );
+        assertEquals( ".bar", rec.getLast().toString() );
     }
 
     private static void assertGetThrowsJsonPathException( String json, String expected ) {

@@ -149,20 +149,20 @@ class JsonPathTest {
     }
 
     @Test
-    void testDropLastSegment() {
+    void testParentPath() {
         assertEquals( JsonPath.of( ".one" ), JsonPath.of( ".one.two" ).parentPath() );
         assertEquals( JsonPath.of( ".yeah.yeah" ), JsonPath.of( ".yeah.yeah.yeahs" ).parentPath() );
     }
 
     @Test
-    void testDropLastSegment_Empty() {
+    void testParentPath_Empty() {
         JsonPathException ex = assertThrowsExactly( JsonPathException.class,
             JsonPath.ROOT::parentPath );
         assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
     }
 
     @Test
-    void testDropLastSegment_One() {
+    void testParentPath_One() {
         assertSame( JsonPath.ROOT, JsonPath.of( ".hello" ).parentPath() );
     }
 

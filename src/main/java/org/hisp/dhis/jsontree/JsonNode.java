@@ -100,7 +100,7 @@ public interface JsonNode extends Serializable {
         /**
          * @param path absolute path in the tree that is resolved
          */
-        void accept( String path ); //TODO change to JsonPath
+        void accept( JsonPath path );
     }
 
     /**
@@ -277,6 +277,7 @@ public interface JsonNode extends Serializable {
      * @throws JsonPathException when no such node exists in the subtree of this node
      * @throws JsonTreeException when the operation is called on a non-object node
      */
+    //TODO maybe remove String entirely or change to CharSequence?
     @Surly
     default JsonNode get(@Surly String path) throws JsonPathException, JsonTreeException {
         if ( path.isEmpty() ) return this;
@@ -314,6 +315,7 @@ public interface JsonNode extends Serializable {
      */
     @Surly
     default JsonNode get(@Surly JsonPath subPath) throws JsonTreeException, JsonPathException {
+        if (subPath.isEmpty()) return this;
         JsonPath path = getPath().extendedWith( subPath );
         throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
     }
@@ -326,6 +328,7 @@ public interface JsonNode extends Serializable {
      */
     @Maybe
     default JsonNode getOrNull(@Surly JsonPath subPath) throws JsonTreeException {
+        if (subPath.isEmpty()) return this;
         JsonPath path = getPath().extendedWith( subPath );
         throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
     }
@@ -342,6 +345,9 @@ public interface JsonNode extends Serializable {
     default int size() {
         throw new JsonTreeException( getType() + " node has no size property." );
     }
+
+    //TODO javadoc
+    boolean exists(JsonPath subPath);
 
     /**
      * Whether an array or object has no elements or members.
@@ -383,7 +389,7 @@ public interface JsonNode extends Serializable {
      * @see #isMember(Text)
      * @since 0.6
      */
-    default boolean isMember( String name ) {
+    default boolean isMember( CharSequence name ) {
         return isMember( Text.of( name ) );
     }
 
@@ -395,7 +401,7 @@ public interface JsonNode extends Serializable {
      * @throws JsonTreeException if this is not an array node
      */
     default boolean isElement( int index ) {
-        return index >= 0 && index <= size();
+        return index >= 0 && index < size();
     }
 
     /**
