@@ -63,9 +63,6 @@ public record JsonPath(List<Text> segments) {
      */
     public static JsonPath of( String path ) {
         if (path.isEmpty()) return ROOT;
-        char c0 = path.charAt( 0 );
-        if (c0 == '$' && path.length() == 1) return ROOT;
-        if ( c0 !=  '{' && c0 != '[' && c0 != '.' ) path = "."+path;
         return new JsonPath( splitIntoSegments( Text.of( path ) ) );
     }
 
@@ -76,7 +73,7 @@ public record JsonPath(List<Text> segments) {
      * @return an array index selecting path
      */
     public static JsonPath of(int index) {
-        return ROOT.extendedWith( index );
+    return new JsonPath(List.of(Text.of( index )));
     }
 
     public JsonPath {
@@ -137,7 +134,7 @@ public record JsonPath(List<Text> segments) {
     public JsonPath extendedWith(String path) {
         Text plain = Text.of( path );
         // not having syntax also means it is a non-nested path (single segment)
-        if (!isEscapingRequired( plain )) return extendedWith( plain );
+        if (!isSyntaxPresent( plain )) return extendedWith( plain );
         return extendedWith( splitIntoSegments( plain ) );
     }
 
@@ -253,7 +250,7 @@ public record JsonPath(List<Text> segments) {
     private static List<Text> splitIntoSegments( Text path )
         throws JsonPathException {
         // fast path when there is no syntax present (plain name)
-        if (!isEscapingRequired( path )) return List.of(path);
+        if (!isSyntaxPresent( path )) return List.of(path);
         // slow path
         int len = path.length();
         int i = 0;
@@ -261,8 +258,21 @@ public record JsonPath(List<Text> segments) {
         int end = 0;
         List<Text> res = new ArrayList<>();
         while ( i < len ) {
-            if ( isDotSegmentOpen( path, i ) ) {
-                i++; // advance past the .
+            char c = path.charAt( i );
+            if ( c == '[' && isSquareSegmentOpen( path, i ) ) {
+                i++;
+                start = i;
+                while (!isSquareSegmentClose( path, i ) ) i++;
+                end = i;
+                i++; // most past ]
+            } else if (c == '{' && isCurlySegmentOpen( path, i ) ) {
+                i++;
+                start = i;
+                while ( !isCurlySegmentClose( path, i ) ) i++;
+                end = i;
+                i++; // most past }
+            } else if ( c == '.' || i == 0 ) {
+                if (c == '.') i++;
                 start = i;
                 if ( i < len && path.charAt( i ) != '.' ) {
                     i++; // if it is not a dot the first char after the . is never a start of next segment
@@ -270,18 +280,6 @@ public record JsonPath(List<Text> segments) {
                 }
                 end = i;
                 if (start == end) start -= 1;
-            } else if ( isSquareSegmentOpen( path, i ) ) {
-                i++;
-                start = i;
-                while ( !isSquareSegmentClose( path, i ) ) i++;
-                end = i;
-                i++; // most past ]
-            } else if ( isCurlySegmentOpen( path, i ) ) {
-                i++;
-                start = i;
-                while ( !isCurlySegmentClose( path, i ) ) i++;
-                end = i;
-                i++; // most past }
             } else throw new JsonPathException( path.toString(),
                 "Malformed path %s, invalid start of segment at position %d.".formatted( path, i ) );
             res.add( path.subSequence( start, end ) );
@@ -290,12 +288,8 @@ public record JsonPath(List<Text> segments) {
         return List.copyOf( res );
     }
 
-    private static boolean isEscapingRequired( Text path ) {
+    private static boolean isSyntaxPresent( Text path ) {
         return path.contains( '.' ) || path.contains( '{' ) || path.contains( '[' );
-    }
-
-    private static boolean isDotSegmentOpen( Text path, int index ) {
-        return path.charAt( index ) == '.';
     }
 
     /**

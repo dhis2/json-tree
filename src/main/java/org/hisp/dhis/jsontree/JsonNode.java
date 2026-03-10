@@ -254,8 +254,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode get(Text name) throws JsonPathException, JsonTreeException {
         JsonPath path = getPath().extendedWith( name );
-        throw new JsonTreeException(
-            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+        throw new JsonTreeException(getType() + " node at path `"+path+"` is not an object, no member at path: " + path);
     }
 
     /**
@@ -266,8 +265,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode getOrNull(Text name) throws JsonTreeException {
         JsonPath path = getPath().extendedWith( name );
-        throw new JsonTreeException(
-            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+        throw new JsonTreeException(getType() + " node at path `"+path+"` is not an object, no member at path: " + path);
     }
 
     /**
@@ -283,6 +281,7 @@ public interface JsonNode extends Serializable {
     default JsonNode get(@Surly String path) throws JsonPathException, JsonTreeException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
+        //TODO only act on $. ${ or $[
         if ( path.charAt( 0 ) ==  '$' ) return getRoot().get( path.substring( 1 ) );
         return get( JsonPath.of( path ) );
     }
@@ -301,6 +300,7 @@ public interface JsonNode extends Serializable {
     default JsonNode getOrNull(@Surly String path ) throws JsonPathException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
+        //TODO only act on $. ${ or $[
         if ( path.charAt( 0 ) ==  '$' ) return getRoot().getOrNull( path.substring( 1 ) );
         return getOrNull( JsonPath.of( path ) );
     }
@@ -315,8 +315,7 @@ public interface JsonNode extends Serializable {
     @Surly
     default JsonNode get(@Surly JsonPath subPath) throws JsonTreeException, JsonPathException {
         JsonPath path = getPath().extendedWith( subPath );
-        throw new JsonTreeException(
-            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+        throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
     }
 
     /**
@@ -328,8 +327,7 @@ public interface JsonNode extends Serializable {
     @Maybe
     default JsonNode getOrNull(@Surly JsonPath subPath) throws JsonTreeException {
         JsonPath path = getPath().extendedWith( subPath );
-        throw new JsonTreeException(
-            format( "This is a leaf node of type %s that does not have any children at path: %s", getType(), path ) );
+        throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
     }
 
     /**

@@ -443,16 +443,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return elements( true );
         }
 
-        @Surly @Override
-        public JsonNode get( @Surly JsonPath subPath ) {
-            return tree.get( this.path.extendedWith( subPath ) );
-        }
-
-        @Maybe @Override
-        public JsonNode getOrNull( @Surly JsonPath subPath ) {
-            return tree.getOrNull( this.path.extendedWith( subPath ) );
-        }
-
         @Override
         public JsonNodeType getType() {
             return JsonNodeType.ARRAY;

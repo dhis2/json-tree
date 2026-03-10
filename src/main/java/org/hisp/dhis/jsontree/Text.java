@@ -201,9 +201,34 @@ public interface Text extends CharSequence {
         return arr;
     }
 
+    /**
+     * @return true, if the text is a signed or unsigned integer value
+     */
+    default boolean isInt() {
+        if (isEmpty()) return false;
+        int i = 0;
+        if (charAt( 0 ) == '-' || charAt( 0 ) == '+') i++;
+        for (; i < length(); i++)
+            if (charAt( i ) < '0' || charAt( i ) > '9') return false;
+        return true;
+    }
+
+    /**
+     * @return this text parsed to an integer
+     * @throws NumberFormatException in case the text is not a valid integer
+     */
     default int parseInt() {
-        //TODO
-        return 0;
+        if (!isInt()) throw new NumberFormatException("Not a number: "+this);
+        boolean neg = charAt( 0 ) == '-';
+        int i = 0;
+        if (neg || charAt( 0 ) == '+') i++;
+        int n = 0;
+        int end = length();
+        for (; i < end; i++) {
+            n *= 10;
+            n += charAt( i ) - '0';
+        }
+        return neg ? -n : n;
     }
 
     /**
@@ -258,7 +283,14 @@ public interface Text extends CharSequence {
             }
 
             @Override
+            public boolean isInt() {
+                if (buffer == Cache._100_TO_999) return true;
+                return Text.super.isInt();
+            }
+
+            @Override
             public int parseInt() {
+                if (!isInt()) throw new NumberFormatException("Not a number: "+this);
                 return Chars.parseInt( buffer, offset, length );
             }
 
@@ -301,30 +333,32 @@ public interface Text extends CharSequence {
     }
 
     /**
+     * @apiNote should be considered private
+     * @implNote A private cache for digits of 0-999.
+     * It saves on allocation of a character buffer and increases the chance
+     * of the characters already being in CPU cache as we reuse the same
+     * memory region for small-ish indexes.
+     */
+    record Cache() {
+        private static final char[] _100_TO_999 = new char[900*3];
+        static {
+            int j = 0;
+            for (int i = 100; i < 1000; i++) {
+                _100_TO_999[j++] = (char)('0'+i/100);
+                _100_TO_999[j++] = (char)('0'+(i%100/10));
+                _100_TO_999[j++] = (char)('0'+i%10);
+            }
+        }
+    }
+
+    /**
      * @return An array index as {@link Text} (like used in a {@link JsonPath} segment)
      */
     static Text of(int index) {
-        /**
-         * @implNote A private cache for digits of 0-999.
-         * It saves on allocation of a character buffer and increases the chance
-         * of the characters already being in CPU cache as we reuse the same
-         * memory region for small-ish indexes.
-         */
-        record Local() {
-            static final char[] _100_TO_999 = new char[900*3];
-            static {
-                int j = 0;
-                for (int i = 100; i < 1000; i++) {
-                    _100_TO_999[j++] = (char)('0'+i/100);
-                    _100_TO_999[j++] = (char)('0'+(i%100/10));
-                    _100_TO_999[j++] = (char)('0'+i%10);
-                }
-            }
-        }
         if (index < 0) throw new IllegalArgumentException("Index must be >= 0 but was: "+index);
-        if (index < 10) return of(Local._100_TO_999, index * 3 + 2, 1);
-        if (index < 100) return of(Local._100_TO_999, index * 3 + 1, 2);
-        if (index < 1000) return of(Local._100_TO_999, (index - 100) * 3, 3);
+        if (index < 10) return of( Cache._100_TO_999, index * 3 + 2, 1);
+        if (index < 100) return of( Cache._100_TO_999, index * 3 + 1, 2);
+        if (index < 1000) return of( Cache._100_TO_999, (index - 100) * 3, 3);
         int rest = index;
         int n = 0;
         while (rest > 0) {
