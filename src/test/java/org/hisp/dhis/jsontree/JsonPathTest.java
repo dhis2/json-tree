@@ -95,7 +95,7 @@ class JsonPathTest {
 
     @Test
     void testParent_Root() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.ROOT::dropLastSegment );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.ROOT::parentPath );
         assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
     }
 
@@ -109,8 +109,8 @@ class JsonPathTest {
     @Test
     void testParent_Curly_Uniform() {
         assertParent( "", ".{x}" );
-        assertParent( "{x}", "{x}{y}" );
-        assertParent( "{x}{yy}", "{x}{yy}{zzz}" );
+        assertParent( ".x", "{x}{y}" );
+        assertParent( ".x.yy", "{x}{yy}{zzz}" );
     }
 
     @Test
@@ -150,20 +150,20 @@ class JsonPathTest {
 
     @Test
     void testDropLastSegment() {
-        assertEquals( JsonPath.of( ".one" ), JsonPath.of( ".one.two" ).dropLastSegment() );
-        assertEquals( JsonPath.of( ".yeah.yeah" ), JsonPath.of( ".yeah.yeah.yeahs" ).dropLastSegment() );
+        assertEquals( JsonPath.of( ".one" ), JsonPath.of( ".one.two" ).parentPath() );
+        assertEquals( JsonPath.of( ".yeah.yeah" ), JsonPath.of( ".yeah.yeah.yeahs" ).parentPath() );
     }
 
     @Test
     void testDropLastSegment_Empty() {
         JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            JsonPath.ROOT::dropLastSegment );
+            JsonPath.ROOT::parentPath );
         assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
     }
 
     @Test
     void testDropLastSegment_One() {
-        assertSame( JsonPath.ROOT, JsonPath.of( ".hello" ).dropLastSegment() );
+        assertSame( JsonPath.ROOT, JsonPath.of( ".hello" ).parentPath() );
     }
 
     @Test
@@ -190,11 +190,11 @@ class JsonPathTest {
         assertEquals( "Path array index must be zero or positive but was: -1", ex.getMessage() );
     }
 
-    private void assertSegments( String path, List<Object> segments ) {
-        assertEquals( segments, JsonPath.of( path ).segments());
+    private void assertSegments( String path, List<String> expected ) {
+        assertEquals( expected.stream().map( Text::of ).toList(), JsonPath.of( path ).segments());
     }
 
     private void assertParent(String expected, String actual) {
-        assertEquals( expected, JsonPath.of( actual ).dropLastSegment().toString() );
+        assertEquals( expected, JsonPath.of( actual ).parentPath().toString() );
     }
 }

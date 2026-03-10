@@ -43,13 +43,16 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 @Validation.Ignore
 public interface JsonString extends JsonPrimitive {
 
-    //TODO Text text(); // Text being an interface extending CharSequence
+    Text text();
 
     /**
      * @return string value of the property or {@code null} when this property is undefined or defined as JSON
      * {@code null}.
      */
-    String string();
+    default String string() {
+        Text res = text();
+        return res == null ? null : res.toString();
+    }
 
     /**
      * @param orDefault used when this node is either undefined or defined as JSON null

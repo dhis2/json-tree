@@ -142,7 +142,7 @@ class JsonMapTest {
         String json = """
             {".":1, "{uid}":2, "[6]":3, "x{y}z": 4}""";
         JsonMap<JsonNumber> map = JsonMixed.of( json ).asMap( JsonNumber.class );
-        assertEquals( List.of( "{.}", ".{uid}", ".[6]", "x{y}z" ), map.keys().toList() );
+        assertEquals( List.of( ".", "{uid}", "[6]", "x{y}z" ), map.keys().toList() );
     }
 
     @Test

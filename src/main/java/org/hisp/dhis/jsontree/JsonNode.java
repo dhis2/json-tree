@@ -39,7 +39,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -242,7 +241,7 @@ public interface JsonNode extends Serializable {
      */
     @Surly
     default JsonNode getParent() {
-        return isRoot() ? this : getRoot().get( getPath().dropLastSegment().toString() );
+        return isRoot() ? this : getRoot().get( getPath().parentPath().toString() );
     }
 
     /**
@@ -295,6 +294,7 @@ public interface JsonNode extends Serializable {
      *             node of this node, in other words it is an absolute path
      * @return the node at the given path or {@code null} if no such node exists
      * @throws JsonPathException when the provided path is malformed
+     * @throws JsonTreeException when the operation is called on a non-object node
      * @since 1.5
      */
     @Maybe
@@ -333,7 +333,7 @@ public interface JsonNode extends Serializable {
     }
 
     /**
-     * Size of an array of number of object members.
+     * Size of an array or number of object members.
      * <p>
      * This is preferable to calling {@link #value()} or {@link #members()} or {@link #elements()} when size is only
      * property of interest as it might have better performance.
@@ -367,6 +367,8 @@ public interface JsonNode extends Serializable {
     }
 
     /**
+     * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
+     * <p>
      * Check for member existence.
      *
      * @param name of the member in this object node
@@ -375,11 +377,8 @@ public interface JsonNode extends Serializable {
      * @since 1.9
      */
     default boolean isMember( Text name ) {
-        try {
-            return memberOrNull( name ) != null;
-        } catch ( JsonPathException ex ) {
-            return false;
-        }
+        return StreamSupport.stream( keys().spliterator(), false)
+            .anyMatch( name::contentEquals );
     }
 
     /**
@@ -391,18 +390,14 @@ public interface JsonNode extends Serializable {
     }
 
     /**
-     * Check for element existence.
+     * OBS! Only defined when this node is of type {@link JsonNodeType#ARRAY} or {@link JsonNodeType#OBJECT}).
      *
      * @param index array index greater than 0 and less than {@link #size()}
      * @return true, if this array node as an element at the provided index, false otherwise
      * @throws JsonTreeException if this is not an array node
      */
     default boolean isElement( int index ) {
-        try {
-            return elementOrNull( index ) != null;
-        } catch ( JsonPathException ex ) {
-            return false;
-        }
+        return index >= 0 && index <= size();
     }
 
     /**

@@ -26,7 +26,7 @@ class JsonArrayTest {
     void testStringValues_NotOnlyStrings() {
         JsonMixed value = JsonMixed.of( "[\"a\", 1, true]" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, value::stringValues );
-        assertEquals( "Array element is not a java.lang.String: 1", ex.getMessage() );
+        assertEquals( "Array element is not a org.hisp.dhis.jsontree.Text: 1", ex.getMessage() );
     }
 
     @Test

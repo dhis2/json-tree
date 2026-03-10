@@ -9,10 +9,17 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 
 /**
- * Represents a JSON path and the logic of how to split it into segments.
+ * A JSON path is a sequence of object member names or array indexes in the order from root to the
+ * target node.
  *
- * <p>Segments are always evaluated (split) left to right. Each segment is expected to start with
- * the symbol identifying the type of segment. There are three notations:
+ * <p>An array index path is indistinguishable from a numeric object member name.
+ *
+ * <p>When constructed from a user input {@link String} in {@link #of(String)} the provided string
+ * might require splitting into {@link #segments()}. Therefore, there is a syntax to indicate
+ * segments. The most common form is the {@code .}-syntax where dot marks the start of a segment.
+ * The initial segment can omit the leading dot.
+ *
+ * <p>There are three notations:
  *
  * <ul>
  *   <li>dot object member access: {@code .property}
@@ -33,11 +40,12 @@ import static java.util.stream.Collectors.joining;
  * users to always encode and decode paths just to make a few corner cases work which are not
  * possible with the chosen compromise.
  *
+ * <p>Inputs that might require escaping of a segment can do so using {@link #escape(Text)}.
+ *
  * @author Jan Bernitt
  * @since 1.1
- * @param segments Each segment represents a level in a JSON object hierarchy. This is why they are
- *     also called keys as they make the names of the object members or keys when looking at an
- *     object as a key-value map.
+ * @param segments The segments exactly as they occur in the object hierarchy of the JSON document
+ *     they should match or where they have been extracted from
  */
 public record JsonPath(List<Text> segments) {
 
@@ -54,7 +62,9 @@ public record JsonPath(List<Text> segments) {
      * @throws JsonPathException when the path cannot be split into segments as it is not a valid path
      */
     public static JsonPath of( String path ) {
+        if (path.isEmpty()) return ROOT;
         char c0 = path.charAt( 0 );
+        if (c0 == '$' && path.length() == 1) return ROOT;
         if ( c0 !=  '{' && c0 != '[' && c0 != '.' ) path = "."+path;
         return new JsonPath( splitIntoSegments( Text.of( path ) ) );
     }
@@ -80,15 +90,19 @@ public record JsonPath(List<Text> segments) {
      * @return a new path instance that starts with all segments of this path followed by all segments of the provided sub-path
      */
     public JsonPath extendedWith( JsonPath subPath ) {
-        if (subPath.isEmpty()) return this;
         if (isEmpty()) return subPath;
-        if (subPath.size() == 1) return extendedWith( subPath.segments.get( 0 ) );
-        List<Text> subSegments = subPath.segments;
+        return extendedWith( subPath.segments );
+    }
+
+    public JsonPath extendedWith( List<Text> subSegments ) {
+        if (isEmpty()) return new JsonPath( subSegments );
+        if ( subSegments.isEmpty()) return this;
+        if ( subSegments.size() == 1) return extendedWith( subSegments.get( 0 ) );
         int n = size();
-        Text[] concat = new Text[n +subSegments.size()];
+        Text[] concat = new Text[n + subSegments.size()];
         for (int i = 0; i < n; i++) concat[i] = segments.get( i );
-        for (int i = 0; i < subSegments.size(); i++) concat[n+i] = subSegments.get( i );
-        return new JsonPath( List.of(concat) );
+        for ( int i = 0; i < subSegments.size(); i++) concat[n+i] = subSegments.get( i );
+        return new JsonPath( List.of( concat ) );
     }
 
     /**
@@ -120,6 +134,13 @@ public record JsonPath(List<Text> segments) {
         return extendedWith(Text.of(index));
     }
 
+    public JsonPath extendedWith(String path) {
+        Text plain = Text.of( path );
+        // not having syntax also means it is a non-nested path (single segment)
+        if (!isEscapingRequired( plain )) return extendedWith( plain );
+        return extendedWith( splitIntoSegments( plain ) );
+    }
+
     /**
      * Drops the right most path segment.
      *
@@ -127,7 +148,7 @@ public record JsonPath(List<Text> segments) {
      * @throws JsonPathException when called on the root (empty path)
      */
     @Surly
-    public JsonPath dropLastSegment() {
+    public JsonPath parentPath() {
         if ( isEmpty() )
             throw new JsonPathException( this, "Root/self path does not have a parent." );
         int size = segments.size();
@@ -150,10 +171,25 @@ public record JsonPath(List<Text> segments) {
 
     @Override
     public String toString() {
-        return segments.stream().map( this::toString ).collect( joining());
+        if (isEmpty()) return "";
+        if (size() == 1) return escape(segments.get(0), this);
+        return segments.stream().map( seg -> escape( seg, this )).collect( joining());
     }
 
-    private String toString( Text seg ) {
+    /**
+     * Escapes a plain segment if required.
+     *
+     * @param seg the plain segment name to escape in syntax
+     * @return the normalized, potentially escaped segment name
+     * @throws JsonPathException in case the segment is impossible to represent without being
+     *     misinterpreted when converting it back using {@link JsonPath#of(String)}
+     * @since 1.9
+     */
+    public static String escape(Text seg) throws JsonPathException {
+        return escape( seg, null );
+    }
+
+    private static String escape( Text seg, JsonPath context ) throws JsonPathException {
         boolean hasCurly = seg.indexOf( '{' ) >= 0;
         boolean hasSquare = seg.indexOf( '[' ) >= 0;
         boolean hasDot = seg.indexOf( '.' ) >= 0;
@@ -161,7 +197,7 @@ public record JsonPath(List<Text> segments) {
         if (!hasCurly && !hasSquare && !hasDot) return "." + seg;
         // common special case: has a dot (and possibly square) => needs curly escape
         if ( !hasCurly && hasDot ) {
-            checkCurlyEnd( seg, indexOfInnerCurlySegmentEnd( seg ) );
+            checkCurlyEnd( seg, indexOfInnerCurlySegmentEnd( seg ), context );
             return "{"+seg+"}";
         }
         // common special case: has a square but no curly or dot => only needs escaping when open + close square
@@ -173,20 +209,19 @@ public record JsonPath(List<Text> segments) {
         // special case: has curly open but no valid curly close => plain or dot works
         int end = indexOfInnerCurlySegmentEnd( seg );
         if (!hasDot && end < 1) return seg.charAt( 0 ) == '{' ? "."+seg : seg.toString();
-        checkCurlyEnd( seg, end );
+        checkCurlyEnd( seg, end, context );
         return "{"+seg+"}";
     }
 
     /**
-     * a } at the very end is ok since escaping that again {...} makes it an invalid end
-     * so then effectively there is no valid on in the escaped name
+     * a } at the very end is ok since escaping that again {...} makes it an invalid end so then
+     * effectively there is no valid on in the escaped name
      */
-    private void checkCurlyEnd(Text seg, int end) {
-        if ( end > 0 && end < seg.length()-1)
-            throw new JsonPathException( this,
-                "Path segment %s in path %s cannot be escaped without causing a misunderstanding when split via JsonPath.of(String)".formatted(
-                    seg, this ));
-
+    private static void checkCurlyEnd(Text seg, int end, JsonPath context) {
+        if (end > 0 && end < seg.length() - 1) {
+            if (context == null) context = new JsonPath(List.of(seg));
+            throw new JsonPathException(context, "Path segment %s cannot be escaped".formatted(seg));
+        }
     }
 
     private static boolean hasInnerSquareSegment(Text seg) {
@@ -217,30 +252,46 @@ public record JsonPath(List<Text> segments) {
      */
     private static List<Text> splitIntoSegments( Text path )
         throws JsonPathException {
+        // fast path when there is no syntax present (plain name)
+        if (!isEscapingRequired( path )) return List.of(path);
+        // slow path
         int len = path.length();
         int i = 0;
-        int s = 0;
+        int start = 0;
+        int end = 0;
         List<Text> res = new ArrayList<>();
         while ( i < len ) {
             if ( isDotSegmentOpen( path, i ) ) {
                 i++; // advance past the .
+                start = i;
                 if ( i < len && path.charAt( i ) != '.' ) {
                     i++; // if it is not a dot the first char after the . is never a start of next segment
                     while ( i < len && !isDotSegmentClose( path, i ) ) i++;
                 }
+                end = i;
+                if (start == end) start -= 1;
             } else if ( isSquareSegmentOpen( path, i ) ) {
+                i++;
+                start = i;
                 while ( !isSquareSegmentClose( path, i ) ) i++;
-                i++; // include the ]
+                end = i;
+                i++; // most past ]
             } else if ( isCurlySegmentOpen( path, i ) ) {
+                i++;
+                start = i;
                 while ( !isCurlySegmentClose( path, i ) ) i++;
-                i++; // include the }
+                end = i;
+                i++; // most past }
             } else throw new JsonPathException( path.toString(),
                 "Malformed path %s, invalid start of segment at position %d.".formatted( path, i ) );
-            res.add( path.subSequence( s, i ) );
-            s = i;
+            res.add( path.subSequence( start, end ) );
         }
         // make immutable
         return List.copyOf( res );
+    }
+
+    private static boolean isEscapingRequired( Text path ) {
+        return path.contains( '.' ) || path.contains( '{' ) || path.contains( '[' );
     }
 
     private static boolean isDotSegmentOpen( Text path, int index ) {

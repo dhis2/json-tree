@@ -43,7 +43,6 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.IntConsumer;
 import java.util.function.Predicate;
 import java.util.stream.StreamSupport;
 import org.hisp.dhis.jsontree.internal.Maybe;
@@ -517,20 +516,19 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return element( index.parseInt(), index, true );
         }
 
-        private JsonPathException outOfBounds(int index) {
+        private JsonPathException outOfBounds(int index, int size) {
             JsonPath elementPath = path.extendedWith( index );
-            String msg = "Path `%s` does not exist".formatted( elementPath );
-            if (size != null) msg += ", array `%s` has only `%d` elements".formatted( getPath(), size );
-            throw new JsonPathException( elementPath, msg);
+            throw new JsonPathException( elementPath,
+                "Path `%s` does not exist, array `%s` has only `%d` elements.".formatted( elementPath, path, size ));
         }
 
         private JsonNode element( int index, Text segment, boolean orNull )
             throws JsonPathException {
             if ( index < 0 )
-                throw outOfBounds( index );
+                throw outOfBounds( index, size() );
             if (size != null && index >= size) {
                 // early exit for a miss
-                if (!orNull) throw outOfBounds( index );
+                if (!orNull) throw outOfBounds( index, size );
                 return null;
             }
             JsonPath elementPath = path.extendedWith( segment );
@@ -540,7 +538,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             if (index == 0) {
                 int i = skipWhitespace( json, expectChar( json, start, '[' ) );
                 if (json[i] == ']') {
-                    if (!orNull) throw outOfBounds( 0 );
+                    if (!orNull) throw outOfBounds( 0, 0 );
                     return null;
                 }
                 return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, i ) );
@@ -550,7 +548,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             if (predecessor != null) {
                 int i = skipWhitespace( json, expectCommaOrEnd( json, predecessor.endIndex(), ']' ));
                 if (json[i] == ']') {
-                    if (!orNull) throw outOfBounds( index - 1 );
+                    if (!orNull) throw outOfBounds( index, index );
                     return null;
                 }
                 return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, i ) );
@@ -565,7 +563,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 elementsToSkip--;
             }
             if ( json[i] == ']' ) {
-                if (!orNull) throw  outOfBounds( index - elementsToSkip );
+                if (!orNull) throw  outOfBounds( index, index - elementsToSkip );
                 return null;
             }
             int eStart = i;
@@ -657,8 +655,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         Boolean parseValue() {
-            end = skipBoolean( tree.json, start );
-            return end == start + 4; // then it was true
+            return endIndex() == start + 4; // then it was true
         }
     }
 
@@ -675,7 +672,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         Serializable parseValue() {
-            end = skipNull( tree.json, start );
+            if (end == null)
+                end = skipNull( tree.json, start );
             return null;
         }
     }
@@ -763,7 +761,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     }
 
     private static JsonNode getClosestIndexedParent( JsonPath path, Map<JsonPath, JsonNode> nodesByPath ) {
-        JsonPath parentPath = path.dropLastSegment();
+        JsonPath parentPath = path.parentPath();
         JsonNode parent = nodesByPath.get( parentPath );
         if ( parent != null ) {
             return parent;

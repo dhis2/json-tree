@@ -51,6 +51,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.lang.Character.isUpperCase;
 import static java.lang.Character.toLowerCase;
@@ -114,6 +115,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     private static final Map<Method, MethodHandle> OTHER_MH_CACHE = new ConcurrentHashMap<>();
 
     private final @Surly JsonNode root;
+    //TODO use JsonPath
     private final @Surly String path;
     private transient @Surly JsonAccessors accessors;
 
@@ -243,30 +245,31 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public List<String> stringValues() {
-        return arrayList( String.class );
+        return arrayList( Text.class, Text::toString );
     }
 
     @Override
     public List<Number> numberValues() {
-        return arrayList( Number.class );
+        return arrayList( Number.class, Function.identity() );
     }
 
     @Override
     public List<Boolean> boolValues() {
-        return arrayList( Boolean.class );
+        return arrayList( Boolean.class, Function.identity() );
     }
 
-    @SuppressWarnings( "unchecked" )
-    private <T> List<T> arrayList( Class<T> elementType ) {
+    private <T, E> List<T> arrayList( Class<E> elementType, Function<E,T> map) {
         return value( JsonNodeType.ARRAY, node -> {
-            List<T> res = new ArrayList<>();
+            if (node.isEmpty()) return List.of();
+            List<T> res = new ArrayList<>(size());
             for ( JsonNode e : node.elements() ) {
-                Object value = e.value();
+                @SuppressWarnings( "unchecked" )
+                E value = (E) e.value();
                 if ( !elementType.isInstance( value ) ) {
                     throw new JsonTreeException(
                         "Array element is not a " + elementType.getName() + ": " + e.getDeclaration() );
                 }
-                res.add( (T) value );
+                res.add( map.apply( value ) );
             }
             return res;
         }, List.of() );
@@ -288,15 +291,16 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
-    public String string() {
-        return (String) value( JsonNodeType.STRING, JsonNode::value, null );
+    public Text text() {
+        return  (Text) value( JsonNodeType.STRING, JsonNode::value, null );
     }
 
     @Override
     public boolean exists() {
         try {
+            //FIXME I think we need a JsonNode exists => also avoid exception to check as this check is used a lot
             return root.getOrNull( path ) != null;
-        } catch ( JsonPathException ex ) {
+        } catch ( JsonTreeException ex ) {
             return false;
         }
     }

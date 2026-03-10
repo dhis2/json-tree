@@ -133,21 +133,21 @@ public interface Text extends CharSequence {
      * @see String#startsWith(String)
      */
     default boolean startsWith(CharSequence prefix) {
-        return indexOf( prefix ) == 0;
+        return startsWith( prefix, 0 );
     }
 
     /**
      * @see String#startsWith(String, int)
      */
     default boolean startsWith(CharSequence prefix, int startIndex) {
-        return indexOf( prefix, startIndex ) == 0;
+        return regionMatches(startIndex, prefix);
     }
 
     /**
      * @see String#endsWith(String)
      */
     default boolean endsWith(CharSequence suffix) {
-        return startsWith( suffix, length() - suffix.length() );
+        return regionMatches(length() - suffix.length(), suffix);
     }
 
     /**
@@ -234,26 +234,6 @@ public interface Text extends CharSequence {
     }
 
     /**
-     * @return An array index as {@link Text} (like used in a {@link JsonPath} segment)
-     */
-    static Text of(int index) {
-        if (index < 0) throw new IllegalArgumentException("Must be >= 0");
-        if (index < 10) return of(new char[] { (char) ('0' + index) }, 0, 1);
-        int rest = index;
-        int n = 0;
-        while (rest > 0) {
-            n++;
-            rest /= 10;
-        }
-        char[] digits = new char[n];
-        for (int i = n - 1; i >= 0; i--) {
-            digits[i] = (char) ('0' + (index % 10));
-            index /= 10;
-        }
-        return of(digits, 0, digits.length);
-    }
-
-    /**
      * @apiNote This method will not make a defensive copy of the given buffer as the main use case is
      *     to use {@link Text} as a shallow "pointer" to slices on the same underlying #buffer.
      *     Only arrays that are not mutated any longer should be passed.
@@ -312,10 +292,51 @@ public interface Text extends CharSequence {
 
             @Override
             public String toString() {
-                return new String(buffer, offset, length);
+                return length == 1
+                    ? String.valueOf( buffer[offset] )
+                    : new String(buffer, offset, length);
             }
         }
         return new Slice( buffer, offset, length );
+    }
+
+    /**
+     * @return An array index as {@link Text} (like used in a {@link JsonPath} segment)
+     */
+    static Text of(int index) {
+        /**
+         * @implNote A private cache for digits of 0-999.
+         * It saves on allocation of a character buffer and increases the chance
+         * of the characters already being in CPU cache as we reuse the same
+         * memory region for small-ish indexes.
+         */
+        record Local() {
+            static final char[] _100_TO_999 = new char[900*3];
+            static {
+                int j = 0;
+                for (int i = 100; i < 1000; i++) {
+                    _100_TO_999[j++] = (char)('0'+i/100);
+                    _100_TO_999[j++] = (char)('0'+(i%100/10));
+                    _100_TO_999[j++] = (char)('0'+i%10);
+                }
+            }
+        }
+        if (index < 0) throw new IllegalArgumentException("Index must be >= 0 but was: "+index);
+        if (index < 10) return of(Local._100_TO_999, index * 3 + 2, 1);
+        if (index < 100) return of(Local._100_TO_999, index * 3 + 1, 2);
+        if (index < 1000) return of(Local._100_TO_999, (index - 100) * 3, 3);
+        int rest = index;
+        int n = 0;
+        while (rest > 0) {
+            n++;
+            rest /= 10;
+        }
+        char[] digits = new char[n];
+        for (int i = n - 1; i >= 0; i--) {
+            digits[i] = (char) ('0' + (index % 10));
+            index /= 10;
+        }
+        return of(digits, 0, digits.length);
     }
 
     private static void checkSubSequence( int start, int end, int length ) {
@@ -340,15 +361,18 @@ public interface Text extends CharSequence {
     static int hashCode(Text text) {
         if (text.isEmpty()) return 0;
         int hash = 1;
-        int sampleSize = 10;
+        int sampleSize = 9;
         int length = text.length();
         if (length <= sampleSize) {
             for (int i = 0; i < length; i++)
                 hash = 31 * hash + text.charAt(i);
         } else {
-            int stride = length / sampleSize;
+            // take characters as evenly spaced as possible
+            // while including both ends though linear interpolation
+            int step = length - 1;
             for (int i = 0; i < sampleSize; i++)
-                hash = 31 * hash + text.charAt(i * stride);
+                // index is equivalent to: i * step / (sampleSize - 1)
+                hash = 31 * hash + text.charAt(i * step >> 3);
         }
         return hash;
     }

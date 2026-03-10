@@ -56,7 +56,7 @@ class JsonTreeTest {
     void testStringNode() {
         JsonNode node = JsonNode.of( "\"hello\"" );
         assertEquals( JsonNodeType.STRING, node.getType() );
-        assertEquals( "hello", node.value() );
+        assertEquals( "hello", node.value().toString() );
         assertEquals( 0, node.startIndex() );
         assertSame( node, node.getParent() );
         assertSame( node, node.getRoot() );
@@ -67,7 +67,7 @@ class JsonTreeTest {
         // use an array to see that unicode skipping works as well
         JsonNode node0 = JsonNode.of( "[\"Star \\uD83D\\uDE80 ship\", 12]" ).get( "[0]" );
         assertEquals( JsonNodeType.STRING, node0.getType() );
-        assertEquals( "Star \uD83D\uDE80 ship", node0.value() );
+        assertEquals( "Star \uD83D\uDE80 ship", node0.value().toString() );
         JsonNode node1 = JsonNode.of( "[\"Star \\uD83D\\uDE80 ship\", 12]" ).get( "[1]" );
         assertEquals( JsonNodeType.NUMBER, node1.getType() );
         assertEquals( 12, node1.value() );
@@ -76,7 +76,7 @@ class JsonTreeTest {
     @Test
     void testStringNode_EscapedChars() {
         JsonNode node = JsonNode.of( "\"\\\\\\/\\t\\r\\n\\f\\b\\\"\"" );
-        assertEquals( "\\/\t\r\n\f\b\"", node.value() );
+        assertEquals( "\\/\t\r\n\f\b\"", node.value().toString() );
     }
 
     @Test
@@ -229,7 +229,7 @@ class JsonTreeTest {
         assertEquals( 2, e1.value() );
         assertEquals( true, e2.value() );
         assertEquals( false, e3.value() );
-        assertEquals( "hello", e4.value() );
+        assertEquals( "hello", e4.value().toString() );
         assertEquals( "{}", e5.getDeclaration() );
         assertEquals( "[]", e6.getDeclaration() );
 
@@ -246,7 +246,7 @@ class JsonTreeTest {
         assertEquals( 2, root.element( 1 ).value() );
         assertEquals( true, root.element( 2 ).value() );
         assertEquals( false, root.element( 3 ).value() );
-        assertEquals( "hello", root.element( 4 ).value() );
+        assertEquals( "hello", root.element( 4 ).value().toString() );
         assertEquals( "{}", root.element( 5 ).getDeclaration() );
         assertEquals( "[]", root.element( 6 ).getDeclaration() );
     }
@@ -257,7 +257,7 @@ class JsonTreeTest {
 
         assertEquals( "[]", root.element( 6 ).getDeclaration() );
         assertEquals( "{}", root.element( 5 ).getDeclaration() );
-        assertEquals( "hello", root.element( 4 ).value() );
+        assertEquals( "hello", root.element( 4 ).value().toString() );
         assertEquals( false, root.element( 3 ).value() );
         assertEquals( true, root.element( 2 ).value() );
         assertEquals( 2, root.element( 1 ).value() );
@@ -268,7 +268,7 @@ class JsonTreeTest {
     void testArray_IndexAccessElementsRandomOrder() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
-        assertEquals( "hello", root.element( 4 ).value() );
+        assertEquals( "hello", root.element( 4 ).value().toString() );
         assertEquals( "[]", root.element( 6 ).getDeclaration() );
         assertEquals( "{}", root.element( 5 ).getDeclaration() );
         assertEquals( 2, root.element( 1 ).value() );
@@ -446,7 +446,7 @@ class JsonTreeTest {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : [12, false] } }" );
 
         JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.get( ".a.b[3]" ) );
-        assertEquals( "Path `.a.b[3]` does not exist, array `.a.b` has only `2` elements.",
+        assertEquals( "Path `.a.b.3` does not exist, array `.a.b` has only `2` elements.",
             ex.getMessage() );
     }
 
@@ -463,7 +463,7 @@ class JsonTreeTest {
         JsonNode doc = JsonNode.of( "{\"a\": { \"b\" : 42 } }" );
 
         JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.get( ".a.b[1]" ) );
-        assertEquals( "Path `.a.b[1]` does not exist, parent `.a.b` is not an ARRAY but a NUMBER node.",
+        assertEquals( "Path `.a.b.1` does not exist, parent `.a.b` is already a simple node of type NUMBER.",
             ex.getMessage() );
     }
 
@@ -472,7 +472,7 @@ class JsonTreeTest {
         JsonNode doc = JsonNode.of( "{\"a\": 42 }" );
 
         JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.get( ".a.b.[1]" ) );
-        assertEquals( "Path `.a.b.[1]` does not exist, parent `.a` is not an OBJECT but a NUMBER node.",
+        assertEquals( "Path `.a.b.[1]` does not exist, parent `.a` is already a simple node of type NUMBER.",
             ex.getMessage() );
     }
 

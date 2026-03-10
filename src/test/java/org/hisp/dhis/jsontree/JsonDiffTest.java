@@ -57,12 +57,12 @@ class JsonDiffTest {
     assertNoDiff("[ true, 42 ]", "[true, 42]");
     assertNoDiff("[ 42, true ]", "[true, 42]", STRICT.anyOrder());
     assertNoDiff("[ \"a\", 42, true ]", "[true, \"a\", 42]", STRICT.anyOrder());
-    assertDiff("[1,2,3]", "[1,5,3]", "!= $[1]: 2 <> 5");
+    assertDiff("[1,2,3]", "[1,5,3]", "!= $.1: 2 <> 5");
     assertNoDiff("[1,2,3]", "[1,3,2]", LENIENT);
     assertNoDiff("[1,2,3]", "[1,3,2,5]", LENIENT);
-    assertDiff("[1,2,3]", "[1,3,2,5]", STRICT.anyOrder(), "++ $[3]: ? <> 5");
-    assertDiff("[ true, 42, 678 ]", "[true, 42]", "-- $[2]: 678 <> ?");
-    assertDiff("[ true, 42 ]", "[true, 42, 678]", "++ $[2]: ? <> 678");
+    assertDiff("[1,2,3]", "[1,3,2,5]", STRICT.anyOrder(), "++ $.3: ? <> 5");
+    assertDiff("[ true, 42, 678 ]", "[true, 42]", "-- $.2: 678 <> ?");
+    assertDiff("[ true, 42 ]", "[true, 42, 678]", "++ $.2: ? <> 678");
   }
 
   @Test
@@ -74,7 +74,7 @@ class JsonDiffTest {
     assertNoDiff("{\"a\": 1, \"b\":2}", "{ \"b\": 2, \"c\": 42, \"a\": 1}", LENIENT);
     assertDiff(
         "{ \"b\": 2, \"c\": 42, \"a\": 1}", "{\"a\": 1, \"b\":2}", LENIENT, "-- $.c: 42 <> ?");
-    assertDiff("{\"a\":[1,2,3]}", "{\"a\":[1,5,3]}", "!= $.a[1]: 2 <> 5");
+    assertDiff("{\"a\":[1,2,3]}", "{\"a\":[1,5,3]}", "!= $.a.1: 2 <> 5");
   }
 
   @Test
@@ -158,9 +158,9 @@ class JsonDiffTest {
     assertDiff(
         JsonValue.of("{\"numbers\":[[1],[1,2],[1,2,3]]}"),
         JsonValue.of("{\"numbers\":[[2,1], [1],[3,1,2]]}").as(JsonAnyAnnotationObject.class),
-        "++ $.numbers[0][1]: ? <> 1",
-        "!= $.numbers[0][0]: 1 <> 2",
-        "-- $.numbers[1][1]: 2 <> ?");
+        "++ $.numbers.0.1: ? <> 1",
+        "!= $.numbers.0.0: 1 <> 2",
+        "-- $.numbers.1.1: 2 <> ?");
   }
 
   private interface JsonTypeDefaultsObject extends JsonObject {

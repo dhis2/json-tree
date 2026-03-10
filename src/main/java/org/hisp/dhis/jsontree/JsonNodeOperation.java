@@ -31,7 +31,7 @@ sealed public interface JsonNodeOperation {
 
     static String parentPath( String path ) {
         //TODO move callers to JsonPath
-        return JsonPath.of( path ).dropLastSegment().toString();
+        return JsonPath.of( path ).parentPath().toString();
     }
 
     /**
