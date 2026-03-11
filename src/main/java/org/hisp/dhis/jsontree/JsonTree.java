@@ -154,7 +154,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        public final JsonNode replaceWith( String json ) {
+        public final JsonNode replaceWith( CharSequence json ) {
             if ( isRoot() ) return JsonNode.of( json );
             int endIndex = endIndex();
             StringBuilder newJson = new StringBuilder();
@@ -166,7 +166,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             if ( endIndex < oldJson.length ) {
                 newJson.append( oldJson, endIndex, oldJson.length - endIndex );
             }
-            return JsonNode.of( newJson.toString() );
+            return JsonNode.of( newJson );
         }
 
         @Override

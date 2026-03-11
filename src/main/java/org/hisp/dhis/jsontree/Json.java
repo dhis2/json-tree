@@ -50,7 +50,7 @@ public interface Json {
     }
 
     static JsonInteger of( int value ) {
-        return JsonMixed.of( String.valueOf( value ) );
+        return JsonMixed.of( Text.of( value ) );
     }
 
     static JsonInteger of( long value ) {

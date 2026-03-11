@@ -315,32 +315,30 @@ final class Chars {
     private static char[] fromUTF8( byte[] src) {
         char[] dest = new char[src.length];
         int offset = 0;
-
         for (int i = 0; i < src.length; ) {
             int b = src[i++] & 0xFF;            // treat as unsigned
             if (b < 0x80) {                     // 0xxxxxxx (ASCII)
                 dest[offset++] = (char) b;
             } else if ((b & 0xE0) == 0xC0) {    // 110xxxxx → 2 bytes
-                int codePoint = ((b & 0x1F) << 6) | (src[i++] & 0x3F);
-                dest[offset++] = (char) codePoint;
+                int cp = ((b & 0x1F) << 6) | (src[i++] & 0x3F);
+                dest[offset++] = (char) cp;
             } else if ((b & 0xF0) == 0xE0) {    // 1110xxxx → 3 bytes
-                int codePoint = ((b & 0x0F) << 12) | ((src[i++] & 0x3F) << 6) | (src[i++] & 0x3F);
-                dest[offset++] = (char) codePoint;
+                int cp = ((b & 0x0F) << 12) | ((src[i++] & 0x3F) << 6) | (src[i++] & 0x3F);
+                dest[offset++] = (char) cp;
             } else if ((b & 0xF8) == 0xF0) {    // 11110xxx → 4 bytes (supplementary)
-                int codePoint = ((b & 0x07) << 18) | ((src[i++] & 0x3F) << 12) |
+                int cp = ((b & 0x07) << 18) | ((src[i++] & 0x3F) << 12) |
                     ((src[i++] & 0x3F) << 6) | (src[i++] & 0x3F);
                 // Convert to surrogate pair
-                codePoint -= 0x10000;
-                dest[offset++] = (char) (0xD800 | (codePoint >> 10));
-                dest[offset++] = (char) (0xDC00 | (codePoint & 0x3FF));
+                cp -= 0x10000;
+                dest[offset++] = (char) (0xD800 | (cp >> 10));
+                dest[offset++] = (char) (0xDC00 | (cp & 0x3FF));
             } else {
                 // Invalid UTF‑8 – you may decide to insert a replacement character
                 dest[offset++] = '�'; // replacement character
             }
         }
         // over-allocated slots become space
-        if (offset < dest.length)
-            Arrays.fill(dest, offset, dest.length, ' ');
+        if (offset < dest.length) Arrays.fill(dest, offset, dest.length, ' ');
         return dest;
     }
 }

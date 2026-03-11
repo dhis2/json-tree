@@ -371,20 +371,25 @@ public interface Text extends CharSequence {
      * @return An array index as {@link Text} (like used in a {@link JsonPath} segment)
      */
     static Text of(int index) {
-        if (index < 0) throw new IllegalArgumentException("Index must be >= 0 but was: "+index);
-        if (index < 10) return of( Cache._100_TO_999, index * 3 + 2, 1);
-        if (index < 100) return of( Cache._100_TO_999, index * 3 + 1, 2);
-        if (index < 1000) return of( Cache._100_TO_999, (index - 100) * 3, 3);
-        int rest = index;
-        int n = 0;
+        if (index >= 0) {
+            if (index < 10) return of(Cache._100_TO_999, index * 3 + 2, 1);
+            if (index < 100) return of(Cache._100_TO_999, index * 3 + 1, 2);
+            if (index < 1000) return of(Cache._100_TO_999, (index - 100) * 3, 3);
+        }
+        boolean neg = index < 0;
+        int rest = Math.abs(index);
+        int n0 = neg ? 1 : 0;
+        int n = n0;
         while (rest > 0) {
             n++;
             rest /= 10;
         }
         char[] digits = new char[n];
-        for (int i = n - 1; i >= 0; i--) {
-            digits[i] = (char) ('0' + (index % 10));
-            index /= 10;
+        if (neg) digits[0] = '-';
+        rest = Math.abs(index);
+        for (int i = n - 1; i >= n0; i--) {
+            digits[i] = (char) ('0' + (rest % 10));
+            rest /= 10;
         }
         return of(digits, 0, digits.length);
     }

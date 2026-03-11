@@ -97,7 +97,7 @@ public interface JsonValue {
      * @param json a valid JSON string
      * @return virtual JSON tree root {@link JsonValue}
      */
-    static JsonValue of( String json ) {
+    static JsonValue of( CharSequence json ) {
         return of( json, JsonAccess.GLOBAL );
     }
 
@@ -106,12 +106,14 @@ public interface JsonValue {
      * mapping to Java method return type.
      *
      * @param json  a valid JSON string
-     * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
+     * @param accessors mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return virtual JSON tree root {@link JsonValue}
      */
-    static JsonValue of( String json, @Surly JsonAccessors store ) {
-        return json == null || "null".equals( json ) ? JsonVirtualTree.NULL : JsonMixed.of( json, store );
+    static JsonValue of( CharSequence json, @Surly JsonAccessors accessors ) {
+        return json == null || "null".contentEquals( json )
+            ? JsonVirtualTree.NULL
+            : JsonMixed.of( json, accessors );
     }
 
     /**

@@ -45,7 +45,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @param json a standard conform JSON string
      * @return root of the virtual tree representing the given JSON input
      */
-    static JsonMixed of( String json ) {
+    static JsonMixed of( CharSequence json ) {
         return of( json, JsonAccess.GLOBAL );
     }
 
@@ -54,12 +54,14 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * mapping to Java method return type.
      *
      * @param json  a standard conform JSON string
-     * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
+     * @param accessors mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return root of the virtual tree representing the given JSON input
      */
-    static JsonMixed of( String json, @Surly JsonAccessors store ) {
-        return new JsonVirtualTree( json, store );
+    static JsonMixed of( CharSequence json, @Surly JsonAccessors accessors ) {
+        return json == null || "null".contentEquals( json )
+            ? JsonVirtualTree.NULL
+            : new JsonVirtualTree( json, accessors );
     }
 
     /**

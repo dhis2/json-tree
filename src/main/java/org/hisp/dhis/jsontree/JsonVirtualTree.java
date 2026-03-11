@@ -117,7 +117,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     private JsonNode node; // remember once it was resolved from root
     private transient @Surly JsonAccessors accessors;
 
-    public JsonVirtualTree( @Maybe String json, @Surly JsonAccessors accessors ) {
+    public JsonVirtualTree( @Maybe CharSequence json, @Surly JsonAccessors accessors ) {
         this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), JsonPath.ROOT, accessors);
     }
 

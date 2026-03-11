@@ -11,7 +11,7 @@ import java.util.Objects;
  *
  * <p>An array index path is indistinguishable from a numeric object member name.
  *
- * <p>When constructed from a user input {@link String} in {@link #of(String)} the provided string
+ * <p>When constructed from a user input {@link String} in {@link #of(CharSequence)} the provided string
  * might require splitting into segments. Therefore, there is a syntax to indicate
  * segments. The most common form is the {@code .}-syntax where dot marks the start of a segment.
  * The initial segment can omit the leading dot.
@@ -59,8 +59,10 @@ public record JsonPath(JsonPath parent, Text segment) {
      * @return the provided path as {@link JsonPath} object
      * @throws JsonPathException when the path cannot be split into segments as it is not a valid path
      */
-    public static JsonPath of( String path ) {
+    public static JsonPath of( CharSequence path ) {
         if (path.isEmpty()) return ROOT;
+        if (path instanceof Text t) return new JsonPath( null, t );
+        //TODO write a test that checks if an object with a member using the empty string as member name works
         return splitPath( null, Text.of( path ) );
     }
 
@@ -210,7 +212,7 @@ public record JsonPath(JsonPath parent, Text segment) {
      * @param literally the plain segment name to escape in syntax
      * @return the normalized, potentially escaped segment name
      * @throws JsonPathException in case the segment is impossible to represent without being
-     *     misinterpreted when converting it back using {@link JsonPath#of(String)}
+     *     misinterpreted when converting it back using {@link JsonPath#of(CharSequence)}
      * @since 1.9
      */
     public static String escape(Text literally) throws JsonPathException {
