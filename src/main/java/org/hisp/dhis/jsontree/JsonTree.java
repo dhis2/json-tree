@@ -72,8 +72,10 @@ import org.hisp.dhis.jsontree.internal.Surly;
 record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPath, @Maybe JsonNode.GetListener onGet)
     implements Serializable {
 
-    static JsonNode of( @Surly String json, @Maybe JsonNode.GetListener onGet ) {
-        return of( json.toCharArray(), onGet );
+    static JsonNode of( @Surly CharSequence json, @Maybe JsonNode.GetListener onGet ) {
+        if (json instanceof String s) return of( s.toCharArray(), onGet );
+        if (json instanceof Text t) return of(t.toCharArray(), onGet);
+        return of(Text.of( json ).toCharArray(), onGet);
     }
 
     /**
@@ -123,12 +125,11 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return path;
         }
 
-        //TODO change return type to Text?
         @Override
-        public final String getDeclaration() {
+        public final Text getDeclaration() {
             return path.isEmpty() // avoid parse caused by endIndex() if root
-                ? new String( tree.json )
-                : new String( tree.json, start, endIndex() - start );
+                ? Text.of(tree.json, 0, tree.json.length)
+                : Text.of( tree.json, start, endIndex() - start );
         }
 
         @Override
@@ -190,7 +191,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public final String toString() {
-            return getDeclaration();
+            return getDeclaration().toString();
         }
 
         @Override

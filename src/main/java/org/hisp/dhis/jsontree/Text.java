@@ -192,7 +192,7 @@ public interface Text extends CharSequence {
     }
 
     /**
-     * @see String#toCharArray() 
+     * @see String#toCharArray()
      */
     default char[] toCharArray() {
         char[] arr = new char[length()];
@@ -334,7 +334,8 @@ public interface Text extends CharSequence {
             }
 
             @Override public char[] toCharArray() {
-                return Arrays.copyOfRange( buffer, offset, offset+length);
+                return
+                    Arrays.copyOfRange( buffer, offset, offset+length);
             }
 
             @Override

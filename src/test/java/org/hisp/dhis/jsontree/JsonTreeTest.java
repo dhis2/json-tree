@@ -230,8 +230,8 @@ class JsonTreeTest {
         assertEquals( true, e2.value() );
         assertEquals( false, e3.value() );
         assertEquals( "hello", e4.value().toString() );
-        assertEquals( "{}", e5.getDeclaration() );
-        assertEquals( "[]", e6.getDeclaration() );
+        assertEquals( "{}", e5.getDeclaration().toString() );
+        assertEquals( "[]", e6.getDeclaration().toString() );
 
         JsonNode e0kept = root.elements( true ).next();
         assertNotSame( e0, e0kept );
@@ -247,16 +247,16 @@ class JsonTreeTest {
         assertEquals( true, root.element( 2 ).value() );
         assertEquals( false, root.element( 3 ).value() );
         assertEquals( "hello", root.element( 4 ).value().toString() );
-        assertEquals( "{}", root.element( 5 ).getDeclaration() );
-        assertEquals( "[]", root.element( 6 ).getDeclaration() );
+        assertEquals( "{}", root.element( 5 ).getDeclaration().toString() );
+        assertEquals( "[]", root.element( 6 ).getDeclaration().toString() );
     }
 
     @Test
     void testArray_IndexAccessElementsReverseOrder() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
-        assertEquals( "[]", root.element( 6 ).getDeclaration() );
-        assertEquals( "{}", root.element( 5 ).getDeclaration() );
+        assertEquals( "[]", root.element( 6 ).getDeclaration().toString() );
+        assertEquals( "{}", root.element( 5 ).getDeclaration().toString() );
         assertEquals( "hello", root.element( 4 ).value().toString() );
         assertEquals( false, root.element( 3 ).value() );
         assertEquals( true, root.element( 2 ).value() );
@@ -269,8 +269,8 @@ class JsonTreeTest {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
         assertEquals( "hello", root.element( 4 ).value().toString() );
-        assertEquals( "[]", root.element( 6 ).getDeclaration() );
-        assertEquals( "{}", root.element( 5 ).getDeclaration() );
+        assertEquals( "[]", root.element( 6 ).getDeclaration().toString() );
+        assertEquals( "{}", root.element( 5 ).getDeclaration().toString() );
         assertEquals( 2, root.element( 1 ).value() );
         assertEquals( false, root.element( 3 ).value() );
         assertEquals( true, root.element( 2 ).value() );
@@ -308,7 +308,7 @@ class JsonTreeTest {
         assertEquals( JsonNodeType.ARRAY, ab.getType() );
         assertFalse( ab.isEmpty() );
         assertEquals( 2, ab.size() );
-        assertEquals( "[12, false]", ab.getDeclaration() );
+        assertEquals( "[12, false]", ab.getDeclaration().toString() );
         assertSame( a, ab.getParent() );
         assertSame( root, ab.getRoot() );
 
@@ -362,11 +362,11 @@ class JsonTreeTest {
                 "obj": {"x": { "y.z": { "answer": 42 }}}
             }""";
         JsonNode doc = JsonNode.of( json );
-        assertEquals( "\"d\"", doc.get( "a{b.c}" ).getDeclaration() );
-        assertEquals( "42", doc.get( "{some.thing}" ).getDeclaration() );
-        assertEquals( "42", doc.get( "{foo.bar}.answer" ).getDeclaration() );
-        assertEquals( "42", doc.get( "x{y.z}.answer" ).getDeclaration() );
-        assertEquals( "42", doc.get( "obj.x{y.z}.answer" ).getDeclaration() );
+        assertEquals( "\"d\"", doc.get( "a{b.c}" ).getDeclaration().toString() );
+        assertEquals( "42", doc.get( "{some.thing}" ).getDeclaration().toString() );
+        assertEquals( "42", doc.get( "{foo.bar}.answer" ).getDeclaration().toString() );
+        assertEquals( "42", doc.get( "x{y.z}.answer" ).getDeclaration().toString() );
+        assertEquals( "42", doc.get( "obj.x{y.z}.answer" ).getDeclaration().toString() );
     }
 
     @Test
@@ -507,7 +507,7 @@ class JsonTreeTest {
     @Test
     void testAddMembers_Empty() {
         JsonNode num = JsonNode.of( "{}" ).addMember( "num", "1" );
-        assertEquals( "{\"num\":1}", num.getDeclaration() );
+        assertEquals( "{\"num\":1}", num.getDeclaration().toString() );
         assertSame( num, num.addMembers( JsonNode.of( "{}" ) ) );
         JsonNode root = JsonBuilder.createObject( obj -> obj
             .addNumber( "num", 42 )
@@ -519,13 +519,13 @@ class JsonTreeTest {
     void testAddMembers_Multiple() {
         assertEquals( "{\"num\":1,\"str\":\"hello\"}", JsonNode.of( "{}" ).addMembers( obj -> obj
             .addNumber( "num", 1 )
-            .addString( "str", "hello" ) ).getDeclaration() );
+            .addString( "str", "hello" ) ).getDeclaration().toString() );
     }
 
     @Test
     void testAddMembers_Replace() {
         assertEquals( "{\"num\":2}", JsonNode.of( "{\"num\":1}" ).addMembers(
-            obj -> obj.addNumber( "num", 2 ) ).getDeclaration() );
+            obj -> obj.addNumber( "num", 2 ) ).getDeclaration().toString() );
     }
 
     @Test
@@ -533,7 +533,7 @@ class JsonTreeTest {
         JsonNode before = JsonNode.EMPTY_OBJECT.addMembers( obj ->
             obj.addNumber( "num", 1 ).addString( "str", "hello" ).addBoolean( "bo", true ) );
         assertEquals( "{\"num\":1,\"bo\":true,\"str\":\"world\",\"pi\":3.1415}", before.addMembers(
-            obj -> obj.addString( "str", "world" ).addNumber( "pi", 3.1415d ) ).getDeclaration() );
+            obj -> obj.addString( "str", "world" ).addNumber( "pi", 3.1415d ) ).getDeclaration().toString() );
     }
 
     @Test
@@ -564,7 +564,7 @@ class JsonTreeTest {
             .addArray( "nums", arr -> arr.addNumbers( 1, 2, 3 ) ) );
 
         assertEquals( "{\"num\":1,\"right\":true}",
-            root.removeMembers( Set.of( "str", "foo", "nums" ) ).getDeclaration() );
+            root.removeMembers( Set.of( "str", "foo", "nums" ) ).getDeclaration().toString() );
     }
 
     @Test
@@ -575,7 +575,7 @@ class JsonTreeTest {
     @Test
     void testAddElements_Empty() {
         assertEquals( "[2,\"tree\"]", JsonNode.EMPTY_ARRAY.addElements( arr -> arr
-            .addNumber( 2 ).addString( "tree" ) ).getDeclaration() );
+            .addNumber( 2 ).addString( "tree" ) ).getDeclaration().toString() );
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 42 ) );
         assertSame( array, array.addElements( JsonNode.EMPTY_ARRAY ) );
         assertSame( array, JsonNode.EMPTY_ARRAY.addElements( array ) );
@@ -585,7 +585,7 @@ class JsonTreeTest {
     void testAddElements_Nested() {
         JsonNode root = JsonBuilder.createObject( obj -> obj
             .addArray( "a", arr -> arr.addNumber( 42 ) ) );
-        assertEquals( "{\"a\":[42,2]}", root.addElements( "a", arr -> arr.addNumber( 2 ) ).getDeclaration() );
+        assertEquals( "{\"a\":[42,2]}", root.addElements( "a", arr -> arr.addNumber( 2 ) ).getDeclaration().toString() );
         assertSame( root, root.addElements( "a", JsonNode.EMPTY_ARRAY ) );
     }
 
@@ -604,14 +604,14 @@ class JsonTreeTest {
     @Test
     void testPutElements_Flat() {
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 42 ) );
-        assertEquals( "[42,null,555]", array.putElements( 2, arr -> arr.addNumber( 555 ) ).getDeclaration() );
+        assertEquals( "[42,null,555]", array.putElements( 2, arr -> arr.addNumber( 555 ) ).getDeclaration().toString() );
     }
 
     @Test
     void testPutElements_Nested() {
         JsonNode root = JsonBuilder.createObject( obj -> obj.addArray( "arr", arr -> arr.addNumber( 42 ) ) );
         assertEquals( "{\"arr\":[\"hello\",42]}",
-            root.get( "arr" ).putElements( 0, arr -> arr.addString( "hello" ) ).getDeclaration() );
+            root.get( "arr" ).putElements( 0, arr -> arr.addString( "hello" ) ).getDeclaration().toString() );
         assertSame( root, root.get( "arr" ).putElements( 0, JsonNode.EMPTY_ARRAY ) );
     }
 
@@ -628,10 +628,10 @@ class JsonTreeTest {
         assertSame( JsonNode.EMPTY_ARRAY, JsonNode.EMPTY_ARRAY.removeElements( 0 ) );
         JsonNode array = JsonBuilder.createArray( arr -> arr.addNumber( 1 ).addNumber( 2 ).addNumber( 3 ) );
         assertSame( array, array.removeElements( 3 ) );
-        assertEquals( "[1,3]", array.removeElements( 1, 2 ).getDeclaration() );
-        assertEquals( "[3]", array.removeElements( 0, 2 ).getDeclaration() );
-        assertEquals( "[2,3]", array.removeElements( 0, 1 ).getDeclaration() );
-        assertEquals( "[1,2]", array.removeElements( 2, 5 ).getDeclaration() );
+        assertEquals( "[1,3]", array.removeElements( 1, 2 ).getDeclaration().toString() );
+        assertEquals( "[3]", array.removeElements( 0, 2 ).getDeclaration().toString() );
+        assertEquals( "[2,3]", array.removeElements( 0, 1 ).getDeclaration().toString() );
+        assertEquals( "[1,2]", array.removeElements( 2, 5 ).getDeclaration().toString() );
     }
 
     @Test
@@ -671,14 +671,14 @@ class JsonTreeTest {
 
     @Test
     void testOfNonStandard_SingleQuotes() {
-        assertEquals( "\"hello\"", JsonNode.ofNonStandard( "'hello'" ).getDeclaration() );
-        assertEquals( "{\"hello\":42}", JsonNode.ofNonStandard( "{'hello':42}" ).getDeclaration() );
-        assertEquals( "{\"hello\":\"you\"}", JsonNode.ofNonStandard( "{'hello':'you'}" ).getDeclaration() );
+        assertEquals( "\"hello\"", JsonNode.ofNonStandard( "'hello'" ).getDeclaration().toString() );
+        assertEquals( "{\"hello\":42}", JsonNode.ofNonStandard( "{'hello':42}" ).getDeclaration().toString() );
+        assertEquals( "{\"hello\":\"you\"}", JsonNode.ofNonStandard( "{'hello':'you'}" ).getDeclaration().toString() );
     }
 
     @Test
     void testOfNonStandard_DanglingCommas() {
-        assertEquals( "[1,2 ]", JsonNode.ofNonStandard( "[1,2,]" ).getDeclaration() );
-        assertEquals( "{\"a\":1 }", JsonNode.ofNonStandard( "{'a':1,}" ).getDeclaration() );
+        assertEquals( "[1,2 ]", JsonNode.ofNonStandard( "[1,2,]" ).getDeclaration().toString() );
+        assertEquals( "{\"a\":1 }", JsonNode.ofNonStandard( "{'a':1,}" ).getDeclaration().toString() );
     }
 }

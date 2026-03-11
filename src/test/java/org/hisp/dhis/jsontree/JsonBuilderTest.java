@@ -47,14 +47,14 @@ class JsonBuilderTest {
     void testCreateObject() {
         assertEquals( "{\"foo\":[\"bar\"]}",
             JsonBuilder.createObject( obj -> obj.addArray( "foo", arr -> arr.addString( "bar" ) ) )
-                .getDeclaration() );
+                .getDeclaration().toString() );
     }
 
     @Test
     void testCreateArray() {
         assertEquals( "[42,\"42\",true]",
             JsonBuilder.createArray( arr -> arr.addNumber( 42 ).addString( "42" ).addBoolean( true ) )
-                .getDeclaration() );
+                .getDeclaration().toString() );
     }
 
     @Test

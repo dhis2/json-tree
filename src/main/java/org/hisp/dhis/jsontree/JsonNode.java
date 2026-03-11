@@ -113,10 +113,9 @@ public interface JsonNode extends Serializable {
      * @return the given JSON input as {@link JsonNode} tree
      * @since 0.4
      */
-    static JsonNode of( String json ) {
+    static JsonNode of( CharSequence json ) {
         return of( json, null );
     }
-    //TODO add overload with Text
 
     /**
      * Create a new lazily parsed {@link JsonNode} tree.
@@ -152,7 +151,7 @@ public interface JsonNode extends Serializable {
      * @return the given JSON input as {@link JsonNode} tree
      * @since 0.10
      */
-    static JsonNode of( String json, GetListener onGet ) {
+    static JsonNode of( CharSequence json, GetListener onGet ) {
         return JsonTree.of( json, onGet );
     }
 
@@ -678,8 +677,7 @@ public interface JsonNode extends Serializable {
     /**
      * @return the plain JSON of this node as defined in the overall content
      */
-    String getDeclaration();
-    //TODO change to Text
+    Text getDeclaration();
 
     /**
      * @return offset or index in the overall content where this node starts (inclusive, points to first index that
@@ -720,7 +718,7 @@ public interface JsonNode extends Serializable {
      * @since 0.6
      */
     default JsonNode replaceWith( JsonNode node ) {
-        return isRoot() ? node : replaceWith( node.getDeclaration() );
+        return isRoot() ? node : replaceWith( node.getDeclaration().toString() );
     }
 
     /**

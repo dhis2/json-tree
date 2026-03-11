@@ -289,6 +289,6 @@ class JsonAppenderTest {
     }
 
     private static void assertJson( String expected, JsonNode actual ) {
-        assertEquals( expected.replace( '\'', '"' ), actual.getDeclaration() );
+        assertEquals( expected.replace( '\'', '"' ), actual.getDeclaration().toString() );
     }
 }

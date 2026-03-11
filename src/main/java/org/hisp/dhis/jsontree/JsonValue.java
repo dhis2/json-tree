@@ -428,7 +428,7 @@ public interface JsonValue {
      * @since 0.11
      */
     default String toJson() {
-        return node().getDeclaration();
+        return node().getDeclaration().toString();
     }
 
     /**
@@ -439,10 +439,12 @@ public interface JsonValue {
     default String toMinimizedJson() {
         if ( !isObject() && !isArray() ) return toJson();
         if ( isObject() ) return JsonBuilder.createObject( JsonBuilder.MINIMIZED_FULL,
-                obj -> asObject().entries().forEach( e -> obj.addMember( e.getKey(), e.getValue().node() ) ) )
-            .getDeclaration();
+                obj -> asObject().entries()
+                    .forEach( e -> obj.addMember( e.getKey(), e.getValue().node() ) ) )
+            .getDeclaration().toString();
         return JsonBuilder.createArray( JsonBuilder.MINIMIZED_FULL,
-            arr -> as( JsonArray.class ).forEach( e -> arr.addElement( e.node() ) ) ).getDeclaration();
+            arr -> as( JsonArray.class )
+                .forEach( e -> arr.addElement( e.node() ) ) ).getDeclaration().toString();
     }
 
     /**

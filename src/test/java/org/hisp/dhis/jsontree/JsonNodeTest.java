@@ -161,7 +161,7 @@ class JsonNodeTest {
             {
             "a": 1,
             "b": [3]
-            }""", actual.getDeclaration() );
+            }""", actual.getDeclaration().toString() );
     }
 
     @Test
@@ -178,7 +178,7 @@ class JsonNodeTest {
             {
             "a": 1,
             "b": {"x":42}
-            }""", actual.getDeclaration() );
+            }""", actual.getDeclaration().toString() );
     }
 
     @Test
@@ -194,7 +194,7 @@ class JsonNodeTest {
             {
             "a": 1,
             "b": {"y":1}
-            }""", actual.getDeclaration() );
+            }""", actual.getDeclaration().toString() );
     }
 
     public interface JsonBean extends JsonObject {

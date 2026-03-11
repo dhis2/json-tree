@@ -310,7 +310,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     @Override
     public String toString() {
         try {
-            return node().getDeclaration();
+            return node().getDeclaration().toString();
         } catch ( JsonPathException | JsonTreeException | JsonFormatException ex ) {
             return ex.getMessage();
         }
