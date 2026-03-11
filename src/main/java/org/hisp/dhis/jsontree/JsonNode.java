@@ -282,8 +282,8 @@ public interface JsonNode extends Serializable {
     default JsonNode get(@Surly String path) throws JsonPathException, JsonTreeException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
-        //TODO only act on $. ${ or $[
-        if ( path.charAt( 0 ) ==  '$' ) return getRoot().get( path.substring( 1 ) );
+        if ( path.charAt( 0 ) ==  '$' && JsonPath.isSyntaxIndicator( path.charAt( 1 ) ) )
+            return getRoot().get( path.substring( 1 ) );
         return get( JsonPath.of( path ) );
     }
 
@@ -301,8 +301,8 @@ public interface JsonNode extends Serializable {
     default JsonNode getOrNull(@Surly String path ) throws JsonPathException {
         if ( path.isEmpty() ) return this;
         if ( "$".equals( path ) ) return getRoot();
-        //TODO only act on $. ${ or $[
-        if ( path.charAt( 0 ) ==  '$' ) return getRoot().getOrNull( path.substring( 1 ) );
+        if ( path.charAt( 0 ) ==  '$' && JsonPath.isSyntaxIndicator( path.charAt( 1 ) ) )
+            return getRoot().getOrNull( path.substring( 1 ) );
         return getOrNull( JsonPath.of( path ) );
     }
 

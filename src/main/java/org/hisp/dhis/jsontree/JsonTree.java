@@ -234,12 +234,12 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public JsonNode get( Text name ) {
-            return tree.get(path.extendedWith(name), false);
+            return member( name );
         }
 
         @Override
         public JsonNode getOrNull( Text name ) throws JsonTreeException {
-            return tree.get(path.extendedWith( name ), true);
+            return memberOrNull( name );
         }
 
         @Surly @Override
@@ -269,11 +269,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         @Override
         public int size() {
             if (size >= 0) return size;
-            if (isEmpty()) {
-                size = 0;
-                return 0;
-            }
-            size = (int) StreamSupport.stream( spliterator(), false ).count();
+            size = isEmpty() ? 0 : skipCountObject( tree.json, start );
             return size;
         }
 
@@ -314,12 +310,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             JsonPath memberPath =  path.extendedWith( name );
             JsonNode member = tree.nodesByPath.get( memberPath );
             if ( member != null ) return member;
-            if (size >= 0) {
-                // if size is known all members are in the tree map
-                // so a miss means there is no such member
-                if (!orNull) throw noSuchElement( name );
-                return null;
-            }
             char[] json = tree.json;
             int index = skipWhitespace( json, expectChar( json, start, '{' ) );
             while ( index < json.length && json[index] != '}' ) {
@@ -483,11 +473,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         @Override
         public int size() {
             if (size >= 0) return size;
-            if (isEmpty()) {
-                size = 0;
-                return 0;
-            }
-            size = (int) StreamSupport.stream( spliterator(), false ).count();
+            size = isEmpty() ? 0 : skipCountArray( tree.json, start );
             return size;
         }
 
@@ -535,8 +521,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         private JsonNode element( int index, Text segment, boolean orNull )
             throws JsonPathException {
-            if ( index < 0 )
-                throw outOfBounds( index, size() );
+            if ( index < 0 ) throw outOfBounds( index, size() );
             if (size >= 0 && index >= size) {
                 // early exit for a miss
                 if (!orNull) throw outOfBounds( index, size );
@@ -691,12 +676,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         return new String( json );
     }
 
-    private JsonNode get( JsonNode parent, Text name, boolean orNull ) {
-        return null; //TODO
-    }
-    //TODO maybe even one for array and object so they can pass themselves down as class type
-    // making local API accessible
-
     private JsonNode get( JsonPath path, boolean orNull ) {
         if ( onGet != null && !path.isEmpty() ) onGet.accept( path );
         JsonNode node = nodesByPath.get( path );
@@ -787,25 +766,25 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
      Parsing support
      -------------------------------------------------------------------------*/
 
-    static int skipNodeAutodetect( char[] json, int atIndex ) {
-        return switch ( json[atIndex] ) {
+    static int skipNodeAutodetect( char[] json, int offset ) {
+        return switch ( json[offset] ) {
             case '{' -> // object node
-                skipObject( json, atIndex );
+                skipObject( json, offset );
             case '[' -> // array node
-                skipArray( json, atIndex );
+                skipArray( json, offset );
             case '"' -> // string node
-                skipString( json, atIndex ); // true => boolean node
+                skipString( json, offset ); // true => boolean node
             case 't', 'f' -> // false => boolean node
-                skipBoolean( json, atIndex );
+                skipBoolean( json, offset );
             case 'n' -> // null node
-                skipNull( json, atIndex );
+                skipNull( json, offset );
             default -> // must be number node then...
-                skipNumber( json, atIndex );
+                skipNumber( json, offset );
         };
     }
 
-    static int skipObject( char[] json, int fromIndex ) {
-        int index = fromIndex;
+    static int skipObject( char[] json, int offset ) {
+        int index = offset;
         index = expectChar( json, index, '{' );
         index = skipWhitespace( json, index );
         while ( index < json.length && json[index] != '}' ) {
@@ -817,8 +796,24 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         return expectChar( json, index, '}' );
     }
 
-    static int skipArray( char[] json, int fromIndex ) {
-        int index = fromIndex;
+    static int skipCountObject( char[] json, int offset ) {
+        int index = offset;
+        index = expectChar( json, index, '{' );
+        index = skipWhitespace( json, index );
+        int c = 0;
+        while ( index < json.length && json[index] != '}' ) {
+            index = skipString( json, index );
+            index = expectColon( json, index );
+            index = skipNodeAutodetect( json, index );
+            c++;
+            index = expectCommaOrEnd( json, index, '}' );
+        }
+        expectChar( json, index, '}' );
+        return c;
+    }
+
+    static int skipArray( char[] json, int offset ) {
+        int index = offset;
         index = expectChar( json, index, '[' );
         index = skipWhitespace( json, index );
         while ( index < json.length && json[index] != ']' ) {
@@ -828,29 +823,43 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         return expectChar( json, index, ']' );
     }
 
-    private static int expectColon( char[] json, int index ) {
-        return skipWhitespace( json, expectChar( json, skipWhitespace( json, index ), ':' ) );
-    }
-
-    private static int expectCommaOrEnd( char[] json, int index, char end ) {
+    static int skipCountArray( char[] json, int offset ) {
+        int index = offset;
+        index = expectChar( json, index, '[' );
         index = skipWhitespace( json, index );
-        if ( json[index] == ',' )
-            return skipWhitespace( json, index + 1 );
-        if ( json[index] != end )
-            return expectChar( json, index, end ); // causes fail
-        return index; // found end, return index pointing to it
+        int c = 0;
+        while ( index < json.length && json[index] != ']' ) {
+            index = skipNodeAutodetect( json, index );
+            c++;
+            index = expectCommaOrEnd( json, index, ']' );
+        }
+        expectChar( json, index, ']' );
+        return c;
     }
 
-    private static int skipBoolean( char[] json, int fromIndex ) {
-        return expectChars( json, fromIndex, json[fromIndex] == 't' ? "true" : "false" );
+    private static int expectColon( char[] json, int offset ) {
+        return skipWhitespace( json, expectChar( json, skipWhitespace( json, offset ), ':' ) );
     }
 
-    private static int skipNull( char[] json, int fromIndex ) {
-        return expectChars( json, fromIndex, "null" );
+    private static int expectCommaOrEnd( char[] json, int offset, char end ) {
+        offset = skipWhitespace( json, offset );
+        if ( json[offset] == ',' )
+            return skipWhitespace( json, offset + 1 );
+        if ( json[offset] != end )
+            return expectChar( json, offset, end ); // causes fail
+        return offset; // found end, return index pointing to it
     }
 
-    private static int skipString( char[] json, int fromIndex ) {
-        int index = fromIndex;
+    private static int skipBoolean( char[] json, int offset ) {
+        return expectChars( json, offset, json[offset] == 't' ? "true" : "false" );
+    }
+
+    private static int skipNull( char[] json, int offset ) {
+        return expectChars( json, offset, "null" );
+    }
+
+    private static int skipString( char[] json, int offset ) {
+        int index = offset;
         index = expectChar( json, index, '"' );
         while ( index < json.length ) {
             char c = json[index++];
@@ -869,8 +878,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         return expectChar( json, index, '"' );
     }
 
-    private static int skipNumber( char[] json, int fromIndex ) {
-        int index = fromIndex;
+    private static int skipNumber( char[] json, int offset ) {
+        int index = offset;
         index = skipChar( json, index, '-' );
         index = expectDigit( json, index );
         index = skipDigits( json, index );
@@ -889,15 +898,15 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         return skipDigits( json, index );
     }
 
-    private static int skipWhitespace( char[] json, int fromIndex ) {
-        int index = fromIndex;
+    private static int skipWhitespace( char[] json, int offset ) {
+        int index = offset;
         while ( index < json.length && isWhitespace( json[index] ) )
             index++;
         return index;
     }
 
-    private static int skipDigits( char[] json, int fromIndex ) {
-        int index = fromIndex;
+    private static int skipDigits( char[] json, int offset ) {
+        int index = offset;
         while ( index < json.length && isDigit( json[index] ) )
             index++;
         return index;
@@ -917,20 +926,20 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         return c == ' ' || c == '\n' || c == '\t' || c == '\r';
     }
 
-    private static int skipChar( char[] json, int index, char c ) {
-        return index < json.length && json[index] == c ? index + 1 : index;
+    private static int skipChar( char[] json, int offset, char c ) {
+        return offset < json.length && json[offset] == c ? offset + 1 : offset;
     }
 
-    private static int skipChar( char[] json, int index, char... anyOf ) {
-        if ( index >= json.length ) {
-            return index;
+    private static int skipChar( char[] json, int offset, char... anyOf ) {
+        if ( offset >= json.length ) {
+            return offset;
         }
         for ( char c : anyOf ) {
-            if ( json[index] == c ) {
-                return index + 1;
+            if ( json[offset] == c ) {
+                return offset + 1;
             }
         }
-        return index;
+        return offset;
     }
 
     /*

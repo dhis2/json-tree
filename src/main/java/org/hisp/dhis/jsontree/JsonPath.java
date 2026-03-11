@@ -327,6 +327,10 @@ public record JsonPath(JsonPath parent, Text segment) {
         return path.indexOf( '.' ) >= 0 || path.indexOf( '{' ) >= 0 || path.indexOf( '[' ) >= 0;
     }
 
+    public static boolean isSyntaxIndicator(char ch) {
+        return ch == '.' || ch == '{' || ch == '[';
+    }
+
     /**
      * Dot segment: {@code .property}
      *
