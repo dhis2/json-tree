@@ -56,7 +56,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     private final Consumer<CharSequence> appendStr;
     private final CharConsumer appendChar;
-    private final Supplier<String> toStr;
+    private final Supplier<CharSequence> toStr;
     private final boolean[] hasChildrenAtLevel = new boolean[128];
 
     private int level = 0;
@@ -71,7 +71,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     private JsonAppender( PrettyPrint config, Consumer<CharSequence> appendStr, CharConsumer appendChar,
-        Supplier<String> toStr ) {
+        Supplier<CharSequence> toStr ) {
         this.config = config;
         this.indent = config.indentSpaces() > 0 || config.indentTabs() > 0;
         this.indent1 = "\t".repeat( config.indentTabs() ) + " ".repeat( config.indentSpaces() );
@@ -155,7 +155,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     private JsonNode toNode() {
-        String json = toStr.get();
+        CharSequence json = toStr.get();
         return json == null ? null : JsonNode.of( json );
     }
 

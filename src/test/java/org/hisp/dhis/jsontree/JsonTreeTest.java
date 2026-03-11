@@ -471,8 +471,8 @@ class JsonTreeTest {
     void testObject_WrongNodeTypeObject() {
         JsonNode doc = JsonNode.of( "{\"a\": 42 }" );
 
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.get( ".a.b.[1]" ) );
-        assertEquals( "Path `.a.b.[1]` does not exist, parent `.a` is already a simple node of type NUMBER.",
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> doc.get( ".a.b[1]" ) );
+        assertEquals( "Path `.a.b.1` does not exist, parent `.a` is already a simple node of type NUMBER.",
             ex.getMessage() );
     }
 

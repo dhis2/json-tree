@@ -66,6 +66,14 @@ public record JsonPath(JsonPath parent, Text segment) {
         return splitPath( null, Text.of( path ) );
     }
 
+    public static JsonPath of(CharSequence...segments) {
+        if (segments.length == 0) return ROOT;
+        JsonPath res = new JsonPath(null, Text.of(segments[0] ));
+        for (int i = 1; i < segments.length; i++)
+            res = res.extendedWith( Text.of( segments[i] ) );
+        return res;
+    }
+
     /**
      * Create a path for an array index
      *
@@ -277,7 +285,7 @@ public record JsonPath(JsonPath parent, Text segment) {
 
     /**
      * @param path the path to slit into segments
-     * @return splits the path into segments each starting with a character that {@link #isSegmentOpen(char)}
+     * @return splits the path into segments each starting with a character that {@link #isSyntaxIndicator(char)}
      * @throws JsonPathException when the path cannot be split into segments as it is not a valid path
      */
     private static JsonPath splitPath( JsonPath parent, Text path )
@@ -287,8 +295,8 @@ public record JsonPath(JsonPath parent, Text segment) {
         // slow path
         int len = path.length();
         int i = 0;
-        int start = 0;
-        int end = 0;
+        int start;
+        int end;
         JsonPath cur = parent;
         while ( i < len ) {
             char c = path.charAt( i );
@@ -336,17 +344,17 @@ public record JsonPath(JsonPath parent, Text segment) {
     /**
      * Dot segment: {@code .property}
      *
-     * @param index into path
+     * @param offset into path
      * @return when it is a dot, a valid start of a curly segment or a valid start of a square segment
      */
-    private static boolean isDotSegmentClose( Text path, int index ) {
-        return path.charAt( index ) == '.' || isCurlySegmentOpen( path, index ) || isSquareSegmentOpen( path, index );
+    private static boolean isDotSegmentClose( Text path, int offset ) {
+        return path.charAt( offset ) == '.' || isCurlySegmentOpen( path, offset ) || isSquareSegmentOpen( path, offset );
     }
 
-    private static boolean isCurlySegmentOpen( Text path, int index ) {
-        if ( path.charAt( index ) != '{' ) return false;
+    private static boolean isCurlySegmentOpen( Text path, int offset ) {
+        if ( path.charAt( offset ) != '{' ) return false;
         // there must be a curly end before next .
-        int i = index + 1;
+        int i = offset + 1;
         do {
             i = path.indexOf( '}', i );
             if ( i < 0 ) return false;
@@ -360,34 +368,30 @@ public record JsonPath(JsonPath parent, Text segment) {
     /**
      * Curly segment: {@code {property}}
      *
-     * @param index into path
+     * @param offset into path
      * @return next closing } that is directly followed by a segment start (or end of path)
      */
-    private static boolean isCurlySegmentClose( Text path, int index ) {
-        return path.charAt( index ) == '}' && (index + 1 >= path.length() || isSegmentOpen(
-            path.charAt( index + 1 ) ));
+    private static boolean isCurlySegmentClose( Text path, int offset ) {
+        return path.charAt( offset ) == '}' && (offset + 1 >= path.length()
+            || isSyntaxIndicator( path.charAt( offset + 1 ) ));
     }
 
-    private static boolean isSquareSegmentOpen( Text path, int index ) {
-        if ( path.charAt( index ) != '[' ) return false;
+    private static boolean isSquareSegmentOpen( Text path, int offset ) {
+        if ( path.charAt( offset ) != '[' ) return false;
         // there must be a curly end before next .
-        int i = index + 1;
+        int i = offset + 1;
         while ( i < path.length() && path.charAt( i ) >= '0' && path.charAt( i ) <= '9' ) i++;
-        return i > index + 1 && i < path.length() && isSquareSegmentClose( path, i );
+        return i > offset + 1 && i < path.length() && isSquareSegmentClose( path, i );
     }
 
     /**
      * Square segment: {@code [index]}
      *
-     * @param index into path
+     * @param offset into path
      * @return next closing ] that is directly followed by a segment start (or end of path)
      */
-    private static boolean isSquareSegmentClose( Text path, int index ) {
-        return path.charAt( index ) == ']' && (index + 1 >= path.length() || isSegmentOpen(
-            path.charAt( index + 1 ) ));
-    }
-
-    private static boolean isSegmentOpen( char c ) {
-        return c == '.' || c == '{' || c == '[';
+    private static boolean isSquareSegmentClose( Text path, int offset ) {
+        return path.charAt( offset ) == ']' && (offset + 1 >= path.length()
+            || isSyntaxIndicator(path.charAt( offset + 1 ) ));
     }
 }
