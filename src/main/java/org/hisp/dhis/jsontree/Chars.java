@@ -1,5 +1,13 @@
 package org.hisp.dhis.jsontree;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+
 import static java.lang.Character.highSurrogate;
 import static java.lang.Character.isBmpCodePoint;
 import static java.lang.Character.lowSurrogate;
@@ -270,5 +278,69 @@ final class Chars {
 
     private static String getEndSection( char[] json, int offset ) {
         return new String( json, max( 0, min( json.length, offset ) - 20 ), min( 20, json.length ) );
+    }
+
+    /*
+    Reading inputs to char[]
+     */
+
+    /**
+     * @implNote With lazy parsing one precondition is that we need to have the entire input in memory.
+     * Therefore, the general approach to IO is not to stream or buffer but to get the JSON
+     * into memory as efficient as possible. Mainly this is about avoiding extra intermediate
+     * representations and short-lived objects during the charset decoding.
+     *
+     * @param file a JSON file
+     * @param encoding the encoding assumed
+     * @return the character in the file
+     */
+    static char[] from(Path file, Charset encoding ) {
+        try {
+            byte[] src = Files.readAllBytes(file);
+            if (StandardCharsets.UTF_8.equals( encoding )) return fromUTF8( src );
+            if (StandardCharsets.ISO_8859_1.equals( encoding )) return fromIso88591( src );
+            return new String(src, encoding).toCharArray();
+        } catch ( IOException e ) {
+            throw new UncheckedIOException( e );
+        }
+    }
+
+    private static char[] fromIso88591(byte[] src) {
+        char[] dest = new char[src.length];
+        for (int i = 0; i < src.length; i++)
+            dest[i] = (char) (src[i] & 0xFF); // ISO‑8859‑1 / Latin‑1
+        return dest;
+    }
+
+    private static char[] fromUTF8( byte[] src) {
+        char[] dest = new char[src.length];
+        int offset = 0;
+
+        for (int i = 0; i < src.length; ) {
+            int b = src[i++] & 0xFF;            // treat as unsigned
+            if (b < 0x80) {                     // 0xxxxxxx (ASCII)
+                dest[offset++] = (char) b;
+            } else if ((b & 0xE0) == 0xC0) {    // 110xxxxx → 2 bytes
+                int codePoint = ((b & 0x1F) << 6) | (src[i++] & 0x3F);
+                dest[offset++] = (char) codePoint;
+            } else if ((b & 0xF0) == 0xE0) {    // 1110xxxx → 3 bytes
+                int codePoint = ((b & 0x0F) << 12) | ((src[i++] & 0x3F) << 6) | (src[i++] & 0x3F);
+                dest[offset++] = (char) codePoint;
+            } else if ((b & 0xF8) == 0xF0) {    // 11110xxx → 4 bytes (supplementary)
+                int codePoint = ((b & 0x07) << 18) | ((src[i++] & 0x3F) << 12) |
+                    ((src[i++] & 0x3F) << 6) | (src[i++] & 0x3F);
+                // Convert to surrogate pair
+                codePoint -= 0x10000;
+                dest[offset++] = (char) (0xD800 | (codePoint >> 10));
+                dest[offset++] = (char) (0xDC00 | (codePoint & 0x3FF));
+            } else {
+                // Invalid UTF‑8 – you may decide to insert a replacement character
+                dest[offset++] = '�'; // replacement character
+            }
+        }
+        // over-allocated slots become space
+        if (offset < dest.length)
+            Arrays.fill(dest, offset, dest.length, ' ');
+        return dest;
     }
 }

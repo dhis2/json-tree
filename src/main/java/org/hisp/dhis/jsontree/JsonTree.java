@@ -34,6 +34,8 @@ import static org.hisp.dhis.jsontree.Chars.expectChars;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
 
 import java.io.Serializable;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -74,8 +76,11 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
     static JsonNode of( @Surly CharSequence json, @Maybe JsonNode.GetListener onGet ) {
         if (json instanceof String s) return of( s.toCharArray(), onGet );
-        if (json instanceof Text t) return of(t.toCharArray(), onGet);
         return of(Text.of( json ).toCharArray(), onGet);
+    }
+
+    static JsonNode of( Path json, Charset encoding, JsonNode.GetListener onGet ) {
+        return of(Chars.from( json, encoding ), onGet);
     }
 
     /**

@@ -31,7 +31,6 @@ import org.hisp.dhis.jsontree.JsonDiff.Mode;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
-import java.io.Reader;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
@@ -122,15 +121,6 @@ public interface JsonValue {
      */
     static JsonValue of( Path file ) {
         return of(JsonNode.of( file ));
-    }
-
-    /**
-     * @param json JSON input
-     * @return root of the virtual tree representing the given JSON input
-     * @since 1.0
-     */
-    static JsonValue of( Reader json ) {
-        return of(JsonNode.of( json, null ));
     }
 
     /**

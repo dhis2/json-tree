@@ -27,16 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import static java.lang.Math.min;
+import static java.lang.String.format;
+import static java.util.stream.IntStream.range;
 
-import java.io.IOException;
-import java.io.Reader;
 import java.io.Serializable;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
@@ -48,10 +45,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static java.lang.Math.min;
-import static java.lang.String.format;
-import static java.util.stream.IntStream.range;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * API of a JSON tree as it actually exist in an HTTP response with a JSON payload.
@@ -183,31 +178,7 @@ public interface JsonNode extends Serializable {
      * @since 1.0
      */
     static JsonNode of( Path file, Charset encoding, GetListener onGet ) {
-        try {
-            return of( Files.readString( file, encoding ), onGet );
-        } catch ( IOException ex ) {
-            throw new UncheckedIOException( ex );
-        }
-    }
-
-    /**
-     * @param json JSON input
-     * @param onGet to observe all path lookup in the returned tree, may be null
-     * @return the given JSON input as {@link JsonNode} tree
-     * @since 1.0
-     * @implNote not optimized, added to allow transparent change of implementation later
-     */
-    static JsonNode of( Reader json, GetListener onGet ) {
-        char[] buffer = new char[4096]; // a usual FS block size
-        StringBuilder jsonChars = new StringBuilder(0);
-        int numChars;
-        try {
-            while ( (numChars = json.read( buffer )) >= 0 )
-                jsonChars.append( buffer, 0, numChars );
-        } catch ( IOException ex ) {
-            throw new UncheckedIOException( ex );
-        }
-        return of(jsonChars.toString(), onGet);
+        return JsonTree.of( file, encoding, onGet );
     }
 
     /**

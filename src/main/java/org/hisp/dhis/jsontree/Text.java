@@ -249,9 +249,9 @@ public interface Text extends CharSequence {
     }
 
     /**
-     *
-     * @param text
-     * @return
+     * @param text the source to convert to a {@link Text}
+     * @return the given text as {@link Text} (no copy if it can be avoided)
+     * @see #copyOf(Text) to force a copy
      * @since 1.9
      */
     static Text of(CharSequence text) {
