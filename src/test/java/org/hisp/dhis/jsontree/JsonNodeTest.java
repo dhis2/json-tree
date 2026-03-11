@@ -207,13 +207,34 @@ class JsonNodeTest {
     }
 
     @Test
-    void testPathCanBeRecorded() {
+    void testGetListener_DefaultMethod_DoesNotExist() {
         Deque<JsonPath> rec = new LinkedList<>();
         JsonObject obj = JsonMixed.of( JsonNode.of( "{}", rec::add ) );
-
-        obj.as( JsonBean.class ).getFoo();
+        assertNull(obj.as( JsonBean.class ).getFoo());
         assertEquals( ".foo", rec.getLast().toString() );
-        obj.as( JsonBean.class ).bar();
+    }
+
+    @Test
+    void testGetListener_DefaultMethod_DoesExist() {
+        Deque<JsonPath> rec = new LinkedList<>();
+        JsonObject obj = JsonMixed.of( JsonNode.of( "{\"foo\": \"str\"}", rec::add ) );
+        assertEquals( "str", obj.as( JsonBean.class ).getFoo());
+        assertEquals( ".foo", rec.getLast().toString() );
+    }
+
+    @Test
+    void testGetListener_AbstractMethod_DoesNotExist() {
+        Deque<JsonPath> rec = new LinkedList<>();
+        JsonObject obj = JsonMixed.of( JsonNode.of( "{}", rec::add ) );
+        assertNull( obj.as( JsonBean.class ).bar());
+        assertEquals( ".bar", rec.getLast().toString() );
+    }
+
+    @Test
+    void testGetListener_AbstractMethod_DoesExist() {
+        Deque<JsonPath> rec = new LinkedList<>();
+        JsonObject obj = JsonMixed.of( JsonNode.of( "{\"bar\": \"str\"}", rec::add ) );
+        assertEquals( "str", obj.as( JsonBean.class ).bar());
         assertEquals( ".bar", rec.getLast().toString() );
     }
 

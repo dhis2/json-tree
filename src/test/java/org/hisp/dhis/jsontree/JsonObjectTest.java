@@ -18,6 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class JsonObjectTest {
 
     @Test
+    void testSize() {
+        assertEquals( 0, JsonMixed.of( "{}" ).size() );
+        assertEquals( 1, JsonMixed.of( "{\"a\": 1}" ).size() );
+        assertEquals(2, JsonMixed.of("{\"a\": 1, \"b\": 2}").size());
+        assertEquals(3, JsonMixed.of("{\"a\": 1, \"b\": 2, \"c\": null}").size());
+    }
+
+    @Test
     void testHas_NoObject() {
         JsonMixed value = JsonMixed.of( "1" );
         assertThrowsExactly( JsonTreeException.class, () -> value.has( "x" ) );

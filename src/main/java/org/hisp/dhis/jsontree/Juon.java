@@ -180,7 +180,9 @@ record Juon(char[] juon, StringBuilder json) {
                 char escape = peek( index );
                 index++; // move beyond the first escaped char
                 if (escape == '\'') {
-                    append( '\'' ); // does not need escaping in JSON
+                    // does not need escaping in JSON
+                    json.setLength( json.length()-1 ); // undo \
+                    append( '\'' );
                 } else {
                     append( escape );
                     if (escape == 'u') {

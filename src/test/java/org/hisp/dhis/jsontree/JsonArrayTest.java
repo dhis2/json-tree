@@ -17,6 +17,14 @@ import static org.junit.jupiter.api.Assertions.fail;
 class JsonArrayTest {
 
     @Test
+    void testSize() {
+        assertEquals( 0, JsonMixed.of( "[]" ).size() );
+        assertEquals( 1, JsonMixed.of( "[1]" ).size() );
+        assertEquals( 2, JsonMixed.of( "[1,2]" ).size() );
+        assertEquals( 3, JsonMixed.of( "[[],[],[]]" ).size() );
+    }
+
+    @Test
     void testStringValues_NoArray() {
         JsonMixed value = JsonMixed.of( "1" );
         assertThrowsExactly( JsonTreeException.class, value::stringValues );

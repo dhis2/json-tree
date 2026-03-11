@@ -88,7 +88,7 @@ public record JsonPath(JsonPath parent, Text segment) {
     public JsonPath extendedWith( JsonPath subPath ) {
         if (isEmpty()) return subPath;
         if (subPath.isEmpty()) return this;
-        if (subPath.isFirst()) return extendedWith( subPath.segment );
+        if (subPath.isHead()) return extendedWith( subPath.segment );
         // below case is complicated/slow, but it is never the case
         // unless the user manually calls it with a longer path
         JsonPath res = this;
@@ -155,7 +155,7 @@ public record JsonPath(JsonPath parent, Text segment) {
      * @return true, when this is a path with only 1 segment
      * @since 1.9
      */
-    public boolean isFirst() {
+    public boolean isHead() {
         return parent == null && segment != null;
     }
 

@@ -43,7 +43,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.StreamSupport;
+
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
@@ -244,13 +244,13 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Surly @Override
         public JsonNode get(@Surly JsonPath subPath ) {
-            if (subPath.isFirst()) return get( subPath.segment() );
+            if (subPath.isHead()) return get( subPath.segment() );
             return tree.get( path.extendedWith( subPath ), false );
         }
 
         @Maybe @Override
         public JsonNode getOrNull( @Surly JsonPath subPath ) {
-            if (subPath.isFirst()) return getOrNull( subPath.segment() );
+            if (subPath.isHead()) return getOrNull( subPath.segment() );
             return tree.get( path.extendedWith( subPath ), true );
         }
 
@@ -308,6 +308,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         private JsonNode member( Text name, boolean orNull )  throws JsonPathException {
             JsonPath memberPath =  path.extendedWith( name );
+            if (tree.onGet != null) tree.onGet.accept( memberPath );
             JsonNode member = tree.nodesByPath.get( memberPath );
             if ( member != null ) return member;
             char[] json = tree.json;
@@ -323,8 +324,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     index = expectCommaOrEnd( json, index, '}' );
                 }
             }
-            if (!orNull) throw noSuchElement( name );
-            return null;
+            if (orNull) return null;
+            throw noSuchElement( name );
         }
 
         @Override
@@ -453,13 +454,13 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Surly @Override
         public JsonNode get(@Surly JsonPath subPath ) {
-            if (subPath.isFirst()) return get(subPath.segment());
+            if (subPath.isHead()) return get(subPath.segment());
             return tree.get(path.extendedWith( subPath ), false );
         }
 
         @Override
         public JsonNode getOrNull( JsonPath subPath ) throws JsonTreeException {
-            if (subPath.isFirst()) return getOrNull( subPath.segment() );
+            if (subPath.isHead()) return getOrNull( subPath.segment() );
             return tree.get(path.extendedWith( subPath ), true);
         }
 
@@ -523,9 +524,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             throws JsonPathException {
             if ( index < 0 ) throw outOfBounds( index, size() );
             if (size >= 0 && index >= size) {
-                // early exit for a miss
-                if (!orNull) throw outOfBounds( index, size );
-                return null;
+                if (orNull) return null;
+                throw outOfBounds( index, size );
             }
             JsonPath elementPath = path.extendedWith( segment );
             JsonNode e = tree.nodesByPath.get( elementPath );
@@ -534,8 +534,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             if (index == 0) {
                 int i = skipWhitespace( json, expectChar( json, start, '[' ) );
                 if (json[i] == ']') {
-                    if (!orNull) throw outOfBounds( 0, 0 );
-                    return null;
+                    if (orNull) return null;
+                    throw outOfBounds( 0, 0 );
                 }
                 return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, i ) );
             }
@@ -544,8 +544,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             if (predecessor != null) {
                 int i = skipWhitespace( json, expectCommaOrEnd( json, predecessor.endIndex(), ']' ));
                 if (json[i] == ']') {
-                    if (!orNull) throw outOfBounds( index, index );
-                    return null;
+                    if (orNull) return null;
+                    throw outOfBounds( index, index );
                 }
                 return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, i ) );
             }
@@ -559,8 +559,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 elementsToSkip--;
             }
             if ( json[i] == ']' ) {
-                if (!orNull) throw  outOfBounds( index, index - elementsToSkip );
-                return null;
+                if (orNull) return null;
+                throw outOfBounds( index, index - elementsToSkip );
             }
             int eStart = i;
             return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, eStart ));
@@ -677,7 +677,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     }
 
     private JsonNode get( JsonPath path, boolean orNull ) {
-        if ( onGet != null && !path.isEmpty() ) onGet.accept( path );
         JsonNode node = nodesByPath.get( path );
         if ( node != null ) return node;
         // find by finding the closest already indexed parent and navigate down from there...

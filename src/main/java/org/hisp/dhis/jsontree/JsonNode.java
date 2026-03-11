@@ -90,7 +90,7 @@ public interface JsonNode extends Serializable {
     JsonNode EMPTY_ARRAY = JsonNode.of( "[]" );
 
     /**
-     * Allows to observe all path lookups in the tree.
+     * Allows to observe all object member path lookups in the tree.
      *
      * @since 0.10
      */
@@ -98,7 +98,7 @@ public interface JsonNode extends Serializable {
     interface GetListener {
 
         /**
-         * @param path absolute path in the tree that is resolved
+         * @param path absolute object member path in the tree that is resolved
          */
         void accept( JsonPath path );
     }
@@ -277,7 +277,6 @@ public interface JsonNode extends Serializable {
      * @throws JsonPathException when no such node exists in the subtree of this node
      * @throws JsonTreeException when the operation is called on a non-object node
      */
-    //TODO maybe remove String entirely or change to CharSequence?
     @Surly
     default JsonNode get(@Surly String path) throws JsonPathException, JsonTreeException {
         if ( path.isEmpty() ) return this;
@@ -346,7 +345,12 @@ public interface JsonNode extends Serializable {
         throw new JsonTreeException( getType() + " node has no size property." );
     }
 
-    //TODO javadoc
+    /**
+     * @param subPath relative path to check
+     * @return true, only if a node exists that the given path relative to this node (this includes a
+     *     defined JSON {@code null})
+     * @since 1.9
+     */
     boolean exists(JsonPath subPath);
 
     /**
