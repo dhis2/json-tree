@@ -167,38 +167,38 @@ class JsonPathTest {
     }
 
     @Test
-    void testExtendedWith_Name() {
-        assertEquals( JsonPath.of(".abc.def"), JsonPath.of( ".abc" ).extendedWith(Text.of("def") ) );
-        assertEquals( JsonPath.of(".abc{.}"), JsonPath.of( ".abc" ).extendedWith( Text.of(".") ) );
-        assertEquals( JsonPath.of(".abc.[42]"), JsonPath.of( ".abc" ).extendedWith( Text.of("[42]") ) );
+    void testChain_Name() {
+        assertEquals( JsonPath.of(".abc.def"), JsonPath.of( ".abc" ).chain(Text.of("def") ) );
+        assertEquals( JsonPath.of(".abc{.}"), JsonPath.of( ".abc" ).chain( Text.of(".") ) );
+        assertEquals( JsonPath.of(".abc.[42]"), JsonPath.of( ".abc" ).chain( Text.of("[42]") ) );
     }
 
     @Test
-    void testExtendedWith_Index() {
-        assertEquals( JsonPath.of(".answer[42]"), JsonPath.of( ".answer" ).extendedWith( 42 ) );
+    void testChain_Index() {
+        assertEquals( JsonPath.of(".answer[42]"), JsonPath.of( ".answer" ).chain( 42 ) );
     }
 
     @Test
-    void testExtendedWith_Path() {
-        assertEquals( JsonPath.of( ".answer[42]" ), JsonPath.of( ".answer" ).extendedWith( JsonPath.of( 42 ) ) );
+    void testConcat_Path() {
+        assertEquals( JsonPath.of( ".answer[42]" ), JsonPath.of( ".answer" ).concat( JsonPath.of( 42 ) ) );
     }
 
     @Test
-    void testExtendedWith_PathDeep() {
-        assertEquals( JsonPath.of( ".foo.bar.x.y" ), JsonPath.of( ".foo.bar" ).extendedWith( JsonPath.of( ".x.y" ) ) );
+    void testConcat_PathDeep() {
+        assertEquals( JsonPath.of( ".foo.bar.x.y" ), JsonPath.of( ".foo.bar" ).concat( JsonPath.of( ".x.y" ) ) );
     }
 
     @Test
-    void testExtendedWith_StringPath() {
-        assertEquals( JsonPath.of( ".foo.bar" ), JsonPath.of( ".foo.bar" ).extendedWith( "" ) );
-        assertEquals( JsonPath.of( ".foo.bar.x" ), JsonPath.of( ".foo.bar" ).extendedWith( ".x" ) );
-        assertEquals( JsonPath.of( ".foo.bar.x.y" ), JsonPath.of( ".foo.bar" ).extendedWith( ".x.y" ) );
+    void testConcat_StringPath() {
+        assertEquals( JsonPath.of( ".foo.bar" ), JsonPath.of( ".foo.bar" ).concat( "" ) );
+        assertEquals( JsonPath.of( ".foo.bar.x" ), JsonPath.of( ".foo.bar" ).concat( ".x" ) );
+        assertEquals( JsonPath.of( ".foo.bar.x.y" ), JsonPath.of( ".foo.bar" ).concat( ".x.y" ) );
     }
 
     @Test
-    void testExtendedWith_Index_Negative() {
+    void testChain_Index_Negative() {
         JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            () -> JsonPath.of( ".x" ).extendedWith( -1 ) );
+            () -> JsonPath.of( ".x" ).chain( -1 ) );
         assertEquals( "Path array index must be zero or positive but was: -1", ex.getMessage() );
     }
 

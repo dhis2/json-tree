@@ -139,7 +139,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public boolean exists( JsonPath subPath ) {
-            return tree.exists( path.extendedWith( subPath ) );
+            return tree.exists( path.concat( subPath ) );
         }
 
         @Override
@@ -262,13 +262,13 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         @Surly @Override
         public JsonNode get(@Surly JsonPath subPath ) {
             if (subPath.isHead()) return get( subPath.segment() );
-            return tree.get( path.extendedWith( subPath ), false );
+            return tree.get( path.concat( subPath ), false );
         }
 
         @Maybe @Override
         public JsonNode getOrNull( @Surly JsonPath subPath ) {
             if (subPath.isHead()) return getOrNull( subPath.segment() );
-            return tree.get( path.extendedWith( subPath ), true );
+            return tree.get( path.concat( subPath ), true );
         }
 
         @Override
@@ -317,14 +317,14 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         private JsonPathException noSuchElement(Text name) {
-            JsonPath memberPath = path.extendedWith( name );
+            JsonPath memberPath = path.chain( name );
             return new JsonPathException( memberPath,
                 format( "Path `%s` does not exist, object `%s` does not have a property `%s`", memberPath, path,
                     name ) );
         }
 
         private JsonNode member( Text name, boolean orNull )  throws JsonPathException {
-            JsonPath memberPath =  path.extendedWith( name );
+            JsonPath memberPath =  path.chain( name );
             if (tree.onGet != null) tree.onGet.accept( memberPath );
             JsonNode member = tree.nodesByPath.get( memberPath );
             if ( member != null ) return member;
@@ -366,7 +366,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     if ( !hasNext() )
                         throw new NoSuchElementException( "next() called without checking hasNext()" );
                     Text name = Chars.parseString( json, startIndex );
-                    JsonPath propertyPath = path.extendedWith( name );
+                    JsonPath propertyPath = path.chain( name );
                     int startIndexVal = expectColon( json, skipString( json, startIndex ) );
                     JsonNode member = cacheNodes
                         ? nodesByPath.computeIfAbsent( propertyPath, key -> tree.autoDetect( key, startIndexVal ) )
@@ -387,7 +387,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Iterable<JsonPath> paths() {
-            return keys(path::extendedWith);
+            return keys(path::chain );
         }
 
         @Override
@@ -417,7 +417,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                         throw new NoSuchElementException( "next() called without checking hasNext()" );
                     Text name = Chars.parseString( json, startIndex );
                     // advance to next member or end...
-                    JsonNode member = nodesByPath.get( path.extendedWith( name ) );
+                    JsonNode member = nodesByPath.get( path.chain( name ) );
                     startIndex = expectColon( json, skipString( json, startIndex )); // move after :
                     // move after value
                     startIndex = member == null || member.endIndex() < startIndex // (duplicates)
@@ -473,13 +473,13 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         @Surly @Override
         public JsonNode get(@Surly JsonPath subPath ) {
             if (subPath.isHead()) return get(subPath.segment());
-            return tree.get(path.extendedWith( subPath ), false );
+            return tree.get(path.concat( subPath ), false );
         }
 
         @Override
         public JsonNode getOrNull( JsonPath subPath ) throws JsonTreeException {
             if (subPath.isHead()) return getOrNull( subPath.segment() );
-            return tree.get(path.extendedWith( subPath ), true);
+            return tree.get(path.concat( subPath ), true);
         }
 
         @Override
@@ -533,7 +533,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         private JsonPathException outOfBounds(int index, int size) {
-            JsonPath elementPath = path.extendedWith( index );
+            JsonPath elementPath = path.chain( index );
             throw new JsonPathException( elementPath,
                 "Path `%s` does not exist, array `%s` has only `%d` elements.".formatted( elementPath, path, size ));
         }
@@ -545,7 +545,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 if (orNull) return null;
                 throw outOfBounds( index, size );
             }
-            JsonPath elementPath = path.extendedWith( segment );
+            JsonPath elementPath = path.chain( segment );
             JsonNode e = tree.nodesByPath.get( elementPath );
             if (e != null) return e;
             char[] json = tree.json;
@@ -558,7 +558,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 return tree.nodesByPath.computeIfAbsent( elementPath, p -> tree.autoDetect( p, i ) );
             }
             // maybe the element before it exists? (iteration in a counter loop)
-            JsonNode predecessor = tree.nodesByPath.get( path.extendedWith( index - 1) );
+            JsonNode predecessor = tree.nodesByPath.get( path.chain( index - 1) );
             if (predecessor != null) {
                 int i = skipWhitespace( json, expectCommaOrEnd( json, predecessor.endIndex(), ']' ));
                 if (json[i] == ']') {
@@ -604,7 +604,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 public JsonNode next() {
                     if ( !hasNext() )
                         throw new NoSuchElementException( "next() called without checking hasNext()" );
-                    JsonPath elementPath = path.extendedWith( n );
+                    JsonPath elementPath = path.chain( n );
                     JsonNode e = cacheNodes
                         ? nodesByPath.computeIfAbsent( elementPath, key -> tree.autoDetect( key, startIndex ) )
                         : nodesByPath.get( elementPath );

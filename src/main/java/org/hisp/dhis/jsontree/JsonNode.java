@@ -222,7 +222,7 @@ public interface JsonNode extends Serializable {
      * @since 1.9
      */
     default JsonNode get(Text name) throws JsonPathException, JsonTreeException {
-        JsonPath path = getPath().extendedWith( name );
+        JsonPath path = getPath().chain( name );
         throw new JsonTreeException(getType() + " node at path `"+getPath()+"` is not an object, no member at path: " + path);
     }
 
@@ -233,7 +233,7 @@ public interface JsonNode extends Serializable {
      * @throws JsonTreeException when the operation is called on a non-object node
      */
     default JsonNode getOrNull(Text name) throws JsonTreeException {
-        JsonPath path = getPath().extendedWith( name );
+        JsonPath path = getPath().chain( name );
         throw new JsonTreeException(getType() + " node at path `"+getPath()+"` is not an object, no member at path: " + path);
     }
 
@@ -288,7 +288,7 @@ public interface JsonNode extends Serializable {
     @Surly
     default JsonNode get(@Surly JsonPath subPath) throws JsonTreeException, JsonPathException {
         if (subPath.isEmpty()) return this;
-        JsonPath path = getPath().extendedWith( subPath );
+        JsonPath path = getPath().concat( subPath );
         throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
     }
 
@@ -301,7 +301,7 @@ public interface JsonNode extends Serializable {
     @Maybe
     default JsonNode getOrNull(@Surly JsonPath subPath) throws JsonTreeException {
         if (subPath.isEmpty()) return this;
-        JsonPath path = getPath().extendedWith( subPath );
+        JsonPath path = getPath().concat( subPath );
         throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
     }
 

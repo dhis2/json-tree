@@ -70,7 +70,7 @@ public record JsonPath(JsonPath parent, Text segment) {
         if (segments.length == 0) return ROOT;
         JsonPath res = new JsonPath(null, Text.of(segments[0] ));
         for (int i = 1; i < segments.length; i++)
-            res = res.extendedWith( Text.of( segments[i] ) );
+            res = res.chain( Text.of( segments[i] ) );
         return res;
     }
 
@@ -95,10 +95,10 @@ public record JsonPath(JsonPath parent, Text segment) {
      * @param subPath the path to add to the end of this one
      * @return a new path instance that starts with all segments of this path followed by all segments of the provided sub-path
      */
-    public JsonPath extendedWith( JsonPath subPath ) {
+    public JsonPath concat( JsonPath subPath ) {
         if (isEmpty()) return subPath;
         if (subPath.isEmpty()) return this;
-        if (subPath.isHead()) return extendedWith( subPath.segment );
+        if (subPath.isHead()) return chain( subPath.segment );
         // below case is complicated/slow, but it is never the case
         // unless the user manually calls it with a longer path
         JsonPath res = this;
@@ -114,7 +114,7 @@ public record JsonPath(JsonPath parent, Text segment) {
      * @return a new path instance that adds the provided object member name segment to this path to create a new
      * absolute path for the same root
      */
-    public JsonPath extendedWith( Text subSegment ) {
+    public JsonPath chain( Text subSegment ) {
         if (subSegment == null) throw new NullPointerException();
         if (isEmpty()) return new JsonPath( null, subSegment );
         return new JsonPath( this, subSegment );
@@ -127,17 +127,17 @@ public record JsonPath(JsonPath parent, Text segment) {
      * @return a new path instance that adds the provided array index segment to this path to create a new absolute path
      * for the same root
      */
-    public JsonPath extendedWith( int index ) {
+    public JsonPath chain( int index ) {
         if ( index < 0 ) throw new JsonPathException( this,
             "Path array index must be zero or positive but was: %d".formatted( index ) );
-        return extendedWith(Text.of(index));
+        return chain(Text.of(index));
     }
 
-    public JsonPath extendedWith(String subPath) {
+    public JsonPath concat(String subPath) {
         if (subPath.isEmpty()) return this;
         Text plain = Text.of( subPath );
         // not having syntax also means it is a non-nested path (single segment)
-        if (!isSyntaxPresent( plain )) return extendedWith( plain );
+        if (!isSyntaxPresent( plain )) return chain( plain );
         return splitPath( isEmpty() ? null : this, plain );
     }
 

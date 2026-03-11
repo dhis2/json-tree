@@ -188,19 +188,19 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public <T extends JsonValue> T get( int index, Class<T> as ) {
-        return asType( as, new JsonVirtualTree( root, path.extendedWith( index ), accessors ) );
+        return asType( as, new JsonVirtualTree( root, path.chain( index ), accessors ) );
     }
 
     @Override
     public <T extends JsonValue> T get( Text name, Class<T> as ) {
         if ( name.isEmpty() ) return as( as );
-        return asType( as, new JsonVirtualTree( root, path.extendedWith( name ), accessors) );
+        return asType( as, new JsonVirtualTree( root, path.chain( name ), accessors) );
     }
 
     @Override
     public <T extends JsonValue> T get( JsonPath subPath, Class<T> as ) {
         if (subPath.isEmpty()) return as( as );
-        return asType( as, new JsonVirtualTree( root, path.extendedWith( subPath ), accessors) );
+        return asType( as, new JsonVirtualTree( root, path.concat( subPath ), accessors) );
     }
 
     @Override

@@ -1,9 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import static java.util.stream.Collectors.joining;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
@@ -26,11 +22,11 @@ public record JsonPointer(String value) {
         if (end < 0) return JsonPath.of( decode( path.subSequence( start, path.length() ) ) );
         JsonPath res = JsonPath.ROOT;
         while (end >= 0) {
-            res = res.extendedWith( decode(path.subSequence( start, end )) );
+            res = res.chain( decode(path.subSequence( start, end )) );
             start = end + 1;
             end = path.indexOf('/', start);
         }
-        return res.extendedWith(decode(path.subSequence(start, path.length())));
+        return res.chain(decode(path.subSequence(start, path.length())));
     }
 
     private static Text decode(Text segment) {
