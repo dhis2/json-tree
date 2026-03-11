@@ -72,7 +72,10 @@ public interface JsonNumber extends JsonPrimitive {
      * @see #intValue(int)
      */
     default int intValue() {
-        return mapNonNull( number(), Number::intValue );
+        Number res = number();
+        if (res != null) return res.intValue();
+        JsonPath path = node().getPath();
+        throw new JsonPathException(path, "Path `%s` is defined as null".formatted( path ) );
     }
 
     /**
@@ -91,7 +94,10 @@ public interface JsonNumber extends JsonPrimitive {
      * @throws NullPointerException in case this node is defined as JSON null
      */
     default long longValue() {
-        return mapNonNull( number(), Number::longValue );
+        Number res = number();
+        if (res != null) return res.longValue();
+        JsonPath path = node().getPath();
+        throw new JsonPathException(path, "Path `%s` is defined as null".formatted( path ) );
     }
 
     /**
@@ -101,7 +107,10 @@ public interface JsonNumber extends JsonPrimitive {
      * @throws NullPointerException in case this node is defined as JSON null
      */
     default float floatValue() {
-        return mapNonNull( number(), Number::floatValue );
+        Number res = number();
+        if (res != null) return res.floatValue();
+        JsonPath path = node().getPath();
+        throw new JsonPathException(path, "Path `%s` is defined as null".formatted( path ) );
     }
 
     /**
@@ -111,6 +120,10 @@ public interface JsonNumber extends JsonPrimitive {
      * @throws NullPointerException in case this node is defined as JSON null
      */
     default double doubleValue() {
-        return mapNonNull( number(), Number::doubleValue );
+        Number res = number();
+        if (res != null) return res.doubleValue();
+        JsonPath path = node().getPath();
+        throw new JsonPathException(path, "Path `%s` is defined as null".formatted( path ) );
+
     }
 }

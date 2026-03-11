@@ -46,7 +46,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -115,6 +114,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     private final @Surly JsonNode root;
     private final @Surly JsonPath path;
+    private JsonNode node; // remember once it was resolved from root
     private transient @Surly JsonAccessors accessors;
 
     public JsonVirtualTree( @Maybe String json, @Surly JsonAccessors accessors ) {
@@ -128,6 +128,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     private JsonVirtualTree( @Surly JsonNode root, @Surly JsonPath path, @Surly JsonAccessors accessors ) {
         this.root = root;
         this.path = path;
+        if (path.isEmpty()) node = root;
         this.accessors = accessors;
     }
 
@@ -166,27 +167,23 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         return JsonMixed.class;
     }
 
-    private <T> T value( JsonNodeType expected, Function<JsonNode, T> get, T orElse ) {
-        try {
-            JsonNode node = root.getOrNull( path );
-            if (node == null) return orElse;
-            JsonNodeType actualType = node.getType();
-            if ( actualType == JsonNodeType.NULL ) {
-                return null;
-            }
-            if ( actualType != expected ) {
-                throw new JsonTreeException(
-                    String.format( "Path `%s` does not contain an %s but a(n) %s: %s",
-                        path, expected, actualType, node ) );
-            }
-            return get.apply( node );
-        } catch ( JsonPathException ex ) {
-            return orElse;
+    private JsonNode node( JsonNodeType expected ) {
+        JsonNode res = node;
+        if (node == null) {
+            if (!root.exists(path)) return null;
+            node = root.get(path);
+            res = node;
         }
-    }
-
-    private JsonNode value() {
-        return path.isEmpty() ? root : root.get( path );
+        JsonNodeType actualType = res.getType();
+        if ( actualType == JsonNodeType.NULL ) {
+            return null;
+        }
+        if ( actualType != expected ) {
+            throw new JsonTreeException(
+                String.format( "Path `%s` does not contain an %s but a(n) %s: %s",
+                    path, expected, actualType, res ) );
+        }
+        return res;
     }
 
     @Override
@@ -228,21 +225,15 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     @Override
-    public <A, B> B mapNonNull( A from, Function<A, B> to ) {
-        if ( from == null ) {
-            root.get( path ); // cause throw in case node does not exist
-        }
-        return to.apply( from );
-    }
-
-    @Override
     public JsonNode node() {
-        return value();
+        if (node != null) return node;
+        node = root.get( path );
+        return node;
     }
 
     @Override
     public boolean isEmpty() {
-        return value().isEmpty();
+        return node().isEmpty();
     }
 
     @Override
@@ -261,40 +252,42 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
 
     private <T, E> List<T> arrayList( Class<E> elementType, Function<E,T> map) {
-        return value( JsonNodeType.ARRAY, node -> {
-            if (node.isEmpty()) return List.of();
-            List<T> res = new ArrayList<>(size());
-            for ( JsonNode e : node.elements() ) {
-                @SuppressWarnings( "unchecked" )
-                E value = (E) e.value();
-                if ( !elementType.isInstance( value ) ) {
-                    throw new JsonTreeException(
-                        "Array element is not a " + elementType.getName() + ": " + e.getDeclaration() );
-                }
-                res.add( map.apply( value ) );
+        JsonNode array = node( JsonNodeType.ARRAY );
+        if (array == null || array.isEmpty()) return List.of();
+        List<T> res = new ArrayList<>(array.size());
+        for ( JsonNode e : array.elements() ) {
+            @SuppressWarnings( "unchecked" )
+            E value = (E) e.value();
+            if ( !elementType.isInstance( value ) ) {
+                throw new JsonTreeException(
+                    "Array element is not a " + elementType.getName() + ": " + e.getDeclaration() );
             }
-            return res;
-        }, List.of() );
+            res.add( map.apply( value ) );
+        }
+        return res;
     }
 
     @Override
     public int size() {
-        return value().size();
+        return node().size();
     }
 
     @Override
     public Boolean bool() {
-        return (Boolean) value( JsonNodeType.BOOLEAN, JsonNode::value, null );
+        JsonNode node = node( JsonNodeType.BOOLEAN );
+        return node == null ? null : (Boolean) node.value();
     }
 
     @Override
     public Number number() {
-        return (Number) value( JsonNodeType.NUMBER, JsonNode::value, null );
+        JsonNode node = node( JsonNodeType.NUMBER );
+        return node == null ? null : (Number) node.value();
     }
 
     @Override
     public Text text() {
-        return  (Text) value( JsonNodeType.STRING, JsonNode::value, null );
+        JsonNode node = node( JsonNodeType.STRING );
+        return node == null ? null : (Text) node.value();
     }
 
     @Override
@@ -304,21 +297,21 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public boolean equals( Object obj ) {
-        return obj instanceof JsonVirtualTree response
-            && path.equals( response.path )
-            && root.equals( response.root );
+        return obj instanceof JsonVirtualTree other
+            && path.equals( other.path )
+            && root.equals( other.root );
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash( root, path );
+        return root.hashCode() ^ path.hashCode();
     }
 
     @Override
     public String toString() {
         try {
-            return root.get( path ).getDeclaration();
-        } catch ( JsonPathException | JsonFormatException ex ) {
+            return node().getDeclaration();
+        } catch ( JsonPathException | JsonTreeException | JsonFormatException ex ) {
             return ex.getMessage();
         }
     }
@@ -421,7 +414,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         Class<?> resType = method.getReturnType();
         String name = stripGetterPrefix( method );
         boolean hasDefault = method.getParameterCount() == 1 && method.getParameterTypes()[0] == resType;
-        if ( obj.get( name ).isUndefined() && hasDefault ) {
+        if ( hasDefault && obj.get( name ).isUndefined()) {
             return args[0];
         }
         return access( method, obj, name );

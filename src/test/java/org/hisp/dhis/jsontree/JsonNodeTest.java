@@ -119,11 +119,11 @@ class JsonNodeTest {
 
     @Test
     void testGet_Array_NoValueAtPath() {
-        assertGetThrowsJsonTreeException( "[1,2]", "a", "ARRAY node has no element property for index: a" );
-        assertGetThrowsJsonTreeException( "[1,2]", ".a", "ARRAY node has no element property for index: a" );
+        assertGetThrowsJsonTreeException( "[1,2]", "a", "ARRAY node at path `` is not an object, no member at path: .a" );
+        assertGetThrowsJsonTreeException( "[1,2]", ".a", "ARRAY node at path `` is not an object, no member at path: .a" );
         assertGetThrowsJsonPathException( "[[1,2],[]]", "[1][0]",
             "Path `.1.0` does not exist, array `.1` has only `0` elements." );
-        assertGetThrowsJsonTreeException( "[[1,2],[]]", "[0].a", "ARRAY node has no element property for index: a" );
+        assertGetThrowsJsonTreeException( "[[1,2],[]]", "[0].a", "ARRAY node at path `.0` is not an object, no member at path: .0.a" );
     }
 
     @Test
@@ -215,10 +215,6 @@ class JsonNodeTest {
         assertEquals( ".foo", rec.getLast().toString() );
         obj.as( JsonBean.class ).bar();
         assertEquals( ".bar", rec.getLast().toString() );
-    }
-
-    private static void assertGetThrowsJsonPathException( String json, String expected ) {
-        assertGetThrowsJsonTreeException( json, ".foo", expected );
     }
 
     private static void assertGetThrowsJsonPathException( String json, String path, String expected ) {

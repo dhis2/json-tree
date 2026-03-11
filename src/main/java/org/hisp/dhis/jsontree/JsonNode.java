@@ -254,7 +254,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode get(Text name) throws JsonPathException, JsonTreeException {
         JsonPath path = getPath().extendedWith( name );
-        throw new JsonTreeException(getType() + " node at path `"+path+"` is not an object, no member at path: " + path);
+        throw new JsonTreeException(getType() + " node at path `"+getPath()+"` is not an object, no member at path: " + path);
     }
 
     /**
@@ -265,7 +265,7 @@ public interface JsonNode extends Serializable {
      */
     default JsonNode getOrNull(Text name) throws JsonTreeException {
         JsonPath path = getPath().extendedWith( name );
-        throw new JsonTreeException(getType() + " node at path `"+path+"` is not an object, no member at path: " + path);
+        throw new JsonTreeException(getType() + " node at path `"+getPath()+"` is not an object, no member at path: " + path);
     }
 
     /**
@@ -534,7 +534,7 @@ public interface JsonNode extends Serializable {
      */
     @Surly
     default JsonNode element( Text index ) throws JsonPathException, JsonTreeException {
-        throw new JsonTreeException( getType() + " node has no element property for index: " + index );
+        throw new JsonTreeException( getType() + " node has no elements to access at index: " + index );
     }
 
     /**
@@ -555,7 +555,7 @@ public interface JsonNode extends Serializable {
      */
     @Maybe
     default JsonNode elementOrNull( Text index ) throws JsonPathException, JsonTreeException {
-        throw new JsonTreeException( getType() + " node has no element property for index: " + index );
+        throw new JsonTreeException( getType() + " node has no elements to access as index: " + index );
     }
 
     /**

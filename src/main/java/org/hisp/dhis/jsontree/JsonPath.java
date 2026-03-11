@@ -2,11 +2,8 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.Surly;
 
-import java.util.ArrayList;
 import java.util.List;
-
-import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.joining;
+import java.util.Objects;
 
 /**
  * A JSON path is a sequence of object member names or array indexes in the order from root to the
@@ -15,7 +12,7 @@ import static java.util.stream.Collectors.joining;
  * <p>An array index path is indistinguishable from a numeric object member name.
  *
  * <p>When constructed from a user input {@link String} in {@link #of(String)} the provided string
- * might require splitting into {@link #segments()}. Therefore, there is a syntax to indicate
+ * might require splitting into segments. Therefore, there is a syntax to indicate
  * segments. The most common form is the {@code .}-syntax where dot marks the start of a segment.
  * The initial segment can omit the leading dot.
  *
@@ -44,16 +41,16 @@ import static java.util.stream.Collectors.joining;
  *
  * @author Jan Bernitt
  * @since 1.1
- * @param segments The segments exactly as they occur in the object hierarchy of the JSON document
- *     they should match or where they have been extracted from
- * @param size number of segments used from the given list (to drop tails without rebuilding lists)
+ *
+ * @param parent null in case there is no parent (1st segment does not explicitly point to empty path)
+ * @param segment null in case of this being the root (empty path)
  */
-public record JsonPath(List<Text> segments, int size) {
+public record JsonPath(JsonPath parent, Text segment) {
 
     /**
-     * A path pointing to the root or self
+     * The empty path pointing to the root or self
      */
-    public static final JsonPath ROOT = new JsonPath( List.of(), 0 );
+    public static final JsonPath ROOT = new JsonPath( null, null );
 
     /**
      * "Parse" a path {@link String} into its {@link JsonPath} form
@@ -64,8 +61,7 @@ public record JsonPath(List<Text> segments, int size) {
      */
     public static JsonPath of( String path ) {
         if (path.isEmpty()) return ROOT;
-        List<Text> segments = splitIntoSegments( Text.of( path ) );
-        return new JsonPath( segments, segments.size() );
+        return splitPath( null, Text.of( path ) );
     }
 
     /**
@@ -75,11 +71,12 @@ public record JsonPath(List<Text> segments, int size) {
      * @return an array index selecting path
      */
     public static JsonPath of(int index) {
-    return new JsonPath(List.of(Text.of( index )), 1);
+        return new JsonPath(null, Text.of( index ));
     }
 
     public JsonPath {
-        requireNonNull( segments );
+        if (segment == null && parent != null)
+            throw new JsonPathException(parent, "Only root can have null segment but got: "+parent );
     }
 
     /**
@@ -90,18 +87,14 @@ public record JsonPath(List<Text> segments, int size) {
      */
     public JsonPath extendedWith( JsonPath subPath ) {
         if (isEmpty()) return subPath;
-        return extendedWith( subPath.segments );
-    }
-
-    public JsonPath extendedWith( List<Text> subSegments ) {
-        if (isEmpty()) return new JsonPath( subSegments, subSegments.size() );
-        if ( subSegments.isEmpty()) return this;
-        if ( subSegments.size() == 1) return extendedWith( subSegments.get( 0 ) );
-        int n = size;
-        Text[] concat = new Text[n + subSegments.size()];
-        for (int i = 0; i < n; i++) concat[i] = segments.get( i );
-        for ( int i = 0; i < subSegments.size(); i++) concat[n+i] = subSegments.get( i );
-        return new JsonPath( List.of( concat ), concat.length );
+        if (subPath.isEmpty()) return this;
+        if (subPath.isFirst()) return extendedWith( subPath.segment );
+        // below case is complicated/slow, but it is never the case
+        // unless the user manually calls it with a longer path
+        JsonPath res = this;
+        for (Text segment : subPath.segments())
+            res = new JsonPath( res, segment );
+        return res;
     }
 
     /**
@@ -112,12 +105,9 @@ public record JsonPath(List<Text> segments, int size) {
      * absolute path for the same root
      */
     public JsonPath extendedWith( Text subSegment ) {
-        if (isEmpty()) return new JsonPath( List.of(subSegment), 1 );
-        int n = size;
-        Text[] concat = new Text[n+1];
-        for (int i = 0; i < n; i++) concat[i] = segments.get( i );
-        concat[n] = subSegment;
-        return new JsonPath( List.of(concat), size+1);
+        if (subSegment == null) throw new NullPointerException();
+        if (isEmpty()) return new JsonPath( null, subSegment );
+        return new JsonPath( this, subSegment );
     }
 
     /**
@@ -133,20 +123,17 @@ public record JsonPath(List<Text> segments, int size) {
         return extendedWith(Text.of(index));
     }
 
-    //TODO unclear if this is really needed
-    public JsonPath extendedWith(String path) {
-        Text plain = Text.of( path );
+    public JsonPath extendedWith(String subPath) {
+        if (subPath.isEmpty()) return this;
+        Text plain = Text.of( subPath );
         // not having syntax also means it is a non-nested path (single segment)
         if (!isSyntaxPresent( plain )) return extendedWith( plain );
-        return extendedWith( splitIntoSegments( plain ) );
+        return splitPath( isEmpty() ? null : this, plain );
     }
 
   /**
    * Drops the right most path segment.
    *
-   * @implNote getting the parent path is an essential step in many operations which is why it was
-   *     optimized to reuse the same list of segments but to use the {@link #size} limits to
-   *     restrict the sublist that is considered.
    * @return a path ending before the segment of this path (this node's parent's path)
    * @throws JsonPathException when called on the root (empty path)
    */
@@ -154,48 +141,67 @@ public record JsonPath(List<Text> segments, int size) {
   public JsonPath parentPath() {
         if ( isEmpty() )
             throw new JsonPathException( this, "Root/self path does not have a parent." );
-        if (size == 1) return ROOT;
-        return new JsonPath( segments, size-1 );
+        return parent == null ? ROOT : parent;
     }
 
     /**
      * @return true, when this path is the root (points to itself)
      */
     public boolean isEmpty() {
-        return size == 0;
+        return segment == null;
+    }
+
+    /**
+     * @return true, when this is a path with only 1 segment
+     * @since 1.9
+     */
+    public boolean isFirst() {
+        return parent == null && segment != null;
     }
 
     /**
      * @return the number of segments in this path, zero for the root (self)
      */
     public int size() {
-        return size;
+        if (isEmpty()) return 0;
+        return parent == null ? 1 : parent.size() + 1;
     }
 
     @Override
     public boolean equals( Object obj ) {
         if (!(obj instanceof JsonPath other)) return false;
-        if (size != other.size) return false;
-        for (int i = 0; i < size; i++)
-            if (!segments.get( i ).equals( other.segments.get( i ) )) return false;
-        return true;
+        if (parent == null && other.parent != null) return false;
+        if (parent != null && other.parent == null) return false;
+        if (segment == null && other.segment != null) return false;
+        if (segment != null && other.segment == null) return false;
+        return Objects.equals( parent, other.parent ) && Objects.equals( segment, other.segment );
     }
 
     @Override
     public int hashCode() {
         if (isEmpty()) return 0;
-        if (size == 1) return segments.get( 0 ).hashCode();
-        int hash = 1;
-        for (int i = 0; i < size; i++)
-            hash = hash * 31 + segments.get( i ).hashCode();
-        return hash;
+        int hash = parent == null ? 1 : parent.hashCode();
+        return hash * 31 + segment.hashCode();
     }
 
     @Override
     public String toString() {
         if (isEmpty()) return "";
-        if (size == 1) return escape(segments.get(0), this);
-        return segments.stream().limit( size ).map( seg -> escape( seg, this )).collect( joining());
+        if (parent == null) return escape(segment, this);
+        return parent + escape(segment, this);
+    }
+
+    public List<Text> segments() {
+        if (isEmpty()) return List.of();
+        if (parent == null) return List.of(segment);
+        int n = size();
+        JsonPath p = this;
+        Text[] res = new Text[n];
+        for (int i = n-1; i >= 0; i--) {
+            res[i] = p.segment;
+            p = p.parent;
+        }
+        return List.of(res);
     }
 
     /**
@@ -241,7 +247,7 @@ public record JsonPath(List<Text> segments, int size) {
      */
     private static void checkCurlyEnd(Text seg, int end, JsonPath context) {
         if (end > 0 && end < seg.length() - 1) {
-            if (context == null) context = new JsonPath(List.of(seg), 1);
+            if (context == null) context = new JsonPath(null, seg);
             throw new JsonPathException(context, "Path segment %s cannot be escaped".formatted(seg));
         }
     }
@@ -272,16 +278,16 @@ public record JsonPath(List<Text> segments, int size) {
      * @return splits the path into segments each starting with a character that {@link #isSegmentOpen(char)}
      * @throws JsonPathException when the path cannot be split into segments as it is not a valid path
      */
-    private static List<Text> splitIntoSegments( Text path )
+    private static JsonPath splitPath( JsonPath parent, Text path )
         throws JsonPathException {
         // fast path when there is no syntax present (plain name)
-        if (!isSyntaxPresent( path )) return List.of(path);
+        if (!isSyntaxPresent(path)) return new JsonPath(parent, path);
         // slow path
         int len = path.length();
         int i = 0;
         int start = 0;
         int end = 0;
-        List<Text> res = new ArrayList<>();
+        JsonPath cur = parent;
         while ( i < len ) {
             char c = path.charAt( i );
             if ( c == '[' && isSquareSegmentOpen( path, i ) ) {
@@ -305,12 +311,12 @@ public record JsonPath(List<Text> segments, int size) {
                 }
                 end = i;
                 if (start == end) start -= 1;
-            } else throw new JsonPathException( new JsonPath(res, res.size()),
+            } else throw new JsonPathException( cur,
                 "Malformed path %s, invalid start of segment at position %d.".formatted( path, i ) );
-            res.add( path.subSequence( start, end ) );
+            cur = new JsonPath( cur, path.subSequence( start, end ) );
         }
         // make immutable
-        return List.copyOf( res );
+        return cur;
     }
 
     public static boolean isSyntaxPresent( Text path ) {

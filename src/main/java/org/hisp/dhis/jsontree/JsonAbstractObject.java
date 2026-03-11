@@ -59,7 +59,10 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @since 0.10
      */
     default boolean has( Collection<? extends CharSequence> names ) {
-        return exists() && names.stream().allMatch( node()::isMember );
+        if (!exists()) return false;
+        // Note that size check would miss that arrays do not have named members
+        JsonNode node = node();
+        return names.stream().allMatch( node::isMember );
     }
 
     /**
@@ -117,6 +120,8 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
         return keys().map( this::get );
     }
 
+    //TODO a way to iterate/stream values without putting them into cache
+
     /**
      * @return a stream of map/object entries in order of their declaration. the entry keys are the raw {@link #names()}
      * as given in the original JSON document (not the {@link #keys()})
@@ -129,6 +134,8 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
         return stream( node().keys().spliterator(), false ).map(
             name -> Map.entry( name.toString(), get( name.toString() ) ) );
     }
+
+    //TODO a way to iterate/stream members without putting them into cache
 
     /**
      * Lists raw JSON object member names in order of declaration.

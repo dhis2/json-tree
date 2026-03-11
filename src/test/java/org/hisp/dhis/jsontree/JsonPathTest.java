@@ -184,6 +184,18 @@ class JsonPathTest {
     }
 
     @Test
+    void testExtendedWith_PathDeep() {
+        assertEquals( JsonPath.of( ".foo.bar.x.y" ), JsonPath.of( ".foo.bar" ).extendedWith( JsonPath.of( ".x.y" ) ) );
+    }
+
+    @Test
+    void testExtendedWith_StringPath() {
+        assertEquals( JsonPath.of( ".foo.bar" ), JsonPath.of( ".foo.bar" ).extendedWith( "" ) );
+        assertEquals( JsonPath.of( ".foo.bar.x" ), JsonPath.of( ".foo.bar" ).extendedWith( ".x" ) );
+        assertEquals( JsonPath.of( ".foo.bar.x.y" ), JsonPath.of( ".foo.bar" ).extendedWith( ".x.y" ) );
+    }
+
+    @Test
     void testExtendedWith_Index_Negative() {
         JsonPathException ex = assertThrowsExactly( JsonPathException.class,
             () -> JsonPath.of( ".x" ).extendedWith( -1 ) );

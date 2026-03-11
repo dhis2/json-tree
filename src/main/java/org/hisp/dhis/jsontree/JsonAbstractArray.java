@@ -40,6 +40,8 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
         return isUndefined() || isEmpty() ? IntStream.empty() : IntStream.range( 0, size() );
     }
 
+    //TODO a way to iterate Text index values
+
     @Surly
     @Override
     default Iterator<E> iterator() {
@@ -52,6 +54,8 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
     default Stream<E> stream() {
         return isUndefined() || isEmpty() ? Stream.empty() : StreamSupport.stream( spliterator(), false );
     }
+
+    //TODO a way to iterate/stream elements without putting them into cache
 
     /**
      * True, if this list contains all the values provided given each value of the list is transformed by the toValue
@@ -121,7 +125,7 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
      * @throws IllegalArgumentException in case the given schema is not an interface
      * @since 1.0
      */
-    default void validateEach(Class<? extends JsonObject> schema, Rule... rules) {
+    default void validateEach(Class<?> schema, Rule... rules) {
         forEach( e -> JsonValidator.validate( e, schema, rules ) );
     }
 }

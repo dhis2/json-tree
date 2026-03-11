@@ -34,7 +34,6 @@ import static org.hisp.dhis.jsontree.Chars.expectChars;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -74,7 +73,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     implements Serializable {
 
     static JsonNode of( @Surly String json, @Maybe JsonNode.GetListener onGet ) {
-        return new JsonTree( json.toCharArray(), new HashMap<>(), onGet ).get( JsonPath.ROOT );
+        return of( json.toCharArray(), onGet );
     }
 
     /**
@@ -85,7 +84,14 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     static JsonNode ofNonStandard( @Surly String json ) {
         char[] jsonChars = json.toCharArray();
         adjustToStandard( jsonChars );
-        return new JsonTree( jsonChars, new HashMap<>(), null ).get( JsonPath.ROOT );
+        return of(jsonChars, null);
+    }
+
+    private static JsonNode of( char[] json, JsonNode.GetListener onGet ) {
+        JsonTree res = new JsonTree( json, new HashMap<>(), onGet );
+        JsonNode root = res.autoDetect( JsonPath.ROOT, skipWhitespace( res.json, 0 ) );
+        res.nodesByPath.put( JsonPath.ROOT, root );
+        return root;
     }
 
     /**
@@ -94,14 +100,12 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
      * The "expensive" operations to access the nodes {@link #value()} or find its {@link #endIndex()} are only computed
      * on demand.
      */
-    private abstract static class LazyJsonNode<T> implements JsonNode {
+    private abstract static class LazyJsonNode implements JsonNode {
 
         final JsonTree tree;
         final JsonPath path;
         final int start;
-
-        protected Integer end;
-        private transient T value;
+        private int end = -1;
 
         LazyJsonNode( JsonTree tree, JsonPath path, int start ) {
             this.tree = tree;
@@ -111,7 +115,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public final JsonNode getRoot() {
-            return tree.get( JsonPath.ROOT );
+            return tree.get( JsonPath.ROOT, false );
         }
 
         @Override
@@ -129,30 +133,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public boolean exists( JsonPath subPath ) {
-            //TODO needs dedicated impl.
-            return tree.getOrNull( subPath ) != null;
-        }
-
-        @Override
-        public final T value() {
-            if ( getType() == JsonNodeType.NULL ) {
-                checkNoTrailingTrash();
-                return null;
-            }
-            if ( !isParsed() ) {
-                value = parseValue();
-                checkNoTrailingTrash();
-            }
-            return value;
-        }
-
-        private void checkNoTrailingTrash() {
-            if ( !path.isEmpty() ) return;
-            Chars.expectEndOfBuffer( tree.json, skipWhitespace( tree.json, endIndex() ) );
-        }
-
-        protected final boolean isParsed() {
-            return value != null;
+            return tree.exists( path.extendedWith( subPath ) );
         }
 
         @Override
@@ -162,7 +143,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public final int endIndex() {
-            if ( end == null ) end = skipNodeAutodetect( tree.json, start );
+            if ( end < 0 ) end = skipNodeAutodetect( tree.json, start );
             return end;
         }
 
@@ -214,28 +195,31 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
 
         @Override
-        public int hashCode() {
-            return Arrays.hashCode( tree.json );
+        public final int hashCode() {
+            return Text.of( tree.json, start, endIndex() ).hashCode();
         }
 
         @Override
-        public boolean equals( Object obj ) {
-            return this == obj || obj instanceof LazyJsonNode<?> other && Arrays.equals(tree.json, other.tree.json);
+        public final boolean equals( Object obj ) {
+            if (this == obj) return true;
+            if (!(obj instanceof LazyJsonNode other)) return false;
+            if (tree.json == other.tree.json && start == other.start) return true;
+            return Text.of( tree.json, start, endIndex() ).contentEquals( Text.of(other.tree.json, other.start, other.endIndex()) );
         }
-
-        /**
-         * @return parses the JSON to a value as described by {@link #value()}
-         */
-        abstract T parseValue();
     }
 
-    private static final class LazyJsonObject extends LazyJsonNode<Iterable<Entry<Text, JsonNode>>>
+    private static final class LazyJsonObject extends LazyJsonNode
         implements Iterable<Entry<Text, JsonNode>> {
 
-        private Integer size;
+        private int size = -1;
 
         LazyJsonObject( JsonTree tree, JsonPath path, int start ) {
             super( tree, path, start );
+        }
+
+        @Override
+        public Iterable<Entry<Text, JsonNode>> value() {
+            return this;
         }
 
         @Surly @Override
@@ -250,39 +234,45 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public JsonNode get( Text name ) {
-            return tree.get(path.extendedWith(name));
+            return tree.get(path.extendedWith(name), false);
         }
 
         @Override
         public JsonNode getOrNull( Text name ) throws JsonTreeException {
-            return tree.getOrNull(path.extendedWith( name ));
+            return tree.get(path.extendedWith( name ), true);
         }
 
         @Surly @Override
         public JsonNode get(@Surly JsonPath subPath ) {
-            return tree.get( this.path.extendedWith( subPath ) );
+            if (subPath.isFirst()) return get( subPath.segment() );
+            return tree.get( path.extendedWith( subPath ), false );
         }
 
         @Maybe @Override
         public JsonNode getOrNull( @Surly JsonPath subPath ) {
-            return tree.getOrNull( this.path.extendedWith( subPath ) );
+            if (subPath.isFirst()) return getOrNull( subPath.segment() );
+            return tree.get( path.extendedWith( subPath ), true );
         }
 
         @Override
         public Iterable<Entry<Text, JsonNode>> members() {
-            return requireNonNull( value() );
+            return this;
         }
 
         @Override
         public boolean isEmpty() {
+            if (size >= 0) return size == 0;
             // avoid computing value with a "cheap" check
             return tree.json[skipWhitespace( tree.json, start + 1 )] == '}';
         }
 
         @Override
         public int size() {
-            if (size != null) return size;
-            if (isEmpty()) return 0;
+            if (size >= 0) return size;
+            if (isEmpty()) {
+                size = 0;
+                return 0;
+            }
             size = (int) StreamSupport.stream( spliterator(), false ).count();
             return size;
         }
@@ -301,11 +291,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 }
             }
             return Optional.empty();
-        }
-
-        @Override
-        Iterable<Entry<Text, JsonNode>> parseValue() {
-            return this;
         }
 
         @Surly @Override
@@ -329,7 +314,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             JsonPath memberPath =  path.extendedWith( name );
             JsonNode member = tree.nodesByPath.get( memberPath );
             if ( member != null ) return member;
-            if (size != null) {
+            if (size >= 0) {
                 // if size is known all members are in the tree map
                 // so a miss means there is no such member
                 if (!orNull) throw noSuchElement( name );
@@ -436,12 +421,17 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
     }
 
-    private static final class LazyJsonArray extends LazyJsonNode<Iterable<JsonNode>> implements Iterable<JsonNode> {
+    private static final class LazyJsonArray extends LazyJsonNode implements Iterable<JsonNode> {
 
-        private Integer size;
+        private int size = -1;
 
         LazyJsonArray( JsonTree tree, JsonPath path, int start ) {
             super( tree, path, start );
+        }
+
+        @Override
+        public Iterable<JsonNode> value() {
+            return this;
         }
 
         @Surly @Override
@@ -456,7 +446,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Iterable<JsonNode> elements() {
-            return requireNonNull( value() );
+            return this;
         }
 
         @Override
@@ -473,24 +463,30 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Surly @Override
         public JsonNode get(@Surly JsonPath subPath ) {
-            return tree.get( this.path.extendedWith( subPath ) );
+            if (subPath.isFirst()) return get(subPath.segment());
+            return tree.get(path.extendedWith( subPath ), false );
         }
 
         @Override
-        public JsonNode getOrNull( JsonPath name ) throws JsonTreeException {
-            return tree.getOrNull(path.extendedWith( name ));
+        public JsonNode getOrNull( JsonPath subPath ) throws JsonTreeException {
+            if (subPath.isFirst()) return getOrNull( subPath.segment() );
+            return tree.get(path.extendedWith( subPath ), true);
         }
 
         @Override
         public boolean isEmpty() {
+            if (size >= 0) return size == 0;
             // avoid computing value with a "cheap" check
             return tree.json[skipWhitespace( tree.json, start + 1 )] == ']';
         }
 
         @Override
         public int size() {
-            if (size != null) return size;
-            if (isEmpty()) return 0;
+            if (size >= 0) return size;
+            if (isEmpty()) {
+                size = 0;
+                return 0;
+            }
             size = (int) StreamSupport.stream( spliterator(), false ).count();
             return size;
         }
@@ -509,11 +505,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return Optional.empty();
         }
 
-        @Override
-        Iterable<JsonNode> parseValue() {
-            return this;
-        }
-
         @Surly @Override
         public JsonNode element( int index ) {
             return element( index, Text.of( index ), false );
@@ -521,7 +512,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Surly @Override
         public JsonNode element( Text index ) {
-            if (!index.isInt()) return super.element( index );
+            if (!index.isInt()) return super.get( index );
             return element( index.parseInt(), index, false );
         }
 
@@ -532,13 +523,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public JsonNode elementOrNull( Text index ) {
-            if (!index.isInt()) return null;
+            if (!index.isInt()) return super.get( index );
             return element( index.parseInt(), index, true );
-        }
-
-        private void noSuchElement( Text index ) {
-            throw new JsonTreeException(
-                "ARRAY node is not an object, no member at path: %s".formatted(index));
         }
 
         private JsonPathException outOfBounds(int index, int size) {
@@ -551,7 +537,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             throws JsonPathException {
             if ( index < 0 )
                 throw outOfBounds( index, size() );
-            if (size != null && index >= size) {
+            if (size >= 0 && index >= size) {
                 // early exit for a miss
                 if (!orNull) throw outOfBounds( index, size );
                 return null;
@@ -630,7 +616,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
     }
 
-    private static final class LazyJsonNumber extends LazyJsonNode<Number> {
+    private static final class LazyJsonNumber extends LazyJsonNode {
 
         LazyJsonNumber( JsonTree tree, JsonPath path, int start ) {
             super( tree, path, start );
@@ -642,15 +628,14 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        Number parseValue() {
-            end = skipNumber( tree.json, start );
-            return Chars.parseNumber( tree.json, start, end - start );
+        public Number value() {
+            return Chars.parseNumber( tree.json, start, endIndex() - start );
         }
     }
 
 
 
-    private static final class LazyJsonString extends LazyJsonNode<Text> {
+    private static final class LazyJsonString extends LazyJsonNode {
 
         LazyJsonString( JsonTree tree, JsonPath path, int start ) {
             super( tree, path, start );
@@ -662,12 +647,12 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        Text parseValue() {
+        public Text value() {
             return Chars.parseString( tree.json, start );
         }
     }
 
-    private static final class LazyJsonBoolean extends LazyJsonNode<Boolean> {
+    private static final class LazyJsonBoolean extends LazyJsonNode {
 
         LazyJsonBoolean( JsonTree tree, JsonPath path, int start ) {
             super( tree, path, start );
@@ -679,12 +664,12 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        Boolean parseValue() {
+        public Boolean value() {
             return endIndex() == start + 4; // then it was true
         }
     }
 
-    private static final class LazyJsonNull extends LazyJsonNode<Serializable> {
+    private static final class LazyJsonNull extends LazyJsonNode {
 
         LazyJsonNull( JsonTree tree, JsonPath path, int start ) {
             super( tree, path, start );
@@ -696,9 +681,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        Serializable parseValue() {
-            if (end == null)
-                end = skipNull( tree.json, start );
+        public Object value() {
             return null;
         }
     }
@@ -708,23 +691,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         return new String( json );
     }
 
-    /**
-     * Returns the {@link JsonNode} for the given path.
-     *
-     * @param path a path as described in {@link JsonTree} javadoc
-     * @return the {@link JsonNode} for the path, never {@code null}
-     * @throws JsonPathException   when this document does not contain a node corresponding to the given path or the
-     *                             given path is not a valid path expression
-     * @throws JsonFormatException when this document contains malformed JSON that confuses the parser
-     */
-    private JsonNode get( JsonPath path ) {
-        return get( path, false );
-    }
-
-    private JsonNode getOrNull( JsonPath path ) {
-        return get( path, true );
-    }
-
     private JsonNode get( JsonNode parent, Text name, boolean orNull ) {
         return null; //TODO
     }
@@ -732,12 +698,9 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     // making local API accessible
 
     private JsonNode get( JsonPath path, boolean orNull ) {
-        if ( nodesByPath.isEmpty() )
-            nodesByPath.put( JsonPath.ROOT, autoDetect( JsonPath.ROOT, skipWhitespace( json, 0 ) ) );
         if ( onGet != null && !path.isEmpty() ) onGet.accept( path );
         JsonNode node = nodesByPath.get( path );
-        if ( node != null )
-            return node;
+        if ( node != null ) return node;
         // find by finding the closest already indexed parent and navigate down from there...
         JsonNode parent = getClosestIndexedParent( path, nodesByPath );
         int segMax = path.size();
@@ -745,9 +708,10 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         while (parent != null && segCur < segMax ) { // meaning: are we at the target node? (self)
             checkNodeIsParent( parent, path );
             Text segment = path.segments().get( segCur );
-            if (parent.getType() == JsonNodeType.ARRAY) {
+            JsonNodeType type = parent.getType();
+            if ( type == JsonNodeType.ARRAY) {
                 parent = orNull ? parent.elementOrNull( segment ) : parent.element( segment );
-            } else if ( parent.getType() == JsonNodeType.OBJECT ) {
+            } else if ( type == JsonNodeType.OBJECT ) {
                 parent = orNull ? parent.memberOrNull( segment ) : parent.member( segment );
             } else {
                 throw new JsonPathException( path, format( "Malformed path %s at %s.", path, segment ) );
@@ -755,6 +719,31 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             segCur++;
         }
         return parent;
+    }
+
+    //TODO call once lazy for root
+    // the idea was that construction should not trigger a skip over the root
+    private void checkNoTrailingTrash(JsonNode root) {
+        Chars.expectEndOfBuffer(json, skipWhitespace( json, root.endIndex() ) );
+    }
+
+    private boolean exists( JsonPath path ) {
+        if (nodesByPath.containsKey( path )) return true;
+        JsonNode node = getClosestIndexedParent( path, nodesByPath );
+        int segMax = path.size();
+        int segCur = node.getPath().size();
+        while (node != null && segCur < segMax ) {
+            JsonNodeType type = node.getType();
+            if ( type.isSimple()) return false;
+            Text segment = path.segments().get( segCur );
+            if ( type == JsonNodeType.ARRAY) {
+                node = node.elementOrNull( segment );
+            } else if ( type == JsonNodeType.OBJECT ) {
+                node = node.memberOrNull( segment );
+            }
+            segCur++;
+        }
+        return node != null;
     }
 
     private JsonNode autoDetect( JsonPath path, int atIndex ) {

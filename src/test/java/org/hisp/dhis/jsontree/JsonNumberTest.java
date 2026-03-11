@@ -48,7 +48,7 @@ class JsonNumberTest {
     @Test
     void testIntValue_Null() {
         JsonMixed val = JsonMixed.of( "null" );
-        assertThrowsExactly( NullPointerException.class, val::intValue );
+        assertThrowsExactly( JsonPathException.class, val::intValue );
     }
 
     @Test
