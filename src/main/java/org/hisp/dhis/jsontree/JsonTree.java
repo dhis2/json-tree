@@ -193,7 +193,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             return getDeclaration();
         }
 
-
         @Override
         public final int hashCode() {
             return Text.of( tree.json, start, endIndex() ).hashCode();
@@ -205,6 +204,17 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             if (!(obj instanceof LazyJsonNode other)) return false;
             if (tree.json == other.tree.json && start == other.start) return true;
             return Text.of( tree.json, start, endIndex() ).contentEquals( Text.of(other.tree.json, other.start, other.endIndex()) );
+        }
+
+        /**
+         * This methods necessity is an unfortunate detail of valid JSON which
+         * does allow whitespace after the root but no further other characters.
+         * Since the {@link #endIndex()} (skipping over the JSON) should be lazy
+         * and at least deferred until actual usage an issue with dangling trash
+         * can first be checked for when user accesses the {@link #value()}.
+         */
+        final void checkNoDanglingTrash() {
+            Chars.expectEndOfBuffer(tree.json, skipWhitespace( tree.json, endIndex() ) );
         }
     }
 
@@ -219,6 +229,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Iterable<Entry<Text, JsonNode>> value() {
+            if (path.isEmpty()) checkNoDanglingTrash();
             return this;
         }
 
@@ -422,6 +433,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Iterable<JsonNode> value() {
+            if (path.isEmpty()) checkNoDanglingTrash();
             return this;
         }
 
@@ -614,6 +626,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Number value() {
+            if (path.isEmpty()) checkNoDanglingTrash();
             return Chars.parseNumber( tree.json, start, endIndex() - start );
         }
     }
@@ -633,6 +646,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Text value() {
+            if (path.isEmpty()) checkNoDanglingTrash();
             return Chars.parseString( tree.json, start );
         }
     }
@@ -650,6 +664,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Boolean value() {
+            if (path.isEmpty()) checkNoDanglingTrash();
             return endIndex() == start + 4; // then it was true
         }
     }
@@ -667,6 +682,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public Object value() {
+            if (path.isEmpty()) checkNoDanglingTrash();
             return null;
         }
     }
@@ -697,12 +713,6 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             segCur++;
         }
         return parent;
-    }
-
-    //TODO call once lazy for root
-    // the idea was that construction should not trigger a skip over the root
-    private void checkNoTrailingTrash(JsonNode root) {
-        Chars.expectEndOfBuffer(json, skipWhitespace( json, root.endIndex() ) );
     }
 
     private boolean exists( JsonPath path ) {

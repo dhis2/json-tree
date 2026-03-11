@@ -140,7 +140,6 @@ class JsonTestSuiteTest {
     }
 
     private void assert_n( JsonNode node ) {
-        assertThrowsExactly( JsonFormatException.class, () -> node.visit( n -> {
-        } ) );
+        assertThrowsExactly( JsonFormatException.class, () -> node.visit( JsonNode::value) );
     }
 }
