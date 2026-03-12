@@ -95,12 +95,6 @@ class JsonPathTest {
     }
 
     @Test
-    void testParent_Root() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.SELF::parentPath );
-        assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
-    }
-
-    @Test
     void testParent_Dot_Uniform() {
         assertParent( "", ".x" );
         assertParent( ".x", ".x.y" );
@@ -157,8 +151,7 @@ class JsonPathTest {
 
     @Test
     void testParentPath_Empty() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            JsonPath.SELF::parentPath );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.SELF::parentPath );
         assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
     }
 

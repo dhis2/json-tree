@@ -119,8 +119,7 @@ record ObjectValidator(
                 if ( currentlyResolved.contains( schema ) ) return new Lazy( schema, new AtomicReference<>() );
                 return of( schema, currentlyResolved );
             }
-        }
-        if ( type instanceof ParameterizedType pt ) {
+        } else if ( type instanceof ParameterizedType pt ) {
             Class<?> rawType = (Class<?>) pt.getRawType();
             if ( JsonMap.class.isAssignableFrom( rawType ) )
                 return Items.of( getInstance( pt.getActualTypeArguments()[0], currentlyResolved ) );

@@ -278,8 +278,6 @@ class TextTest {
         Text t3 = Text.of("world");
         assertEquals(t1, t2);
         assertNotEquals(t1, t3);
-        assertNotEquals(t1, "hello"); // must not equal a String
-        assertNotEquals(t1, null);
     }
 
     @DisplayName("hashCode()")

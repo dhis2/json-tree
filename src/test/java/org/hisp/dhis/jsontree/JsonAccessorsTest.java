@@ -319,6 +319,7 @@ class JsonAccessorsTest {
 
     interface ListBean extends JsonObject {
 
+        @Override
         List<String> names();
 
         List<String> names( List<String> v );

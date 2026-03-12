@@ -544,7 +544,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             path.segments().stream().map( Text::toString ).toArray(String[]::new));
     }
 
-    record SerializedJsonValue(JsonNode root, String[] path) implements Serializable {
+    private record SerializedJsonValue(JsonNode root, String[] path) implements Serializable {
         @Serial private static final long serialVersionUID = 1L;
 
         @Serial private Object readResolve() {

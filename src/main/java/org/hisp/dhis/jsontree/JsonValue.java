@@ -40,40 +40,45 @@ import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
- * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which
- * is representing an actual {@link JsonTree}.
- * <p>
- * As usual there are specific node type for the JSON building blocks:
+ * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which is representing an
+ * actual {@link JsonTree}.
+ *
+ * <p>As usual there are specific node type for the JSON building blocks:
+ *
  * <ul>
- * <li>{@link JsonObject}</li>
- * <li>{@link JsonArray}</li>
- * <li>{@link JsonString}</li>
- * <li>{@link JsonNumber}</li>
- * <li>{@link JsonBoolean}</li>
- * </ul>
- * In addition, there is {@link JsonAbstractCollection} as a common base type of
- * {@link JsonObject} and {@link JsonArray}, as well as {@link JsonPrimitive} as common
- * base type of {@link JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
- * <p>
- * In addition {@link JsonList} is a typed JSON array of uniform elements (which
- * can be understood as a typed wrapper around a {@link JsonArray}).
- * <p>
- * Similarly {@link JsonMap} is a typed JSON object map of uniform values (which
- * can be understood as a typed wrapper around a {@link JsonObject}).
- * <p>
- * The API is designed to:
- * <ul>
- * <li>be extended by further type extending {@link JsonValue}, such as
- * {@link JsonDate}, but also further specific object types</li>
- * <li>fail at the point of assertion/use not traversal.
- * This means traversing the virtual tree does not cause errors unless explicitly
- * provoked by a "terminal operation" or malformed input</li>
- * <li>be implemented by a single class which only builds a lookup path and
- * checks or provides the leaf values on demand. Interfaces not directly
- * implemented by this class are dynamically created using a
- * {@link java.lang.reflect.Proxy}.</li>
+ *   <li>{@link JsonObject}
+ *   <li>{@link JsonArray}
+ *   <li>{@link JsonString}
+ *   <li>{@link JsonNumber}
+ *   <li>{@link JsonBoolean}
  * </ul>
  *
+ * In addition, there is {@link JsonAbstractCollection} as a common base type of {@link JsonObject}
+ * and {@link JsonArray}, as well as {@link JsonPrimitive} as common base type of {@link
+ * JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
+ *
+ * <p>In addition {@link JsonList} is a typed JSON array of uniform elements (which can be
+ * understood as a typed wrapper around a {@link JsonArray}).
+ *
+ * <p>Similarly {@link JsonMap} is a typed JSON object map of uniform values (which can be
+ * understood as a typed wrapper around a {@link JsonObject}).
+ *
+ * <p>The API is designed to:
+ *
+ * <ul>
+ *   <li>be extended by further type extending {@link JsonValue}, such as {@link JsonDate}, but also
+ *       further specific object types
+ *   <li>fail at the point of assertion/use not traversal. This means traversing the virtual tree
+ *       does not cause errors unless explicitly provoked by a "terminal operation" or malformed
+ *       input
+ *   <li>be implemented by a single class which only builds a lookup path and checks or provides the
+ *       leaf values on demand. Interfaces not directly implemented by this class are dynamically
+ *       created using a {@link java.lang.reflect.Proxy}.
+ * </ul>
+ *
+ * @implNote When serializing a {@link JsonValue} the deserialized instance only supports the {@link
+ *     JsonMixed} API as the {@link java.lang.reflect.Proxy} or subtypes cannot be restored. It has
+ *     to be recreated by calling {@link #as(Class)}.
  * @author Jan Bernitt
  * @see JsonMixed
  */
