@@ -13,10 +13,12 @@ class JsonSerializationTest {
         JsonNode rootT0 = JsonNode.of( "{ \"key\": \"value\" }" );
         JsonNode valueT0 = rootT0.get( ".key" );
         JsonMixed rootT0Api = rootT0.lift( JsonAccess.GLOBAL ).as( JsonMixed.class );
+        JsonValue valueT0Api = rootT0Api.get( "key" );
 
         JsonNode rootT1 = serialisationRoundTrip( rootT0 );
         JsonNode valueT1 = serialisationRoundTrip( valueT0 );
         JsonMixed rootT1Api = serialisationRoundTrip( rootT0Api );
+        JsonValue valueT1Api = serialisationRoundTrip( valueT0Api );
 
         assertEquals(rootT0.getDeclaration(), rootT1.getDeclaration(),
                 "The JSON should be identical");
@@ -25,6 +27,7 @@ class JsonSerializationTest {
 
         assertEquals( rootT0Api, rootT1Api );
         assertEquals( rootT0Api.get( "key" ), rootT1Api.get( "key" ) );
+        assertEquals( valueT0Api, valueT1Api );
 
         assertNotSame(rootT0, rootT1,
                 "Deserialized object should be a new instance");

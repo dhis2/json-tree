@@ -540,14 +540,15 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     */
 
     @Serial public Object writeReplace() {
-        return new SerializedJsonValue(node());
+        return new SerializedJsonValue(node().getRoot(),
+            path.segments().stream().map( Text::toString ).toArray(String[]::new));
     }
 
-    record SerializedJsonValue(JsonNode node) implements Serializable {
+    record SerializedJsonValue(JsonNode root, String[] path) implements Serializable {
         @Serial private static final long serialVersionUID = 1L;
 
         @Serial private Object readResolve() {
-            return JsonMixed.of( node );
+            return JsonMixed.of( root ).get( JsonPath.of( path ), JsonMixed.class );
         }
     }
 }
