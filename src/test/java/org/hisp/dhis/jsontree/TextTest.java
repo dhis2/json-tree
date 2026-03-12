@@ -102,6 +102,7 @@ class TextTest {
         Text t = Text.of("hello world hello");
         assertEquals(12, t.indexOf("hello", 1));
         assertEquals(-1, t.indexOf("world", 8));
+        assertEquals(14, t.indexOf("llo", 5));
     }
 
     @DisplayName("indexOf(CharSequence, int, int)")
@@ -110,6 +111,7 @@ class TextTest {
         Text t = Text.of("hello world hello");
         assertEquals(12, t.indexOf("hello", 8, 18));
         assertEquals(-1, t.indexOf("world", 8, 12));
+        assertEquals(-1, t.indexOf("hello", 0, 4));
         assertEquals(-1, t.indexOf("hello", 0, 4));
     }
 
@@ -311,5 +313,24 @@ class TextTest {
             hashes.add( Text.of( i ).hashCode() );
         }
         assertEquals( 1000, hashes.size() );
+    }
+
+    @DisplayName("Text.hashCode(Text)")
+    @Test
+    void testHashCode_Indexes_Long() {
+        Set<Integer> hashes = new HashSet<>(1000);
+        char[] characters = "abcdefghijk".toCharArray();
+        for (int i = 0; i < 1000; i++) {
+            // make 2 characters different
+            int offset = i % characters.length;
+            characters[offset] = (char) ((int)characters[offset] + (i % 7));
+            offset = i % 7;
+            characters[offset] = (char) ((int)characters[offset] + (i % 13));
+            hashes.add( Text.of( new String(characters) ).hashCode() );
+        }
+        // in other words: in an 11-character text with 2 characters varying
+        // there are 4.6% collisions
+        // this is with poor "randomisation" of the variation
+        assertEquals( 954, hashes.size() );
     }
 }

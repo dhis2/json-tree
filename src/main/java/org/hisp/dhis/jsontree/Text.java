@@ -184,6 +184,7 @@ public interface Text extends CharSequence, Comparable<Text> {
     @Override
     default Text subSequence( int start, int end ) {
         checkSubSequence( start, end, length() );
+        if (start == 0 && end == length()) return this;
         int len = end - start;
         if (start == 0 && end == len) return this;
         char[] buffer = new char[len];
