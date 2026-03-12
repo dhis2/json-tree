@@ -1,5 +1,11 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.Set;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
 import org.hisp.dhis.jsontree.JsonMixed;
@@ -10,13 +16,6 @@ import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test the validation with an example that has multiple levels.

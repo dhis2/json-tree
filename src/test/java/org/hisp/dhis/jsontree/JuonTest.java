@@ -1,9 +1,9 @@
 package org.hisp.dhis.jsontree;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test the {@link Juon} parser accessible via {@link JsonNode#ofUrlObjectNotation(String)}.

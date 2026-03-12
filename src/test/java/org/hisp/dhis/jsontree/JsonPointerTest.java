@@ -1,7 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Some tests to see if the {@link JsonPointer#decode()} is according to spec.

@@ -27,14 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * A {@link JsonMap} with {@link JsonList} of elements.

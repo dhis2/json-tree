@@ -1,17 +1,16 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonObject.Property;
-import org.junit.jupiter.api.Test;
+import static java.util.stream.Collectors.toSet;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedType;
 import java.util.List;
 import java.util.Set;
-
-import static java.util.stream.Collectors.toSet;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import org.hisp.dhis.jsontree.JsonObject.Property;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the extraction of properties provided by {@link JsonObject#properties(Class)}.

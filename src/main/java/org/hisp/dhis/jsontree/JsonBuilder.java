@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static java.util.stream.StreamSupport.stream;
+
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -38,8 +40,6 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * A {@link JsonNode} builder API is designed to efficiently create declare or stream JSON programmatically.

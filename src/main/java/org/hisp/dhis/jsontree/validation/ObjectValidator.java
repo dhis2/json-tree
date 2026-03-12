@@ -1,19 +1,13 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonList;
-import org.hisp.dhis.jsontree.JsonMap;
-import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonNodeType;
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonPath;
-import org.hisp.dhis.jsontree.JsonValue;
-import org.hisp.dhis.jsontree.Text;
-import org.hisp.dhis.jsontree.Validation.Error;
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.Validation.Validator;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import static java.lang.Double.isNaN;
+import static java.util.stream.Collectors.toMap;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
@@ -34,15 +28,20 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
-import static java.lang.Double.isNaN;
-import static java.util.stream.Collectors.toMap;
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import org.hisp.dhis.jsontree.JsonList;
+import org.hisp.dhis.jsontree.JsonMap;
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonNodeType;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonPath;
+import org.hisp.dhis.jsontree.JsonValue;
+import org.hisp.dhis.jsontree.Text;
+import org.hisp.dhis.jsontree.Validation.Error;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.Validation.Validator;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * A validator that Contains one {@link Validator} for each property of the schema that needs validation.

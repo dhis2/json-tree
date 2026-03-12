@@ -1,17 +1,16 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.Validation;
-import org.junit.jupiter.api.Test;
-
-import java.lang.annotation.Retention;
-
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 import static org.hisp.dhis.jsontree.Validation.Rule.MAX_LENGTH;
 import static org.hisp.dhis.jsontree.Validation.Rule.MIN_LENGTH;
 import static org.hisp.dhis.jsontree.Validation.Rule.REQUIRED;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+
+import java.lang.annotation.Retention;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.Validation;
+import org.junit.jupiter.api.Test;
 
 class JsonValidationMiscMetaAnnotationTest {
 

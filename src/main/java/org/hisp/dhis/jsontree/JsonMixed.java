@@ -1,15 +1,14 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Surly;
-
-import java.nio.file.Path;
-
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+
+import java.nio.file.Path;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * Main API to wrap JSON raw strings as {@link JsonValue} nodes.

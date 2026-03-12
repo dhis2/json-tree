@@ -27,24 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.validation.JsonValidator;
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static java.util.Arrays.stream;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterator.SIZED;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
  * Represents a JSON object node.

@@ -27,7 +27,6 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.function.Function;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;

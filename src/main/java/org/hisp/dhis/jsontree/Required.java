@@ -27,12 +27,12 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
 /**
  * Can be used to mark {@link JsonObject} properties that are expected to exist in the tree and are not defined as JSON

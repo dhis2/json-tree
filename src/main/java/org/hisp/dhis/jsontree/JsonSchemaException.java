@@ -1,8 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.List;
-
 import static java.util.stream.Collectors.joining;
+
+import java.util.List;
 
 /**
  * Thrown when an JSON input does not match its JSON schema description.

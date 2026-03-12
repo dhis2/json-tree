@@ -1,6 +1,9 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
+import static java.util.stream.Collectors.toMap;
+import static org.hisp.dhis.jsontree.JsonBuilder.createArray;
+import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
+import static org.hisp.dhis.jsontree.JsonPatchException.clash;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,11 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static java.util.stream.Collectors.toMap;
-import static org.hisp.dhis.jsontree.JsonBuilder.createArray;
-import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
-import static org.hisp.dhis.jsontree.JsonPatchException.clash;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 
 /**
  * {@linkplain JsonNodeOperation}s are used to make bulk modifications using {@link JsonNode#patch(List)}.

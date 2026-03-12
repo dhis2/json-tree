@@ -27,14 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
-import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
+import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
 
 import java.io.PrintStream;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
-import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 
 /**
  * An "append only" {@link JsonBuilder} implementation that can be used with a {@link PrintStream} or a

@@ -1,8 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link JsonAbstractCollection} specific API methods.

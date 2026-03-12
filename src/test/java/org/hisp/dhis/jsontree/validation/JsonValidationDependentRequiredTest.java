@@ -1,18 +1,17 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
+import java.util.Map;
+import java.util.Set;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Required;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
-
-import java.util.Map;
-import java.util.Set;
-
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
  * Tests Validation of the @{@link Validation#dependentRequired()} property.

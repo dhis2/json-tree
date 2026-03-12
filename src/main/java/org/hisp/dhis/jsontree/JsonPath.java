@@ -1,9 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Surly;
-
 import java.util.List;
 import java.util.Objects;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * A JSON path is a sequence of object member names or array indexes in the order from root to the

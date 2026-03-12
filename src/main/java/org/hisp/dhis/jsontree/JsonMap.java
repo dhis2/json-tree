@@ -27,11 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.

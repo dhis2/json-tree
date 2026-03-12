@@ -27,18 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.Iterator;
 import java.util.List;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static java.util.Collections.emptyIterator;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterator.SIZED;
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 /**
  * Represents a JSON array node.

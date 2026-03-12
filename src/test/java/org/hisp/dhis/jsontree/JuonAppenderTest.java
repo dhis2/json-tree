@@ -27,17 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
-import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.lang.annotation.RetentionPolicy;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link JuonAppender} implementation of {@link Juon}.

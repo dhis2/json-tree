@@ -1,6 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import static java.util.stream.Collectors.joining;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 /**

@@ -1,13 +1,12 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+
+import java.util.List;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 
 class JsonValidationMiscTypeUseTest {
 

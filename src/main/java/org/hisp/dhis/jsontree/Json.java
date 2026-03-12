@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
+
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -8,8 +10,6 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-
-import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
 
 /**
  * High level API to convert Java values to JSON {@link JsonValue} nodes.

@@ -27,19 +27,6 @@
  */
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonPathException;
-import org.hisp.dhis.jsontree.JsonTreeException;
-import org.hisp.dhis.jsontree.Required;
-import org.hisp.dhis.jsontree.Validation;
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
 import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -48,6 +35,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Set;
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonPathException;
+import org.hisp.dhis.jsontree.JsonTreeException;
+import org.hisp.dhis.jsontree.Required;
+import org.hisp.dhis.jsontree.Validation;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link Required} annotation feature.

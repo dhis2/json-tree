@@ -27,10 +27,6 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonDiff.Mode;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
-
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
@@ -39,6 +35,9 @@ import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.hisp.dhis.jsontree.JsonDiff.Mode;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which

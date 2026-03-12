@@ -1,8 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link org.hisp.dhis.jsontree.JsonBuilder.PrettyPrint} aspect of {@link JsonBuilder}.

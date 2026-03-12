@@ -1,5 +1,9 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+
+import java.util.List;
 import org.hisp.dhis.jsontree.JsonArray;
 import org.hisp.dhis.jsontree.JsonMultiMap;
 import org.hisp.dhis.jsontree.JsonObject;
@@ -7,11 +11,6 @@ import org.hisp.dhis.jsontree.JsonString;
 import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
-
-import java.util.List;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
 /**
  * Structure of a JSON schema document as described in <a href="https://json-schema.org/draft/2020-12">2020-12

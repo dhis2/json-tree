@@ -1,20 +1,16 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.internal.Surly;
-import org.hisp.dhis.jsontree.validation.JsonValidator;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import static java.util.Collections.emptyIterator;
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
  * An "abstract" type that is expected to be backed by a JSON array.

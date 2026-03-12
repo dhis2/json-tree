@@ -1,19 +1,18 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validation.Validator;
-import org.hisp.dhis.jsontree.Validation.YesNo;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import static java.lang.Double.isNaN;
+import static java.util.stream.Collectors.toSet;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
-
-import static java.lang.Double.isNaN;
-import static java.util.stream.Collectors.toSet;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.Validator;
+import org.hisp.dhis.jsontree.Validation.YesNo;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * A declarative model or description of what validation rules to check.

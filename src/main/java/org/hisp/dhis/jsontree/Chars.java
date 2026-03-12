@@ -1,5 +1,11 @@
 package org.hisp.dhis.jsontree;
 
+import static java.lang.Character.highSurrogate;
+import static java.lang.Character.isBmpCodePoint;
+import static java.lang.Character.lowSurrogate;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
@@ -8,13 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.function.BiFunction;
-import java.util.function.Function;
-
-import static java.lang.Character.highSurrogate;
-import static java.lang.Character.isBmpCodePoint;
-import static java.lang.Character.lowSurrogate;
-import static java.lang.Math.max;
-import static java.lang.Math.min;
 
 /**
  * Utility class for {@code char[]} based helper functions.

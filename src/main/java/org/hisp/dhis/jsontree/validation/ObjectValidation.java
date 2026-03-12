@@ -1,17 +1,16 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonValue;
-import org.hisp.dhis.jsontree.Text;
-import org.hisp.dhis.jsontree.Validation;
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validator;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.ArrayValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.NumberValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.StringValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.ValueValidation;
+import static java.lang.Double.isNaN;
+import static java.util.Comparator.comparing;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
+import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
 import java.lang.System.Logger.Level;
 import java.lang.annotation.Annotation;
@@ -34,18 +33,18 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
-
-import static java.lang.Double.isNaN;
-import static java.util.Comparator.comparing;
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
-import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
-import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonValue;
+import org.hisp.dhis.jsontree.Text;
+import org.hisp.dhis.jsontree.Validation;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validator;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.ArrayValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.NumberValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.StringValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.ValueValidation;
 
 /**
  * Analysis types and annotations to extract a {@link PropertyValidation} model description.

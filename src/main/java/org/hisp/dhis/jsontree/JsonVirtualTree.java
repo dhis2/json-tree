@@ -27,9 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonAccessors.JsonAccessor;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import static java.lang.Character.isUpperCase;
+import static java.lang.Character.toLowerCase;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -50,9 +49,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
-
-import static java.lang.Character.isUpperCase;
-import static java.lang.Character.toLowerCase;
+import org.hisp.dhis.jsontree.JsonAccessors.JsonAccessor;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * Implements the {@link JsonValue} read-only access abstraction for JSON responses.

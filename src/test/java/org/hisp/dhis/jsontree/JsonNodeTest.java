@@ -27,16 +27,15 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Deque;
-import java.util.LinkedList;
-import java.util.Set;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests {@link JsonNode} specific aspects of the {@link JsonTree} implementation of the interface.

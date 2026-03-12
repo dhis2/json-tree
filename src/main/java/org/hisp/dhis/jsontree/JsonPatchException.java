@@ -1,9 +1,8 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.List;
 import org.hisp.dhis.jsontree.internal.Maybe;
 import org.hisp.dhis.jsontree.internal.Surly;
-
-import java.util.List;
 
 /**
  * When a patch operation fails.

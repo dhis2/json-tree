@@ -1,10 +1,9 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 import org.hisp.dhis.jsontree.internal.Surly;
-
-import java.util.function.Consumer;
 
 /**
  * Builder for JUON

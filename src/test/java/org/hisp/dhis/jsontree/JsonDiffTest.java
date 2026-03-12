@@ -1,15 +1,14 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import static org.hisp.dhis.jsontree.JsonDiff.Mode.DEFAULT;
 import static org.hisp.dhis.jsontree.JsonDiff.Mode.LENIENT;
 import static org.hisp.dhis.jsontree.JsonDiff.Mode.STRICT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 class JsonDiffTest {
 

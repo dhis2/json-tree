@@ -27,17 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Objects;
-import java.util.Set;
-
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Objects;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the basic correctness of {@link JsonVirtualTree} which is the implementation of all core interfaces of the
