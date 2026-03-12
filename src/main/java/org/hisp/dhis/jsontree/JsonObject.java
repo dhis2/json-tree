@@ -145,6 +145,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
         return get( Text.of( name ), as );
     }
 
+    @Override
     default JsonValue get( CharSequence name ) {
         return get( name, JsonValue.class );
     }

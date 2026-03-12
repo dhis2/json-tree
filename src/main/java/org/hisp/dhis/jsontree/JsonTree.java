@@ -38,6 +38,7 @@ import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.Chars.expectChars;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -77,8 +78,7 @@ import org.hisp.dhis.jsontree.internal.Surly;
  * @implNote This uses records because JVMs starting with JDK 21/22 will consider record fields as {@code @Stable} which
  * might help optimize access to the {@link #json} char array.
  */
-record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPath, @Maybe JsonNode.GetListener onGet)
-    implements Serializable {
+record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPath, @Maybe JsonNode.GetListener onGet) {
 
     static JsonNode of( @Surly CharSequence json, @Maybe JsonNode.GetListener onGet ) {
         if (json instanceof String s) return of( s.toCharArray(), onGet );
@@ -215,7 +215,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             if (this == obj) return true;
             if (!(obj instanceof LazyJsonNode other)) return false;
             if (tree.json == other.tree.json && start == other.start) return true;
-            return Text.of( tree.json, start, endIndex() ).contentEquals( Text.of(other.tree.json, other.start, other.endIndex()) );
+            return getPath().equals( other.getPath() )
+                && getDeclaration().contentEquals( other.getDeclaration() );
         }
 
         /**
@@ -227,6 +228,22 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
          */
         final void checkNoDanglingTrash() {
             Chars.expectEndOfBuffer(tree.json, skipWhitespace( tree.json, endIndex() ) );
+        }
+
+        /*
+        Serialisation
+        */
+
+        @Serial public Object writeReplace() {
+            return new SerializedJsonNode(tree.json, path.segments().stream().map( Text::toString ).toArray(String[]::new));
+        }
+
+        record SerializedJsonNode(char[] json, String[] path) implements Serializable {
+            @Serial private static final long serialVersionUID = 1L;
+
+            @Serial private Object readResolve() {
+                return JsonTree.of( json,null ).get( JsonPath.of( path ) );
+            }
         }
     }
 

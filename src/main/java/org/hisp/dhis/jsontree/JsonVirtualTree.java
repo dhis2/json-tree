@@ -534,4 +534,20 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             && isJsonMixedSubType( m.getDeclaringClass() )
             && m.getReturnType() != void.class;
     }
+
+   /*
+    Serialisation
+    */
+
+    @Serial public Object writeReplace() {
+        return new SerializedJsonValue(node());
+    }
+
+    record SerializedJsonValue(JsonNode node) implements Serializable {
+        @Serial private static final long serialVersionUID = 1L;
+
+        @Serial private Object readResolve() {
+            return JsonMixed.of( node );
+        }
+    }
 }
