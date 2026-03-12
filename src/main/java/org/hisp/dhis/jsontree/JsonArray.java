@@ -34,133 +34,132 @@ import java.util.stream.StreamSupport;
 
 /**
  * Represents a JSON array node.
- * <p>
- * As all nodes are mere views or virtual index access will never throw an {@link ArrayIndexOutOfBoundsException}.
- * Whether an element at an index exists is determined first when {@link JsonValue#exists()} or other value accessing
- * operations are performed on a node.
+ *
+ * <p>As all nodes are mere views or virtual index access will never throw an {@link
+ * ArrayIndexOutOfBoundsException}. Whether an element at an index exists is determined first when
+ * {@link JsonValue#exists()} or other value accessing operations are performed on a node.
  *
  * @author Jan Bernitt
  */
 @Validation.Ignore
 public interface JsonArray extends JsonAbstractArray<JsonValue> {
 
-    @Override
-    default Stream<JsonValue> stream() {
-        return stream(true);
+  @Override
+  default Stream<JsonValue> stream() {
+    return stream(true);
+  }
+
+  /**
+   * @implNote This utilizes {@link JsonNode#elements(boolean)} avoiding map lookups for each
+   *     element. On {@link JsonAbstractArray} level this cannot be done as the node cannot be
+   *     {@link JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+   * @param remember true, to internally "remember" the elements iterated over so far, false to only
+   *     iterate without keeping references to them further on so GC can pick em up
+   * @since 1.9
+   */
+  default Stream<JsonValue> stream(boolean remember) {
+    if (isUndefined() || isEmpty()) return Stream.empty();
+    JsonAccessors accessors = getAccessors();
+    return StreamSupport.stream(node().elements(remember), false).map(node -> node.lift(accessors));
+  }
+
+  /**
+   * Index access to the array.
+   *
+   * <p>Note that this will neither check index nor element type.
+   *
+   * @param index index to access (0 and above)
+   * @param as assumed type of the element
+   * @param <E> type of the returned element
+   * @return element at the given index
+   */
+  <E extends JsonValue> E get(int index, Class<E> as);
+
+  /**
+   * @return the array elements as a uniform list of {@link String}
+   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   */
+  List<String> stringValues();
+
+  /**
+   * @return the array elements as a uniform list of {@link Number}
+   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   */
+  List<Number> numberValues();
+
+  /**
+   * @return the array elements as a uniform list of {@link Boolean}
+   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   */
+  List<Boolean> boolValues();
+
+  default <E> List<E> values(Function<String, E> mapper) {
+    return stringValues().stream().map(mapper).toList();
+  }
+
+  default JsonValue get(int index) {
+    return get(index, JsonValue.class);
+  }
+
+  default JsonNumber getNumber(int index) {
+    return get(index, JsonNumber.class);
+  }
+
+  default JsonArray getArray(int index) {
+    return get(index, JsonArray.class);
+  }
+
+  default JsonString getString(int index) {
+    return get(index, JsonString.class);
+  }
+
+  default JsonBoolean getBoolean(int index) {
+    return get(index, JsonBoolean.class);
+  }
+
+  default JsonObject getObject(int index) {
+    return get(index, JsonObject.class);
+  }
+
+  default <E extends JsonValue> JsonList<E> getList(int index, Class<E> as) {
+    return JsonAbstractCollection.asList(getArray(index), as);
+  }
+
+  default <E extends JsonValue> JsonMap<E> getMap(int index, Class<E> as) {
+    return JsonAbstractCollection.asMap(getObject(index), as);
+  }
+
+  default <E extends JsonValue> JsonMultiMap<E> getMultiMap(int index, Class<E> as) {
+    return JsonAbstractCollection.asMultiMap(getObject(index), as);
+  }
+
+  /**
+   * Maps this array to a lazy transformed list view where each element of the original array is
+   * transformed by the given function when accessed.
+   *
+   * <p>This means the returned list always has same size as the original array.
+   *
+   * @param projection transformer function
+   * @param <V> type of the transformer output, elements of the list view
+   * @return a lazily transformed list view of this array
+   */
+  default <V extends JsonValue> JsonList<V> projectAsList(Function<JsonValue, V> projection) {
+    final class JsonArrayProjection extends CollectionView<JsonArray> implements JsonList<V> {
+
+      private JsonArrayProjection(JsonArray self) {
+        super(self);
+      }
+
+      @Override
+      public V get(int index) {
+        return projection.apply(viewed.get(index));
+      }
+
+      @Override
+      public Class<? extends JsonValue> asType() {
+        return JsonList.class;
+      }
     }
-
-    /**
-     * @implNote This utilizes {@link JsonNode#elements(boolean)} avoiding map lookups for each element. On
-     *     {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
-     *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
-     * @param remember true, to internally "remember" the elements iterated over so far, false to only iterate without
-     *                   keeping references to them further on so GC can pick em up
-     * @since 1.9
-     */
-    default Stream<JsonValue> stream(boolean remember) {
-        if (isUndefined() || isEmpty()) return Stream.empty();
-        JsonAccessors accessors = getAccessors();
-        return StreamSupport.stream( node().elements( remember ), false)
-            .map( node -> node.lift( accessors ) );
-    }
-
-    /**
-     * Index access to the array.
-     * <p>
-     * Note that this will neither check index nor element type.
-     *
-     * @param index index to access (0 and above)
-     * @param as    assumed type of the element
-     * @param <E>   type of the returned element
-     * @return element at the given index
-     */
-    <E extends JsonValue> E get( int index, Class<E> as );
-
-    /**
-     * @return the array elements as a uniform list of {@link String}
-     * @throws JsonTreeException in case the node is not an array or the array has mixed elements
-     */
-    List<String> stringValues();
-
-    /**
-     * @return the array elements as a uniform list of {@link Number}
-     * @throws JsonTreeException in case the node is not an array or the array has mixed elements
-     */
-    List<Number> numberValues();
-
-    /**
-     * @return the array elements as a uniform list of {@link Boolean}
-     * @throws JsonTreeException in case the node is not an array or the array has mixed elements
-     */
-    List<Boolean> boolValues();
-
-    default <E> List<E> values( Function<String, E> mapper ) {
-        return stringValues().stream().map( mapper ).toList();
-    }
-
-    default JsonValue get( int index ) {
-        return get( index, JsonValue.class );
-    }
-
-    default JsonNumber getNumber( int index ) {
-        return get( index, JsonNumber.class );
-    }
-
-    default JsonArray getArray( int index ) {
-        return get( index, JsonArray.class );
-    }
-
-    default JsonString getString( int index ) {
-        return get( index, JsonString.class );
-    }
-
-    default JsonBoolean getBoolean( int index ) {
-        return get( index, JsonBoolean.class );
-    }
-
-    default JsonObject getObject( int index ) {
-        return get( index, JsonObject.class );
-    }
-
-    default <E extends JsonValue> JsonList<E> getList( int index, Class<E> as ) {
-        return JsonAbstractCollection.asList( getArray( index ), as );
-    }
-
-    default <E extends JsonValue> JsonMap<E> getMap( int index, Class<E> as ) {
-        return JsonAbstractCollection.asMap( getObject( index ), as );
-    }
-
-    default <E extends JsonValue> JsonMultiMap<E> getMultiMap( int index, Class<E> as ) {
-        return JsonAbstractCollection.asMultiMap( getObject( index ), as );
-    }
-
-    /**
-     * Maps this array to a lazy transformed list view where each element of the original array is transformed by the
-     * given function when accessed.
-     * <p>
-     * This means the returned list always has same size as the original array.
-     *
-     * @param projection transformer function
-     * @param <V>        type of the transformer output, elements of the list view
-     * @return a lazily transformed list view of this array
-     */
-    default <V extends JsonValue> JsonList<V> projectAsList( Function<JsonValue, V> projection ) {
-        final class JsonArrayProjection extends CollectionView<JsonArray> implements JsonList<V> {
-
-            private JsonArrayProjection( JsonArray self ) {
-                super( self );
-            }
-
-            @Override
-            public V get( int index ) {
-                return projection.apply( viewed.get( index ) );
-            }
-
-            @Override
-            public Class<? extends JsonValue> asType() {
-                return JsonList.class;
-            }
-        }
-        return new JsonArrayProjection( this );
-    }
+    return new JsonArrayProjection(this);
+  }
 }

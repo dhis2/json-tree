@@ -31,15 +31,15 @@ import java.net.URL;
 
 /**
  * A {@link JsonURL} is a {@link JsonString} with a URL format.
- * <p>
- * The {@link #url()} utility method allows to access the JSON string node as {@link URL}.
+ *
+ * <p>The {@link #url()} utility method allows to access the JSON string node as {@link URL}.
  *
  * @author Jan Bernitt
  */
 @Validation.Ignore
 public interface JsonURL extends JsonString {
 
-    default URL url() {
-        return parsedChecked( URL::new );
-    }
+  default URL url() {
+    return parsedChecked(URL::new);
+  }
 }

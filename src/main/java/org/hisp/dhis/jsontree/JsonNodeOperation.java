@@ -16,136 +16,175 @@ import java.util.function.Function;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 
 /**
- * {@linkplain JsonNodeOperation}s are used to make bulk modifications using {@link JsonNode#patch(List)}.
- * <p>
- * {@linkplain JsonNodeOperation} is a path based operation that is not yet "bound" to target.
- * <p>
- * The order of operations made into a set does not matter. Any order has the same outcome when applied to the same
- * target.
+ * {@linkplain JsonNodeOperation}s are used to make bulk modifications using {@link
+ * JsonNode#patch(List)}.
+ *
+ * <p>{@linkplain JsonNodeOperation} is a path based operation that is not yet "bound" to target.
+ *
+ * <p>The order of operations made into a set does not matter. Any order has the same outcome when
+ * applied to the same target.
  *
  * @author Jan Bernitt
  * @since 1.1
  */
-sealed public interface JsonNodeOperation {
+public sealed interface JsonNodeOperation {
 
-    /**
-     * @return the target of the operation
-     */
-    JsonPath path();
+  /**
+   * @return the target of the operation
+   */
+  JsonPath path();
 
-    /**
-     * @return true when this operation targets an array index
-     */
-    default boolean isArrayOp() {
-        return path().segment().isInt(); // just a guess, could be numeric object member
+  /**
+   * @return true when this operation targets an array index
+   */
+  default boolean isArrayOp() {
+    return path().segment().isInt(); // just a guess, could be numeric object member
+  }
+
+  /**
+   * @return true when this is an {@link Insert} operation
+   */
+  default boolean isRemove() {
+    return this instanceof Remove;
+  }
+
+  /**
+   * @param path relative path to remove
+   */
+  record Remove(JsonPath path) implements JsonNodeOperation {
+    public Remove(CharSequence path) {
+      this(JsonPath.of(path));
+    }
+  }
+
+  /**
+   *
+   *
+   * <h4>Insert into Arrays</h4>
+   *
+   * In an array the value is inserted before the existing value at the path index. That means the
+   * current value at the path index will be after the inserted value in the updated tree.
+   *
+   * <p>
+   *
+   * <h4>Merge</h4>
+   *
+   * <ul>
+   *   <li>object + object = add all properties of inserted object to target object
+   *   <li>array + array = insert all elements of inserted array at target index into the target
+   *       array
+   *   <li>array + primitive = append inserted element to target array
+   *   <li>primitive + primitive = create array with current value and inserted value
+   *   <li>* + object = trying to merge an object value into a non object target is an error
+   * </ul>
+   *
+   * @param path relative path to the target property, this either is the root, an object member or
+   *     an array index or range
+   * @param value the new value
+   * @param merge when true, insert the value's items not the value itself
+   */
+  record Insert(JsonPath path, JsonNode value, boolean merge) implements JsonNodeOperation {
+    public Insert(CharSequence path, JsonNode value) {
+      this(JsonPath.of(path), value, false);
     }
 
-    /**
-     * @return true when this is an {@link Insert} operation
-     */
-    default boolean isRemove() {
-        return this instanceof Remove;
+    public Insert(CharSequence path, JsonNode value, boolean merge) {
+      this(JsonPath.of(path), value, merge);
     }
+  }
 
-    /**
-     * @param path relative path to remove
-     */
-    record Remove(JsonPath path) implements JsonNodeOperation {
-        public Remove(CharSequence path) { this(JsonPath.of( path )); }
-    }
+  /**
+   * As each target path may only occur once a set of operations may need folding inserts for
+   * arrays. This means each operation that wants to insert at the same index in the same target
+   * array is merged into a single operation inserting all the values in the order they occur in the
+   * #ops parameter.
+   *
+   * @param ops a set of ops that may contain multiple inserts targeting the same array index
+   * @return a list of operations where the clashing array inserts have been merged by concatenating
+   *     the inserted elements
+   * @throws JsonPathException if the ops is found to contain other operations clashing on same path
+   *     (that are not array inserts)
+   */
+  static List<JsonNodeOperation> mergeArrayInserts(List<JsonNodeOperation> ops) {
+    if (ops.stream().filter(JsonNodeOperation::isArrayOp).count() < 2) return ops;
+    return List.copyOf(
+        ops.stream()
+            .collect(
+                toMap(
+                    JsonNodeOperation::path,
+                    Function.identity(),
+                    (op1, op2) -> {
+                      if (!op1.isArrayOp() || op1.isRemove() || op2.isRemove())
+                        throw JsonPatchException.clash(ops, op1, op2);
+                      JsonNode merged =
+                          createArray(
+                              arr -> {
+                                Consumer<JsonNodeOperation> add =
+                                    op -> {
+                                      Insert insert = (Insert) op;
+                                      if (insert.merge()) {
+                                        arr.addElements(
+                                            insert.value().elements(),
+                                            JsonArrayBuilder::addElement);
+                                      } else {
+                                        arr.addElement(insert.value());
+                                      }
+                                    };
+                                add.accept(op1);
+                                add.accept(op2);
+                              });
+                      return new Insert(op1.path(), merged, true);
+                    },
+                    LinkedHashMap::new))
+            .values());
+  }
 
-    /**
-     * <h4>Insert into Arrays</h4>
-     * In an array the value is inserted before the existing value at the path index. That means the current value at
-     * the path index will be after the inserted value in the updated tree.
-     * <p>
-     * <h4>Merge</h4>
-     * <ul>
-     *     <li>object + object = add all properties of inserted object to target object</li>
-     *     <li>array + array = insert all elements of inserted array at target index into the target array</li>
-     *     <li>array + primitive = append inserted element to target array</li>
-     *     <li>primitive + primitive = create array with current value and inserted value</li>
-     *     <li>* + object = trying to merge an object value into a non object target is an error</li>
-     * </ul>
-     *
-     * @param path  relative path to the target property, this either is the root, an object member or an array index or
-     *              range
-     * @param value the new value
-     * @param merge when true, insert the value's items not the value itself
-     */
-    record Insert(JsonPath path, JsonNode value, boolean merge) implements JsonNodeOperation {
-        public Insert(CharSequence path, JsonNode value) { this(JsonPath.of( path ), value, false); }
-        public Insert(CharSequence path, JsonNode value, boolean merge) { this(JsonPath.of( path ), value, merge); }
+  /**
+   * @param ops set of patch operations
+   * @implNote array merge inserts don't need special handling as it is irrelevant how many elements
+   *     are inserted at the target index as each operation is independent and uniquely targets an
+   *     insert position in the target array in its state before any change
+   */
+  static void checkPatch(List<JsonNodeOperation> ops) {
+    if (ops.size() < 2) return;
+    Map<JsonPath, JsonNodeOperation> opsByPath = new HashMap<>();
+    Set<JsonPath> parents = new HashSet<>();
+    for (JsonNodeOperation op : ops) {
+      JsonPath path = op.path();
+      if (op instanceof Insert insert && insert.merge && insert.value.getType() == OBJECT) {
+        insert
+            .value
+            .keys()
+            .forEach(p -> checkPatchPath(ops, op, path.chain(p), opsByPath, parents));
+        checkPatchParents(ops, op, path, opsByPath, parents);
+      } else {
+        checkPatchPath(ops, op, path, opsByPath, parents);
+        checkPatchParents(ops, op, path.parentPath(), opsByPath, parents);
+      }
     }
+  }
 
-    /**
-     * As each target path may only occur once a set of operations may need folding inserts for arrays. This means each
-     * operation that wants to insert at the same index in the same target array is merged into a single operation
-     * inserting all the values in the order they occur in the #ops parameter.
-     *
-     * @param ops a set of ops that may contain multiple inserts targeting the same array index
-     * @return a list of operations where the clashing array inserts have been merged by concatenating the inserted
-     * elements
-     * @throws JsonPathException if the ops is found to contain other operations clashing on same path (that are not
-     *                           array inserts)
-     */
-    static List<JsonNodeOperation> mergeArrayInserts(List<JsonNodeOperation> ops) {
-        if (ops.stream().filter( JsonNodeOperation::isArrayOp ).count() < 2) return ops;
-        return List.copyOf( ops.stream()
-            .collect( toMap(JsonNodeOperation::path, Function.identity(), (op1, op2) -> {
-                if (!op1.isArrayOp() || op1.isRemove() || op2.isRemove() )
-                    throw JsonPatchException.clash( ops, op1, op2 );
-                JsonNode merged = createArray( arr -> {
-                    Consumer<JsonNodeOperation> add = op -> {
-                        Insert insert = (Insert) op;
-                        if ( insert.merge() ) {
-                            arr.addElements( insert.value().elements(), JsonArrayBuilder::addElement );
-                        } else {
-                            arr.addElement( insert.value() );
-                        }
-                    };
-                    add.accept( op1 );
-                    add.accept( op2 );
-                } );
-                return new Insert( op1.path(), merged, true );
-            }, LinkedHashMap::new ) ).values());
-    }
+  private static void checkPatchPath(
+      List<JsonNodeOperation> ops,
+      JsonNodeOperation op,
+      JsonPath path,
+      Map<JsonPath, JsonNodeOperation> opsByPath,
+      Set<JsonPath> parents) {
+    if (opsByPath.containsKey(path)) throw clash(ops, opsByPath.get(path), op);
+    if (parents.contains(path)) throw clash(ops, op, null);
+    opsByPath.put(path, op);
+  }
 
-    /**
-     * @param ops set of patch operations
-     * @implNote array merge inserts don't need special handling as it is irrelevant how many elements are inserted at
-     * the target index as each operation is independent and uniquely targets an insert position in the target array in
-     * its state before any change
-     */
-    static void checkPatch( List<JsonNodeOperation> ops ) {
-        if (ops.size() < 2) return;
-        Map<JsonPath, JsonNodeOperation> opsByPath = new HashMap<>();
-        Set<JsonPath> parents = new HashSet<>();
-        for ( JsonNodeOperation op : ops ) {
-            JsonPath path = op.path();
-            if (op instanceof Insert insert && insert.merge && insert.value.getType() == OBJECT) {
-                insert.value.keys().forEach( p -> checkPatchPath( ops, op, path.chain( p ), opsByPath, parents )  );
-                checkPatchParents( ops, op, path, opsByPath, parents );
-            } else {
-                checkPatchPath( ops, op, path, opsByPath, parents );
-                checkPatchParents( ops, op, path.parentPath(), opsByPath, parents );
-            }
-        }
+  private static void checkPatchParents(
+      List<JsonNodeOperation> ops,
+      JsonNodeOperation op,
+      JsonPath path,
+      Map<JsonPath, JsonNodeOperation> opsByPath,
+      Set<JsonPath> parents) {
+    while (!path.isEmpty()) {
+      if (opsByPath.containsKey(path)) throw clash(ops, opsByPath.get(path), op);
+      parents.add(path);
+      path = path.parentPath();
     }
-
-    private static void checkPatchPath( List<JsonNodeOperation> ops, JsonNodeOperation op, JsonPath path,
-        Map<JsonPath, JsonNodeOperation> opsByPath, Set<JsonPath> parents ) {
-        if ( opsByPath.containsKey( path ) ) throw clash( ops, opsByPath.get( path ), op );
-        if ( parents.contains( path ) ) throw clash( ops, op, null );
-        opsByPath.put( path, op );
-    }
-
-    private static void checkPatchParents( List<JsonNodeOperation> ops, JsonNodeOperation op, JsonPath path,
-        Map<JsonPath, JsonNodeOperation> opsByPath, Set<JsonPath> parents ) {
-        while ( !path.isEmpty() ) {
-            if ( opsByPath.containsKey( path ) ) throw clash( ops, opsByPath.get( path ), op );
-            parents.add( path );
-            path = path.parentPath();
-        }
-    }
+  }
 }

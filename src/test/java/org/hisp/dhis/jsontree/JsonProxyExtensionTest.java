@@ -7,20 +7,20 @@ import org.junit.jupiter.api.Test;
 
 class JsonProxyExtensionTest {
 
-    interface JsonPage extends JsonObject {
+  interface JsonPage extends JsonObject {
 
-        default <T extends JsonValue> JsonList<T> entries( Class<T> of ) {
-            return getList( "entries", of );
-        }
+    default <T extends JsonValue> JsonList<T> entries(Class<T> of) {
+      return getList("entries", of);
     }
+  }
 
-    @Test
-    void testExtensionMethodsCanHaveArguments() {
-        String json = """
+  @Test
+  void testExtensionMethodsCanHaveArguments() {
+    String json =
+        """
             { "entries": [1,2,3] }
             """;
-        JsonPage page = JsonMixed.of( json ).as( JsonPage.class );
-        assertEquals( List.of( 1, 2, 3 ),
-            page.entries( JsonNumber.class ).toList( JsonNumber::intValue ) );
-    }
+    JsonPage page = JsonMixed.of(json).as(JsonPage.class);
+    assertEquals(List.of(1, 2, 3), page.entries(JsonNumber.class).toList(JsonNumber::intValue));
+  }
 }

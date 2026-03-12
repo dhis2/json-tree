@@ -24,17 +24,17 @@ import java.lang.annotation.Target;
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE})
 public @interface Validator {
 
-    /**
-     * @return must also be a {@link Record} class
-     */
-    Class<? extends Validation.Validator> value();
+  /**
+   * @return must also be a {@link Record} class
+   */
+  Class<? extends Validation.Validator> value();
 
-    Validation[] params() default {};
+  Validation[] params() default {};
 
-    @Retention( RetentionPolicy.RUNTIME )
-    @Target( { ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
-    @interface ValidatorRepeat {
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE})
+  @interface ValidatorRepeat {
 
-        Validator[] value();
-    }
+    Validator[] value();
+  }
 }

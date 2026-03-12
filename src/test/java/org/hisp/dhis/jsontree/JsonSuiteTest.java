@@ -19,8 +19,9 @@ import org.junit.jupiter.params.provider.ValueSource;
  */
 class JsonSuiteTest {
 
-    @ParameterizedTest
-    @ValueSource( strings = {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
         "y_structure_string_empty.json",
         "y_string_uescaped_newline.json",
         "y_number_real_capital_e_neg_exp.json",
@@ -115,13 +116,15 @@ class JsonSuiteTest {
         "y_object_escaped_null_in_key.json",
         "y_number_minus_zero.json",
         "y_object_extreme_numbers.json",
-        "y_structure_lonely_false.json" } )
-    void testValid( String file ) {
-        assertTrue( isValidJSON( file ), file );
-    }
+        "y_structure_lonely_false.json"
+      })
+  void testValid(String file) {
+    assertTrue(isValidJSON(file), file);
+  }
 
-    @ParameterizedTest
-    @ValueSource( strings = {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
         "n_string_backslash_00.json",
         "n_string_invalid_backslash_esc.json",
         "n_object_non_string_key.json",
@@ -301,17 +304,18 @@ class JsonSuiteTest {
         "n_number_0e+.json",
         "n_array_unclosed_with_object_inside.json",
         "n_object_trailing_comment.json"
-    } )
-    void testInvalid( String file ) {
-        assertFalse( isValidJSON( file ), file );
-    }
+      })
+  void testInvalid(String file) {
+    assertFalse(isValidJSON(file), file);
+  }
 
-    /**
-     * These are invalid according to the JSON spec, but we want to allow extra commas at the end of array or object
-     * member list and also allow leading zeros for numbers.
-     */
-    @ParameterizedTest
-    @ValueSource( strings = {
+  /**
+   * These are invalid according to the JSON spec, but we want to allow extra commas at the end of
+   * array or object member list and also allow leading zeros for numbers.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
         "n_object_trailing_comma.json",
         "n_number_-01.json",
         "n_number_with_leading_zero.json",
@@ -319,13 +323,14 @@ class JsonSuiteTest {
         "n_array_extra_comma.json",
         "n_object_lone_continuation_byte_in_key_and_trailing_comma.json",
         "n_number_neg_int_starting_with_zero.json"
-    } )
-    void testInvalidIntentionallyValid( String file ) {
-        assertTrue( isValidJSON( file ), file );
-    }
+      })
+  void testInvalidIntentionallyValid(String file) {
+    assertTrue(isValidJSON(file), file);
+  }
 
-    @ParameterizedTest
-    @ValueSource( strings = {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
         "i_number_huge_exp.json",
         "i_string_not_in_unicode_range.json",
         "i_string_truncated-utf-8.json",
@@ -357,45 +362,45 @@ class JsonSuiteTest {
         "i_number_real_underflow.json",
         "i_string_incomplete_surrogate_and_escape_valid.json",
         "i_number_neg_int_huge_exp.json"
-    } )
-    void testUndefinedValid( String file ) {
-        assertTrue( isValidJSON( file ), file );
-    }
+      })
+  void testUndefinedValid(String file) {
+    assertTrue(isValidJSON(file), file);
+  }
 
-    @ParameterizedTest
-    @ValueSource( strings = {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
         "i_string_utf16LE_no_BOM.json",
         "i_string_utf16BE_no_BOM.json",
         "i_structure_UTF-8_BOM_empty_object.json",
         "i_string_UTF-16LE_with_BOM.json"
-    } )
-    void testUndefinedInvalid( String file ) {
-        assertFalse( isValidJSON( file ), file );
-    }
+      })
+  void testUndefinedInvalid(String file) {
+    assertFalse(isValidJSON(file), file);
+  }
 
-    /**
-     * These are invalid but since they open super deep nested arrays or objects they cause a stack overflow. This is a
-     * known limitation that is a non issue in reality of DHIS2, so we just ignore it.
-     */
-    @ParameterizedTest
-    @ValueSource( strings = {
-        "n_structure_open_array_object.json",
-        "n_structure_100000_opening_arrays.json"
-    } )
-    void testInvalidStackOverflow( String file ) {
-        assertThrows( StackOverflowError.class, () -> isValidJSON( file ) );
-    }
+  /**
+   * These are invalid but since they open super deep nested arrays or objects they cause a stack
+   * overflow. This is a known limitation that is a non issue in reality of DHIS2, so we just ignore
+   * it.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"n_structure_open_array_object.json", "n_structure_100000_opening_arrays.json"})
+  void testInvalidStackOverflow(String file) {
+    assertThrows(StackOverflowError.class, () -> isValidJSON(file));
+  }
 
-    public static boolean isValidJSON( String filename ) {
-        try {
-            byte[] bytes = Files.readAllBytes( Paths.get( "./src/test/resources/suite", filename ) );
-            String json = new String( bytes );
-            JsonNode.of( json ).visit( JsonNode::value );
-            return true;
-        } catch ( RuntimeException e ) {
-            return false;
-        } catch ( IOException ex ) {
-            throw new UncheckedIOException( ex );
-        }
+  public static boolean isValidJSON(String filename) {
+    try {
+      byte[] bytes = Files.readAllBytes(Paths.get("./src/test/resources/suite", filename));
+      String json = new String(bytes);
+      JsonNode.of(json).visit(JsonNode::value);
+      return true;
+    } catch (RuntimeException e) {
+      return false;
+    } catch (IOException ex) {
+      throw new UncheckedIOException(ex);
     }
+  }
 }

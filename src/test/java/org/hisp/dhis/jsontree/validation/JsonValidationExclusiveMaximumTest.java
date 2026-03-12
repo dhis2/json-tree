@@ -18,52 +18,84 @@ import org.junit.jupiter.api.Test;
  */
 class JsonValidationExclusiveMaximumTest {
 
-    public interface JsonMaximumExampleA extends JsonObject {
+  public interface JsonMaximumExampleA extends JsonObject {
 
-        @Validation( exclusiveMaximum = 100 )
-        default int age() {
-            return getNumber( "age" ).intValue();
-        }
+    @Validation(exclusiveMaximum = 100)
+    default int age() {
+      return getNumber("age").intValue();
     }
+  }
 
-    public interface JsonMaximumExampleB extends JsonObject {
+  public interface JsonMaximumExampleB extends JsonObject {
 
-        @Validation( exclusiveMaximum = 250.5 )
-        default Number height() {
-            return getNumber( "height" ).number();
-        }
+    @Validation(exclusiveMaximum = 250.5)
+    default Number height() {
+      return getNumber("height").number();
     }
+  }
 
-    @Test
-    void testExclusiveMaximum_OK() {
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"age":-200}""" ).validate( JsonMaximumExampleA.class ) );
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"age":99}""" ).validate( JsonMaximumExampleA.class ) );
+  @Test
+  void testExclusiveMaximum_OK() {
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"age":-200}""")
+                .validate(JsonMaximumExampleA.class));
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"age":99}""")
+                .validate(JsonMaximumExampleA.class));
 
-        assertDoesNotThrow( () -> JsonMixed.of( "{}" ).validate( JsonMaximumExampleB.class ) );
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"height":250.4}""" ).validate( JsonMaximumExampleB.class ) );
-    }
+    assertDoesNotThrow(() -> JsonMixed.of("{}").validate(JsonMaximumExampleB.class));
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"height":250.4}""")
+                .validate(JsonMaximumExampleB.class));
+  }
 
-    @Test
-    void testExclusiveMaximum_Required() {
-        assertValidationError( "{}", JsonMaximumExampleA.class, Rule.REQUIRED, "age" );
-    }
+  @Test
+  void testExclusiveMaximum_Required() {
+    assertValidationError("{}", JsonMaximumExampleA.class, Rule.REQUIRED, "age");
+  }
 
-    @Test
-    void testExclusiveMaximum_TooLarge() {
-        assertValidationError( """
-            {"age":100}""", JsonMaximumExampleA.class, Rule.EXCLUSIVE_MAXIMUM, 100d, 100d );
-        assertValidationError( """
-            {"height":250.5}""", JsonMaximumExampleB.class, Rule.EXCLUSIVE_MAXIMUM, 250.5d, 250.5d );
-    }
+  @Test
+  void testExclusiveMaximum_TooLarge() {
+    assertValidationError(
+        """
+            {"age":100}""",
+        JsonMaximumExampleA.class,
+        Rule.EXCLUSIVE_MAXIMUM,
+        100d,
+        100d);
+    assertValidationError(
+        """
+            {"height":250.5}""",
+        JsonMaximumExampleB.class,
+        Rule.EXCLUSIVE_MAXIMUM,
+        250.5d,
+        250.5d);
+  }
 
-    @Test
-    void testExclusiveMaximum_WrongType() {
-        assertValidationError( """
-            {"age":true}""", JsonMaximumExampleA.class, Rule.TYPE, Set.of( NodeType.INTEGER ), NodeType.BOOLEAN );
-        assertValidationError( """
-            {"height":true}""", JsonMaximumExampleB.class, Rule.TYPE, Set.of( NodeType.NUMBER ), NodeType.BOOLEAN );
-    }
+  @Test
+  void testExclusiveMaximum_WrongType() {
+    assertValidationError(
+        """
+            {"age":true}""",
+        JsonMaximumExampleA.class,
+        Rule.TYPE,
+        Set.of(NodeType.INTEGER),
+        NodeType.BOOLEAN);
+    assertValidationError(
+        """
+            {"height":true}""",
+        JsonMaximumExampleB.class,
+        Rule.TYPE,
+        Set.of(NodeType.NUMBER),
+        NodeType.BOOLEAN);
+  }
 }

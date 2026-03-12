@@ -35,15 +35,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Can be used to mark {@link JsonObject} properties that are expected to exist in the tree and are not defined as JSON
- * null.
- * <p>
- * This can only be applied to methods without parameters.
+ * Can be used to mark {@link JsonObject} properties that are expected to exist in the tree and are
+ * not defined as JSON null.
+ *
+ * <p>This can only be applied to methods without parameters.
  *
  * @author Jan Bernitt
  * @since 0.11 (renamed from Expected in prior versions)
  */
-@Target( { ElementType.TYPE, ElementType.TYPE_USE} )
-@Retention( RetentionPolicy.RUNTIME )
-@Validation( required = YES )
+@Target({ElementType.TYPE, ElementType.TYPE_USE})
+@Retention(RetentionPolicy.RUNTIME)
+@Validation(required = YES)
 public @interface Required {}

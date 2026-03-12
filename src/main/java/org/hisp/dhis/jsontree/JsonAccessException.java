@@ -18,11 +18,11 @@ import java.lang.reflect.Type;
  */
 public final class JsonAccessException extends IllegalStateException {
 
-    public JsonAccessException( String message ) {
-        super( message );
-    }
+  public JsonAccessException(String message) {
+    super(message);
+  }
 
-    public JsonAccessException( String message, Throwable cause ) {
-        super( message, cause );
-    }
+  public JsonAccessException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

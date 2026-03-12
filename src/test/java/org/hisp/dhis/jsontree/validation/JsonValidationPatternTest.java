@@ -18,37 +18,68 @@ import org.junit.jupiter.api.Test;
  */
 class JsonValidationPatternTest {
 
-    public interface JsonPatternExampleA extends JsonObject {
+  public interface JsonPatternExampleA extends JsonObject {
 
-        @Validation( pattern = "[0-9]{1,4}[A-Z]?" )
-        default String no() {
-            return getString( "no" ).string();
-        }
+    @Validation(pattern = "[0-9]{1,4}[A-Z]?")
+    default String no() {
+      return getString("no").string();
     }
+  }
 
-    @Test
-    void testMaxLength_OK() {
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {}""" ).validate( JsonPatternExampleA.class ) );
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"no":null}""" ).validate( JsonPatternExampleA.class ) );
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"no":"12"}""" ).validate( JsonPatternExampleA.class ) );
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"no":"12B"}""" ).validate( JsonPatternExampleA.class ) );
-    }
+  @Test
+  void testMaxLength_OK() {
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {}""")
+                .validate(JsonPatternExampleA.class));
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"no":null}""")
+                .validate(JsonPatternExampleA.class));
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"no":"12"}""")
+                .validate(JsonPatternExampleA.class));
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"no":"12B"}""")
+                .validate(JsonPatternExampleA.class));
+  }
 
-    @Test
-    void testMaxLength_NoMatch() {
-        assertValidationError( """
-            {"no":"B12"}""", JsonPatternExampleA.class, Rule.PATTERN, "[0-9]{1,4}[A-Z]?", "B12" );
-        assertValidationError( """
-            {"no":"12345"}""", JsonPatternExampleA.class, Rule.PATTERN, "[0-9]{1,4}[A-Z]?", "12345" );
-    }
+  @Test
+  void testMaxLength_NoMatch() {
+    assertValidationError(
+        """
+            {"no":"B12"}""",
+        JsonPatternExampleA.class,
+        Rule.PATTERN,
+        "[0-9]{1,4}[A-Z]?",
+        "B12");
+    assertValidationError(
+        """
+            {"no":"12345"}""",
+        JsonPatternExampleA.class,
+        Rule.PATTERN,
+        "[0-9]{1,4}[A-Z]?",
+        "12345");
+  }
 
-    @Test
-    void testMaxLength_WrongType() {
-        assertValidationError( """
-            {"no":true}""", JsonPatternExampleA.class, Rule.TYPE, Set.of( NodeType.STRING ), NodeType.BOOLEAN );
-    }
+  @Test
+  void testMaxLength_WrongType() {
+    assertValidationError(
+        """
+            {"no":true}""",
+        JsonPatternExampleA.class,
+        Rule.TYPE,
+        Set.of(NodeType.STRING),
+        NodeType.BOOLEAN);
+  }
 }

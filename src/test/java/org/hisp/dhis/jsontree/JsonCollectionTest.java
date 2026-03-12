@@ -11,17 +11,17 @@ import org.junit.jupiter.api.Test;
  */
 class JsonCollectionTest {
 
-    @Test
-    void testIsEmpty_Undefined() {
-        JsonObject obj = JsonMixed.of( "{}" ).getObject( "a" );
-        assertThrowsExactly( JsonPathException.class, obj::isEmpty );
-        JsonArray arr = JsonMixed.of( "{}" ).getArray( "a" );
-        assertThrowsExactly( JsonPathException.class, arr::isEmpty );
-    }
+  @Test
+  void testIsEmpty_Undefined() {
+    JsonObject obj = JsonMixed.of("{}").getObject("a");
+    assertThrowsExactly(JsonPathException.class, obj::isEmpty);
+    JsonArray arr = JsonMixed.of("{}").getArray("a");
+    assertThrowsExactly(JsonPathException.class, arr::isEmpty);
+  }
 
-    @Test
-    void testIsEmpty_NoCollection() {
-        JsonMixed obj = JsonMixed.of( "1" );
-        assertThrowsExactly( JsonTreeException.class, obj::size );
-    }
+  @Test
+  void testIsEmpty_NoCollection() {
+    JsonMixed obj = JsonMixed.of("1");
+    assertThrowsExactly(JsonTreeException.class, obj::size);
+  }
 }

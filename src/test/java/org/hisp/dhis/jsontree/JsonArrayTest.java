@@ -15,85 +15,86 @@ import org.junit.jupiter.api.Test;
  */
 class JsonArrayTest {
 
-    @Test
-    void testSize() {
-        assertEquals( 0, JsonMixed.of( "[]" ).size() );
-        assertEquals( 1, JsonMixed.of( "[1]" ).size() );
-        assertEquals( 2, JsonMixed.of( "[1,2]" ).size() );
-        assertEquals( 3, JsonMixed.of( "[[],[],[]]" ).size() );
-    }
+  @Test
+  void testSize() {
+    assertEquals(0, JsonMixed.of("[]").size());
+    assertEquals(1, JsonMixed.of("[1]").size());
+    assertEquals(2, JsonMixed.of("[1,2]").size());
+    assertEquals(3, JsonMixed.of("[[],[],[]]").size());
+  }
 
-    @Test
-    void testStringValues_NoArray() {
-        JsonMixed value = JsonMixed.of( "1" );
-        assertThrowsExactly( JsonTreeException.class, value::stringValues );
-    }
+  @Test
+  void testStringValues_NoArray() {
+    JsonMixed value = JsonMixed.of("1");
+    assertThrowsExactly(JsonTreeException.class, value::stringValues);
+  }
 
-    @Test
-    void testStringValues_NotOnlyStrings() {
-        JsonMixed value = JsonMixed.of( "[\"a\", 1, true]" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, value::stringValues );
-        assertEquals( "Array element is not a org.hisp.dhis.jsontree.Text: 1", ex.getMessage() );
-    }
+  @Test
+  void testStringValues_NotOnlyStrings() {
+    JsonMixed value = JsonMixed.of("[\"a\", 1, true]");
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::stringValues);
+    assertEquals("Array element is not a org.hisp.dhis.jsontree.Text: 1", ex.getMessage());
+  }
 
-    @Test
-    void testNumberValues_NoArray() {
-        JsonMixed value = JsonMixed.of( "1" );
-        assertThrowsExactly( JsonTreeException.class, value::numberValues );
-    }
+  @Test
+  void testNumberValues_NoArray() {
+    JsonMixed value = JsonMixed.of("1");
+    assertThrowsExactly(JsonTreeException.class, value::numberValues);
+  }
 
-    @Test
-    void testNumberValues_NotOnlyNumbers() {
-        JsonMixed value = JsonMixed.of( "[1, true, \"a\"]" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, value::numberValues );
-        assertEquals( "Array element is not a java.lang.Number: true", ex.getMessage() );
-    }
+  @Test
+  void testNumberValues_NotOnlyNumbers() {
+    JsonMixed value = JsonMixed.of("[1, true, \"a\"]");
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::numberValues);
+    assertEquals("Array element is not a java.lang.Number: true", ex.getMessage());
+  }
 
-    @Test
-    void testBoolValues_NoArray() {
-        JsonMixed value = JsonMixed.of( "1" );
-        assertThrowsExactly( JsonTreeException.class, value::boolValues );
-    }
+  @Test
+  void testBoolValues_NoArray() {
+    JsonMixed value = JsonMixed.of("1");
+    assertThrowsExactly(JsonTreeException.class, value::boolValues);
+  }
 
-    @Test
-    void testBoolValues_NotOnlyBooleans() {
-        JsonMixed value = JsonMixed.of( "[true, 1, \"a\"]" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, value::boolValues );
-        assertEquals( "Array element is not a java.lang.Boolean: 1", ex.getMessage() );
-    }
+  @Test
+  void testBoolValues_NotOnlyBooleans() {
+    JsonMixed value = JsonMixed.of("[true, 1, \"a\"]");
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::boolValues);
+    assertEquals("Array element is not a java.lang.Boolean: 1", ex.getMessage());
+  }
 
-    @Test
-    void testForEach_Empty() {
-        JsonMixed array = JsonMixed.of( "[]" );
-        array.forEach( e -> fail( "should never be called but was with: " + e ) );
-    }
+  @Test
+  void testForEach_Empty() {
+    JsonMixed array = JsonMixed.of("[]");
+    array.forEach(e -> fail("should never be called but was with: " + e));
+  }
 
-    @Test
-    void testForEach_NonEmpty() {
-        JsonMixed array = JsonMixed.of( "[1,2]" );
-        List<Object> actual = new ArrayList<>();
-        array.forEach( e -> actual.add( e.node().value() ) );
-        assertEquals( List.of( 1, 2 ), actual );
-    }
+  @Test
+  void testForEach_NonEmpty() {
+    JsonMixed array = JsonMixed.of("[1,2]");
+    List<Object> actual = new ArrayList<>();
+    array.forEach(e -> actual.add(e.node().value()));
+    assertEquals(List.of(1, 2), actual);
+  }
 
-    @Test
-    void testForEach_NoArray() {
-        JsonMixed value = JsonMixed.of( "1" );
-        assertThrowsExactly( JsonTreeException.class, () -> value.forEach( e -> fail() ) );
-    }
+  @Test
+  void testForEach_NoArray() {
+    JsonMixed value = JsonMixed.of("1");
+    assertThrowsExactly(JsonTreeException.class, () -> value.forEach(e -> fail()));
+  }
 
-    @Test
-    void testValues_Mapped() {
-        //language=json
-        String json = """
+  @Test
+  void testValues_Mapped() {
+    // language=json
+    String json =
+        """
             ["a","b","c"]""";
-        JsonMixed arr = JsonMixed.of( json );
-        assertEquals( List.of( 'a', 'b', 'c' ), arr.values( str -> str.charAt( 0 ) ) );
-    }
+    JsonMixed arr = JsonMixed.of(json);
+    assertEquals(List.of('a', 'b', 'c'), arr.values(str -> str.charAt(0)));
+  }
 
-    @Test
-    void testGetList_IndexAs() {
-        JsonMixed arr = JsonMixed.of( "[[1,2], [3,4]]" );
-        assertEquals( List.of( 1, 2 ), arr.getList( 0, JsonNumber.class ).toList( JsonNumber::integer ) );
-    }
+  @Test
+  void testGetList_IndexAs() {
+    JsonMixed arr = JsonMixed.of("[[1,2], [3,4]]");
+    assertEquals(List.of(1, 2), arr.getList(0, JsonNumber.class).toList(JsonNumber::integer));
+  }
 }

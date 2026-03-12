@@ -30,15 +30,15 @@ package org.hisp.dhis.jsontree;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.util.function.Function;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Represents a string JSON node.
  *
  * @author Jan Bernitt
  */
-@Validation( type = STRING )
+@Validation(type = STRING)
 @Validation.Ignore
 public interface JsonString extends JsonPrimitive {
 
@@ -49,52 +49,51 @@ public interface JsonString extends JsonPrimitive {
    */
   Text text();
 
-    /**
-     * @return string value of the property or {@code null} when this property is undefined or defined as JSON
-     * {@code null}.
-     */
-    default String string() {
-        return string(null);
-    }
+  /**
+   * @return string value of the property or {@code null} when this property is undefined or defined
+   *     as JSON {@code null}.
+   */
+  default String string() {
+    return string(null);
+  }
 
-    /**
-     * @param orDefault used when this node is either undefined or defined as JSON null
-     * @return this string node string value or the default if undefined or defined null
-     * @throws JsonTreeException in case this node exists but is not a string node (or null)
-     */
-    default String string( String orDefault ) {
-        return isUndefined() ? orDefault : text().toString();
-    }
+  /**
+   * @param orDefault used when this node is either undefined or defined as JSON null
+   * @return this string node string value or the default if undefined or defined null
+   * @throws JsonTreeException in case this node exists but is not a string node (or null)
+   */
+  default String string(String orDefault) {
+    return isUndefined() ? orDefault : text().toString();
+  }
 
-    /**
-     * @param parser function that parses a given {@link String} to the returned type.
-     * @param <T>    return type
-     * @return {@code null} when {@link #string()} returns {@code null} otherwise the result of calling provided parser
-     * with result of {@link #string()}.
-     */
-    @Maybe
-    default <T> T parsed( @Surly Function<String, T> parser ) {
-        String value = string();
-        return value == null ? null : parser.apply( value );
-    }
+  /**
+   * @param parser function that parses a given {@link String} to the returned type.
+   * @param <T> return type
+   * @return {@code null} when {@link #string()} returns {@code null} otherwise the result of
+   *     calling provided parser with result of {@link #string()}.
+   */
+  @CheckNull
+  default <T> T parsed(@NotNull Function<String, T> parser) {
+    String value = string();
+    return value == null ? null : parser.apply(value);
+  }
 
-    interface CheckedFunction<A, B> {
+  interface CheckedFunction<A, B> {
 
-        B apply( A a )
-            throws Exception;
-    }
+    B apply(A a) throws Exception;
+  }
 
-    default <T> T parsedChecked( CheckedFunction<String, T> converter ) {
-        String value = string();
-        if ( value == null ) return null;
-        try {
-            return converter.apply( value );
-        } catch ( Exception ex ) {
-            throw new IllegalArgumentException( ex );
-        }
+  default <T> T parsedChecked(CheckedFunction<String, T> converter) {
+    String value = string();
+    if (value == null) return null;
+    try {
+      return converter.apply(value);
+    } catch (Exception ex) {
+      throw new IllegalArgumentException(ex);
     }
+  }
 
-    default Class<?> parsedClass() {
-        return parsedChecked( Class::forName );
-    }
+  default Class<?> parsedClass() {
+    return parsedChecked(Class::forName);
+  }
 }

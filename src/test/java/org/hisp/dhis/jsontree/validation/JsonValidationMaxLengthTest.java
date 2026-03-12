@@ -19,54 +19,90 @@ import org.junit.jupiter.api.Test;
  */
 class JsonValidationMaxLengthTest {
 
-    public interface JsonMaxLengthExampleA extends JsonObject {
+  public interface JsonMaxLengthExampleA extends JsonObject {
 
-        @Validation( maxLength = 2, required = YES )
-        default String name() {
-            return getString( "name" ).string();
-        }
+    @Validation(maxLength = 2, required = YES)
+    default String name() {
+      return getString("name").string();
     }
+  }
 
-    public interface JsonMaxLengthExampleB extends JsonObject {
+  public interface JsonMaxLengthExampleB extends JsonObject {
 
-        @Validation( maxLength = 3 )
-        default String abbr() {
-            return getString( "abbr" ).string();
-        }
+    @Validation(maxLength = 3)
+    default String abbr() {
+      return getString("abbr").string();
     }
+  }
 
-    @Test
-    void testMaxLength_OK() {
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"name":"yo"}""" ).validate( JsonMaxLengthExampleA.class ) );
+  @Test
+  void testMaxLength_OK() {
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"name":"yo"}""")
+                .validate(JsonMaxLengthExampleA.class));
 
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"abbr":"WAT"}""" ).validate( JsonMaxLengthExampleB.class ) );
-    }
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"abbr":"WAT"}""")
+                .validate(JsonMaxLengthExampleB.class));
+  }
 
-    @Test
-    void testMaxLength_Undefined() {
-        assertValidationError( "{}", JsonMaxLengthExampleA.class, Rule.REQUIRED, "name" );
+  @Test
+  void testMaxLength_Undefined() {
+    assertValidationError("{}", JsonMaxLengthExampleA.class, Rule.REQUIRED, "name");
 
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"abbr":null}""" ).validate( JsonMaxLengthExampleB.class ) );
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {}""" ).validate( JsonMaxLengthExampleB.class ) );
-    }
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"abbr":null}""")
+                .validate(JsonMaxLengthExampleB.class));
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {}""")
+                .validate(JsonMaxLengthExampleB.class));
+  }
 
-    @Test
-    void testMaxLength_TooShort() {
-        assertValidationError( """
-            {"name":"nop"}""", JsonMaxLengthExampleA.class, Rule.MAX_LENGTH, 2, 3 );
-        assertValidationError( """
-            {"abbr":"yeah"}""", JsonMaxLengthExampleB.class, Rule.MAX_LENGTH, 3, 4 );
-    }
+  @Test
+  void testMaxLength_TooShort() {
+    assertValidationError(
+        """
+            {"name":"nop"}""",
+        JsonMaxLengthExampleA.class,
+        Rule.MAX_LENGTH,
+        2,
+        3);
+    assertValidationError(
+        """
+            {"abbr":"yeah"}""",
+        JsonMaxLengthExampleB.class,
+        Rule.MAX_LENGTH,
+        3,
+        4);
+  }
 
-    @Test
-    void testMaxLength_WrongType() {
-        assertValidationError( """
-            {"name":true}""", JsonMaxLengthExampleA.class, Rule.TYPE, Set.of( NodeType.STRING ), NodeType.BOOLEAN );
-        assertValidationError( """
-            {"abbr":true}""", JsonMaxLengthExampleB.class, Rule.TYPE, Set.of( NodeType.STRING ), NodeType.BOOLEAN );
-    }
+  @Test
+  void testMaxLength_WrongType() {
+    assertValidationError(
+        """
+            {"name":true}""",
+        JsonMaxLengthExampleA.class,
+        Rule.TYPE,
+        Set.of(NodeType.STRING),
+        NodeType.BOOLEAN);
+    assertValidationError(
+        """
+            {"abbr":true}""",
+        JsonMaxLengthExampleB.class,
+        Rule.TYPE,
+        Set.of(NodeType.STRING),
+        NodeType.BOOLEAN);
+  }
 }

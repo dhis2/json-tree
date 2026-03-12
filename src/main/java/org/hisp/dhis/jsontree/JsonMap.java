@@ -34,52 +34,54 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.
+ * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common
+ * uniform value type.
  *
  * @param <E> type of the uniform map values
  * @author Jan Bernitt
  */
-@Validation( type = OBJECT )
+@Validation(type = OBJECT)
 @Validation.Ignore
 public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
 
-    /**
-     * @param toValue from JSON to Java type
-     * @return a Java {@link Map} of this {@link JsonMap}
-     * @throws JsonTreeException in case this node does exist but is not an object node
-     * @since 0.11
-     */
-    default <T> Map<String, T> toMap( Function<E, T> toValue ) {
-        return entries().collect( Collectors.toMap( e -> e.getKey().toString(), e -> toValue.apply( e.getValue() ) ) );
+  /**
+   * @param toValue from JSON to Java type
+   * @return a Java {@link Map} of this {@link JsonMap}
+   * @throws JsonTreeException in case this node does exist but is not an object node
+   * @since 0.11
+   */
+  default <T> Map<String, T> toMap(Function<E, T> toValue) {
+    return entries()
+        .collect(Collectors.toMap(e -> e.getKey().toString(), e -> toValue.apply(e.getValue())));
+  }
+
+  /**
+   * Maps this map's entry values to a lazy transformed map view where each entry value of the
+   * original map is transformed by the given function when accessed.
+   *
+   * <p>This means the returned map always has same size as the original map.
+   *
+   * @param projection transformer function
+   * @param <V> type of the transformer output, entries of the map view
+   * @return a lazily transformed map view of this map
+   */
+  default <V extends JsonValue> JsonMap<V> project(Function<E, V> projection) {
+    final class JsonMapProjection extends CollectionView<JsonMap<E>> implements JsonMap<V> {
+
+      private JsonMapProjection(JsonMap<E> viewed) {
+        super(viewed);
+      }
+
+      @Override
+      public V get(Text key) {
+        return projection.apply(viewed.get(key));
+      }
+
+      @Override
+      public Class<? extends JsonValue> asType() {
+        return JsonMap.class;
+      }
     }
-
-    /**
-     * Maps this map's entry values to a lazy transformed map view where each entry value of the original map is
-     * transformed by the given function when accessed.
-     * <p>
-     * This means the returned map always has same size as the original map.
-     *
-     * @param projection transformer function
-     * @param <V>        type of the transformer output, entries of the map view
-     * @return a lazily transformed map view of this map
-     */
-    default <V extends JsonValue> JsonMap<V> project( Function<E, V> projection ) {
-        final class JsonMapProjection extends CollectionView<JsonMap<E>> implements JsonMap<V> {
-
-            private JsonMapProjection( JsonMap<E> viewed ) {
-                super( viewed );
-            }
-
-            @Override
-            public V get( Text key ) {
-                return projection.apply( viewed.get( key ) );
-            }
-
-            @Override
-            public Class<? extends JsonValue> asType() {
-                return JsonMap.class;
-            }
-        }
-        return new JsonMapProjection( this );
-    }
+    return new JsonMapProjection(this);
+  }
 }
