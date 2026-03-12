@@ -30,8 +30,10 @@ package org.hisp.dhis.jsontree;
 import static java.lang.String.format;
 import static java.util.Collections.emptyIterator;
 import static java.util.Objects.requireNonNull;
+import static java.util.Spliterator.NONNULL;
 import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterator.SIZED;
+import static java.util.Spliterators.spliteratorUnknownSize;
 import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.Chars.expectChars;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
@@ -356,8 +358,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             Iterator<Entry<Text, JsonNode>> iter = membersIterator( remember );
             int n = isEmpty() ? 0 : size;
             return remember && n >= 0
-                ? Spliterators.spliterator( iter, n, ORDERED | SIZED )
-                : Spliterators.spliteratorUnknownSize( iter, ORDERED );
+                ? Spliterators.spliterator( iter, n, ORDERED | SIZED | NONNULL )
+                : spliteratorUnknownSize( iter, ORDERED | NONNULL );
         }
 
         private Iterator<Entry<Text, JsonNode>> membersIterator( boolean remember ) {
@@ -604,8 +606,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
             Iterator<JsonNode> iter = elementsIterator( remember );
             int n = isEmpty() ? 0 : size;
             return remember && n >= 0
-                ? Spliterators.spliterator( iter, n, ORDERED | SIZED )
-                : Spliterators.spliteratorUnknownSize( iter, ORDERED );
+                ? Spliterators.spliterator( iter, n, ORDERED | SIZED | NONNULL )
+                : spliteratorUnknownSize( iter, ORDERED | NONNULL );
         }
 
         private Iterator<JsonNode> elementsIterator( boolean remember ) {

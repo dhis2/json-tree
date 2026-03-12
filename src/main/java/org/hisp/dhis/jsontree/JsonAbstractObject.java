@@ -14,8 +14,11 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static java.util.Spliterator.DISTINCT;
+import static java.util.Spliterator.NONNULL;
 import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterator.SIZED;
+import static java.util.Spliterators.spliterator;
 import static java.util.stream.StreamSupport.stream;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
@@ -116,7 +119,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     default Stream<Text> keys() {
         if (isUndefined() || isEmpty()) return Stream.empty();
         Iterator<Text> iter = node().keys().iterator();
-        return StreamSupport.stream( Spliterators.spliterator( iter, size(), ORDERED | SIZED ), false);
+        return stream( spliterator( iter, size(), ORDERED | SIZED | DISTINCT | NONNULL ), false);
     }
 
     /**
@@ -158,7 +161,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     default Stream<JsonPath> paths() {
         if (isUndefined() || isEmpty()) return Stream.empty();
         Iterator<JsonPath> iter = node().paths().iterator();
-        return StreamSupport.stream( Spliterators.spliterator( iter, size(), ORDERED | SIZED ), false);
+        return stream( spliterator( iter, size(), ORDERED | SIZED | DISTINCT | NONNULL), false);
     }
 
     /**

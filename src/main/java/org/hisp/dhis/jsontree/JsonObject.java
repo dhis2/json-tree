@@ -75,7 +75,8 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
     default Stream<JsonValue> values(boolean remember) {
         if (isUndefined() || isEmpty()) return Stream.empty();
         JsonAccessors accessors = getAccessors();
-        return StreamSupport.stream( node().members(remember), false).map( e -> e.getValue().lift( accessors ) );
+        return StreamSupport.stream( node().members(remember), false)
+            .map( e -> e.getValue().lift( accessors ) );
     }
 
     @Override
