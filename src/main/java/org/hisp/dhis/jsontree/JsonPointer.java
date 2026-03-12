@@ -1,5 +1,8 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.NotNull;
+
+import static java.util.Objects.requireNonNull;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 /**
@@ -10,8 +13,13 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  * @param value a pointer expression
  */
 @Validation(type = STRING, pattern = "(/((~[01])|([^/~]))*)*")
-public record JsonPointer(String value) {
+public record JsonPointer(@NotNull String value) {
 
+  public JsonPointer {
+    requireNonNull(value);
+  }
+
+  @NotNull
   public JsonPath decode() {
     if (value.isEmpty()) return JsonPath.SELF;
     Text path = Text.of(value);
