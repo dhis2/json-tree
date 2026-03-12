@@ -27,10 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.Arrays;
-
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+
+import java.util.Arrays;
 
 /**
  * Thrown when the JSON content turns out to be invalid JSON.

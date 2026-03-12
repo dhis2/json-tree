@@ -1,18 +1,13 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonAbstractObject;
-import org.hisp.dhis.jsontree.JsonList;
-import org.hisp.dhis.jsontree.JsonMap;
-import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonNodeType;
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonValue;
-import org.hisp.dhis.jsontree.Validation.Error;
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.Validation.Validator;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import static java.lang.Double.isNaN;
+import static java.util.stream.Collectors.toMap;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
@@ -32,30 +27,33 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
-
-import static java.lang.Double.isNaN;
-import static java.util.function.Predicate.not;
-import static java.util.stream.Collectors.toMap;
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import org.hisp.dhis.jsontree.JsonList;
+import org.hisp.dhis.jsontree.JsonMap;
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonNodeType;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonPath;
+import org.hisp.dhis.jsontree.JsonValue;
+import org.hisp.dhis.jsontree.Text;
+import org.hisp.dhis.jsontree.Validation.Error;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.Validation.Validator;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * A validator that Contains one {@link Validator} for each property of the schema that needs validation.
  *
- * @param schema     that JSON type that was used as the basis to create the property validators from
+ * @param schema     that source used to extract {@link JsonObject.Property} list from
  * @param properties one validator for each property
  * @author Jan Bernitt
  * @since 0.11
  */
 record ObjectValidator(
-    @Surly Class<? extends JsonValue> schema,
-    @Surly Map<String, Validator> properties
+    @Surly Class<?> schema,
+    @Surly Map<JsonPath, Validator> properties
 ) implements Validator {
 
     @Override
@@ -74,41 +72,34 @@ record ObjectValidator(
      * {@code ConcurrentHashMap} because while computing an entry another entry might be added within (as a consequence
      * of) the computation.
      */
-    private static final Map<Class<? extends JsonValue>, ObjectValidator> BY_SCHEMA_TYPE = new ConcurrentSkipListMap<>(
+    private static final Map<Class<?>, ObjectValidator> BY_SCHEMA_TYPE = new ConcurrentSkipListMap<>(
         Comparator.comparing( Class::getName ) );
 
-    @Surly
-    public static ObjectValidator getInstance( Class<? extends JsonObject> schema ) {
-        return getInstance( schema, new HashSet<>() );
+    public static ObjectValidator of(Class<?> schema) {
+        return of( schema, new HashSet<>() );
     }
 
-    @Surly
-    private static ObjectValidator getInstance( Class<? extends JsonObject> schema, Set<Class<?>> currentlyResolved ) {
-        return getInstance( schema, () -> ObjectValidation.getInstance( schema ), currentlyResolved );
+    private static ObjectValidator of( Class<?> schema, Set<Class<?>> currentlyResolved ) {
+        return getInstance( schema, () -> ObjectValidation.of( schema ), currentlyResolved );
     }
 
-    @Surly
-    public static ObjectValidator getInstance( ObjectValidation obj ) {
-        return getInstance( obj.schema(), () -> obj, new HashSet<>() );
-    }
-
-    private static ObjectValidator getInstance( Class<? extends JsonValue> schema,
+    private static ObjectValidator getInstance( Class<?> schema,
         Supplier<ObjectValidation> analyse, Set<Class<?>> currentlyResolved ) {
         return BY_SCHEMA_TYPE.computeIfAbsent( schema,
             type -> {
                 currentlyResolved.add( type );
-                Map<String, Validator> res = new TreeMap<>();
+                Map<JsonPath, Validator> res = new TreeMap<>();
                 ObjectValidation objectValidation = analyse.get();
-                Map<String, PropertyValidation> properties = objectValidation.properties();
+                Map<Text, PropertyValidation> properties = objectValidation.properties();
                 properties.forEach( ( property, validation ) -> {
                     Validator propValidator = create( validation, property );
                     Validator propTypeValidator = getInstance( objectValidation.types().get( property ),
                         currentlyResolved );
-                    Validator validator = Guard.of( propValidator, propTypeValidator );
-                    if ( validator != null ) res.put( property, validator );
+                    Validator validator = If.of( propValidator, propTypeValidator );
+                    if ( validator != null ) res.put( JsonPath.of( property), validator );
                 } );
                 Validator dependentRequired = createDependentRequired( properties );
-                if ( dependentRequired != null ) res.put( "", dependentRequired );
+                if ( dependentRequired != null ) res.put( JsonPath.SELF, dependentRequired );
                 return new ObjectValidator( type, Map.copyOf( res ) );
             } );
     }
@@ -123,15 +114,12 @@ record ObjectValidator(
      */
     @Maybe
     private static Validator getInstance( java.lang.reflect.Type type, Set<Class<?>> currentlyResolved ) {
-        if ( type instanceof Class<?> cType ) {
-            if ( JsonObject.class.isAssignableFrom( cType ) ) {
-                @SuppressWarnings( "unchecked" )
-                Class<? extends JsonObject> schema = (Class<? extends JsonObject>) cType;
+        if ( type instanceof Class<?> schema ) {
+            if ( JsonObject.class.isAssignableFrom( schema ) || Record.class.isAssignableFrom( schema ) ) {
                 if ( currentlyResolved.contains( schema ) ) return new Lazy( schema, new AtomicReference<>() );
-                return getInstance( schema, currentlyResolved );
+                return of( schema, currentlyResolved );
             }
-        }
-        if ( type instanceof ParameterizedType pt ) {
+        } else if ( type instanceof ParameterizedType pt ) {
             Class<?> rawType = (Class<?>) pt.getRawType();
             if ( JsonMap.class.isAssignableFrom( rawType ) )
                 return Items.of( getInstance( pt.getActualTypeArguments()[0], currentlyResolved ) );
@@ -142,7 +130,7 @@ record ObjectValidator(
     }
 
     @Maybe
-    private static Validator create( PropertyValidation node, String property ) {
+    private static Validator create( PropertyValidation node, Text property ) {
         Set<NodeType> anyOf = node.anyOfTypes();
 
         Map<JsonNodeType, Validator> byType = new EnumMap<>( JsonNodeType.class );
@@ -160,7 +148,7 @@ record ObjectValidator(
         Validator anyType = create( node.values() );
         Validator typeDependent = byType.isEmpty() ? null : new TypeDependent( byType );
         Validator items = node.items() == null ? null : Items.of( create( node.items(), property ) );
-        Validator whenDefined = Guard.of( type, Guard.of( anyType, Guard.of( typeDependent, items ) ) );
+        Validator whenDefined = If.of( type, If.of( anyType, If.of( typeDependent, items ) ) );
 
         PropertyValidation.ValueValidation values = node.values();
         boolean isRequiredYes = values != null && values.required().isYes();
@@ -168,8 +156,8 @@ record ObjectValidator(
         boolean isAllowNull = values != null && values.allowNull().isYes();
         Validator required = !isRequiredYes && !isRequiredAuto
             ? null
-            : new Required( isAllowNull ? not(JsonValue::exists) : JsonValue::isUndefined, property );
-        return Guard.of( required, whenDefined );
+            : new Required( property, isAllowNull );
+        return If.of( required, whenDefined );
     }
 
     /**
@@ -229,15 +217,15 @@ record ObjectValidator(
     }
 
     @Maybe
-    private static Validator createDependentRequired( @Surly Map<String, PropertyValidation> properties ) {
+    private static Validator createDependentRequired( @Surly Map<Text, PropertyValidation> properties ) {
         if ( properties.isEmpty() ) return null;
         if ( properties.values().stream()
             .allMatch( p -> p.values() == null || p.values().dependentRequired().isEmpty() ) ) return null;
-        Map<String, Map<String, String>> groupPropertyRole = new HashMap<>();
-        Map<String, BiPredicate<JsonMixed, String>> isUndefined = new HashMap<>();
-        properties.forEach( ( name, property ) -> {
-            PropertyValidation.ValueValidation values = property.values();
-            isUndefined.put( name, isUndefined( values ) );
+        Map<String, Map<Text, String>> groupPropertyRole = new HashMap<>();
+        Map<Text, BiPredicate<JsonMixed, Text>> isMissing = new HashMap<>();
+        properties.forEach( ( name, validation ) -> {
+            PropertyValidation.ValueValidation values = validation.values();
+            isMissing.put( name, isMissing( values ) );
             if ( values != null && !values.dependentRequired().isEmpty() ) {
                 values.dependentRequired().forEach( role -> {
                     String group = role.replace( "!", "" ).replace( "?", "" );
@@ -250,23 +238,23 @@ record ObjectValidator(
         List<Validator> all = new ArrayList<>();
         groupPropertyRole.forEach( ( group, members ) -> {
             if ( members.values().stream().noneMatch( ObjectValidator::isDependentRequiredRole ) ) {
-                all.add( new DependentRequiredCodependent(Map.copyOf( isUndefined ), Set.copyOf( members.keySet() ) ) );
+                all.add( new DependentRequiredCodependent(Map.copyOf( isMissing ), Set.copyOf( members.keySet() ) ) );
             } else {
-                Set<Map.Entry<String, String>> memberEntries = members.entrySet();
-                List<String> present = memberEntries.stream().filter( e ->
+                Set<Map.Entry<Text, String>> memberEntries = members.entrySet();
+                List<Text> present = memberEntries.stream().filter( e ->
                     e.getValue().endsWith( "!" ) ).map( Map.Entry::getKey ).toList();
-                List<String> absent = memberEntries.stream().filter( e ->
+                List<Text> absent = memberEntries.stream().filter( e ->
                     e.getValue().endsWith( "?" ) ).map( Map.Entry::getKey ).toList();
-                List<String> dependent = memberEntries.stream().filter( e ->
+                List<Text> dependent = memberEntries.stream().filter( e ->
                     !isDependentRequiredRole( e.getValue() ) ).map( Map.Entry::getKey ).toList();
-                List<String> exclusiveDependent = memberEntries.stream().filter( e ->
+                List<Text> exclusiveDependent = memberEntries.stream().filter( e ->
                     e.getValue().endsWith( "^" ) ).map( Map.Entry::getKey ).toList();
-                Map<String, String> equals = memberEntries.stream()
+                Map<Text, String> equals = memberEntries.stream()
                     .filter( e -> e.getValue().contains( "=" ) )
                     .collect(
                         toMap( Map.Entry::getKey, e -> e.getValue().substring( e.getValue().indexOf( '=' ) + 1 ) ) );
                 all.add(
-                    new DependentRequired( Map.copyOf( isUndefined ),
+                    new DependentRequired( Map.copyOf( isMissing ),
                         Set.copyOf( present ), Set.copyOf( absent ), Map.copyOf( equals ),
                         Set.copyOf( dependent ), Set.copyOf( exclusiveDependent ) ) );
             }
@@ -275,9 +263,9 @@ record ObjectValidator(
     }
 
     @Surly
-    private static BiPredicate<JsonMixed, String> isUndefined( PropertyValidation.ValueValidation values ) {
+    private static BiPredicate<JsonMixed, Text> isMissing( PropertyValidation.ValueValidation values ) {
         if (values == null || !values.allowNull().isYes()) return JsonMixed::isUndefined;
-        BiPredicate<JsonMixed,String> test = JsonMixed::exists;
+        BiPredicate<JsonMixed,Text> test = JsonMixed::exists;
         return test.negate();
     }
 
@@ -309,23 +297,26 @@ record ObjectValidator(
         }
     }
 
-    private record Guard(Validator when, Validator then) implements Validator {
+    /**
+     * Runs the {@link #dependent()} only if the {@link #independent()} is successful
+     */
+    private record If(Validator independent, Validator dependent) implements Validator {
 
         @Maybe
-        static Validator of( @Maybe Validator when, @Maybe Validator then ) {
-            if ( then == null ) return when;
-            if ( when == null ) return then;
-            return new Guard( when, then );
+        static Validator of( @Maybe Validator independent, @Maybe Validator dependent ) {
+            if ( dependent == null ) return independent;
+            if ( independent == null ) return dependent;
+            return new If( independent, dependent );
         }
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             boolean[] guard = { true };
-            when.validate( value, error -> {
+            independent.validate( value, error -> {
                 guard[0] = false;
                 addError.accept( error );
             } );
-            if ( guard[0] ) then.validate( value, addError );
+            if ( guard[0] ) dependent.validate( value, addError );
         }
     }
 
@@ -363,11 +354,11 @@ record ObjectValidator(
         }
     }
 
-    private record Required(Predicate<JsonMixed> isUndefined, String property) implements Validator {
+    private record Required(Text property, boolean allowNull) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( isUndefined.test( value ) )
+            if (allowNull && !value.exists() || !allowNull && value.isUndefined())
                 addError.accept( Error.of( Rule.REQUIRED, value,
                     "%s is required but was " + (value.isNull() ? "null" : "undefined"), property ) );
         }
@@ -590,20 +581,20 @@ record ObjectValidator(
      * @param dependents a set of properties that become required when triggering
      * @param exclusiveDependent a set of properties that become required when triggering but are also mutual exclusive
      */
-    private record DependentRequired(Map<String, BiPredicate<JsonMixed, String>> isUndefined,
-        Set<String> present, Set<String> absent, Map<String,String> equals,
-                                     Set<String> dependents, Set<String> exclusiveDependent) implements Validator {
+    private record DependentRequired(Map<Text, BiPredicate<JsonMixed, Text>> isMissing,
+        Set<Text> present, Set<Text> absent, Map<Text,String> equals,
+                                     Set<Text> dependents, Set<Text> exclusiveDependent) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isObject() ) return;
-            boolean presentNotMet = !present.isEmpty() && present.stream().anyMatch( p -> isUndefined.get( p ).test( value, p ));
-            boolean absentNotMet = !absent.isEmpty() && absent.stream().anyMatch( p -> !isUndefined.get( p ).test( value, p ));
+            boolean presentNotMet = !present.isEmpty() && present.stream().anyMatch( p -> isMissing.get( p ).test( value, p ));
+            boolean absentNotMet = !absent.isEmpty() && absent.stream().anyMatch( p -> !isMissing.get( p ).test( value, p ));
             boolean equalsNotMet = !equals.isEmpty() && equals.entrySet().stream()
                 .anyMatch( e -> !e.getValue().equals( value.getString( e.getKey() ).string() ) );
             if ( presentNotMet || absentNotMet || equalsNotMet ) return;
-            if ( !dependents.isEmpty() && dependents.stream().anyMatch( p -> isUndefined.get( p ).test( value, p ))) {
-                Set<String> missing = Set.copyOf( dependents.stream().filter( p -> isUndefined.get( p ).test( value, p )).toList());
+            if ( !dependents.isEmpty() && dependents.stream().anyMatch( p -> isMissing.get( p ).test( value, p ))) {
+                Set<Text> missing = Set.copyOf( dependents.stream().filter( p -> isMissing.get( p ).test( value, p )).toList());
                 if (!equals.isEmpty()) {
                     addError.accept(  Error.of( Rule.DEPENDENT_REQUIRED, value,
                         "object with %s requires all of %s, missing: %s", equals, dependents, missing ));
@@ -620,8 +611,8 @@ record ObjectValidator(
                 }
             }
             if ( !exclusiveDependent.isEmpty() ) {
-                Set<String> defined = Set.copyOf(
-                    exclusiveDependent.stream().filter( p -> !isUndefined.get( p ).test( value, p )).toList() );
+                Set<Text> defined = Set.copyOf(
+                    exclusiveDependent.stream().filter( p -> !isMissing.get( p ).test( value, p )).toList() );
                 if ( defined.size() == 1 ) return; // it is exclusively defined => OK
                 if ( !equals.isEmpty()) {
                     addError.accept(  Error.of( Rule.DEPENDENT_REQUIRED, value,
@@ -647,25 +638,25 @@ record ObjectValidator(
         }
     }
 
-    private record DependentRequiredCodependent(Map<String, BiPredicate<JsonMixed, String>> isUndefined, Set<String> codependent) implements Validator {
+    private record DependentRequiredCodependent(Map<Text, BiPredicate<JsonMixed, Text>> isMissing, Set<Text> codependent) implements Validator {
 
         @Override public void validate( JsonMixed value, Consumer<Error> addError ) {
             if ( !value.isObject() ) return;
-            if ( codependent.stream().anyMatch( p -> isUndefined.get( p ).test( value, p )) && codependent.stream()
-                .anyMatch( p -> !isUndefined.get( p ).test( value, p )))
+            if ( codependent.stream().anyMatch( p -> isMissing.get( p ).test( value, p )) && codependent.stream()
+                .anyMatch( p -> !isMissing.get( p ).test( value, p )))
                 addError.accept( Error.of( Rule.DEPENDENT_REQUIRED, value,
                     "object with any of %1$s all of %1$s are required, missing: %s", codependent,
-                    Set.copyOf( codependent.stream().filter( p -> isUndefined.get( p ).test( value, p ) ).toList() ) ) );
+                    Set.copyOf( codependent.stream().filter( p -> isMissing.get( p ).test( value, p ) ).toList() ) ) );
         }
     }
 
-    private record Lazy(Class<? extends JsonObject> of, AtomicReference<Validator> instance) implements Validator {
+    private record Lazy(Class<?> of, AtomicReference<Validator> instance) implements Validator {
 
         @Override
         public void validate( JsonMixed value, Consumer<Error> addError ) {
             Validator validator = instance.get();
             if ( validator == null ) {
-                validator = getInstance( of );
+                validator =  ObjectValidator.of( of );
                 instance.set( validator );
             }
             validator.validate( value, addError );

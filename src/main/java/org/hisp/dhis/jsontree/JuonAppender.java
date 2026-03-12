@@ -1,10 +1,9 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 import org.hisp.dhis.jsontree.internal.Surly;
-
-import java.util.function.Consumer;
 
 /**
  * Builder for JUON
@@ -34,75 +33,75 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
         return bld.out.toString();
     }
 
-    @Override public JsonObjectBuilder addMember( String name, JsonNode value ) {
+    @Override public JsonObjectBuilder addMember( CharSequence name, JsonNode value ) {
         JsonNodeType type = value.getType();
         if ( type == JsonNodeType.NULL )
             return addRawMember( name,  format.nullsInObjects().value );
         return switch ( type ) {
-            case OBJECT -> addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+            case OBJECT -> addObject( name, obj -> value.members().forEach( obj::addMember ) );
             case ARRAY -> addArray( name, arr -> value.elements().forEach( arr::addElement ) );
-            case STRING -> addString( name, (String)value.value() );
+            case STRING -> addString( name, value.value().toString() );
             case NUMBER -> addNumber( name, (Number) value.value() );
             case BOOLEAN -> addBoolean( name, (Boolean) value.value() );
             case NULL -> addBoolean( name, null );
         };
     }
 
-    @Override public JsonObjectBuilder addBoolean( String name, boolean value ) {
+    @Override public JsonObjectBuilder addBoolean( CharSequence name, boolean value ) {
         String raw = String.valueOf( value );
         return addRawMember( name, format.booleanShorthands() ? raw.substring( 0, 1 ) : raw );
     }
 
-    @Override public JsonObjectBuilder addBoolean( String name, Boolean value ) {
+    @Override public JsonObjectBuilder addBoolean( CharSequence name, Boolean value ) {
         if (value == null) return addRawMember( name,  format.nullsInObjects().value );
         return addBoolean( name, value.booleanValue() );
     }
 
-    @Override public JsonObjectBuilder addNumber( String name, int value ) {
+    @Override public JsonObjectBuilder addNumber( CharSequence name, int value ) {
+        return addRawMember( name, Text.of( value ) );
+    }
+
+    @Override public JsonObjectBuilder addNumber( CharSequence name, long value ) {
         return addRawMember( name, String.valueOf( value ) );
     }
 
-    @Override public JsonObjectBuilder addNumber( String name, long value ) {
-        return addRawMember( name, String.valueOf( value ) );
-    }
-
-    @Override public JsonObjectBuilder addNumber( String name, double value ) {
+    @Override public JsonObjectBuilder addNumber( CharSequence name, double value ) {
         JsonBuilder.checkValid( value );
         return addRawMember( name, String.valueOf( value ) );
     }
 
-    @Override public JsonObjectBuilder addNumber( String name, Number value ) {
+    @Override public JsonObjectBuilder addNumber( CharSequence name, Number value ) {
         if (value == null) return addRawMember( name,  format.nullsInObjects().value );
         JsonBuilder.checkValid( value );
         return addRawMember( name, String.valueOf( value ) );
     }
 
-    @Override public JsonObjectBuilder addString( String name, String value ) {
+    @Override public JsonObjectBuilder addString( CharSequence name, CharSequence value ) {
         if (value == null) return addRawMember( name,  format.nullsInObjects().value );
         addMember( name );
         appendEscaped( value );
         return this;
     }
 
-    @Override public JsonObjectBuilder addArray( String name, Consumer<JsonArrayBuilder> arr ) {
+    @Override public JsonObjectBuilder addArray( CharSequence name, Consumer<JsonArrayBuilder> arr ) {
         addMember( name );
         addArray( arr );
         return this;
     }
 
-    @Override public JsonObjectBuilder addObject( String name, Consumer<JsonObjectBuilder> obj ) {
+    @Override public JsonObjectBuilder addObject( CharSequence name, Consumer<JsonObjectBuilder> obj ) {
         addMember( name );
         addObject( obj );
         return this;
     }
 
-    private void addMember( String name ) {
+    private void addMember( CharSequence name ) {
         appendCommaWhenNeeded();
         append( name );
         append( ':' );
     }
 
-    private JsonObjectBuilder addRawMember(String name, CharSequence rawValue ) {
+    private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue ) {
         if (rawValue == null) return this;
         addMember( name );
         append( rawValue );
@@ -121,9 +120,9 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
         if ( type == JsonNodeType.NULL )
             return addRawElement( format.nullsInArrays().value );
         return switch ( type ) {
-            case OBJECT -> addObject(obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+            case OBJECT -> addObject(obj -> value.members().forEach( obj::addMember ) );
             case ARRAY -> addArray(  arr -> value.elements().forEach( arr::addElement ) );
-            case STRING -> addString(  (String)value.value() );
+            case STRING -> addString( value.value().toString() );
             case NUMBER -> addNumber( (Number) value.value() );
             case BOOLEAN -> addBoolean( (Boolean) value.value() );
             case NULL -> addBoolean( null );
@@ -141,7 +140,7 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
     }
 
     @Override public JsonArrayBuilder addNumber( int value ) {
-        return addRawElement( String.valueOf( value ) );
+        return addRawElement( Text.of( value ) );
     }
 
     @Override public JsonArrayBuilder addNumber( long value ) {
@@ -159,7 +158,7 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
         return addRawElement( value.toString() );
     }
 
-    @Override public JsonArrayBuilder addString( String value ) {
+    @Override public JsonArrayBuilder addString( CharSequence value ) {
         if (value == null) return addRawElement( format.nullsInArrays().value );
         appendCommaWhenNeeded();
         appendEscaped( value );

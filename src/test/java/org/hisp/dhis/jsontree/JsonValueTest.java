@@ -27,16 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the static helpers of {@link JsonValue} and the basic {@link JsonValue} API methods.
@@ -177,7 +177,7 @@ class JsonValueTest {
         JsonMixed root = JsonMixed.of( json );
         JsonObject foo = root.find( JsonObject.class, obj -> obj.has( "foo" ) );
         assertTrue( foo.isObject() );
-        assertEquals( "$.x", foo.path() );
+        assertEquals( ".x", foo.path().toString() );
         assertFalse( root.find( JsonObject.class, obj -> obj.has( "bar" ) ).exists() );
     }
 
@@ -211,5 +211,84 @@ class JsonValueTest {
         JsonObject undefined = JsonMixed.of( "{}" ).getObject( "x" );
         assertFalse( undefined.find( JsonObject.class, obj -> obj.containsKey( "y" ) ).exists() );
         assertFalse( undefined.find( JsonValue.class, JsonValue::exists ).exists() );
+    }
+
+    @Test
+    void testTo_AutoBox() {
+        assertEquals( 1, JsonMixed.of( "1" ).to( Integer.class ) );
+        assertArrayEquals(new Integer[] { 1 }, JsonMixed.of("1").to(Integer[].class));
+        assertEquals( 99, JsonMixed.of( "[1,42,99]" ).get( 2 ).to( int.class ) );
+    }
+
+    record Address(String street, int zip, String city) {
+        static Address of(String address) {
+            String[] parts = address.split( "\\s*,\\s*" );
+            return new Address( parts[0], Integer.parseInt( parts[1] ), parts[2] );
+        }
+    }
+    record Person(String name, int age, Address billing, Address shipping) {}
+
+    @Test
+    void testTo_RecordFromObject() {
+        String json = """
+            {
+              "name": "Sky Lukewalker",
+              "age": 10,
+              "billing": { "street": "Memory Lane 2", "zip": 1234, "city": "Paramount" },
+              "shipping": { "street": "Backyard 44", "zip": 4444, "city": "Hillsville" }
+            }
+            """;
+        Person actual = JsonMixed.of( json ).to( Person.class );
+        assertEquals(new Person("Sky Lukewalker", 10,
+            new Address("Memory Lane 2", 1234, "Paramount"),
+            new Address("Backyard 44", 4444, "Hillsville")), actual);
+    }
+
+    @Test
+    void testTo_RecordFromArray() {
+        String json = """
+            ["Backyard 44", 4444, "Hillsville"]
+            """;
+        Address actual = JsonMixed.of( json ).to( Address.class );
+        assertEquals(new Address("Backyard 44", 4444, "Hillsville"), actual);
+    }
+
+    @Test
+    void testTo_RecordFromSimple() {
+        String json = """
+            "Backyard 44, 4444, Hillsville"
+            """;
+        Address actual = JsonMixed.of( json ).to( Address.class );
+        assertEquals(new Address("Backyard 44", 4444, "Hillsville"), actual);
+    }
+
+    interface JsonAddress extends JsonArray {
+        String street();
+        int zip();
+    }
+
+    @Test
+    void testTo_JsonValue() {
+        String json = """
+            { "street": "Backyard 44", "zip": 4444, "city": "Hillsville" }
+            """;
+        JsonAddress actual = JsonMixed.of( json ).to( JsonAddress.class );
+        assertEquals( "Backyard 44", actual.street() );
+        assertEquals( 4444, actual.zip() );
+    }
+
+    interface JsonAddressPlain {
+        String street();
+        int zip();
+    }
+
+    @Test
+    void testTo_PlainInterface() {
+        String json = """
+            { "street": "Backyard 44", "zip": 4444, "city": "Hillsville" }
+            """;
+        JsonAddressPlain actual = JsonMixed.of( json ).to( JsonAddressPlain.class );
+        assertEquals( "Backyard 44", actual.street() );
+        assertEquals( 4444, actual.zip() );
     }
 }

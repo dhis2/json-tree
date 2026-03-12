@@ -1,15 +1,14 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.lang.annotation.RetentionPolicy;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.junit.jupiter.api.Test;
-
-import java.lang.annotation.RetentionPolicy;
-
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonValidationMiscTest {
 

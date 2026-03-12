@@ -27,19 +27,6 @@
  */
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonMixed;
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonPathException;
-import org.hisp.dhis.jsontree.JsonTreeException;
-import org.hisp.dhis.jsontree.Required;
-import org.hisp.dhis.jsontree.Validation;
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
 import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -48,6 +35,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Set;
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonPathException;
+import org.hisp.dhis.jsontree.JsonTreeException;
+import org.hisp.dhis.jsontree.Required;
+import org.hisp.dhis.jsontree.Validation;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link Required} annotation feature.
@@ -142,42 +140,42 @@ class JsonValidationRequiredTest {
     void testAsObject_NotAnObjectArray() {
         JsonMixed obj = JsonMixed.of( "[]" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value $ JsonFoo node is not an object but a ARRAY", ex.getMessage() );
+        assertEquals( "Value at path `` is not a JsonFoo object but a ARRAY", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectString() {
         JsonMixed obj = JsonMixed.of( "\"nop\"" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value $ JsonFoo node is not an object but a STRING", ex.getMessage() );
+        assertEquals( "Value at path `` is not a JsonFoo object but a STRING", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNumber() {
         JsonMixed obj = JsonMixed.of( "13" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value $ JsonFoo node is not an object but a NUMBER", ex.getMessage() );
+        assertEquals( "Value at path `` is not a JsonFoo object but a NUMBER", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectBoolean() {
         JsonMixed obj = JsonMixed.of( "true" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value $ JsonFoo node is not an object but a BOOLEAN", ex.getMessage() );
+        assertEquals( "Value at path `` is not a JsonFoo object but a BOOLEAN", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectNull() {
         JsonMixed obj = JsonMixed.of( "null" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value $ JsonFoo node is not an object but a NULL", ex.getMessage() );
+        assertEquals( "Value at path `` is not a JsonFoo object but a NULL", ex.getMessage() );
     }
 
     @Test
     void testAsObject_NotAnObjectUndefined() {
         JsonObject obj = JsonMixed.of( "{}" ).getObject( "x" );
         JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value $.x JsonFoo node does not exist", ex.getMessage() );
+        assertEquals( "Value at path `.x` is not a JsonFoo object as it does not exist", ex.getMessage() );
     }
 
     @Test
@@ -185,7 +183,7 @@ class JsonValidationRequiredTest {
         String json = """
             {"b":{"bar":""}}""";
         Validation.Error error = assertValidationError( json, JsonRoot.class, Rule.REQUIRED, "a" );
-        assertEquals( "$.a", error.path() );
+        assertEquals( ".a", error.path().toString() );
     }
 
     @Test
@@ -193,7 +191,7 @@ class JsonValidationRequiredTest {
         String json = """
             {"a": {}, "b":{"bar":""}}""";
         Validation.Error error = assertValidationError( json, JsonRoot.class, Rule.REQUIRED, "bar" );
-        assertEquals( "$.a.bar", error.path() );
+        assertEquals( ".a.bar", error.path().toString() );
     }
 
     @Test
@@ -208,7 +206,7 @@ class JsonValidationRequiredTest {
     void testRequired_AcceptNull() {
         Validation.Error error = assertValidationError( """
             {"a": 1}""", JsonRequiredExampleA.class, Rule.REQUIRED, "value" );
-        assertEquals( "$.value", error.path() );
+        assertEquals( ".value", error.path().toString() );
         assertDoesNotThrow( () -> JsonMixed.of("""
             {"value":null}""").validate( JsonRequiredExampleA.class ));
         assertDoesNotThrow( () -> JsonMixed.of("""

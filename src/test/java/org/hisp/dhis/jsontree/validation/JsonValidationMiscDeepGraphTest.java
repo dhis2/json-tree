@@ -1,5 +1,11 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.Set;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
 import org.hisp.dhis.jsontree.JsonMixed;
@@ -10,13 +16,6 @@ import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test the validation with an example that has multiple levels.
@@ -126,14 +125,14 @@ class JsonValidationMiscDeepGraphTest {
     void testDeep_Error_PagerSizeZero() {
         Validation.Error error = assertValidationError( """
             {"pager": {"size": 0, "page": 0}, "entries":[]}""", JsonPage.class, Rule.MINIMUM, 1d, 0d );
-        assertEquals( "$.pager.size", error.path() );
+        assertEquals( ".pager.size", error.path().toString() );
     }
 
     @Test
     void testDeep_Error_PagerPageNegative() {
         Validation.Error error = assertValidationError( """
             {"pager": {"size": 20, "page": -1}, "entries":[]}""", JsonPage.class, Rule.MINIMUM, 0d, -1d );
-        assertEquals( "$.pager.page", error.path() );
+        assertEquals( ".pager.page", error.path().toString() );
     }
 
     @Test
@@ -141,7 +140,7 @@ class JsonValidationMiscDeepGraphTest {
         Validation.Error error = assertValidationError( """
                 {"pager": {"size": 20, "page": true}, "entries":[]}""", JsonPage.class, Rule.TYPE,
             Set.of( NodeType.INTEGER ), NodeType.BOOLEAN );
-        assertEquals( "$.pager.page", error.path() );
+        assertEquals( ".pager.page", error.path().toString() );
     }
 
     @Test
@@ -149,7 +148,7 @@ class JsonValidationMiscDeepGraphTest {
         Validation.Error error = assertValidationError( """
                 {"pager": {"size": 20, "page": 0, "total": "yes"}, "entries":[]}""", JsonPage.class, Rule.TYPE,
             Set.of( NodeType.INTEGER ), NodeType.STRING );
-        assertEquals( "$.pager.total", error.path() );
+        assertEquals( ".pager.total", error.path().toString() );
     }
 
     @Test
@@ -172,7 +171,7 @@ class JsonValidationMiscDeepGraphTest {
             {"pager": {"size": 20, "page": 0}, "entries":[
             {"id": "ABC"}]}""";
         Validation.Error error = assertValidationError( json, JsonPage.class, Rule.MIN_LENGTH, 11, 3 );
-        assertEquals( "$.entries[0].id", error.path() );
+        assertEquals( ".entries.0.id", error.path().toString() );
     }
 
     @Test
@@ -182,7 +181,7 @@ class JsonValidationMiscDeepGraphTest {
             {"id": 42}]}""";
         Validation.Error error = assertValidationError( json, JsonPage.class, Rule.TYPE, Set.of( NodeType.STRING ),
             NodeType.NUMBER );
-        assertEquals( "$.entries[0].id", error.path() );
+        assertEquals( ".entries.0.id", error.path().toString() );
     }
 
     @Test
@@ -192,7 +191,7 @@ class JsonValidationMiscDeepGraphTest {
             {"id": "a0123456789", "values": false}]}""";
         Validation.Error error = assertValidationError( json, JsonPage.class, Rule.TYPE, Set.of( NodeType.OBJECT ),
             NodeType.BOOLEAN );
-        assertEquals( "$.entries[0].values", error.path() );
+        assertEquals( ".entries.0.values", error.path().toString() );
     }
 
     @Test
@@ -202,7 +201,7 @@ class JsonValidationMiscDeepGraphTest {
             {"id": "a0123456789", "attributes": {"name": "foo", "value": 1}}]}""";
         Validation.Error error = assertValidationError( json, JsonPage.class, Rule.TYPE, Set.of( NodeType.ARRAY ),
             NodeType.OBJECT );
-        assertEquals( "$.entries[0].attributes", error.path() );
+        assertEquals( ".entries.0.attributes", error.path().toString() );
     }
 
     @Test
@@ -211,7 +210,7 @@ class JsonValidationMiscDeepGraphTest {
             {"pager": {"size": 20, "page": 0}, "entries":[
             {"id": "a0123456789", "attributes": [{"value": 1}]}]}""";
         Validation.Error error = assertValidationError( json, JsonPage.class, Rule.REQUIRED, "name" );
-        assertEquals( "$.entries[0].attributes[0].name", error.path() );
+        assertEquals( ".entries.0.attributes.0.name", error.path().toString() );
     }
 
     @Test
@@ -222,7 +221,7 @@ class JsonValidationMiscDeepGraphTest {
 
         Validation.Error error = assertValidationError( json, JsonPage.class, Rule.DEPENDENT_REQUIRED,
             Set.of( "text", "value" ), Set.of() );
-        assertEquals( "$.entries[0].attributes[0]", error.path() );
+        assertEquals( ".entries.0.attributes.0", error.path().toString() );
     }
 
     @Test
@@ -237,6 +236,6 @@ class JsonValidationMiscDeepGraphTest {
 
         Validation.Error error = assertValidationError( json, JsonPage.class, Rule.UNIQUE_ITEMS,
             "{\"name\":\"foo\",\"value\":1}", 0, 2 );
-        assertEquals( "$.entries[0].attributes", error.path() );
+        assertEquals( ".entries.0.attributes", error.path().toString() );
     }
 }

@@ -1,16 +1,14 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonNodeOperation.Insert;
-import org.hisp.dhis.jsontree.JsonNodeOperation.Remove;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.hisp.dhis.jsontree.JsonNode.NULL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import org.hisp.dhis.jsontree.JsonNodeOperation.Insert;
+import org.hisp.dhis.jsontree.JsonNodeOperation.Remove;
+import org.junit.jupiter.api.Test;
 
 /**
  * Checks the conflict detection when running a {@link JsonNode#patch(List)}.

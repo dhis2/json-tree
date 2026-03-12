@@ -27,59 +27,58 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonDiff.Mode;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
-
-import java.io.Reader;
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
+import org.hisp.dhis.jsontree.JsonDiff.Mode;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
- * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which
- * is representing an actual {@link JsonTree}.
- * <p>
- * As usual there are specific node type for the JSON building blocks:
+ * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which is representing an
+ * actual {@link JsonTree}.
+ *
+ * <p>As usual there are specific node type for the JSON building blocks:
+ *
  * <ul>
- * <li>{@link JsonObject}</li>
- * <li>{@link JsonArray}</li>
- * <li>{@link JsonString}</li>
- * <li>{@link JsonNumber}</li>
- * <li>{@link JsonBoolean}</li>
- * </ul>
- * In addition, there is {@link JsonAbstractCollection} as a common base type of
- * {@link JsonObject} and {@link JsonArray}, as well as {@link JsonPrimitive} as common
- * base type of {@link JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
- * <p>
- * In addition {@link JsonList} is a typed JSON array of uniform elements (which
- * can be understood as a typed wrapper around a {@link JsonArray}).
- * <p>
- * Similarly {@link JsonMap} is a typed JSON object map of uniform values (which
- * can be understood as a typed wrapper around a {@link JsonObject}).
- * <p>
- * The API is designed to:
- * <ul>
- * <li>be extended by further type extending {@link JsonValue}, such as
- * {@link JsonDate}, but also further specific object types</li>
- * <li>fail at the point of assertion/use not traversal.
- * This means traversing the virtual tree does not cause errors unless explicitly
- * provoked by a "terminal operation" or malformed input</li>
- * <li>be implemented by a single class which only builds a lookup path and
- * checks or provides the leaf values on demand. Interfaces not directly
- * implemented by this class are dynamically created using a
- * {@link java.lang.reflect.Proxy}.</li>
+ *   <li>{@link JsonObject}
+ *   <li>{@link JsonArray}
+ *   <li>{@link JsonString}
+ *   <li>{@link JsonNumber}
+ *   <li>{@link JsonBoolean}
  * </ul>
  *
+ * In addition, there is {@link JsonAbstractCollection} as a common base type of {@link JsonObject}
+ * and {@link JsonArray}, as well as {@link JsonPrimitive} as common base type of {@link
+ * JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
+ *
+ * <p>In addition {@link JsonList} is a typed JSON array of uniform elements (which can be
+ * understood as a typed wrapper around a {@link JsonArray}).
+ *
+ * <p>Similarly {@link JsonMap} is a typed JSON object map of uniform values (which can be
+ * understood as a typed wrapper around a {@link JsonObject}).
+ *
+ * <p>The API is designed to:
+ *
+ * <ul>
+ *   <li>be extended by further type extending {@link JsonValue}, such as {@link JsonDate}, but also
+ *       further specific object types
+ *   <li>fail at the point of assertion/use not traversal. This means traversing the virtual tree
+ *       does not cause errors unless explicitly provoked by a "terminal operation" or malformed
+ *       input
+ *   <li>be implemented by a single class which only builds a lookup path and checks or provides the
+ *       leaf values on demand. Interfaces not directly implemented by this class are dynamically
+ *       created using a {@link java.lang.reflect.Proxy}.
+ * </ul>
+ *
+ * @implNote When serializing a {@link JsonValue} the deserialized instance only supports the {@link
+ *     JsonMixed} API as the {@link java.lang.reflect.Proxy} or subtypes cannot be restored. It has
+ *     to be recreated by calling {@link #as(Class)}.
  * @author Jan Bernitt
  * @see JsonMixed
  */
@@ -102,21 +101,23 @@ public interface JsonValue {
      * @param json a valid JSON string
      * @return virtual JSON tree root {@link JsonValue}
      */
-    static JsonValue of( String json ) {
-        return of( json, JsonTypedAccess.GLOBAL );
+    static JsonValue of( CharSequence json ) {
+        return of( json, JsonAccess.GLOBAL );
     }
 
     /**
-     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
+     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonAccessors} for
      * mapping to Java method return type.
      *
      * @param json  a valid JSON string
-     * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
+     * @param accessors mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return virtual JSON tree root {@link JsonValue}
      */
-    static JsonValue of( String json, @Surly JsonTypedAccessStore store ) {
-        return json == null || "null".equals( json ) ? JsonVirtualTree.NULL : JsonMixed.of( json, store );
+    static JsonValue of( CharSequence json, @Surly JsonAccessors accessors ) {
+        return json == null || "null".contentEquals( json )
+            ? JsonVirtualTree.NULL
+            : JsonMixed.of( json, accessors );
     }
 
     /**
@@ -126,15 +127,6 @@ public interface JsonValue {
      */
     static JsonValue of( Path file ) {
         return of(JsonNode.of( file ));
-    }
-
-    /**
-     * @param json JSON input
-     * @return root of the virtual tree representing the given JSON input
-     * @since 1.0
-     */
-    static JsonValue of( Reader json ) {
-        return of(JsonNode.of( json, null ));
     }
 
     /**
@@ -152,7 +144,27 @@ public interface JsonValue {
      * @since 0.11
      */
     @Surly
-    String path();
+    JsonPath path();
+
+    /**
+     * The "mapping" uses the node's {@link #getAccessors()} to map the JSON to the given Java target
+     * type.
+     *
+     * <p>When called with a subtype of {@link JsonValue} this is equivalent to calling {@link
+     * #as(Class)}.
+     *
+     * <p>When calling with an interface that does not extend {@link JsonValue} this is still
+     * equivalent to calling {@link #as(Class)} except that the API no longer gives access to the
+     * methods that would be inherited from the {@link JsonValue} base.
+     *
+     * @param type target Java type
+     * @return the JSON of this node accessed as the given Java type
+     * @param <T> target Java type the JSON value of this node is mapped to (accessed as)
+     * @throws JsonAccessException in case no accessor function is know to convert to the given type
+     *     or the conversion is not possible from the actual JSON value
+     * @since 1.9
+     */
+    <T> T to(Class<T> type) throws JsonAccessException;
 
     /**
      * @return this node's type or null if this node does not exist in the actual tree
@@ -412,7 +424,7 @@ public interface JsonValue {
      * @since 0.11
      */
     default String toJson() {
-        return node().getDeclaration();
+        return node().getDeclaration().toString();
     }
 
     /**
@@ -423,33 +435,20 @@ public interface JsonValue {
     default String toMinimizedJson() {
         if ( !isObject() && !isArray() ) return toJson();
         if ( isObject() ) return JsonBuilder.createObject( JsonBuilder.MINIMIZED_FULL,
-                obj -> asObject().entries().forEach( e -> obj.addMember( e.getKey(), e.getValue().node() ) ) )
-            .getDeclaration();
+                obj -> asObject().entries()
+                    .forEach( e -> obj.addMember( e.getKey(), e.getValue().node() ) ) )
+            .getDeclaration().toString();
         return JsonBuilder.createArray( JsonBuilder.MINIMIZED_FULL,
-            arr -> as( JsonArray.class ).forEach( e -> arr.addElement( e.node() ) ) ).getDeclaration();
+            arr -> as( JsonArray.class )
+                .forEach( e -> arr.addElement( e.node() ) ) ).getDeclaration().toString();
     }
 
     /**
-     * @return true, if results of JSON to Java method return type mapping via {@link JsonTypedAccessStore} are cached
-     * so that complex return values are only computed once. Any interface return type is considered a complex type.
-     */
-    default boolean isAccessCached() {
-        return false;
-    }
-
-    /**
-     * @return This value but with typed access cached if supported. Check using {@link #isAccessCached()} on result.
-     */
-    default JsonValue withAccessCached() {
-        return this;
-    }
-
-    /**
-     * @return the store used by this instance
-     * @since 0.11
+     * @return the accessor mappings/factory used
+     * @since 1.9
      */
     @Surly
-    JsonTypedAccessStore getAccessStore();
+    JsonAccessors getAccessors();
 
     /**
      * Finds the first value that satisfies the given test.
@@ -463,11 +462,11 @@ public interface JsonValue {
      */
     default <T extends JsonValue> T find( Class<T> type, Predicate<T> test ) {
         if ( isUndefined() ) return JsonMixed.of( "{}" ).get( "notFound", type );
-        JsonTypedAccessStore store = getAccessStore();
+        JsonAccessors accessors = getAccessors();
         Optional<JsonNode> match = node().find(
             node -> {
                 try {
-                    return test.test( node.lift( store ).as( type ) );
+                    return test.test( node.lift( accessors ).as( type ) );
                 } catch ( JsonTreeException | JsonPathException ex ) {
                     // the test called a method that was not supported by the tested node
                     return false;
@@ -475,7 +474,7 @@ public interface JsonValue {
             } );
         return match.isEmpty()
             ? JsonMixed.of( "{}" ).get( "notFound", type )
-            : match.get().lift( store ).as( type );
+            : match.get().lift( accessors ).as( type );
     }
 
 }

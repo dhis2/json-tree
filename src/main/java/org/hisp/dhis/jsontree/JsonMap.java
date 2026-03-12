@@ -27,11 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * {@link JsonMap}s are a special form of a {@link JsonObject} where all properties have a common uniform value type.
@@ -50,7 +50,7 @@ public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
      * @since 0.11
      */
     default <T> Map<String, T> toMap( Function<E, T> toValue ) {
-        return entries().collect( Collectors.toMap( Map.Entry::getKey, e -> toValue.apply( e.getValue() ) ) );
+        return entries().collect( Collectors.toMap( e -> e.getKey().toString(), e -> toValue.apply( e.getValue() ) ) );
     }
 
     /**
@@ -71,7 +71,7 @@ public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
             }
 
             @Override
-            public V get( String key ) {
+            public V get( Text key ) {
                 return projection.apply( viewed.get( key ) );
             }
 

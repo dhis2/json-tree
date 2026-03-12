@@ -27,14 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 /**
  * A {@link JsonMap} with {@link JsonList} of elements.
@@ -85,7 +85,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonAbstractObject<Js
                 list = new ArrayList<>( list );
                 list.sort( order );
             }
-            res.put( key, list );
+            res.put( key.toString(), list );
 
         } );
         return res;
@@ -109,7 +109,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonAbstractObject<Js
             }
 
             @Override
-            public JsonList<V> get( String key ) {
+            public JsonList<V> get( Text key ) {
                 return viewed.get( key ).project( projection );
             }
 

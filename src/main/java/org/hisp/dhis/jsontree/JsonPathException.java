@@ -40,18 +40,14 @@ public final class JsonPathException extends NoSuchElementException {
      * Note that this cannot be of type {@link JsonPath} as only instances with a valid path can be constructed but this
      * exception might precisely be about an invalid path.
      */
-    private final String path;
+    private final transient JsonPath path;
 
-    public JsonPathException( String path, String message ) {
+    public JsonPathException( JsonPath path, String message ) {
         super( message );
         this.path = path;
     }
 
-    public JsonPathException( JsonPath path, String message ) {
-        this(path.toString(), message);
-    }
-
-    public String getPath() {
+    public JsonPath getPath() {
         return path;
     }
 }

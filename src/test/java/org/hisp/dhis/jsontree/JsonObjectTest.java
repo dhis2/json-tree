@@ -1,14 +1,13 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for methods declared as default methods in {@link JsonObject}.
@@ -16,6 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * @author Jan Bernitt
  */
 class JsonObjectTest {
+
+    @Test
+    void testSize() {
+        assertEquals( 0, JsonMixed.of( "{}" ).size() );
+        assertEquals( 1, JsonMixed.of( "{\"a\": 1}" ).size() );
+        assertEquals(2, JsonMixed.of("{\"a\": 1, \"b\": 2}").size());
+        assertEquals(3, JsonMixed.of("{\"a\": 1, \"b\": 2, \"c\": null}").size());
+    }
 
     @Test
     void testHas_NoObject() {
@@ -54,9 +61,10 @@ class JsonObjectTest {
     void testNames_Special() {
         //language=json
         String json = """
-            {".":1,"{uid}":2,"[0]": 3}""";
+            {".":1,"{uid}":2,"[0]": 3, "": 4}""";
         JsonMixed value = JsonMixed.of( json );
-        assertEquals( List.of( ".", "{uid}", "[0]" ), value.names() );
+        assertEquals( List.of( ".", "{uid}", "[0]", "" ), value.names() );
+        assertEquals( 4, value.getNumber( Text.of("") ).intValue() );
     }
 
     @Test
@@ -77,8 +85,8 @@ class JsonObjectTest {
             {"paths": {"/api/dataElements/{uid:[a-zA-Z0-9]{11}}": {"get": {"id": "opx"}, "delete": {"id":"opy"}}}}""";
         JsonObject paths = JsonMixed.of( json ).getObject( "paths" );
         assertEquals( List.of("/api/dataElements/{uid:[a-zA-Z0-9]{11}}"), paths.names() );
-        JsonObject ops = paths.getObject( JsonPath.keyOf( "/api/dataElements/{uid:[a-zA-Z0-9]{11}}" ) );
-        assertEquals( List.of("get", "delete"), ops.keys().toList() );
+        JsonObject ops = paths.getObject( Text.of("/api/dataElements/{uid:[a-zA-Z0-9]{11}}" ));
+        assertEquals( List.of("get", "delete"), ops.keys().map( Text::toString ).toList() );
         assertEquals( "opy", ops.getObject( "delete" ).getString( "id" ).string() );
     }
 

@@ -1,8 +1,6 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.internal.Surly;
-import org.hisp.dhis.jsontree.validation.JsonValidator;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -10,9 +8,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
  * An "abstract" type that is expected to be backed by a JSON array.
@@ -43,14 +41,16 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
     @Surly
     @Override
     default Iterator<E> iterator() {
-        return indexes().mapToObj( this::get ).iterator();
+        // we want iterator to be stream() based as stream() is overridden
+        // for less overhead in subtypes, then this will benefit from it too
+        return stream().iterator();
     }
 
     /**
      * @return this list as a {@link Stream}, if this node does not exist or is JSON {@code null} the stream is empty
      */
     default Stream<E> stream() {
-        return isUndefined() || isEmpty() ? Stream.empty() : StreamSupport.stream( spliterator(), false );
+        return isUndefined() || isEmpty() ? Stream.empty() : indexes().mapToObj( this::get );
     }
 
     /**
@@ -121,7 +121,7 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
      * @throws IllegalArgumentException in case the given schema is not an interface
      * @since 1.0
      */
-    default void validateEach(Class<? extends JsonObject> schema, Rule... rules) {
+    default void validateEach(Class<?> schema, Rule... rules) {
         forEach( e -> JsonValidator.validate( e, schema, rules ) );
     }
 }

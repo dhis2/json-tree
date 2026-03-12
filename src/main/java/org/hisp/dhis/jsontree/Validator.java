@@ -8,17 +8,20 @@ import java.lang.annotation.Target;
 
 /**
  * An annotation to use custom {@link Validation.Validator}s.
- * <p>
- * Any type linked this way must have either a no-args constructor or a constructor accepting a {@link String} array.
- * The value of that array is the {@link #params()} property of the annotation to instantiate the validator for a
- * specific setting, like a limit.
+ *
+ * <p>Any type linked in {@link #value()} must be a {@link Record} and have either no components, 1
+ * component of type {@link Validation} or 1 component of type {@link Validation[]}. The value of
+ * that component will be the {@link #params()} property from the actual annotation. This allows to
+ * parameterize validators with some options. Which options are recognized and their semantics
+ * depends on the implementation. In this role the {@link Validation} does not represent the
+ * semantics of the standard but merely acts as a utility to allow parametrisation.
  *
  * @author Jan Bernitt
  * @since 0.11
  */
-@Repeatable( Validator.ValidatorRepeat.class )
-@Retention( RetentionPolicy.RUNTIME )
-@Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
+@Repeatable(Validator.ValidatorRepeat.class)
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE})
 public @interface Validator {
 
     /**
@@ -29,8 +32,8 @@ public @interface Validator {
     Validation[] params() default {};
 
     @Retention( RetentionPolicy.RUNTIME )
-    @Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE,
-        ElementType.TYPE_USE } ) @interface ValidatorRepeat {
+    @Target( { ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
+    @interface ValidatorRepeat {
 
         Validator[] value();
     }

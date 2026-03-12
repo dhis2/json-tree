@@ -1,17 +1,16 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonObject.Property;
-import org.junit.jupiter.api.Test;
+import static java.util.stream.Collectors.toSet;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedType;
 import java.util.List;
 import java.util.Set;
-
-import static java.util.stream.Collectors.toSet;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import org.hisp.dhis.jsontree.JsonObject.Property;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the extraction of properties provided by {@link JsonObject#properties(Class)}.
@@ -40,7 +39,7 @@ class JsonObjectPropertiesTest {
     @Test
     void testString() {
         List<Property> properties = JsonObject.properties( User.class );
-        Property expected = new Property( User.class, "username", JsonString.class, "username",
+        Property expected = new Property( User.class, Text.of("username"), JsonString.class, "username",
             STRING, null );
         assertPropertyExists( "username", expected, properties );
     }
@@ -50,14 +49,14 @@ class JsonObjectPropertiesTest {
         List<Property> properties = JsonObject.properties( User.class );
         assertEquals( 3, properties.size() );
         assertEquals( Set.of( "username", "firstName", "lastName" ),
-            properties.stream().map( Property::jsonName ).collect( toSet() ) );
+            properties.stream().map( Property::jsonName ).map( Text::toString ).collect( toSet() ) );
         assertEquals( Set.of( "username", "name" ), properties.stream().map( Property::javaName ).collect( toSet() ) );
 
         assertPropertyExists( "firstName",
-            new Property( User.class, "firstName", JsonString.class, "name", STRING, null ),
+            new Property( User.class, Text.of("firstName"), JsonString.class, "name", STRING, null ),
             properties );
         assertPropertyExists( "lastName",
-            new Property( User.class, "lastName", JsonString.class, "name", STRING, null ),
+            new Property( User.class, Text.of("lastName"), JsonString.class, "name", STRING, null ),
             properties );
     }
 
@@ -99,7 +98,7 @@ class JsonObjectPropertiesTest {
     }
 
     private void assertPropertyExists( String jsonName, Property expected, List<Property> actual ) {
-        Property prop = actual.stream().filter( p -> p.jsonName().equals( jsonName ) ).findFirst()
+        Property prop = actual.stream().filter( p -> p.jsonName().toString().equals( jsonName ) ).findFirst()
             .orElse( null );
         assertNotNull( prop );
         assertSame( expected.in(), prop.in() );

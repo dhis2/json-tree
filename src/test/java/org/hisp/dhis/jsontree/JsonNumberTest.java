@@ -1,10 +1,10 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the specific API of the {@link JsonNumber} methods.
@@ -48,7 +48,7 @@ class JsonNumberTest {
     @Test
     void testIntValue_Null() {
         JsonMixed val = JsonMixed.of( "null" );
-        assertThrowsExactly( NullPointerException.class, val::intValue );
+        assertThrowsExactly( JsonPathException.class, val::intValue );
     }
 
     @Test

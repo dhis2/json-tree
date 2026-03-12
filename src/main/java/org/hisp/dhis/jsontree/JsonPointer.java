@@ -1,10 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.joining;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 /**
@@ -18,44 +13,31 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 @Validation( type = STRING, pattern = "(/((~[01])|([^/~]))*)*" )
 public record JsonPointer(String value) {
 
-    /**
-     * Returns individual segments as otherwise escaped / cannot be distinguished from an unescaped / that separates
-     * segments.
-     *
-     * @return the decoded segments of this pointer
-     */
-    public List<String> decode() {
-        if (value.isEmpty()) return List.of();
-        return Stream.of(value.substring( 1 ).split( "/" )).map( JsonPointer::decode ).toList();
+    public JsonPath decode() {
+        if (value.isEmpty()) return JsonPath.SELF;
+        Text path = Text.of( value );
+        int start = 1; // Skip the leading '/'
+        int end = path.indexOf( '/', start );
+        if (end < 0) return JsonPath.of( decode( path.subSequence( start, path.length() ) ) );
+        JsonPath res = JsonPath.SELF;
+        while (end >= 0) {
+            res = res.chain( decode(path.subSequence( start, end )) );
+            start = end + 1;
+            end = path.indexOf('/', start);
+        }
+        return res.chain(decode(path.subSequence(start, path.length())));
     }
 
-    private static String decode(String segment) {
-        return segment.replace( "~1", "/" ).replace( "~0", "~" );
-    }
-
-    /**
-     * @return this pointer as path as it is used in the {@link JsonValue} and {@link JsonNode} APIs
-     */
-    public String path() {
-        if (value.isEmpty()) return "";
-        return decode().stream().map( JsonPointer::toPath ).collect( joining());
-    }
-
-    private static String toPath(String segment) {
-        if (segment.isEmpty()) return segment;
-        if (segment.chars().allMatch( JsonPointer::isArrayIndex )) return "["+segment+"]";
-        return "."+segment;
-    }
-
-    private static boolean isArrayIndex(int c) {
-        return c == '-' || c >= '0' && c <= '9';
+    private static Text decode(Text segment) {
+        if (!segment.contains( '~' )) return segment;
+        boolean has1 = segment.contains( "~1" );
+        boolean has0 = segment.contains( "~0" );
+        if (!has1 && !has0 ) return segment;
+        return Text.of(segment.toString().replace( "~1", "/" ).replace( "~0", "~" ));
     }
 
     @Override
     public String toString() {
-        return value+" = "+path();
+        return value;
     }
-
-    // TODO additions: when a path ends with an index and + the value should be an array,
-    // all its elements should be inserted in the target at the given index
 }

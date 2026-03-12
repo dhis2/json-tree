@@ -1,8 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link org.hisp.dhis.jsontree.JsonBuilder.PrettyPrint} aspect of {@link JsonBuilder}.
@@ -27,7 +27,7 @@ class JsonPrettyPrintTest {
         assertEquals( expected, JsonBuilder.createObject( PRETTY, obj -> obj
             .addBoolean( "a", true )
             .addBoolean( "b", false )
-            .addBoolean( "c", null ) ).getDeclaration() );
+            .addBoolean( "c", null ) ).getDeclaration().toString() );
     }
 
     @Test
@@ -44,7 +44,7 @@ class JsonPrettyPrintTest {
         assertEquals( expected, JsonBuilder.createObject( PRETTY, obj -> obj
             .addObject( "a", sub -> {} )
             .addArray( "c", arr -> {} )
-            .addObject( "b", sub -> sub.addNumber( "x", 42 ) ) ).getDeclaration() );
+            .addObject( "b", sub -> sub.addNumber( "x", 42 ) ) ).getDeclaration().toString() );
     }
 
     @Test
@@ -60,7 +60,7 @@ class JsonPrettyPrintTest {
               ]
             ]""";
         assertEquals( expected, JsonBuilder.createArray( PRETTY, arr -> arr
-            .addElement( JsonNode.of( "[\"a\",[\"b\"]]" ) ) ).getDeclaration() );
+            .addElement( JsonNode.of( "[\"a\",[\"b\"]]" ) ) ).getDeclaration().toString() );
     }
 
     @Test
@@ -75,13 +75,13 @@ class JsonPrettyPrintTest {
               }
             }""";
         assertEquals( expected, JsonBuilder.createObject( PRETTY, obj -> obj
-            .addMember( "test", JsonNode.of( "{\"a\":{\"b\":1}}" ) ) ).getDeclaration() );
+            .addMember( "test", JsonNode.of( "{\"a\":{\"b\":1}}" ) ) ).getDeclaration().toString() );
     }
 
     @Test
     void testObject_JsonNodePrettyNull() {
         assertEquals( "{}", JsonBuilder.createObject( PRETTY_NO_NULL, obj -> obj
-            .addMember( "test", JsonNode.NULL ) ).getDeclaration() );
+            .addMember( "test", JsonNode.NULL ) ).getDeclaration().toString() );
     }
 
     @Test
@@ -89,6 +89,6 @@ class JsonPrettyPrintTest {
         assertEquals( "{}", JsonBuilder.createObject( PRETTY_NO_NULL, obj -> obj
             .addNumber( "num", null )
             .addString( "str", null )
-            .addBoolean( "boo", null ) ).getDeclaration() );
+            .addBoolean( "boo", null ) ).getDeclaration().toString() );
     }
 }

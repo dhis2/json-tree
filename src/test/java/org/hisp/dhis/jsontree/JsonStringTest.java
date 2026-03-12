@@ -1,10 +1,10 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link JsonString} specific API.
@@ -27,7 +27,7 @@ class JsonStringTest {
     void testStringWithDefault_NoString() {
         JsonMixed str = JsonMixed.of( "1" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> str.string( "hello" ) );
-        assertEquals( "Path `$` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage() );
+        assertEquals( "Path `` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage() );
     }
 
     @Test
@@ -54,7 +54,7 @@ class JsonStringTest {
     void testParsed_NoString() {
         JsonMixed str = JsonMixed.of( "1" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> str.parsed( String::length ) );
-        assertEquals( "Path `$` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage() );
+        assertEquals( "Path `` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage() );
     }
 
     @Test

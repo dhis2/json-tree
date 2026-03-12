@@ -1,16 +1,14 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Surly;
-
-import java.io.Reader;
-import java.nio.file.Path;
-
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+
+import java.nio.file.Path;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * Main API to wrap JSON raw strings as {@link JsonValue} nodes.
@@ -37,7 +35,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @return the provided {@link JsonNode} as virtual {@link JsonMixed}
      */
     static JsonMixed of( JsonNode node ) {
-        return new JsonVirtualTree( node.extract(), JsonTypedAccess.GLOBAL );
+        return new JsonVirtualTree( node.extract(), JsonAccess.GLOBAL );
     }
 
     /**
@@ -46,21 +44,23 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      * @param json a standard conform JSON string
      * @return root of the virtual tree representing the given JSON input
      */
-    static JsonMixed of( String json ) {
-        return of( json, JsonTypedAccess.GLOBAL );
+    static JsonMixed of( CharSequence json ) {
+        return of( json, JsonAccess.GLOBAL );
     }
 
     /**
-     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonTypedAccessStore} for
+     * View the provided JSON string as virtual lazy evaluated tree using the provided {@link JsonAccessors} for
      * mapping to Java method return type.
      *
      * @param json  a standard conform JSON string
-     * @param store mapping used to map JSON values to the Java method return type of abstract methods, when
+     * @param accessors mapping used to map JSON values to the Java method return type of abstract methods, when
      *              {@code null} default mapping is used
      * @return root of the virtual tree representing the given JSON input
      */
-    static JsonMixed of( String json, @Surly JsonTypedAccessStore store ) {
-        return new JsonVirtualTree( json, store );
+    static JsonMixed of( CharSequence json, @Surly JsonAccessors accessors ) {
+        return json == null || "null".contentEquals( json )
+            ? JsonVirtualTree.NULL
+            : new JsonVirtualTree( json, accessors );
     }
 
     /**
@@ -86,14 +86,5 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonString, JsonNumber
      */
     static JsonMixed of( Path file ) {
         return of(JsonNode.of( file ));
-    }
-
-    /**
-     * @param json JSON input
-     * @return root of the virtual tree representing the given JSON input
-     * @since 1.0
-     */
-    static JsonMixed of( Reader json ) {
-        return of(JsonNode.of( json, null ));
     }
 }

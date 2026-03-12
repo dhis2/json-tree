@@ -1,11 +1,11 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for the {@link JsonBoolean} specific API methods.
@@ -22,7 +22,7 @@ class JsonBooleanTest {
     void testBooleanValue_WithDefaultNoBoolean() {
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class,
             () -> JsonMixed.of( "1" ).booleanValue( true ) );
-        assertEquals( "Path `$` does not contain an BOOLEAN but a(n) NUMBER: 1", ex.getMessage() );
+        assertEquals( "Path `` does not contain an BOOLEAN but a(n) NUMBER: 1", ex.getMessage() );
     }
 
     @Test

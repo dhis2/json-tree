@@ -27,11 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.List;
-import java.util.function.Function;
-
 import static java.util.function.Predicate.not;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+
+import java.util.List;
+import java.util.function.Function;
 
 /**
  * A {@link JsonList} is nothing else then a {@link JsonArray} with "typed" uniform elements.

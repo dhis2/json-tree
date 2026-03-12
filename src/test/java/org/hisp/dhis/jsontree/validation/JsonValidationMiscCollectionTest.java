@@ -1,5 +1,10 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.Set;
 import org.hisp.dhis.jsontree.JsonInteger;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
@@ -9,12 +14,6 @@ import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Test to demonstrate how annotations can be used to validate types like @{@link JsonIntList} as the automatic Java
@@ -69,6 +68,6 @@ class JsonValidationMiscCollectionTest {
         Validation.Error error = assertValidationError( """
                 {"pages": { "title": {"entries": [13, 42.5]}}}""", JsonBook.class, Rule.TYPE, Set.of( NodeType.INTEGER ),
             NodeType.NUMBER );
-        assertEquals( "$.pages.title.entries[1]", error.path() );
+        assertEquals( ".pages.title.entries.1", error.path().toString() );
     }
 }

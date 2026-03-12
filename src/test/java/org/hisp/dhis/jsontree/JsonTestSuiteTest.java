@@ -27,10 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * Test scenarios taken from the
@@ -140,7 +140,6 @@ class JsonTestSuiteTest {
     }
 
     private void assert_n( JsonNode node ) {
-        assertThrowsExactly( JsonFormatException.class, () -> node.visit( n -> {
-        } ) );
+        assertThrowsExactly( JsonFormatException.class, () -> node.visit( JsonNode::value) );
     }
 }

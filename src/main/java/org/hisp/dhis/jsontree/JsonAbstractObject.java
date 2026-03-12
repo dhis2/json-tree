@@ -1,17 +1,22 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.validation.JsonValidator;
+import static java.util.Spliterator.DISTINCT;
+import static java.util.Spliterator.NONNULL;
+import static java.util.Spliterator.ORDERED;
+import static java.util.Spliterator.SIZED;
+import static java.util.Spliterators.spliterator;
+import static java.util.stream.StreamSupport.stream;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-
-import static java.util.stream.StreamSupport.stream;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
  * An "abstract" type that is expected to be backed by a JSON object.
@@ -23,13 +28,21 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCollection {
 
     /**
-     * A typed variant of {@link JsonObject#get(String)}, equivalent to {@link JsonObject#get(String, Class)} where 2nd
-     * parameter is the type parameter E.
-     *
      * @param key property to access
      * @return value at the provided property
+     * @since 1.9
      */
-    E get( String key );
+    E get(Text key);
+
+    /**
+     * A typed variant of {@link JsonObject#get(CharSequence)}, equivalent to {@link JsonObject#get(CharSequence, Class)} where 2nd
+     * parameter is the type parameter E.
+     *
+     * @see #get(Text)
+     */
+    default E get( CharSequence key ) {
+        return get( Text.of( key ) );
+    }
 
     /**
      * Test an object for property names.
@@ -38,7 +51,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true if this object has (at least) all the given names
      * @throws JsonTreeException in case this value is not an JSON object
      */
-    default boolean has( String... names ) {
+    default boolean has( CharSequence... names ) {
         return has( List.of( names ) );
     }
 
@@ -50,8 +63,11 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @throws JsonTreeException in case this value is not an JSON object
      * @since 0.10
      */
-    default boolean has( Collection<String> names ) {
-        return exists() && names.stream().allMatch( node()::isMember );
+    default boolean has( Collection<? extends CharSequence> names ) {
+        if (!exists()) return false;
+        // Note that size check would miss that arrays do not have named members
+        JsonNode node = node();
+        return names.stream().allMatch( node::isMember );
     }
 
     /**
@@ -59,7 +75,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true, if the provided key is defined, false otherwise
      * @since 0.11
      */
-    default boolean containsKey( String key ) {
+    default boolean containsKey( CharSequence key ) {
         return !isUndefined( key );
     }
 
@@ -70,7 +86,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true if this object does not have a member of the provided name
      * @since 0.11
      */
-    default boolean isUndefined( String name ) {
+    default boolean isUndefined( CharSequence name ) {
         return get( name ).isUndefined();
     }
 
@@ -81,14 +97,14 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @return true if this object has a member of the provided name
      * @since 1.1
      */
-    default boolean exists(String name) {
+    default boolean exists(CharSequence name) {
        return get(name).exists();
     }
 
     /**
      * Note that keys may differ from the member names as defined in the JSON document in case that their literal
      * interpretation would have clashed with key syntax. In that case the object member name is "escaped" so that using
-     * the returned key with {@link #get(String)} will return the value. Use {@link #names()} to receive the literal
+     * the returned key with {@link #get(CharSequence)} will return the value. Use {@link #names()} to receive the literal
      * object member names as defined in the document.
      *
      * @return The keys of this map.
@@ -96,8 +112,10 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @see #names()
      * @since 0.11 (as Stream)
      */
-    default Stream<String> keys() {
-        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().keys().spliterator(), false );
+    default Stream<Text> keys() {
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        Iterator<Text> iter = node().keys().iterator();
+        return stream( spliterator( iter, size(), ORDERED | SIZED | DISTINCT | NONNULL ), false);
     }
 
     /**
@@ -110,15 +128,14 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
     }
 
     /**
-     * @return a stream of map/object entries in order of their declaration. the entry keys are the raw {@link #names()}
-     * as given in the original JSON document (not the {@link #keys()})
+     * @return a stream of map/object entries in order of their declaration.
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11
      */
-    default Stream<Map.Entry<String, E>> entries() {
+    default Stream<Map.Entry<Text, E>> entries() {
         if ( isUndefined() || isEmpty() ) return Stream.empty();
-        return stream( node().names().spliterator(), false ).map(
-            name -> Map.entry( name, get( JsonPath.keyOf( name ) ) ) );
+        return stream( node().keys().spliterator(), false )
+            .map(name -> Map.entry( name , get(name)));
     }
 
     /**
@@ -129,7 +146,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @see #keys()
      */
     default List<String> names() {
-        return isUndefined() || isEmpty() ? List.of() : stream( node().names().spliterator(), false ).toList();
+        return keys().map( Text::toString ).toList();
     }
 
     /**
@@ -138,7 +155,9 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @since 1.2
      */
     default Stream<JsonPath> paths() {
-        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().paths().spliterator(), false );
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        Iterator<JsonPath> iter = node().paths().iterator();
+        return stream( spliterator( iter, size(), ORDERED | SIZED | DISTINCT | NONNULL), false);
     }
 
     /**
@@ -146,7 +165,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.10
      */
-    default void forEach( BiConsumer<String, ? super E> action ) {
+    default void forEach( BiConsumer<Text, ? super E> action ) {
         // need to use keys() + get(key) because of wrapper type E is not accessible otherwise
         // and to preserve the path of the values
         keys().forEach( key -> action.accept( key, get( key ) ) );
@@ -168,7 +187,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @throws IllegalArgumentException in case the given schema is not an interface
      * @since 0.11
      */
-    default void validate( Class<? extends JsonObject> schema, Rule... rules ) {
+    default void validate( Class<?> schema, Rule... rules ) {
         JsonValidator.validate( this, schema, rules );
     }
 }

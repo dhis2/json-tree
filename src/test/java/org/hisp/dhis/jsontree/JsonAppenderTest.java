@@ -27,16 +27,15 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
-import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.lang.annotation.RetentionPolicy;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link JsonAppender} implementation of a {@link JsonBuilder}.
@@ -289,6 +288,6 @@ class JsonAppenderTest {
     }
 
     private static void assertJson( String expected, JsonNode actual ) {
-        assertEquals( expected.replace( '\'', '"' ), actual.getDeclaration() );
+        assertEquals( expected.replace( '\'', '"' ), actual.getDeclaration().toString() );
     }
 }

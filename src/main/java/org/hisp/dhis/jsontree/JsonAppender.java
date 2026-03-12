@@ -27,14 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
-import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
+import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
 
 import java.io.PrintStream;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
-import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 
 /**
  * An "append only" {@link JsonBuilder} implementation that can be used with a {@link PrintStream} or a
@@ -56,7 +55,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     private final Consumer<CharSequence> appendStr;
     private final CharConsumer appendChar;
-    private final Supplier<String> toStr;
+    private final Supplier<CharSequence> toStr;
     private final boolean[] hasChildrenAtLevel = new boolean[128];
 
     private int level = 0;
@@ -71,7 +70,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     private JsonAppender( PrettyPrint config, Consumer<CharSequence> appendStr, CharConsumer appendChar,
-        Supplier<String> toStr ) {
+        Supplier<CharSequence> toStr ) {
         this.config = config;
         this.indent = config.indentSpaces() > 0 || config.indentTabs() > 0;
         this.indent1 = "\t".repeat( config.indentTabs() ) + " ".repeat( config.indentSpaces() );
@@ -155,7 +154,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     private JsonNode toNode() {
-        String json = toStr.get();
+        CharSequence json = toStr.get();
         return json == null ? null : JsonNode.of( json );
     }
 
@@ -163,7 +162,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
      * JsonObjectBuilder
      */
 
-    private JsonObjectBuilder addRawMember( String name, CharSequence rawValue ) {
+    private JsonObjectBuilder addRawMember( CharSequence name, CharSequence rawValue ) {
         appendCommaWhenNeeded();
         append( '"' );
         append( name );
@@ -174,7 +173,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     @Override
-    public JsonObjectBuilder addMember( String name, JsonNode value ) {
+    public JsonObjectBuilder addMember( CharSequence name, JsonNode value ) {
         JsonNodeType type = value.getType();
         if ( config.excludeNullMembers() && type == JsonNodeType.NULL )
             return this;
@@ -182,51 +181,51 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
             return addRawMember( name, value.getDeclaration() );
         return switch ( type ) {
             case OBJECT ->
-                addObject( name, obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+                addObject( name, obj -> value.members().forEach( obj::addMember) );
             case ARRAY -> addArray( name, arr -> value.elements().forEach( arr::addElement ) );
             case NUMBER -> addNumber( name, (Number) value.value() );
-            case STRING -> addString( name, (String) value.value() );
+            case STRING -> addString( name, value.value().toString() );
             case BOOLEAN -> addBoolean( name, (Boolean) value.value() );
             case NULL -> addBoolean( name, null );
         };
     }
 
     @Override
-    public JsonObjectBuilder addBoolean( String name, boolean value ) {
+    public JsonObjectBuilder addBoolean( CharSequence name, boolean value ) {
         return addRawMember( name, value ? "true" : "false" );
     }
 
     @Override
-    public JsonObjectBuilder addBoolean( String name, Boolean value ) {
+    public JsonObjectBuilder addBoolean( CharSequence name, Boolean value ) {
         if ( value == null && config.excludeNullMembers() ) return this;
         return addRawMember( name, value == null ? "null" : value ? "true" : "false" );
     }
 
     @Override
-    public JsonObjectBuilder addNumber( String name, int value ) {
+    public JsonObjectBuilder addNumber( CharSequence name, int value ) {
+        return addRawMember( name, Text.of( value ) );
+    }
+
+    @Override
+    public JsonObjectBuilder addNumber( CharSequence name, long value ) {
         return addRawMember( name, String.valueOf( value ) );
     }
 
     @Override
-    public JsonObjectBuilder addNumber( String name, long value ) {
-        return addRawMember( name, String.valueOf( value ) );
-    }
-
-    @Override
-    public JsonObjectBuilder addNumber( String name, double value ) {
+    public JsonObjectBuilder addNumber( CharSequence name, double value ) {
         checkValid( value );
         return addRawMember( name, String.valueOf( value ) );
     }
 
     @Override
-    public JsonObjectBuilder addNumber( String name, Number value ) {
+    public JsonObjectBuilder addNumber( CharSequence name, Number value ) {
         if ( value == null && config.excludeNullMembers() ) return this;
         checkValid( value );
         return addRawMember( name, value == null ? "null" : value.toString() );
     }
 
     @Override
-    public JsonObjectBuilder addString( String name, String value ) {
+    public JsonObjectBuilder addString( CharSequence name, CharSequence value ) {
         if ( value == null && config.excludeNullMembers() ) return this;
         if ( value == null ) return addRawMember( name, "null" );
         appendCommaWhenNeeded();
@@ -239,7 +238,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     @Override
-    public JsonObjectBuilder addArray( String name, Consumer<JsonArrayBuilder> value ) {
+    public JsonObjectBuilder addArray( CharSequence name, Consumer<JsonArrayBuilder> value ) {
         appendCommaWhenNeeded();
         append( '"' );
         append( name );
@@ -252,7 +251,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     @Override
-    public JsonObjectBuilder addObject( String name, Consumer<JsonObjectBuilder> value ) {
+    public JsonObjectBuilder addObject( CharSequence name, Consumer<JsonObjectBuilder> value ) {
         appendCommaWhenNeeded();
         append( '"' );
         append( name );
@@ -281,10 +280,10 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
             return addRawElement( value.getDeclaration() );
         return switch ( type ) {
             case OBJECT ->
-                addObject( obj -> value.members().forEach( e -> obj.addMember( e.getKey(), e.getValue() ) ) );
+                addObject( obj -> value.members().forEach( obj::addMember ) );
             case ARRAY -> addArray( arr -> value.elements().forEach( arr::addElement ) );
             case NUMBER -> addNumber( (Number) value.value() );
-            case STRING -> addString( (String) value.value() );
+            case STRING -> addString( (Text) value.value() );
             case BOOLEAN -> addBoolean( (Boolean) value.value() );
             case NULL -> addRawElement( "null" );
         };
@@ -302,7 +301,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
     @Override
     public JsonArrayBuilder addNumber( int value ) {
-        return addRawElement( String.valueOf( value ) );
+        return addRawElement( Text.of( value ) );
     }
 
     @Override
@@ -323,7 +322,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
 
     @Override
-    public JsonArrayBuilder addString( String value ) {
+    public JsonArrayBuilder addString( CharSequence value ) {
         appendCommaWhenNeeded();
         appendEscaped( value );
         return this;

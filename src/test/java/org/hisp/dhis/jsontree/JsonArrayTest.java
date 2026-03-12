@@ -1,13 +1,12 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.fail;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for the {@link JsonArray} specific API methods.
@@ -15,6 +14,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  * @author Jan Bernitt
  */
 class JsonArrayTest {
+
+    @Test
+    void testSize() {
+        assertEquals( 0, JsonMixed.of( "[]" ).size() );
+        assertEquals( 1, JsonMixed.of( "[1]" ).size() );
+        assertEquals( 2, JsonMixed.of( "[1,2]" ).size() );
+        assertEquals( 3, JsonMixed.of( "[[],[],[]]" ).size() );
+    }
 
     @Test
     void testStringValues_NoArray() {
@@ -26,7 +33,7 @@ class JsonArrayTest {
     void testStringValues_NotOnlyStrings() {
         JsonMixed value = JsonMixed.of( "[\"a\", 1, true]" );
         JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, value::stringValues );
-        assertEquals( "Array element is not a java.lang.String: 1", ex.getMessage() );
+        assertEquals( "Array element is not a org.hisp.dhis.jsontree.Text: 1", ex.getMessage() );
     }
 
     @Test

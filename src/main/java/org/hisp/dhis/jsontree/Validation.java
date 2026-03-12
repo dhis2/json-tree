@@ -1,8 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
-
 import java.io.Serializable;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -10,18 +7,21 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
 import java.util.function.Consumer;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * Structural Validations as defined by the JSON schema specification <a
  * href="https://json-schema.org/draft/2020-12">2020-12 dialect</a>.
  * <p>
- * Used on methods to add validation to the method return type.
+ * Used on methods or {@link java.lang.reflect.RecordComponent}s to add validation to the method return type.
  * <p>
- * Used on a {@link JsonValue} subtype to add validation to any of its usage.
+ * Used on type declaration used in return types to add validation to any of its usage.
  * <p>
  * <h3>Meta-Annotations</h3>
  * Used on annotation type to define meta annotations for validations, for example a {@code @NonNegativeInteger}
  * annotation which would be annotated {@code @Validation(type=INTEGER, minimum=0)}.
+ * Such meta-annotations should use {@link Target} of {@link ElementType#TYPE} and {@link ElementType#TYPE_USE}.
  * <p>
  * <h3>Priority</h3>
  * Order of source priority lowest to highest:
@@ -29,8 +29,8 @@ import java.util.function.Consumer;
  *     <li>value type class (using the Java type information; only if no annotation is present on type)</li>
  *     <li>Meta-annotation(s) on value type class</li>
  *     <li>{@link Validation} annotation on value type class</li>
- *     <li>Meta-annotation(s) on property method</li>
- *     <li>{@link Validation} annotation on property method</li>
+ *     <li>Meta-annotation(s) on property method or record component</li>
+ *     <li>{@link Validation} annotation on property method or record component</li>
  *     <li>Meta-annotation(s) on property method return type (type use)</li>
  *     <li>{@link Validation} annotation on property method return type (type use)</li>
  * </ol>
@@ -42,7 +42,7 @@ import java.util.function.Consumer;
  * @see org.hisp.dhis.jsontree.Validator
  * @since 0.11
  */
-@Target( { ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
+@Target( { ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE } )
 @Retention( RetentionPolicy.RUNTIME )
 public @interface Validation {
 
@@ -59,8 +59,11 @@ public @interface Validation {
     }
 
     enum Rule {
+        // any values, non-standard
+        CUSTOM,
+
         // any values
-        TYPE, ENUM, CUSTOM,
+        TYPE, ENUM,
 
         // string values
         MIN_LENGTH, MAX_LENGTH, PATTERN,
@@ -96,7 +99,9 @@ public @interface Validation {
     }
 
     /**
-     * Value validation
+     * The core function to check a value which is used for both built-in validations for the
+     * {@link Rule}s defined by the standard as well as custom validations provuded in user space
+     * using {@link org.hisp.dhis.jsontree.Validator}.
      */
     @FunctionalInterface
     interface Validator {
@@ -110,7 +115,7 @@ public @interface Validation {
         void validate( JsonMixed value, Consumer<Error> addError );
     }
 
-    record Error(Rule rule, String path, JsonValue value, String template, List<Object> args) implements Serializable {
+    record Error(Rule rule, JsonPath path, JsonValue value, String template, List<Object> args) implements Serializable {
 
         public static Error of( Rule rule, JsonValue value, String template, Object... args ) {
             return new Error( rule, value.path(), value, template, List.of( args ) );
@@ -169,6 +174,7 @@ public @interface Validation {
 
     /**
      * Corresponds to JSON schema validation specified as {@code enum}.
+     * Because of the name clash with the Java keyword {@code enum} the name {@code oneOfValues} was chosen.
      * <p>
      * If all values are strings and all start with a letter and none is {@code true}, {@code false} or {@code null}
      * then the strings do not have to be quoted.
@@ -179,6 +185,9 @@ public @interface Validation {
 
     /**
      * Corresponds to JSON schema validation specified as {@code enum}.
+     *
+     * <p>This is just a shorter more convenient form to declare {@link #oneOfValues()} set using an
+     * {@link Enum} class.
      *
      * @return value must be equal to one of the value of the given enum
      */
@@ -216,6 +225,12 @@ public @interface Validation {
      * @return string value must match the given regex pattern
      */
     String pattern() default "";
+
+    // formats are mostly like named patterns,
+    // instead of repeating the pattern the name is given
+    // implying a certain format which is up to the impl
+    // so this only is useful to together with a way of linking names to a @Validation defining the constraints
+    //TODO String format() default "";
 
     /*
     Validations for Numbers
@@ -293,6 +308,14 @@ public @interface Validation {
      */
     YesNo uniqueItems() default YesNo.AUTO;
 
+    // only useful in combination with: Class<?>[] items() default {};
+    //TODO boolean additionalItems() default YesNo.Auto;
+
+    // a ref to a class that has a @Validation we enforce for contains
+    //TODO Class<?> contains() default Void.class; //Hm.. might be same as annotating generic that represents the item
+    //TODO int minContains() default -1;
+    //TODO int maxContains() default -1;
+
     /*
     Validations for Objects
      */
@@ -318,6 +341,9 @@ public @interface Validation {
      * @return object must have at most the given number of properties
      */
     int maxProperties() default -1;
+
+    // recursive restrictions on the properties would come from generics
+    //TODO boolean additionalProperties() default YesNo.Auto;
 
     /**
      * When set to AUTO any property using a Java primitive type is required.
@@ -352,6 +378,8 @@ public @interface Validation {
     String[] dependentRequired() default {};
 
     /**
+     * This is a non-standard adjustment to {@link #required()} and {@link #dependentRequired()}.
+     *
      * @return when {@link YesNo#YES} a JSON {@code null} value satisfies being {@link #required()} or
      * {@link #dependentRequired()}
      * @since 1.1

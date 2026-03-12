@@ -27,12 +27,12 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
 /**
  * Can be used to mark {@link JsonObject} properties that are expected to exist in the tree and are not defined as JSON
@@ -43,7 +43,7 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  * @author Jan Bernitt
  * @since 0.11 (renamed from Expected in prior versions)
  */
-@Target( ElementType.METHOD )
+@Target( { ElementType.TYPE, ElementType.TYPE_USE} )
 @Retention( RetentionPolicy.RUNTIME )
 @Validation( required = YES )
 public @interface Required {}

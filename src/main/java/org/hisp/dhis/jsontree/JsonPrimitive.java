@@ -27,7 +27,6 @@
  */
 package org.hisp.dhis.jsontree;
 
-import java.util.function.Function;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
@@ -42,16 +41,4 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 @Validation.Ignore
 public interface JsonPrimitive extends JsonValue {
 
-    /**
-     * A helper function that converts non-{@code null} values which are assumed to represent the raw primitive value of
-     * this JSON value.
-     *
-     * @param from should represent the raw primitive value of this JSON value
-     * @param to   conversion {@link Function} to use
-     * @param <A>  input type
-     * @param <B>  output type
-     * @return input value of type A converted to type B by using the provided {@link Function}
-     * @throws JsonPathException in case input is {@code null} (which means this value was not defined)
-     */
-    <A, B> B mapNonNull( A from, Function<A, B> to );
 }

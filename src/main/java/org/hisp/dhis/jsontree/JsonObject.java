@@ -27,16 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.validation.JsonValidator;
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
-
-import static java.util.Arrays.stream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
  * Represents a JSON object node.
@@ -51,18 +51,58 @@ import static java.util.Arrays.stream;
 @Validation.Ignore
 public interface JsonObject extends JsonAbstractObject<JsonValue> {
 
+    @Override
+    default Stream<JsonValue> values() {
+        return values(true);
+    }
+
+    /**
+     * @implNote This utilizes {@link JsonNode#members(boolean)} avoiding map lookups for each element. On
+     *     {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+     *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+     * @param remember true, to internally "remember" the elements iterated over so far, false to only iterate without
+     *                   keeping references to them further on so GC can pick em up
+     * @since 1.9
+     */
+    default Stream<JsonValue> values(boolean remember) {
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        JsonAccessors accessors = getAccessors();
+        return StreamSupport.stream( node().members(remember), false)
+            .map( e -> e.getValue().lift( accessors ) );
+    }
+
+    @Override
+    default Stream<Map.Entry<Text, JsonValue>> entries() {
+        return entries(true);
+    }
+
+    /**
+     * @implNote This utilizes {@link JsonNode#members(boolean)} avoiding map lookups for each element. On
+     *     {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+     *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+     * @param remember true, to internally "remember" the elements iterated over so far, false to only iterate without
+     *                   keeping references to them further on so GC can pick em up
+     * @since 1.9
+     */
+    default Stream<Map.Entry<Text, JsonValue>> entries(boolean remember) {
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        JsonAccessors accessors = getAccessors();
+        return StreamSupport.stream( node().members(remember), false)
+            .map( e -> Map.entry( e.getKey(), e.getValue().lift( accessors ) ) );
+    }
+
     /**
      * An object property based on a default method declared in a type extending {@link JsonObject}.
      *
-     * @param in       the {@link JsonObject} type that declared the property
+     * @param in       the {@link JsonObject} or {@link Record} type that declared the property
      * @param jsonName of the property
-     * @param jsonType the type the property is resolved to internally when calling {@link #get(String, Class)}
+     * @param jsonType the type the property is resolved to internally when calling {@link #get(CharSequence, Class)}
      * @param javaName the name of the java property accessed that caused the JSON property to be resolved
      * @param javaType the return type of the underlying method that declares the property
      * @param source   the underlying method that declared the property
      * @since 1.4
      */
-    record Property(Class<? extends JsonObject> in, String jsonName, Class<? extends JsonValue> jsonType,
+    record Property(Class<?> in, Text jsonName, Class<? extends JsonValue> jsonType,
                     String javaName, AnnotatedType javaType, AnnotatedElement source) {}
 
     /**
@@ -73,9 +113,10 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @return a model of this object in form its properties in no particular order
      * @since 1.4
      */
-    static List<Property> properties(Class<? extends JsonObject> of) {
+    static List<Property> properties(Class<?> of) {
         return JsonVirtualTree.properties( of );
     }
+
 
     /**
      * Access to object fields by name.
@@ -86,56 +127,72 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @param as   assumed type of the field
      * @param <T>  returned field type
      * @return field value for the given name
+     * @since 1.9
      */
-    <T extends JsonValue> T get( String name, Class<T> as );
-
-    default JsonValue get( String name ) {
+    <T extends JsonValue> T get( Text name, Class<T> as );
+    default JsonValue get( Text name ) {
         return get( name, JsonValue.class );
     }
 
-    default JsonObject getObject( String name ) {
+    <T extends JsonValue> T get( JsonPath subPath, Class<T> as );
+
+    /**
+     * @see #get(Text, Class)
+     */
+    default <T extends JsonValue> T get( CharSequence name, Class<T> as ) {
+        if (name instanceof String s && JsonPath.isSyntaxPresent( s ))
+            return get( JsonPath.of( s ), as );
+        return get( Text.of( name ), as );
+    }
+
+    @Override
+    default JsonValue get( CharSequence name ) {
+        return get( name, JsonValue.class );
+    }
+
+    default JsonObject getObject( CharSequence name ) {
         return get( name, JsonObject.class );
     }
 
-    default JsonNumber getNumber( String name ) {
+    default JsonNumber getNumber( CharSequence name ) {
         return get( name, JsonNumber.class );
     }
 
-    default JsonArray getArray( String name ) {
+    default JsonArray getArray( CharSequence name ) {
         return get( name, JsonArray.class );
     }
 
-    default JsonString getString( String name ) {
+    default JsonString getString( CharSequence name ) {
         return get( name, JsonString.class );
     }
 
-    default JsonBoolean getBoolean( String name ) {
+    default JsonBoolean getBoolean( CharSequence name ) {
         return get( name, JsonBoolean.class );
     }
 
-    default <E extends JsonValue> JsonList<E> getList( String name, Class<E> as ) {
+    default <E extends JsonValue> JsonList<E> getList( CharSequence name, Class<E> as ) {
         return JsonAbstractCollection.asList( getArray( name ), as );
     }
 
-    default <E extends JsonValue> JsonMap<E> getMap( String name, Class<E> as ) {
+    default <E extends JsonValue> JsonMap<E> getMap( CharSequence name, Class<E> as ) {
         return JsonAbstractCollection.asMap( getObject( name ), as );
     }
 
-    default <E extends JsonValue> JsonMultiMap<E> getMultiMap( String name, Class<E> as ) {
+    default <E extends JsonValue> JsonMultiMap<E> getMultiMap( CharSequence name, Class<E> as ) {
         return JsonAbstractCollection.asMultiMap( getObject( name ), as );
     }
 
     /**
-     * Uses the {@link Required} annotations present to check whether this object conforms to the provided type
+     * Uses the JSON schema validation to check whether this object conforms to the provided type
      *
-     * @param type object type to check
+     * @param schema a subtype of {@link JsonObject} or {@link Record} to check agsinst
      * @param rules optional set of {@link Rule}s to check, empty includes all
-     * @return true if this is an object and has all {@link Required} members of the provided type
+     * @return true if this is an object is valid against the provided schema
      * @since 0.11 (in this form with rules parameter)
      */
-    default boolean isA( Class<? extends JsonObject> type, Rule... rules ) {
+    default boolean isA( Class<?> schema, Rule... rules ) {
         try {
-            asA( type, rules );
+            JsonValidator.validate( this, schema, rules );
             return true;
         } catch ( JsonPathException | JsonTreeException | JsonSchemaException ex ) {
             return false;
@@ -145,7 +202,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
     /**
      * "Cast" and check against provided object shape.
      *
-     * @param type expected object type
+     * @param schema a subtype of {@link JsonObject} or {@link Record} to check agsinst
      * @param rules optional set of {@link Rule}s to check, empty includes all
      * @param <T>  type check and of the result
      * @return this node as the provided object type
@@ -154,10 +211,10 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @throws JsonSchemaException when this node does not have all of the {@link Required} properties present
      * @since 0.11 (in this form with rules parameter)
      */
-    default <T extends JsonObject> T asA( Class<T> type, Rule... rules )
+    default <T extends JsonObject> T asA( Class<T> schema, Rule... rules )
         throws JsonPathException, JsonTreeException, JsonSchemaException {
-        T obj = as( type );
-        JsonValidator.validate( obj, type, rules );
+        T obj = as( schema );
+        JsonValidator.validate( obj, schema, rules );
         return obj;
     }
 
@@ -179,12 +236,17 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
             }
 
             @Override
-            public <T extends JsonValue> T get( String name, Class<T> as ) {
+            public <T extends JsonValue> T get( Text name, Class<T> as ) {
                 return projection.apply( viewed.get( name ) ).as( as );
             }
 
             @Override
-            public boolean has( Collection<String> names ) {
+            public <T extends JsonValue> T get( JsonPath subPath, Class<T> as ) {
+                return projection.apply( viewed.get( subPath, JsonValue.class ) ).as( as );
+            }
+
+            @Override
+            public boolean has( Collection<? extends CharSequence> names ) {
                 return viewed.has( names );
             }
 

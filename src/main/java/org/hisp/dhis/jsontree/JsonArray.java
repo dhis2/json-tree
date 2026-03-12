@@ -29,8 +29,8 @@ package org.hisp.dhis.jsontree;
 
 import java.util.List;
 import java.util.function.Function;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Represents a JSON array node.
@@ -43,6 +43,26 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
  */
 @Validation.Ignore
 public interface JsonArray extends JsonAbstractArray<JsonValue> {
+
+    @Override
+    default Stream<JsonValue> stream() {
+        return stream(true);
+    }
+
+    /**
+     * @implNote This utilizes {@link JsonNode#elements(boolean)} avoiding map lookups for each element. On
+     *     {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+     *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+     * @param remember true, to internally "remember" the elements iterated over so far, false to only iterate without
+     *                   keeping references to them further on so GC can pick em up
+     * @since 1.9
+     */
+    default Stream<JsonValue> stream(boolean remember) {
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        JsonAccessors accessors = getAccessors();
+        return StreamSupport.stream( node().elements( remember ), false)
+            .map( node -> node.lift( accessors ) );
+    }
 
     /**
      * Index access to the array.
@@ -113,8 +133,6 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
     default <E extends JsonValue> JsonMultiMap<E> getMultiMap( int index, Class<E> as ) {
         return JsonAbstractCollection.asMultiMap( getObject( index ), as );
     }
-
-
 
     /**
      * Maps this array to a lazy transformed list view where each element of the original array is transformed by the

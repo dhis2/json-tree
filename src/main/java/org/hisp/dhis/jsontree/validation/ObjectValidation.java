@@ -1,18 +1,21 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonValue;
-import org.hisp.dhis.jsontree.Validation;
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validator;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.ArrayValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.NumberValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.StringValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.ValueValidation;
+import static java.lang.Double.isNaN;
+import static java.util.Comparator.comparing;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
+import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
+import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
+import java.lang.System.Logger.Level;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedParameterizedType;
 import java.lang.reflect.AnnotatedType;
@@ -30,40 +33,51 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
-
-import static java.lang.Double.isNaN;
-import static java.util.Comparator.comparing;
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
-import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
-import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
-import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
+import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonValue;
+import org.hisp.dhis.jsontree.Text;
+import org.hisp.dhis.jsontree.Validation;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validator;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.ArrayValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.NumberValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.StringValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidation.ValueValidation;
 
 /**
  * Analysis types and annotations to extract a {@link PropertyValidation} model description.
  *
  * @author Jan Bernitt
  * @since 0.11
+ *
+ * @param schema the type the validation is based upon
+ * @param types Java target type by JSON name
+ * @param properties validation for each property by JSON name
  */
 record ObjectValidation(
-    @Surly Class<? extends JsonValue> schema,
-    @Surly Map<String, Type> types,
-    @Surly Map<String, PropertyValidation> properties) {
+    @Surly Class<?> schema,
+    @Surly Map<Text, Type> types,
+    @Surly Map<Text, PropertyValidation> properties) {
 
-    private static final Map<Class<? extends JsonObject>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
+    /**
+     * Cache for all validation applied to a particular object schema.
+     */
+    private static final Map<Class<?>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
 
-    private static final Map<Class<?>, PropertyValidation> RECORD_BY_JAVA_TYPE = new ConcurrentSkipListMap<>(
+    /**
+     * A cache for the validations set for any use (mapping target) of a particular Java type from an
+     * annotation put on the type declaration itself.
+     */
+    private static final Map<Class<?>, PropertyValidation> TYPE_DECLARATION_VALIDATIONS = new ConcurrentSkipListMap<>(
         comparing( Class::getName ) );
 
     /**
      * Meta annotations are those that are themselves annotated {@link Validation} or one or more meta-annotations which
-     * they aggregate.
+     * they aggregate. The map caches the validation set for a particular meta-annotation type.
      */
-    private static final Map<Class<? extends Annotation>, PropertyValidation> RECORD_BY_META_TYPE = new ConcurrentHashMap<>();
+    private static final Map<Class<? extends Annotation>, PropertyValidation> META_TYPE_BY_VALIDATIONS = new ConcurrentHashMap<>();
 
     /**
      * Resolves the node validations to apply to a value of the provided schema type.
@@ -73,19 +87,20 @@ record ObjectValidation(
      * string property)
      */
     @Surly
-    public static ObjectValidation getInstance( Class<? extends JsonObject> schema ) {
-        if ( !schema.isInterface() ) throw new IllegalArgumentException( "Schema must be an interface" );
-        return INSTANCES.computeIfAbsent( schema, ObjectValidation::createInstance );
+    public static ObjectValidation of( Class<?> schema ) {
+        if (!JsonObject.class.isAssignableFrom( schema ) && !Record.class.isAssignableFrom( schema ))
+            throw new UnsupportedOperationException("Must be a subtype of JsonObject or Record but was: "+schema);
+        return INSTANCES.computeIfAbsent( schema, t -> createInstance( t, JsonObject.properties( schema ) ) );
     }
 
-    private static ObjectValidation createInstance( Class<? extends JsonObject> schema ) {
-        Map<String, PropertyValidation> properties = new HashMap<>();
-        Map<String, Type> types = new HashMap<>();
-        JsonObject.properties( schema ).stream().filter( ObjectValidation::isNotIgnored ).forEach( p -> {
-            properties.put(p.jsonName(), fromProperty( p ));
+    private static ObjectValidation createInstance( Class<?> schema, List<JsonObject.Property> properties ) {
+        Map<Text, PropertyValidation> validations = new HashMap<>();
+        Map<Text, Type> types = new HashMap<>();
+        properties.stream().filter( ObjectValidation::isNotIgnored ).forEach( p -> {
+            validations.put( p.jsonName(), fromProperty( p ));
             types.put( p.jsonName(), p.javaType().getType() );
         } );
-        return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( properties ) );
+        return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( validations ) );
     }
 
     private static boolean isNotIgnored( JsonObject.Property p ) {
@@ -119,14 +134,16 @@ record ObjectValidation(
         AnnotatedType[] typeArguments = pt.getAnnotatedActualTypeArguments();
         if ( typeArguments.length == 1 )
             return base.withItems( fromValueTypeUse( typeArguments[0] ) );
-        if ( Map.class.isAssignableFrom( rawType ) )
-            return base.withItems( fromValueTypeUse( typeArguments[1] ) );
+        if (Map.class.isAssignableFrom(rawType)) {
+            //TODO make use of "propertyNames" for key restrictions
+            return base.withItems(fromValueTypeUse(typeArguments[1]));
+        }
         return base;
     }
 
     @Surly
     private static PropertyValidation fromValueTypeDeclaration( @Surly Class<?> type ) {
-        return RECORD_BY_JAVA_TYPE.computeIfAbsent( type, t -> {
+        return TYPE_DECLARATION_VALIDATIONS.computeIfAbsent( type, t -> {
             PropertyValidation declared = fromAnnotations( t );
             PropertyValidation inferred = declared != null ? declared : toPropertyValidation( t );
             if ( Object[].class.isAssignableFrom( t ) )
@@ -179,7 +196,7 @@ record ObjectValidation(
     private static PropertyValidation fromMetaAnnotation( Annotation a ) {
         Class<? extends Annotation> type = a.annotationType();
         if ( !type.isAnnotationPresent( Validation.class ) ) return null;
-        return RECORD_BY_META_TYPE.computeIfAbsent( type,
+        return META_TYPE_BY_VALIDATIONS.computeIfAbsent( type,
             t -> toPropertyValidation( t.getAnnotation( Validation.class ) )
                 .withCustoms( toValidators( t ) )
                 .withItems( fromItems( t ) )
@@ -279,18 +296,30 @@ record ObjectValidation(
             .toList();
     }
 
+    private static final System.Logger log = System.getLogger(ObjectValidation.class.getName());
+
     @Maybe
     private static Validation.Validator toValidator( @Surly Validator src ) {
         Class<? extends Validation.Validator> type = src.value();
-        if ( !type.isRecord() ) return null;
+        if ( !type.isRecord() ) {
+            log.log( Level.ERROR, "Validator ignored, it must be record type but was: "+type );
+            return null;
+        }
         Validation[] params = src.params();
+        if (params.length == 0) return newValidator(type, new Class[0], new Object[0]);
+        if ( params.length == 1)
+            return newValidator(type, new Class<?>[] {Validation.class}, new Object[] { params[0] } );
+        return newValidator(type, new Class<?>[] {Validation[].class}, new Object[] { params } );
+    }
+
+    private static Validation.Validator newValidator( Class<?> type, Class<?>[] types, Object[] args) {
         try {
-            if ( params.length == 0 )
-                return type.getConstructor().newInstance();
-            if ( params.length == 1 )
-                return type.getConstructor( Validation.class ).newInstance( params[0] );
-            return type.getConstructor( Validation[].class ).newInstance( (Object) params );
-        } catch ( Exception ex ) {
+            return (Validation.Validator) MethodHandles.lookup()
+                .findConstructor(type, MethodType.methodType(void.class, types))
+                .asFixedArity()
+                .invokeWithArguments( args );
+        } catch ( Throwable ex) {
+            log.log( Level.ERROR, "Validator ignored, failed to construct instance", ex );
             return null;
         }
     }

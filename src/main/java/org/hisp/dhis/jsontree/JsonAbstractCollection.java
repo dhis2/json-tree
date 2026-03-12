@@ -27,14 +27,12 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Surly;
+import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
-import java.util.function.BiPredicate;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * Common base class for JSON nodes that have children.
@@ -99,7 +97,7 @@ public interface JsonAbstractCollection extends JsonValue {
             }
 
             @Override
-            public E get( String key ) {
+            public E get( Text key ) {
                 return viewed.get( key, as );
             }
 
@@ -119,7 +117,7 @@ public interface JsonAbstractCollection extends JsonValue {
             }
 
             @Override
-            public JsonList<E> get( String key ) {
+            public JsonList<E> get( Text key ) {
                 return viewed.getList( key, as );
             }
 
@@ -141,8 +139,13 @@ public interface JsonAbstractCollection extends JsonValue {
         }
 
         @Surly @Override
-        public String path() {
+        public final JsonPath path() {
             return viewed.path();
+        }
+
+        @Override
+        public final <V> V to( Class<V> type ) {
+            return viewed.to( type );
         }
 
         @Override
@@ -165,14 +168,9 @@ public interface JsonAbstractCollection extends JsonValue {
             return viewed.exists();
         }
 
-        @Override
-        public final boolean isAccessCached() {
-            return viewed.isAccessCached();
-        }
-
         @Surly @Override
-        public JsonTypedAccessStore getAccessStore() {
-            return viewed.getAccessStore();
+        public JsonAccessors getAccessors() {
+            return viewed.getAccessors();
         }
 
         @Override

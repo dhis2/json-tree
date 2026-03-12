@@ -1,5 +1,11 @@
 package org.hisp.dhis.jsontree;
 
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.TYPE_USE;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import static java.util.Comparator.comparing;
+import static java.util.function.Predicate.not;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
@@ -8,21 +14,15 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
-
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE_USE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-import static java.util.Comparator.comparing;
-import static java.util.function.Predicate.not;
 
 /**
  * Computes the differences between two JSON values.
@@ -143,8 +143,8 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
 
   static JsonDiff of(JsonValue e, JsonValue a, Mode mode) {
     List<Difference> differences = new ArrayList<>();
-    if (!e.node().isRoot()) e = e.node().extract().lift(e.getAccessStore());
-    if (!a.node().isRoot()) a = a.node().extract().lift(a.getAccessStore()).as(a.asType());
+    if (!e.node().isRoot()) e = e.node().extract().lift(e.getAccessors());
+    if (!a.node().isRoot()) a = a.node().extract().lift(a.getAccessors()).as(a.asType());
     diff(e, a, mode, differences::add, getRootInfo(a.asType()));
     return new JsonDiff(e, a, List.copyOf(differences));
   }
@@ -154,8 +154,8 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
     JsonValue b = d.inActual;
     JsonPath aPath = a.exists() ? a.node().getPath() : b.node().getPath();
     JsonPath bPath = b.exists() ? b.node().getPath() : a.node().getPath();
-    String aJson = a.exists() ? a.toJson() : "?";
-    String bJson = b.exists() ? b.toJson() : "?";
+    Text aJson = a.exists() ? a.node().getDeclaration() : Text.of("?");
+    Text bJson = b.exists() ? b.node().getDeclaration() : Text.of("?");
     String type =
         switch (d.type()) {
           case NEQ -> "!=";
@@ -186,7 +186,8 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
   }
 
   private static void diffValue(JsonValue e, JsonValue a, Consumer<Difference> add) {
-    if (!e.toJson().equals(a.toJson())) add.accept(new Difference(Type.NEQ, e, a));
+    if (!e.node().getDeclaration().equals(a.node().getDeclaration()))
+      add.accept(new Difference(Type.NEQ, e, a));
   }
 
   private static void diffNumber(JsonNumber e, JsonNumber a, Mode mode, Consumer<Difference> add) {
@@ -209,11 +210,11 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
       e.keys().forEach(key -> diff(e.get(key), a.get(key), mode, add, p.property(key)));
     } else {
       // exact order
-      Iterator<String> eKeys = e.keys().iterator();
-      Iterator<String> aKeys = a.keys().filter(e::has).iterator();
+      Iterator<Text> eKeys = e.keys().iterator();
+      Iterator<Text> aKeys = a.keys().filter(e::has).iterator();
       while (eKeys.hasNext() && aKeys.hasNext()) {
-        String eKey = eKeys.next();
-        String aKey = aKeys.next();
+        Text eKey = eKeys.next();
+        Text aKey = aKeys.next();
         if (eKey.equals(aKey)) {
           diff(e.get(eKey), a.get(aKey), mode, add, p.property(eKey));
         } else {
@@ -278,7 +279,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
       Boolean anyOrder,
       Boolean anyAdditional,
       // the properties of an object
-      Map<String, PropertyInfo> properties,
+      Map<Text, PropertyInfo> properties,
       // the elements of an array or the values of a map object
       PropertyInfo values) {
 
@@ -288,7 +289,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
         AnnotatedElement source,
         Boolean anyOrder,
         Boolean anyAdditional,
-        Map<String, PropertyInfo> properties,
+        Map<Text, PropertyInfo> properties,
         PropertyInfo values) {
       AnyOrder order = source.getAnnotation(AnyOrder.class);
       AnyAdditional additional = source.getAnnotation(AnyAdditional.class);
@@ -307,7 +308,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
       return values == null ? NONE : values; // an array
     }
 
-    PropertyInfo property(String key) {
+    PropertyInfo property(Text key) {
       if (values != null && values != NONE) return values; // a map
       return properties.getOrDefault(key, NONE); // a object
     }
@@ -321,7 +322,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
     }
   }
 
-  private static final Map<Class<? extends JsonObject>, Map<String, PropertyInfo>> INFO =
+  private static final Map<Class<? extends JsonObject>, Map<Text, PropertyInfo>> INFO =
       new ConcurrentSkipListMap<>(comparing(Class::getName));
 
   private static PropertyInfo getRootInfo(Class<? extends JsonValue> type) {
@@ -333,14 +334,14 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
     return PropertyInfo.NONE;
   }
 
-  private static Map<String, PropertyInfo> getProperties(Class<? extends JsonObject> type) {
+  private static Map<Text, PropertyInfo> getProperties(Class<? extends JsonObject> type) {
     return INFO.computeIfAbsent(type, JsonDiff::findProperties);
   }
 
-  private static Map<String, PropertyInfo> findProperties(Class<? extends JsonObject> type) {
+  private static Map<Text, PropertyInfo> findProperties(Class<? extends JsonObject> type) {
     List<JsonObject.Property> properties = JsonObject.properties(type);
     if (properties.isEmpty()) return Map.of();
-    Map<String, PropertyInfo> res = new HashMap<>();
+    Map<Text, PropertyInfo> res = new TreeMap<>();
     for (JsonObject.Property p : properties) {
       PropertyInfo info = propertyOf(p.javaType());
       if (info != PropertyInfo.NONE) res.put(p.jsonName(), info);
@@ -353,7 +354,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
     if (t instanceof Class<?> raw) {
       if (JsonObject.class.isAssignableFrom(raw)) {
         @SuppressWarnings("unchecked")
-        Map<String, PropertyInfo> properties = getProperties((Class<? extends JsonObject>) raw);
+        Map<Text, PropertyInfo> properties = getProperties((Class<? extends JsonObject>) raw);
         return PropertyInfo.of(type, null, null, properties, PropertyInfo.NONE);
       }
       if (JsonArray.class.isAssignableFrom(raw))

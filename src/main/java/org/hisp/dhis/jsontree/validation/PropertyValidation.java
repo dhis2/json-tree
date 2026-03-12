@@ -1,19 +1,18 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validation.Validator;
-import org.hisp.dhis.jsontree.Validation.YesNo;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import static java.lang.Double.isNaN;
+import static java.util.stream.Collectors.toSet;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
-
-import static java.lang.Double.isNaN;
-import static java.util.stream.Collectors.toSet;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.Validator;
+import org.hisp.dhis.jsontree.Validation.YesNo;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * A declarative model or description of what validation rules to check.
@@ -229,10 +228,4 @@ record PropertyValidation(
         return Stream.concat( b.stream(), a.stream().filter( e -> !bs.contains( e.getClass() ) ) ).toList();
     }
 
-    @SuppressWarnings( "rawtypes" )
-    private static Class<? extends Enum> overlayE( Class<? extends Enum> a, Class<? extends Enum> b ) {
-        if ( b != Enum.class ) return b;
-        if ( a != Enum.class ) return a;
-        return b;
-    }
 }

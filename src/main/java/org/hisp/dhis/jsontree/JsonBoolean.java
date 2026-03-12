@@ -60,6 +60,9 @@ public interface JsonBoolean extends JsonPrimitive {
      * @throws JsonPathException when this value is not defined in the JSON content or defined JSON {@code null}.
      */
     default boolean booleanValue() {
-        return mapNonNull( bool(), Boolean::booleanValue );
+        Boolean res = bool();
+        if (res != null) return res;
+        JsonPath path = node().getPath();
+        throw new JsonPathException(path, "Path `%s` is defined as null".formatted( path ) );
     }
 }

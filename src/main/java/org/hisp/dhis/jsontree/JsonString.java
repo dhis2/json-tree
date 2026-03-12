@@ -27,12 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.util.function.Function;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+import org.hisp.dhis.jsontree.internal.Maybe;
+import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * Represents a string JSON node.
@@ -43,11 +42,20 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 @Validation.Ignore
 public interface JsonString extends JsonPrimitive {
 
+  /**
+   * @return the text of the string node, {@code null} when this property is undefined or defined as
+   *     JSON {@code null}.
+   * @since 1.9
+   */
+  Text text();
+
     /**
      * @return string value of the property or {@code null} when this property is undefined or defined as JSON
      * {@code null}.
      */
-    String string();
+    default String string() {
+        return string(null);
+    }
 
     /**
      * @param orDefault used when this node is either undefined or defined as JSON null
@@ -55,13 +63,10 @@ public interface JsonString extends JsonPrimitive {
      * @throws JsonTreeException in case this node exists but is not a string node (or null)
      */
     default String string( String orDefault ) {
-        return isUndefined() ? orDefault : string();
+        return isUndefined() ? orDefault : text().toString();
     }
 
     /**
-     * In contrast to {@link #mapNonNull(Object, Function)} this function simply returns {@code null} when
-     * {@link #string()} is {@code null}. This includes the case that this value is not defined in the JSON content.
-     *
      * @param parser function that parses a given {@link String} to the returned type.
      * @param <T>    return type
      * @return {@code null} when {@link #string()} returns {@code null} otherwise the result of calling provided parser

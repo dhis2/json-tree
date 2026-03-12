@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static java.util.stream.StreamSupport.stream;
+
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -38,8 +40,6 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-
-import static java.util.stream.StreamSupport.stream;
 
 /**
  * A {@link JsonNode} builder API is designed to efficiently create declare or stream JSON programmatically.
@@ -79,7 +79,7 @@ public interface JsonBuilder {
          * @param name name member name to use
          * @param obj  to use to append the object as a member
          */
-        void addTo( String name, JsonObjectBuilder obj );
+        void addTo( CharSequence name, JsonObjectBuilder obj );
     }
 
     @FunctionalInterface
@@ -91,7 +91,7 @@ public interface JsonBuilder {
         }
 
         @Override
-        default void addTo( String name, JsonBuilder.JsonObjectBuilder obj ) {
+        default void addTo( CharSequence name, JsonBuilder.JsonObjectBuilder obj ) {
             obj.addObject( name, this::addToObject );
         }
 
@@ -286,7 +286,7 @@ public interface JsonBuilder {
          * @param name    name of the field in JSON or {@code null} if the POJO fields should become the properties
          * @param value   the POJO to append as an object or property
          */
-        void addTo( JsonObjectBuilder builder, String name, Object value );
+        void addTo( JsonObjectBuilder builder, CharSequence name, Object value );
     }
 
     /**
@@ -298,36 +298,40 @@ public interface JsonBuilder {
      */
     interface JsonObjectBuilder {
 
-        JsonObjectBuilder addMember( String name, JsonNode value );
+        default JsonObjectBuilder addMember( Map.Entry<Text, JsonNode> e ) {
+            return addMember( e.getKey(), e.getValue() );
+        }
 
-        JsonObjectBuilder addBoolean( String name, boolean value );
+        JsonObjectBuilder addMember( CharSequence name, JsonNode value );
 
-        JsonObjectBuilder addBoolean( String name, Boolean value );
+        JsonObjectBuilder addBoolean( CharSequence name, boolean value );
 
-        JsonObjectBuilder addNumber( String name, int value );
+        JsonObjectBuilder addBoolean( CharSequence name, Boolean value );
 
-        JsonObjectBuilder addNumber( String name, long value );
+        JsonObjectBuilder addNumber( CharSequence name, int value );
 
-        JsonObjectBuilder addNumber( String name, double value );
+        JsonObjectBuilder addNumber( CharSequence name, long value );
 
-        JsonObjectBuilder addNumber( String name, Number value );
+        JsonObjectBuilder addNumber( CharSequence name, double value );
 
-        JsonObjectBuilder addString( String name, String value );
+        JsonObjectBuilder addNumber( CharSequence name, Number value );
 
-        JsonObjectBuilder addArray( String name, Consumer<JsonArrayBuilder> value );
+        JsonObjectBuilder addString( CharSequence name, CharSequence value );
 
-        JsonObjectBuilder addObject( String name, Consumer<JsonObjectBuilder> value );
+        JsonObjectBuilder addArray( CharSequence name, Consumer<JsonArrayBuilder> value );
+
+        JsonObjectBuilder addObject( CharSequence name, Consumer<JsonObjectBuilder> value );
 
         /*
         convenience API (based on the above)
          */
 
-        default JsonObjectBuilder addMember( String name, JsonEncodable value ) {
+        default JsonObjectBuilder addMember( CharSequence name, JsonEncodable value ) {
             value.addTo( name, this );
             return this;
         }
 
-        default JsonObjectBuilder addMember( String name, Object pojo, JsonMapper mapper ) {
+        default JsonObjectBuilder addMember( CharSequence name, Object pojo, JsonMapper mapper ) {
             mapper.addTo( this, name, pojo );
             return this;
         }
@@ -338,20 +342,20 @@ public interface JsonBuilder {
 
         interface AddMember<V> {
 
-            void add( JsonObjectBuilder obj, String key, V value );
+            void add( JsonObjectBuilder obj, CharSequence key, V value );
         }
 
-        default <V> JsonObjectBuilder addMembers( Map<String, V> value, AddMember<? super V> addMember ) {
+        default <K extends CharSequence, V> JsonObjectBuilder addMembers( Map<K, V> value, AddMember<? super V> addMember ) {
             return addMembers( value.entrySet(), addMember );
         }
 
-        default <V> JsonObjectBuilder addMembers( Iterable<Map.Entry<String, V>> value,
+        default <K extends CharSequence, V> JsonObjectBuilder addMembers( Iterable<Map.Entry<K, V>> value,
             AddMember<? super V> addMember ) {
             value.forEach( e -> addMember.add( this, e.getKey(), e.getValue() ) );
             return this;
         }
 
-        default <V> JsonObjectBuilder addMembers( Stream<Map.Entry<String, V>> value, AddMember<? super V> addMember ) {
+        default <V> JsonObjectBuilder addMembers( Stream<Map.Entry<? extends CharSequence, V>> value, AddMember<? super V> addMember ) {
             value.forEach( e -> addMember.add( this, e.getKey(), e.getValue() ) );
             return this;
         }
@@ -380,7 +384,7 @@ public interface JsonBuilder {
 
         JsonArrayBuilder addNumber( Number value );
 
-        JsonArrayBuilder addString( String value );
+        JsonArrayBuilder addString( CharSequence value );
 
         JsonArrayBuilder addArray( Consumer<JsonArrayBuilder> value );
 

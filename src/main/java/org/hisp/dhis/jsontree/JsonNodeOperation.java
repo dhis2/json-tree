@@ -1,6 +1,9 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
+import static java.util.stream.Collectors.toMap;
+import static org.hisp.dhis.jsontree.JsonBuilder.createArray;
+import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
+import static org.hisp.dhis.jsontree.JsonPatchException.clash;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -10,11 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static java.util.stream.Collectors.toMap;
-import static org.hisp.dhis.jsontree.JsonBuilder.createArray;
-import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
-import static org.hisp.dhis.jsontree.JsonPatchException.clash;
+import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 
 /**
  * {@linkplain JsonNodeOperation}s are used to make bulk modifications using {@link JsonNode#patch(List)}.
@@ -29,21 +28,16 @@ import static org.hisp.dhis.jsontree.JsonPatchException.clash;
  */
 sealed public interface JsonNodeOperation {
 
-    static String parentPath( String path ) {
-        //TODO move callers to JsonPath
-        return JsonPath.of( path ).dropLastSegment().toString();
-    }
-
     /**
      * @return the target of the operation
      */
-    String path();
+    JsonPath path();
 
     /**
      * @return true when this operation targets an array index
      */
     default boolean isArrayOp() {
-        return path().endsWith( "]" );
+        return path().segment().isInt(); // just a guess, could be numeric object member
     }
 
     /**
@@ -56,7 +50,9 @@ sealed public interface JsonNodeOperation {
     /**
      * @param path relative path to remove
      */
-    record Remove(String path) implements JsonNodeOperation {}
+    record Remove(JsonPath path) implements JsonNodeOperation {
+        public Remove(CharSequence path) { this(JsonPath.of( path )); }
+    }
 
     /**
      * <h4>Insert into Arrays</h4>
@@ -77,8 +73,9 @@ sealed public interface JsonNodeOperation {
      * @param value the new value
      * @param merge when true, insert the value's items not the value itself
      */
-    record Insert(String path, JsonNode value, boolean merge) implements JsonNodeOperation {
-        public Insert(String path, JsonNode value) { this(path, value, false); }
+    record Insert(JsonPath path, JsonNode value, boolean merge) implements JsonNodeOperation {
+        public Insert(CharSequence path, JsonNode value) { this(JsonPath.of( path ), value, false); }
+        public Insert(CharSequence path, JsonNode value, boolean merge) { this(JsonPath.of( path ), value, merge); }
     }
 
     /**
@@ -122,33 +119,33 @@ sealed public interface JsonNodeOperation {
      */
     static void checkPatch( List<JsonNodeOperation> ops ) {
         if (ops.size() < 2) return;
-        Map<String, JsonNodeOperation> opsByPath = new HashMap<>();
-        Set<String> parents = new HashSet<>();
+        Map<JsonPath, JsonNodeOperation> opsByPath = new HashMap<>();
+        Set<JsonPath> parents = new HashSet<>();
         for ( JsonNodeOperation op : ops ) {
-            String path = op.path();
+            JsonPath path = op.path();
             if (op instanceof Insert insert && insert.merge && insert.value.getType() == OBJECT) {
-                insert.value.keys().forEach( p -> checkPatchPath( ops, op, path+"."+p, opsByPath, parents )  );
+                insert.value.keys().forEach( p -> checkPatchPath( ops, op, path.chain( p ), opsByPath, parents )  );
                 checkPatchParents( ops, op, path, opsByPath, parents );
             } else {
                 checkPatchPath( ops, op, path, opsByPath, parents );
-                checkPatchParents( ops, op, parentPath( path ), opsByPath, parents );
+                checkPatchParents( ops, op, path.parentPath(), opsByPath, parents );
             }
         }
     }
 
-    private static void checkPatchPath( List<JsonNodeOperation> ops, JsonNodeOperation op, String path,
-        Map<String, JsonNodeOperation> opsByPath, Set<String> parents ) {
+    private static void checkPatchPath( List<JsonNodeOperation> ops, JsonNodeOperation op, JsonPath path,
+        Map<JsonPath, JsonNodeOperation> opsByPath, Set<JsonPath> parents ) {
         if ( opsByPath.containsKey( path ) ) throw clash( ops, opsByPath.get( path ), op );
         if ( parents.contains( path ) ) throw clash( ops, op, null );
         opsByPath.put( path, op );
     }
 
-    private static void checkPatchParents( List<JsonNodeOperation> ops, JsonNodeOperation op, String path,
-        Map<String, JsonNodeOperation> opsByPath, Set<String> parents ) {
+    private static void checkPatchParents( List<JsonNodeOperation> ops, JsonNodeOperation op, JsonPath path,
+        Map<JsonPath, JsonNodeOperation> opsByPath, Set<JsonPath> parents ) {
         while ( !path.isEmpty() ) {
             if ( opsByPath.containsKey( path ) ) throw clash( ops, opsByPath.get( path ), op );
             parents.add( path );
-            path = parentPath( path );
+            path = path.parentPath();
         }
     }
 }

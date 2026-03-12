@@ -27,17 +27,16 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Objects;
-import java.util.Set;
-
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Objects;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the basic correctness of {@link JsonVirtualTree} which is the implementation of all core interfaces of the
@@ -63,10 +62,11 @@ class JsonVirtualTreeTest {
         assertTrue( obj.has( "users" ) );
         assertTrue( obj.getObject( "users" ).has( "foo", "bar" ) );
         assertFalse( obj.has( "no-a-member" ) );
-        assertFalse( JsonMixed.of( "[]" ).getObject( "undefined" ).has( "foo" ) );
+        Exception ex = assertThrowsExactly( JsonTreeException.class, () -> JsonMixed.of( "[]" ).getObject( "undefined" ).has( "foo" ) );
+        assertEquals( "ARRAY node at path `` is not an object, no member at path: .undefined", ex.getMessage() );
         JsonObject bar = obj.getObject( "users" ).getObject( "bar" );
-        Exception ex = assertThrowsExactly( JsonTreeException.class, () -> bar.has( "is-array" ) );
-        assertEquals( "ARRAY node has no member property: is-array", ex.getMessage() );
+        ex = assertThrowsExactly( JsonTreeException.class, () -> bar.has( "is-array" ) );
+        assertEquals( "ARRAY node has no keys property.", ex.getMessage() );
     }
 
     @Test
@@ -310,7 +310,7 @@ class JsonVirtualTreeTest {
     @Test
     void testToString_NonExistingPath() {
         JsonList<JsonNumber> list = JsonMixed.of( "[12,42]" ).getObject( "non-existing" ).asList( JsonNumber.class );
-        assertEquals( "Path `.non-existing` does not exist, parent `` is not an OBJECT but a ARRAY node.",
+        assertEquals( "ARRAY node at path `` is not an object, no member at path: .non-existing",
             list.toString() );
     }
 
