@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -140,15 +139,15 @@ class JsonPathTest {
 
     @Test
     void testSize() {
-        assertEquals( 0, JsonPath.SELF.size() );
-        assertEquals( 0, JsonPath.of( "" ).size() );
-        assertEquals( 1, JsonPath.of( ".yeah" ).size() );
-        assertEquals( 1, JsonPath.of( "[1234]" ).size() );
-        assertEquals( 1, JsonPath.of( "{dotty.}" ).size() );
-        assertEquals( 2, JsonPath.of( ".yeah.yeah" ).size() );
-        assertEquals( 2, JsonPath.of( ".links[1234]" ).size() );
-        assertEquals( 2, JsonPath.of( "{dotty.}.dot" ).size() );
-        assertEquals( 3, JsonPath.of( ".yeah.yeah.yeahs" ).size() );
+        assertEquals( 0, JsonPath.SELF.length() );
+        assertEquals( 0, JsonPath.of( "" ).length() );
+        assertEquals( 1, JsonPath.of( ".yeah" ).length() );
+        assertEquals( 1, JsonPath.of( "[1234]" ).length() );
+        assertEquals( 1, JsonPath.of( "{dotty.}" ).length() );
+        assertEquals( 2, JsonPath.of( ".yeah.yeah" ).length() );
+        assertEquals( 2, JsonPath.of( ".links[1234]" ).length() );
+        assertEquals( 2, JsonPath.of( "{dotty.}.dot" ).length() );
+        assertEquals( 3, JsonPath.of( ".yeah.yeah.yeahs" ).length() );
     }
 
     @Test

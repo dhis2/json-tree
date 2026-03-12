@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -341,10 +342,9 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
   private static Map<Text, PropertyInfo> findProperties(Class<? extends JsonObject> type) {
     List<JsonObject.Property> properties = JsonObject.properties(type);
     if (properties.isEmpty()) return Map.of();
-    Map<Text, PropertyInfo> res = new HashMap<>();
+    Map<Text, PropertyInfo> res = new TreeMap<>();
     for (JsonObject.Property p : properties) {
       PropertyInfo info = propertyOf(p.javaType());
-      //TODO use Text
       if (info != PropertyInfo.NONE) res.put(p.jsonName(), info);
     }
     return Map.copyOf(res);

@@ -140,17 +140,23 @@ public record JsonPath(JsonPath parent, Text segment) implements Comparable<Json
         return splitPath( isEmpty() ? null : this, plain );
     }
 
-  /**
-   * Drops the right most path segment.
-   *
-   * @return a path ending before the segment of this path (this node's parent's path)
-   * @throws JsonPathException when called on the root (empty path)
-   */
-  @Surly
-  public JsonPath parentPath() {
+    /**
+     * Drops the right most path segment.
+     *
+     * @return a path ending before the segment of this path (this node's parent's path)
+     * @throws JsonPathException when called on the root (empty path)
+     */
+    @Surly
+    public JsonPath parentPath() {
         if ( isEmpty() )
             throw new JsonPathException( this, "Root/self path does not have a parent." );
         return parent == null ? SELF : parent;
+    }
+
+    public boolean startsWith(JsonPath prefix) {
+        if (prefix.isEmpty()) return true;
+        if (isEmpty()) return false;
+        return equals( prefix ) || parent != null && parent.startsWith( prefix );
     }
 
     /**
@@ -171,9 +177,9 @@ public record JsonPath(JsonPath parent, Text segment) implements Comparable<Json
     /**
      * @return the number of segments in this path, zero for the root (self)
      */
-    public int size() {
+    public int length() {
         if (isEmpty()) return 0;
-        return parent == null ? 1 : parent.size() + 1;
+        return parent == null ? 1 : parent.length() + 1;
     }
 
     @Override
@@ -185,8 +191,8 @@ public record JsonPath(JsonPath parent, Text segment) implements Comparable<Json
         if (a.parent == null && b.parent == null) return a.segment.compareTo( b.segment );
         if (a.parent == null) return -1;
         if (b.parent == null) return 1;
-        int aLen = a.size();
-        int bLen = b.size();
+        int aLen = a.length();
+        int bLen = b.length();
         if (aLen == bLen) {
             int res = a.parent.compareTo( b.parent );
             return res != 0 ? res : a.segment.compareTo( b.segment );
@@ -230,7 +236,7 @@ public record JsonPath(JsonPath parent, Text segment) implements Comparable<Json
     public List<Text> segments() {
         if (isEmpty()) return List.of();
         if (parent == null) return List.of(segment);
-        int n = size();
+        int n = length();
         JsonPath p = this;
         Text[] res = new Text[n];
         for (int i = n-1; i >= 0; i--) {

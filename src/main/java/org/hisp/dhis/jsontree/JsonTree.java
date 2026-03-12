@@ -703,8 +703,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         if ( node != null ) return node;
         // find by finding the closest already indexed parent and navigate down from there...
         JsonNode parent = getClosestIndexedParent( path, nodesByPath );
-        int segMax = path.size();
-        int segCur = parent.getPath().size();
+        int segMax = path.length();
+        int segCur = parent.getPath().length();
         while (parent != null && segCur < segMax ) { // meaning: are we at the target node? (self)
             checkNodeIsParent( parent, path );
             Text segment = path.segments().get( segCur );
@@ -724,8 +724,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
     private boolean exists( JsonPath path ) {
         if (nodesByPath.containsKey( path )) return true;
         JsonNode node = getClosestIndexedParent( path, nodesByPath );
-        int segMax = path.size();
-        int segCur = node.getPath().size();
+        int segMax = path.length();
+        int segCur = node.getPath().length();
         while (node != null && segCur < segMax ) {
             JsonNodeType type = node.getType();
             if ( type.isSimple()) return false;

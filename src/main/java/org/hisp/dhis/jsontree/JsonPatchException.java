@@ -15,13 +15,13 @@ public final class JsonPatchException extends IllegalArgumentException {
 
     @Surly
     public static JsonPatchException clash(@Surly List<JsonNodeOperation> ops, @Surly JsonNodeOperation a, @Maybe JsonNodeOperation b ) {
-        String ap = a.path();
+        JsonPath ap = a.path();
         if ( b == null ) return clash( ops, a,
             ops.stream().filter( op -> op.path().startsWith( ap ) ).findFirst()
                 .orElseThrow( () -> new JsonPatchException( "" ) ) );
         int aIndex = ops.indexOf( a );
         int bIndex = ops.lastIndexOf(b); // use last in case 2 identical operations
-        String bp = b.path();
+        JsonPath bp = b.path();
         if ( ap.equals( bp ))
             return new JsonPatchException( "operation %d has same target as operation %d: %s %s".formatted( aIndex, bIndex, a, b ) );
         if ( bp.startsWith( ap ) && bp.length() > ap.length()) return clash( ops, b, a );
