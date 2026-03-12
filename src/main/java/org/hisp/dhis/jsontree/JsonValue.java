@@ -37,8 +37,8 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which is representing an
@@ -115,7 +115,7 @@ public interface JsonValue {
    *     methods, when {@code null} default mapping is used
    * @return virtual JSON tree root {@link JsonValue}
    */
-  static JsonValue of(CharSequence json, @Surly JsonAccessors accessors) {
+  static JsonValue of(CharSequence json, @NotNull JsonAccessors accessors) {
     return json == null || "null".contentEquals(json)
         ? JsonVirtualTree.NULL
         : JsonMixed.of(json, accessors);
@@ -145,7 +145,7 @@ public interface JsonValue {
    * @return this node path
    * @since 0.11
    */
-  @Surly
+  @NotNull
   JsonPath path();
 
   /**
@@ -172,7 +172,7 @@ public interface JsonValue {
    * @return this node's type or null if this node does not exist in the actual tree
    * @since 0.11
    */
-  @Maybe
+  @CheckNull
   default JsonNodeType type() {
     return !exists() ? null : node().getType();
   }
@@ -479,7 +479,7 @@ public interface JsonValue {
    * @return the accessor mappings/factory used
    * @since 1.9
    */
-  @Surly
+  @NotNull
   JsonAccessors getAccessors();
 
   /**

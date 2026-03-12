@@ -2,7 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import java.util.List;
 import java.util.Objects;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A JSON path is a sequence of object member names or array indexes in the order from root to the
@@ -143,7 +143,7 @@ public record JsonPath(JsonPath parent, Text segment) implements Comparable<Json
    * @return a path ending before the segment of this path (this node's parent's path)
    * @throws JsonPathException when called on the root (empty path)
    */
-  @Surly
+  @NotNull
   public JsonPath parentPath() {
     if (isEmpty()) throw new JsonPathException(this, "Root/self path does not have a parent.");
     return parent == null ? SELF : parent;

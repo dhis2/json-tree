@@ -11,8 +11,8 @@ import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Validator;
 import org.hisp.dhis.jsontree.Validation.YesNo;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A declarative model or description of what validation rules to check.
@@ -26,13 +26,13 @@ import org.hisp.dhis.jsontree.internal.Surly;
  * @param items validations that apply to array elements or object member values (map use)
  */
 record PropertyValidation(
-    @Surly Set<NodeType> anyOfTypes,
-    @Maybe ValueValidation values,
-    @Maybe StringValidation strings,
-    @Maybe NumberValidation numbers,
-    @Maybe ArrayValidation arrays,
-    @Maybe ObjectValidation objects,
-    @Maybe PropertyValidation items) {
+    @NotNull Set<NodeType> anyOfTypes,
+    @CheckNull ValueValidation values,
+    @CheckNull StringValidation strings,
+    @CheckNull NumberValidation numbers,
+    @CheckNull ArrayValidation arrays,
+    @CheckNull ObjectValidation objects,
+    @CheckNull PropertyValidation items) {
 
   /**
    * Layers the provided validations on top of this. This means they take precedence unless they are
@@ -42,8 +42,8 @@ record PropertyValidation(
    * @return A new node validations with all validations that took precedence from the provided
    *     parameter and this node validations acting as fallback when a validation is defined off
    */
-  @Surly
-  PropertyValidation overlay(@Maybe PropertyValidation with) {
+  @NotNull
+  PropertyValidation overlay(@CheckNull PropertyValidation with) {
     if (with == null) return this;
     return new PropertyValidation(
         overlayC(anyOfTypes, with.anyOfTypes),
@@ -55,14 +55,14 @@ record PropertyValidation(
         items == null ? with.items : items.overlay(with.items));
   }
 
-  @Surly
-  PropertyValidation withItems(@Maybe PropertyValidation items) {
+  @NotNull
+  PropertyValidation withItems(@CheckNull PropertyValidation items) {
     if (items == null && this.items == null) return this;
     return new PropertyValidation(anyOfTypes, values, strings, numbers, arrays, objects, items);
   }
 
-  @Surly
-  PropertyValidation withCustoms(@Surly List<Validator> validators) {
+  @NotNull
+  PropertyValidation withCustoms(@NotNull List<Validator> validators) {
     if (validators.isEmpty() && (values == null || values.customs.isEmpty())) return this;
     ValueValidation newValues =
         values == null
@@ -76,7 +76,7 @@ record PropertyValidation(
     return new PropertyValidation(anyOfTypes, newValues, strings, numbers, arrays, objects, items);
   }
 
-  @Surly
+  @NotNull
   public PropertyValidation varargs() {
     Set<NodeType> anyOfTypes = new HashSet<>(anyOfTypes());
     anyOfTypes.add(NodeType.ARRAY);
@@ -108,13 +108,13 @@ record PropertyValidation(
    *     list is off
    */
   record ValueValidation(
-      @Surly YesNo required,
-      @Surly Set<String> dependentRequired,
-      @Surly YesNo allowNull,
-      @Surly Set<String> anyOfJsons,
-      @Surly List<Validator> customs) {
+      @NotNull YesNo required,
+      @NotNull Set<String> dependentRequired,
+      @NotNull YesNo allowNull,
+      @NotNull Set<String> anyOfJsons,
+      @NotNull List<Validator> customs) {
 
-    ValueValidation overlay(@Maybe ValueValidation with) {
+    ValueValidation overlay(@CheckNull ValueValidation with) {
       return with == null
           ? this
           : new ValueValidation(
@@ -136,12 +136,12 @@ record PropertyValidation(
    * @param pattern JSON string must match the provided pattern, empty string is off
    */
   record StringValidation(
-      @Surly Set<String> anyOfStrings,
+      @NotNull Set<String> anyOfStrings,
       YesNo caseInsensitive,
       int minLength,
       int maxLength,
-      @Surly String pattern) {
-    StringValidation overlay(@Maybe StringValidation with) {
+      @NotNull String pattern) {
+    StringValidation overlay(@CheckNull StringValidation with) {
       return with == null
           ? this
           : new StringValidation(
@@ -170,7 +170,7 @@ record PropertyValidation(
       double exclusiveMaximum,
       double multipleOf) {
 
-    NumberValidation overlay(@Maybe NumberValidation with) {
+    NumberValidation overlay(@CheckNull NumberValidation with) {
       return with == null
           ? this
           : new NumberValidation(
@@ -189,9 +189,9 @@ record PropertyValidation(
    * @param maxItems JSON array must have at most this many elements, negative is off
    * @param uniqueItems all elements in the JSON array value must be unique, false is off
    */
-  record ArrayValidation(int minItems, int maxItems, @Surly YesNo uniqueItems) {
+  record ArrayValidation(int minItems, int maxItems, @NotNull YesNo uniqueItems) {
 
-    ArrayValidation overlay(@Maybe ArrayValidation with) {
+    ArrayValidation overlay(@CheckNull ArrayValidation with) {
       return with == null
           ? this
           : new ArrayValidation(
@@ -216,7 +216,7 @@ record PropertyValidation(
    */
   record ObjectValidation(int minProperties, int maxProperties) {
 
-    ObjectValidation overlay(@Maybe ObjectValidation with) {
+    ObjectValidation overlay(@CheckNull ObjectValidation with) {
       return with == null
           ? this
           : new ObjectValidation(

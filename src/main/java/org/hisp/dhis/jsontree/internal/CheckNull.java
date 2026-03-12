@@ -6,7 +6,7 @@ import java.lang.annotation.Target;
 /**
  * Something that could be null.
  *
- * @see Surly
+ * @see NotNull
  */
-@Target({ElementType.PARAMETER, ElementType.METHOD, ElementType.FIELD})
-public @interface Maybe {}
+@Target({ElementType.TYPE_USE})
+public @interface CheckNull {}

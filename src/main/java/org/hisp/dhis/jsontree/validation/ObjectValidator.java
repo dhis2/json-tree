@@ -40,8 +40,8 @@ import org.hisp.dhis.jsontree.Validation.Error;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.Validation.Validator;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A validator that Contains one {@link Validator} for each property of the schema that needs
@@ -52,7 +52,7 @@ import org.hisp.dhis.jsontree.internal.Surly;
  * @author Jan Bernitt
  * @since 0.11
  */
-record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> properties)
+record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validator> properties)
     implements Validator {
 
   @Override
@@ -115,7 +115,7 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
    * or array needs to be found from a combination of the actual type arguments and the
    * superinterfaces.
    */
-  @Maybe
+  @CheckNull
   private static Validator getInstance(
       java.lang.reflect.Type type, Set<Class<?>> currentlyResolved) {
     if (type instanceof Class<?> schema) {
@@ -133,7 +133,7 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
     return null;
   }
 
-  @Maybe
+  @CheckNull
   private static Validator create(PropertyValidation node, Text property) {
     Set<NodeType> anyOf = node.anyOfTypes();
 
@@ -178,8 +178,8 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
                 && node.objects().minProperties() > 0);
   }
 
-  @Maybe
-  private static Validator create(@Maybe PropertyValidation.ValueValidation values) {
+  @CheckNull
+  private static Validator create(@CheckNull PropertyValidation.ValueValidation values) {
     return values == null
         ? null
         : All.of(
@@ -187,8 +187,8 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
             values.customs().isEmpty() ? null : new All(values.customs()));
   }
 
-  @Maybe
-  private static Validator create(@Maybe PropertyValidation.StringValidation strings) {
+  @CheckNull
+  private static Validator create(@CheckNull PropertyValidation.StringValidation strings) {
     if (strings == null) return null;
     return All.of(
         strings.anyOfStrings().isEmpty()
@@ -201,8 +201,8 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
             : new Pattern(java.util.regex.Pattern.compile(strings.pattern())));
   }
 
-  @Maybe
-  private static Validator create(@Maybe PropertyValidation.NumberValidation numbers) {
+  @CheckNull
+  private static Validator create(@CheckNull PropertyValidation.NumberValidation numbers) {
     return numbers == null
         ? null
         : All.of(
@@ -217,8 +217,8 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
             isNaN(numbers.multipleOf()) ? null : new MultipleOf(numbers.multipleOf()));
   }
 
-  @Maybe
-  private static Validator create(@Maybe PropertyValidation.ArrayValidation arrays) {
+  @CheckNull
+  private static Validator create(@CheckNull PropertyValidation.ArrayValidation arrays) {
     return arrays == null
         ? null
         : All.of(
@@ -227,8 +227,8 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
             !arrays.uniqueItems().isYes() ? null : new UniqueItems());
   }
 
-  @Maybe
-  private static Validator create(@Maybe PropertyValidation.ObjectValidation objects) {
+  @CheckNull
+  private static Validator create(@CheckNull PropertyValidation.ObjectValidation objects) {
     return objects == null
         ? null
         : All.of(
@@ -236,9 +236,9 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
             objects.maxProperties() <= 1 ? null : new MaxProperties((objects.maxProperties())));
   }
 
-  @Maybe
+  @CheckNull
   private static Validator createDependentRequired(
-      @Surly Map<Text, PropertyValidation> properties) {
+      @NotNull Map<Text, PropertyValidation> properties) {
     if (properties.isEmpty()) return null;
     if (properties.values().stream()
         .allMatch(p -> p.values() == null || p.values().dependentRequired().isEmpty())) return null;
@@ -311,7 +311,7 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
     return All.of(all.toArray(Validator[]::new));
   }
 
-  @Surly
+  @NotNull
   private static BiPredicate<JsonMixed, Text> isMissing(PropertyValidation.ValueValidation values) {
     if (values == null || !values.allowNull().isYes()) return JsonMixed::isUndefined;
     BiPredicate<JsonMixed, Text> test = JsonMixed::exists;
@@ -328,7 +328,7 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
 
   private record All(List<Validator> validators) implements Validator {
 
-    @Maybe
+    @CheckNull
     static Validator of(Validator... validators) {
       List<Validator> actual =
           Stream.of(validators)
@@ -354,8 +354,8 @@ record ObjectValidator(@Surly Class<?> schema, @Surly Map<JsonPath, Validator> p
   /** Runs the {@link #dependent()} only if the {@link #independent()} is successful */
   private record If(Validator independent, Validator dependent) implements Validator {
 
-    @Maybe
-    static Validator of(@Maybe Validator independent, @Maybe Validator dependent) {
+    @CheckNull
+    static Validator of(@CheckNull Validator independent, @CheckNull Validator dependent) {
       if (dependent == null) return independent;
       if (independent == null) return dependent;
       return new If(independent, dependent);

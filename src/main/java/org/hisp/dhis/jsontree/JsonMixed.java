@@ -8,7 +8,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.nio.file.Path;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Main API to wrap JSON raw strings as {@link JsonValue} nodes.
@@ -58,7 +58,7 @@ public interface JsonMixed
    *     methods, when {@code null} default mapping is used
    * @return root of the virtual tree representing the given JSON input
    */
-  static JsonMixed of(CharSequence json, @Surly JsonAccessors accessors) {
+  static JsonMixed of(CharSequence json, @NotNull JsonAccessors accessors) {
     return json == null || "null".contentEquals(json)
         ? JsonVirtualTree.NULL
         : new JsonVirtualTree(json, accessors);

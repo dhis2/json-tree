@@ -53,8 +53,8 @@ import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * {@link JsonTree} is a JSON parser specifically designed as a verifying tool for JSON trees which
@@ -79,11 +79,11 @@ import org.hisp.dhis.jsontree.internal.Surly;
  *     {@code @Stable} which might help optimize access to the {@link #json} char array.
  */
 record JsonTree(
-    @Surly char[] json,
-    @Surly HashMap<JsonPath, JsonNode> nodesByPath,
-    @Maybe JsonNode.GetListener onGet) {
+    @NotNull char[] json,
+    @NotNull HashMap<JsonPath, JsonNode> nodesByPath,
+    @CheckNull JsonNode.GetListener onGet) {
 
-  static JsonNode of(@Surly CharSequence json, @Maybe JsonNode.GetListener onGet) {
+  static JsonNode of(@NotNull CharSequence json, @CheckNull JsonNode.GetListener onGet) {
     if (json instanceof String s) return of(s.toCharArray(), onGet);
     return of(Text.of(json).toCharArray(), onGet);
   }
@@ -97,7 +97,7 @@ record JsonTree(
    * @return a lazy tree of the provided JSON
    * @since 0.11
    */
-  static JsonNode ofNonStandard(@Surly String json) {
+  static JsonNode ofNonStandard(@NotNull String json) {
     char[] jsonChars = json.toCharArray();
     adjustToStandard(jsonChars);
     return of(jsonChars, null);
@@ -192,7 +192,7 @@ record JsonTree(
     }
 
     @Override
-    public final Optional<JsonNode> find(@Maybe JsonNodeType type, Predicate<JsonNode> test) {
+    public final Optional<JsonNode> find(@CheckNull JsonNodeType type, Predicate<JsonNode> test) {
       if ((type == null || type == getType()) && test.test(this)) {
         return Optional.of(this);
       }
@@ -268,7 +268,7 @@ record JsonTree(
       return this;
     }
 
-    @Surly
+    @NotNull
     @Override
     public Iterator<Entry<Text, JsonNode>> iterator() {
       return membersIterator(true);
@@ -289,16 +289,16 @@ record JsonTree(
       return memberOrNull(name);
     }
 
-    @Surly
+    @NotNull
     @Override
-    public JsonNode get(@Surly JsonPath subPath) {
+    public JsonNode get(@NotNull JsonPath subPath) {
       if (subPath.isHead()) return get(subPath.segment());
       return tree.get(path.concat(subPath), false);
     }
 
-    @Maybe
+    @CheckNull
     @Override
-    public JsonNode getOrNull(@Surly JsonPath subPath) {
+    public JsonNode getOrNull(@NotNull JsonPath subPath) {
       if (subPath.isHead()) return getOrNull(subPath.segment());
       return tree.get(path.concat(subPath), true);
     }
@@ -338,7 +338,7 @@ record JsonTree(
       return Optional.empty();
     }
 
-    @Surly
+    @NotNull
     @Override
     public JsonNode member(Text name) throws JsonPathException {
       return requireNonNull(member(name, false));
@@ -491,7 +491,7 @@ record JsonTree(
       return this;
     }
 
-    @Surly
+    @NotNull
     @Override
     public Iterator<JsonNode> iterator() {
       return elementsIterator(true);
@@ -519,9 +519,9 @@ record JsonTree(
       return super.getOrNull(name);
     }
 
-    @Surly
+    @NotNull
     @Override
-    public JsonNode get(@Surly JsonPath subPath) {
+    public JsonNode get(@NotNull JsonPath subPath) {
       if (subPath.isHead()) return get(subPath.segment());
       return tree.get(path.concat(subPath), false);
     }
@@ -560,13 +560,13 @@ record JsonTree(
       return Optional.empty();
     }
 
-    @Surly
+    @NotNull
     @Override
     public JsonNode element(int index) {
       return element(index, Text.of(index), false);
     }
 
-    @Surly
+    @NotNull
     @Override
     public JsonNode element(Text index) {
       if (!index.isInt()) return super.get(index);

@@ -3,7 +3,7 @@ package org.hisp.dhis.jsontree;
 import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Builder for JUON
@@ -228,7 +228,7 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
     out.append(c);
   }
 
-  void appendEscaped(@Surly CharSequence str) {
+  void appendEscaped(@NotNull CharSequence str) {
     append('\'');
     str.chars().forEachOrdered(this::appendEscaped);
     append('\'');

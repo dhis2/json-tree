@@ -7,8 +7,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
 import java.util.function.Consumer;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Structural Validations as defined by the JSON schema specification <a
@@ -113,8 +113,8 @@ public @interface Validation {
     ARRAY,
     OBJECT;
 
-    @Surly
-    public static NodeType of(@Maybe JsonNodeType type) {
+    @NotNull
+    public static NodeType of(@CheckNull JsonNodeType type) {
       if (type == null) return NULL;
       return switch (type) {
         case OBJECT -> OBJECT;

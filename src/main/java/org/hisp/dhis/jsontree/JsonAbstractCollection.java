@@ -32,7 +32,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Common base class for JSON nodes that have children.
@@ -140,7 +140,7 @@ public interface JsonAbstractCollection extends JsonValue {
       this.viewed = viewed;
     }
 
-    @Surly
+    @NotNull
     @Override
     public final JsonPath path() {
       return viewed.path();
@@ -171,7 +171,7 @@ public interface JsonAbstractCollection extends JsonValue {
       return viewed.exists();
     }
 
-    @Surly
+    @NotNull
     @Override
     public JsonAccessors getAccessors() {
       return viewed.getAccessors();

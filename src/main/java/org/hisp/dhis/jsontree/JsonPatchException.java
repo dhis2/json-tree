@@ -1,8 +1,8 @@
 package org.hisp.dhis.jsontree;
 
 import java.util.List;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * When a patch operation fails.
@@ -12,9 +12,11 @@ import org.hisp.dhis.jsontree.internal.Surly;
  */
 public final class JsonPatchException extends IllegalArgumentException {
 
-  @Surly
+  @NotNull
   public static JsonPatchException clash(
-      @Surly List<JsonNodeOperation> ops, @Surly JsonNodeOperation a, @Maybe JsonNodeOperation b) {
+      @NotNull List<JsonNodeOperation> ops,
+      @NotNull JsonNodeOperation a,
+      @CheckNull JsonNodeOperation b) {
     JsonPath ap = a.path();
     if (b == null)
       return clash(

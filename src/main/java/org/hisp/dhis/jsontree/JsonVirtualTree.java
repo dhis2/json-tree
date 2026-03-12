@@ -50,8 +50,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonAccessors.JsonAccessor;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Implements the {@link JsonValue} read-only access abstraction for JSON responses.
@@ -121,24 +121,24 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
    */
   private static final Map<Method, MethodHandle> OTHER_MH_CACHE = new ConcurrentHashMap<>();
 
-  private final @Surly JsonNode root;
-  private final @Surly JsonPath path;
+  private final @NotNull JsonNode root;
+  private final @NotNull JsonPath path;
   private JsonNode node; // remember once it was resolved from root
-  private transient @Surly JsonAccessors accessors;
+  private transient @NotNull JsonAccessors accessors;
 
-  public JsonVirtualTree(@Maybe CharSequence json, @Surly JsonAccessors accessors) {
+  public JsonVirtualTree(@CheckNull CharSequence json, @NotNull JsonAccessors accessors) {
     this(
         json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of(json),
         JsonPath.SELF,
         accessors);
   }
 
-  public JsonVirtualTree(@Surly JsonNode root, @Surly JsonAccessors accessors) {
+  public JsonVirtualTree(@NotNull JsonNode root, @NotNull JsonAccessors accessors) {
     this(root, JsonPath.SELF, accessors);
   }
 
   private JsonVirtualTree(
-      @Surly JsonNode root, @Surly JsonPath path, @Surly JsonAccessors accessors) {
+      @NotNull JsonNode root, @NotNull JsonPath path, @NotNull JsonAccessors accessors) {
     this.root = root;
     this.path = path;
     if (path.isEmpty()) node = root;
@@ -151,13 +151,13 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     accessors = JsonAccess.GLOBAL; // set transient field
   }
 
-  @Surly
+  @NotNull
   @Override
   public JsonPath path() {
     return path;
   }
 
-  @Surly
+  @NotNull
   @Override
   public JsonAccessors getAccessors() {
     return accessors;

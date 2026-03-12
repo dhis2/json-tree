@@ -44,8 +44,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import org.hisp.dhis.jsontree.internal.Maybe;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * API of a JSON tree as it actually exist in an HTTP response with a JSON payload.
@@ -211,7 +211,7 @@ public interface JsonNode extends Serializable {
    * @return The parent of this node or the root itself if this node is the root
    * @since 0.6
    */
-  @Surly
+  @NotNull
   default JsonNode getParent() {
     return isRoot() ? this : getRoot().get(getPath().parentPath().toString());
   }
@@ -251,8 +251,8 @@ public interface JsonNode extends Serializable {
    * @throws JsonPathException when no such node exists in the subtree of this node
    * @throws JsonTreeException when the operation is called on a non-object node
    */
-  @Surly
-  default JsonNode get(@Surly CharSequence path) throws JsonPathException, JsonTreeException {
+  @NotNull
+  default JsonNode get(@NotNull CharSequence path) throws JsonPathException, JsonTreeException {
     if (path.isEmpty()) return this;
     if (path instanceof String p) {
       if ("$".equals(p)) return getRoot();
@@ -272,8 +272,8 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException when the operation is called on a non-object node
    * @since 1.5
    */
-  @Maybe
-  default JsonNode getOrNull(@Surly CharSequence path) throws JsonPathException {
+  @CheckNull
+  default JsonNode getOrNull(@NotNull CharSequence path) throws JsonPathException {
     if (path.isEmpty()) return this;
     if (path instanceof String p) {
       if ("$".equals(p)) return getRoot();
@@ -290,8 +290,8 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException when the operation is called on a non-object node
    * @since 1.1
    */
-  @Surly
-  default JsonNode get(@Surly JsonPath subPath) throws JsonTreeException, JsonPathException {
+  @NotNull
+  default JsonNode get(@NotNull JsonPath subPath) throws JsonTreeException, JsonPathException {
     if (subPath.isEmpty()) return this;
     JsonPath path = getPath().concat(subPath);
     throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
@@ -303,8 +303,8 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException when the operation is called on a non-object node
    * @since 1.5
    */
-  @Maybe
-  default JsonNode getOrNull(@Surly JsonPath subPath) throws JsonTreeException {
+  @CheckNull
+  default JsonNode getOrNull(@NotNull JsonPath subPath) throws JsonTreeException {
     if (subPath.isEmpty()) return this;
     JsonPath path = getPath().concat(subPath);
     throw new JsonTreeException(getType() + " node is not an object, no member at path: " + path);
@@ -416,7 +416,7 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException if this node is not an object node that could have members
    * @since 1.9
    */
-  @Surly
+  @NotNull
   default JsonNode member(Text name) throws JsonPathException {
     throw new JsonTreeException(getType() + " node has no member property: " + name);
   }
@@ -430,7 +430,7 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException if this node is not an object node that could have members
    * @since 1.9
    */
-  @Maybe
+  @CheckNull
   default JsonNode memberOrNull(Text name) throws JsonPathException {
     throw new JsonTreeException(getType() + " node has no member property: " + name);
   }
@@ -513,7 +513,7 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException if this node is not an array node that could have elements
    * @since 1.9
    */
-  @Surly
+  @NotNull
   default JsonNode element(Text index) throws JsonPathException, JsonTreeException {
     throw new JsonTreeException(getType() + " node has no elements to access at index: " + index);
   }
@@ -534,7 +534,7 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException if this node is not an array node that could have elements
    * @since 1.9
    */
-  @Maybe
+  @CheckNull
   default JsonNode elementOrNull(Text index) throws JsonPathException, JsonTreeException {
     throw new JsonTreeException(getType() + " node has no elements to access as index: " + index);
   }

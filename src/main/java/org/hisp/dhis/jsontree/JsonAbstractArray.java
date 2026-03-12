@@ -9,7 +9,7 @@ import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.internal.Surly;
+import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
@@ -39,7 +39,7 @@ public interface JsonAbstractArray<E extends JsonValue>
     return isUndefined() || isEmpty() ? IntStream.empty() : IntStream.range(0, size());
   }
 
-  @Surly
+  @NotNull
   @Override
   default Iterator<E> iterator() {
     // we want iterator to be stream() based as stream() is overridden
