@@ -14,112 +14,121 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Tests the extraction of properties provided by {@link JsonObject#properties(Class)}.
- * <p>
- * The coverage here is very shallow because the feature is used as part of the validation which has plenty of coverage
- * for different types, annotations and so on.
+ *
+ * <p>The coverage here is very shallow because the feature is used as part of the validation which
+ * has plenty of coverage for different types, annotations and so on.
  *
  * @author Jan Bernitt
  */
 class JsonObjectPropertiesTest {
 
-    private static final ClassType STRING = new ClassType( String.class );
+  private static final ClassType STRING = new ClassType(String.class);
 
-    public interface User extends JsonObject {
+  public interface User extends JsonObject {
 
-        default String username() {
-            return getString( "username" ).string();
-        }
-
-        default String name() {
-            return getString( "firstName" ).string() + " " + getString( "lastName" ).string();
-        }
-
+    default String username() {
+      return getString("username").string();
     }
 
-    @Test
-    void testString() {
-        List<Property> properties = JsonObject.properties( User.class );
-        Property expected = new Property( User.class, Text.of("username"), JsonString.class, "username",
-            STRING, null );
-        assertPropertyExists( "username", expected, properties );
+    default String name() {
+      return getString("firstName").string() + " " + getString("lastName").string();
+    }
+  }
+
+  @Test
+  void testString() {
+    List<Property> properties = JsonObject.properties(User.class);
+    Property expected =
+        new Property(User.class, Text.of("username"), JsonString.class, "username", STRING, null);
+    assertPropertyExists("username", expected, properties);
+  }
+
+  @Test
+  void testString_Multiple() {
+    List<Property> properties = JsonObject.properties(User.class);
+    assertEquals(3, properties.size());
+    assertEquals(
+        Set.of("username", "firstName", "lastName"),
+        properties.stream().map(Property::jsonName).map(Text::toString).collect(toSet()));
+    assertEquals(
+        Set.of("username", "name"), properties.stream().map(Property::javaName).collect(toSet()));
+
+    assertPropertyExists(
+        "firstName",
+        new Property(User.class, Text.of("firstName"), JsonString.class, "name", STRING, null),
+        properties);
+    assertPropertyExists(
+        "lastName",
+        new Property(User.class, Text.of("lastName"), JsonString.class, "name", STRING, null),
+        properties);
+  }
+
+  private interface Recursive extends JsonObject {
+
+    default JsonList<Recursive> others() {
+      return getList("others", Recursive.class);
     }
 
-    @Test
-    void testString_Multiple() {
-        List<Property> properties = JsonObject.properties( User.class );
-        assertEquals( 3, properties.size() );
-        assertEquals( Set.of( "username", "firstName", "lastName" ),
-            properties.stream().map( Property::jsonName ).map( Text::toString ).collect( toSet() ) );
-        assertEquals( Set.of( "username", "name" ), properties.stream().map( Property::javaName ).collect( toSet() ) );
+    default Recursive direct() {
+      return get("direct", Recursive.class);
+    }
+  }
 
-        assertPropertyExists( "firstName",
-            new Property( User.class, Text.of("firstName"), JsonString.class, "name", STRING, null ),
-            properties );
-        assertPropertyExists( "lastName",
-            new Property( User.class, Text.of("lastName"), JsonString.class, "name", STRING, null ),
-            properties );
+  @Test
+  void testRecursiveDataStructure() {
+    List<Property> properties = JsonObject.properties(Recursive.class);
+    assertEquals(2, properties.size());
+  }
+
+  private interface CyclicA extends JsonObject {
+
+    default CyclicB sub() {
+      return get("sub", CyclicB.class);
+    }
+  }
+
+  private interface CyclicB extends JsonObject {
+
+    default CyclicA parent() {
+      return get("parent", CyclicA.class);
+    }
+  }
+
+  @Test
+  void testCyclicDataStructure() {
+    List<Property> properties = JsonObject.properties(CyclicA.class);
+    assertEquals(1, properties.size());
+  }
+
+  private void assertPropertyExists(String jsonName, Property expected, List<Property> actual) {
+    Property prop =
+        actual.stream()
+            .filter(p -> p.jsonName().toString().equals(jsonName))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(prop);
+    assertSame(expected.in(), prop.in());
+    assertEquals(expected.jsonName(), prop.jsonName());
+    assertSame(expected.jsonType(), prop.jsonType());
+    assertEquals(expected.javaName(), prop.javaName());
+    assertSame(expected.javaType().getType(), prop.javaType().getType());
+  }
+
+  record ClassType(Class<?> getType) implements AnnotatedType {
+
+    @Override
+    public <T extends Annotation> T getAnnotation(Class<T> aClass) {
+      return null;
     }
 
-    private interface Recursive extends JsonObject {
-
-        default JsonList<Recursive> others() {
-            return getList("others", Recursive.class );
-        }
-
-        default Recursive direct() {
-            return get( "direct", Recursive.class );
-        }
+    @Override
+    public Annotation[] getAnnotations() {
+      return new Annotation[0];
     }
 
-    @Test
-    void testRecursiveDataStructure() {
-        List<Property> properties = JsonObject.properties( Recursive.class );
-        assertEquals( 2, properties.size() );
+    @Override
+    public Annotation[] getDeclaredAnnotations() {
+      return new Annotation[0];
     }
-
-    private interface CyclicA extends JsonObject {
-
-        default CyclicB sub() {
-            return get("sub", CyclicB.class);
-        }
-    }
-
-    private interface CyclicB extends JsonObject {
-
-        default CyclicA parent() {
-            return get( "parent", CyclicA.class );
-        }
-    }
-
-    @Test
-    void testCyclicDataStructure() {
-        List<Property> properties = JsonObject.properties( CyclicA.class );
-        assertEquals( 1, properties.size() );
-    }
-
-    private void assertPropertyExists( String jsonName, Property expected, List<Property> actual ) {
-        Property prop = actual.stream().filter( p -> p.jsonName().toString().equals( jsonName ) ).findFirst()
-            .orElse( null );
-        assertNotNull( prop );
-        assertSame( expected.in(), prop.in() );
-        assertEquals( expected.jsonName(), prop.jsonName() );
-        assertSame( expected.jsonType(), prop.jsonType() );
-        assertEquals( expected.javaName(), prop.javaName() );
-        assertSame( expected.javaType().getType(), prop.javaType().getType() );
-    }
-
-    record ClassType(Class<?> getType) implements AnnotatedType {
-
-        @Override public <T extends Annotation> T getAnnotation( Class<T> aClass ) {
-            return null;
-        }
-
-        @Override public Annotation[] getAnnotations() {
-            return new Annotation[0];
-        }
-
-        @Override public Annotation[] getDeclaredAnnotations() {
-            return new Annotation[0];
-        }
-    }
+  }
 }

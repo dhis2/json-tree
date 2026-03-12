@@ -36,156 +36,160 @@ import org.hisp.dhis.jsontree.internal.Surly;
 
 /**
  * Common base class for JSON nodes that have children.
- * <p>
- * These are their
+ *
+ * <p>These are their
+ *
  * <ul>
- * <li>{@link JsonArray}s, or</li>
- * <li>{@link JsonObject}s</li>
+ *   <li>{@link JsonArray}s, or
+ *   <li>{@link JsonObject}s
  * </ul>
- * <p>
- * Each has their typed wrapper type:
+ *
+ * <p>Each has their typed wrapper type:
+ *
  * <ul>
- * <li>{@link JsonList}</li>
- * <li>{@link JsonMap}</li>
+ *   <li>{@link JsonList}
+ *   <li>{@link JsonMap}
  * </ul>
  *
  * @author Jan Bernitt
  */
-@Validation( type = { ARRAY, OBJECT } )
+@Validation(type = {ARRAY, OBJECT})
 @Validation.Ignore
 public interface JsonAbstractCollection extends JsonValue {
 
-    /**
-     * @return true, in case the collection exists but has no elements and is not {@code null}
-     * @throws JsonPathException in case this value does not exist
-     * @throws JsonTreeException in case the value does exist but is not a collection
-     */
-    boolean isEmpty();
+  /**
+   * @return true, in case the collection exists but has no elements and is not {@code null}
+   * @throws JsonPathException in case this value does not exist
+   * @throws JsonTreeException in case the value does exist but is not a collection
+   */
+  boolean isEmpty();
 
-    /**
-     * @return the number of elements in the collection
-     * @throws JsonPathException in case this value does not exist
-     * @throws JsonTreeException in case the value does exist but is not a collection
-     */
-    int size();
+  /**
+   * @return the number of elements in the collection
+   * @throws JsonPathException in case this value does not exist
+   * @throws JsonTreeException in case the value does exist but is not a collection
+   */
+  int size();
 
-    static <E extends JsonValue> JsonList<E> asList( JsonArray array, Class<E> as ) {
-        class ListView extends CollectionView<JsonArray> implements JsonList<E> {
+  static <E extends JsonValue> JsonList<E> asList(JsonArray array, Class<E> as) {
+    class ListView extends CollectionView<JsonArray> implements JsonList<E> {
 
-            ListView( JsonArray viewed ) {
-                super( viewed );
-            }
+      ListView(JsonArray viewed) {
+        super(viewed);
+      }
 
-            @Override
-            public E get( int index ) {
-                return array.get( index, as );
-            }
+      @Override
+      public E get(int index) {
+        return array.get(index, as);
+      }
 
-            @Override
-            public Class<? extends JsonValue> asType() {
-                return JsonList.class;
-            }
-        }
-        return new ListView( array );
+      @Override
+      public Class<? extends JsonValue> asType() {
+        return JsonList.class;
+      }
+    }
+    return new ListView(array);
+  }
+
+  static <E extends JsonValue> JsonMap<E> asMap(JsonObject object, Class<E> as) {
+    class MapView extends CollectionView<JsonObject> implements JsonMap<E> {
+
+      MapView(JsonObject viewed) {
+        super(viewed);
+      }
+
+      @Override
+      public E get(Text key) {
+        return viewed.get(key, as);
+      }
+
+      @Override
+      public Class<? extends JsonValue> asType() {
+        return JsonMap.class;
+      }
+    }
+    return new MapView(object);
+  }
+
+  static <E extends JsonValue> JsonMultiMap<E> asMultiMap(JsonObject object, Class<E> as) {
+    class MultiMapView extends CollectionView<JsonObject> implements JsonMultiMap<E> {
+
+      MultiMapView(JsonObject viewed) {
+        super(viewed);
+      }
+
+      @Override
+      public JsonList<E> get(Text key) {
+        return viewed.getList(key, as);
+      }
+
+      @Override
+      public Class<? extends JsonValue> asType() {
+        return JsonMultiMap.class;
+      }
+    }
+    return new MultiMapView(object);
+  }
+
+  abstract class CollectionView<T extends JsonAbstractCollection>
+      implements JsonAbstractCollection {
+
+    protected final T viewed;
+
+    protected CollectionView(T viewed) {
+      this.viewed = viewed;
     }
 
-    static <E extends JsonValue> JsonMap<E> asMap( JsonObject object, Class<E> as ) {
-        class MapView extends CollectionView<JsonObject> implements JsonMap<E> {
-
-            MapView( JsonObject viewed ) {
-                super( viewed );
-            }
-
-            @Override
-            public E get( Text key ) {
-                return viewed.get( key, as );
-            }
-
-            @Override
-            public Class<? extends JsonValue> asType() {
-                return JsonMap.class;
-            }
-        }
-        return new MapView( object );
+    @Surly
+    @Override
+    public final JsonPath path() {
+      return viewed.path();
     }
 
-    static <E extends JsonValue> JsonMultiMap<E> asMultiMap( JsonObject object, Class<E> as ) {
-        class MultiMapView extends CollectionView<JsonObject> implements JsonMultiMap<E> {
-
-            MultiMapView( JsonObject viewed ) {
-                super( viewed );
-            }
-
-            @Override
-            public JsonList<E> get( Text key ) {
-                return viewed.getList( key, as );
-            }
-
-            @Override
-            public Class<? extends JsonValue> asType() {
-                return JsonMultiMap.class;
-            }
-        }
-        return new MultiMapView( object );
+    @Override
+    public final <V> V to(Class<V> type) {
+      return viewed.to(type);
     }
 
-    abstract class CollectionView<T extends JsonAbstractCollection> implements
-        JsonAbstractCollection {
-
-        protected final T viewed;
-
-        protected CollectionView( T viewed ) {
-            this.viewed = viewed;
-        }
-
-        @Surly @Override
-        public final JsonPath path() {
-            return viewed.path();
-        }
-
-        @Override
-        public final <V> V to( Class<V> type ) {
-            return viewed.to( type );
-        }
-
-        @Override
-        public final JsonNode node() {
-            return viewed.node();
-        }
-
-        @Override
-        public final boolean isEmpty() {
-            return viewed.isEmpty();
-        }
-
-        @Override
-        public final int size() {
-            return viewed.size();
-        }
-
-        @Override
-        public final boolean exists() {
-            return viewed.exists();
-        }
-
-        @Surly @Override
-        public JsonAccessors getAccessors() {
-            return viewed.getAccessors();
-        }
-
-        @Override
-        public final <V extends JsonValue> V as( Class<V> as ) {
-            return viewed.as( as );
-        }
-
-        @Override
-        public <V extends JsonValue> V as( Class<V> as, BiConsumer<Method, Object[]> onCall ) {
-            return viewed.as( as, onCall );
-        }
-
-        @Override
-        public final String toString() {
-            return viewed.toString();
-        }
+    @Override
+    public final JsonNode node() {
+      return viewed.node();
     }
+
+    @Override
+    public final boolean isEmpty() {
+      return viewed.isEmpty();
+    }
+
+    @Override
+    public final int size() {
+      return viewed.size();
+    }
+
+    @Override
+    public final boolean exists() {
+      return viewed.exists();
+    }
+
+    @Surly
+    @Override
+    public JsonAccessors getAccessors() {
+      return viewed.getAccessors();
+    }
+
+    @Override
+    public final <V extends JsonValue> V as(Class<V> as) {
+      return viewed.as(as);
+    }
+
+    @Override
+    public <V extends JsonValue> V as(Class<V> as, BiConsumer<Method, Object[]> onCall) {
+      return viewed.as(as, onCall);
+    }
+
+    @Override
+    public final String toString() {
+      return viewed.toString();
+    }
+  }
 }

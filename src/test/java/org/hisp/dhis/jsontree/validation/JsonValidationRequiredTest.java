@@ -54,168 +54,193 @@ import org.junit.jupiter.api.Test;
  */
 class JsonValidationRequiredTest {
 
-    public interface JsonFoo extends JsonObject {
+  public interface JsonFoo extends JsonObject {
 
-        @Required
-        default String getBar() {
-            return getString( "bar" ).string();
-        }
+    @Required
+    default String getBar() {
+      return getString("bar").string();
+    }
+  }
+
+  public interface JsonEntry extends JsonObject {
+
+    @Required
+    default String getKey() {
+      return getString("key").string();
     }
 
-    public interface JsonEntry extends JsonObject {
+    @Required
+    default Number getValue() {
+      return getNumber("value").number();
+    }
+  }
 
-        @Required
-        default String getKey() {
-            return getString( "key" ).string();
-        }
+  public interface JsonRoot extends JsonObject {
 
-        @Required
-        default Number getValue() {
-            return getNumber( "value" ).number();
-        }
+    @Required
+    default JsonFoo getA() {
+      return get("a", JsonFoo.class);
     }
 
-    public interface JsonRoot extends JsonObject {
-
-        @Required
-        default JsonFoo getA() {
-            return get( "a", JsonFoo.class );
-        }
-
-        @Required
-        default JsonFoo getB() {
-            return get( "b", JsonFoo.class );
-        }
+    @Required
+    default JsonFoo getB() {
+      return get("b", JsonFoo.class);
     }
+  }
 
-    public interface JsonRequiredExampleA extends JsonObject {
+  public interface JsonRequiredExampleA extends JsonObject {
 
-        @Required
-        @Validation(acceptNull = YES)
-        default JsonMixed value() { return get( "value", JsonMixed.class ); }
+    @Required
+    @Validation(acceptNull = YES)
+    default JsonMixed value() {
+      return get("value", JsonMixed.class);
     }
+  }
 
-    @Test
-    void testIsA() {
-        assertTrue( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonFoo.class ) );
-        JsonMixed val = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" );
-        JsonEntry e = val.as( JsonEntry.class );
-        assertTrue( val.isA( JsonEntry.class ) );
-        JsonMixed both = JsonMixed.ofNonStandard( "{'key':'x', 'value': 1, 'bar':'y'}" );
-        assertTrue( both.isA( JsonFoo.class ) );
-        assertTrue( both.isA( JsonEntry.class ) );
-    }
+  @Test
+  void testIsA() {
+    assertTrue(JsonMixed.ofNonStandard("{'bar':'x'}").isA(JsonFoo.class));
+    JsonMixed val = JsonMixed.ofNonStandard("{'key':'x', 'value': 1}");
+    JsonEntry e = val.as(JsonEntry.class);
+    assertTrue(val.isA(JsonEntry.class));
+    JsonMixed both = JsonMixed.ofNonStandard("{'key':'x', 'value': 1, 'bar':'y'}");
+    assertTrue(both.isA(JsonFoo.class));
+    assertTrue(both.isA(JsonEntry.class));
+  }
 
-    @Test
-    void testIsA_MissingMember() {
-        assertFalse( JsonMixed.ofNonStandard( "{'bar':'x'}" ).isA( JsonEntry.class ) );
-        assertFalse( JsonMixed.ofNonStandard( "{'key':'x', 'value': 1}" ).isA( JsonFoo.class ) );
-    }
+  @Test
+  void testIsA_MissingMember() {
+    assertFalse(JsonMixed.ofNonStandard("{'bar':'x'}").isA(JsonEntry.class));
+    assertFalse(JsonMixed.ofNonStandard("{'key':'x', 'value': 1}").isA(JsonFoo.class));
+  }
 
-    @Test
-    void testIsA_WrongNodeType() {
-        assertFalse( JsonMixed.ofNonStandard( "{'bar':true}" ).isA( JsonFoo.class ) );
-        assertFalse( JsonMixed.ofNonStandard( "{'key':'x', 'value': '1'}" ).isA( JsonEntry.class ) );
-    }
+  @Test
+  void testIsA_WrongNodeType() {
+    assertFalse(JsonMixed.ofNonStandard("{'bar':true}").isA(JsonFoo.class));
+    assertFalse(JsonMixed.ofNonStandard("{'key':'x', 'value': '1'}").isA(JsonEntry.class));
+  }
 
-    @Test
-    void testIsA_NotAnObject() {
-        assertFalse( JsonMixed.of( "[]" ).isA( JsonEntry.class ) );
-        assertFalse( JsonMixed.ofNonStandard( "'test'" ).isA( JsonEntry.class ) );
-        assertFalse( JsonMixed.of( "12" ).isA( JsonEntry.class ) );
-        assertFalse( JsonMixed.of( "false" ).isA( JsonEntry.class ) );
-        assertFalse( JsonMixed.of( "null" ).isA( JsonEntry.class ) );
-    }
+  @Test
+  void testIsA_NotAnObject() {
+    assertFalse(JsonMixed.of("[]").isA(JsonEntry.class));
+    assertFalse(JsonMixed.ofNonStandard("'test'").isA(JsonEntry.class));
+    assertFalse(JsonMixed.of("12").isA(JsonEntry.class));
+    assertFalse(JsonMixed.of("false").isA(JsonEntry.class));
+    assertFalse(JsonMixed.of("null").isA(JsonEntry.class));
+  }
 
-    @Test
-    void testAsObject() {
-        assertAsObject( JsonFoo.class, "{'bar': 'yes'}" );
-        assertAsObject( JsonEntry.class, "{'key':'x', 'value': 42}" );
-        String both = "{'key':'x', 'value': 1, 'bar':'y'}";
-        assertAsObject( JsonFoo.class, both );
-        assertAsObject( JsonEntry.class, both );
-    }
+  @Test
+  void testAsObject() {
+    assertAsObject(JsonFoo.class, "{'bar': 'yes'}");
+    assertAsObject(JsonEntry.class, "{'key':'x', 'value': 42}");
+    String both = "{'key':'x', 'value': 1, 'bar':'y'}";
+    assertAsObject(JsonFoo.class, both);
+    assertAsObject(JsonEntry.class, both);
+  }
 
-    @Test
-    void testAsObject_NotAnObjectArray() {
-        JsonMixed obj = JsonMixed.of( "[]" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value at path `` is not a JsonFoo object but a ARRAY", ex.getMessage() );
-    }
+  @Test
+  void testAsObject_NotAnObjectArray() {
+    JsonMixed obj = JsonMixed.of("[]");
+    JsonTreeException ex =
+        assertThrowsExactly(JsonTreeException.class, () -> obj.asA(JsonFoo.class));
+    assertEquals("Value at path `` is not a JsonFoo object but a ARRAY", ex.getMessage());
+  }
 
-    @Test
-    void testAsObject_NotAnObjectString() {
-        JsonMixed obj = JsonMixed.of( "\"nop\"" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value at path `` is not a JsonFoo object but a STRING", ex.getMessage() );
-    }
+  @Test
+  void testAsObject_NotAnObjectString() {
+    JsonMixed obj = JsonMixed.of("\"nop\"");
+    JsonTreeException ex =
+        assertThrowsExactly(JsonTreeException.class, () -> obj.asA(JsonFoo.class));
+    assertEquals("Value at path `` is not a JsonFoo object but a STRING", ex.getMessage());
+  }
 
-    @Test
-    void testAsObject_NotAnObjectNumber() {
-        JsonMixed obj = JsonMixed.of( "13" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value at path `` is not a JsonFoo object but a NUMBER", ex.getMessage() );
-    }
+  @Test
+  void testAsObject_NotAnObjectNumber() {
+    JsonMixed obj = JsonMixed.of("13");
+    JsonTreeException ex =
+        assertThrowsExactly(JsonTreeException.class, () -> obj.asA(JsonFoo.class));
+    assertEquals("Value at path `` is not a JsonFoo object but a NUMBER", ex.getMessage());
+  }
 
-    @Test
-    void testAsObject_NotAnObjectBoolean() {
-        JsonMixed obj = JsonMixed.of( "true" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value at path `` is not a JsonFoo object but a BOOLEAN", ex.getMessage() );
-    }
+  @Test
+  void testAsObject_NotAnObjectBoolean() {
+    JsonMixed obj = JsonMixed.of("true");
+    JsonTreeException ex =
+        assertThrowsExactly(JsonTreeException.class, () -> obj.asA(JsonFoo.class));
+    assertEquals("Value at path `` is not a JsonFoo object but a BOOLEAN", ex.getMessage());
+  }
 
-    @Test
-    void testAsObject_NotAnObjectNull() {
-        JsonMixed obj = JsonMixed.of( "null" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value at path `` is not a JsonFoo object but a NULL", ex.getMessage() );
-    }
+  @Test
+  void testAsObject_NotAnObjectNull() {
+    JsonMixed obj = JsonMixed.of("null");
+    JsonTreeException ex =
+        assertThrowsExactly(JsonTreeException.class, () -> obj.asA(JsonFoo.class));
+    assertEquals("Value at path `` is not a JsonFoo object but a NULL", ex.getMessage());
+  }
 
-    @Test
-    void testAsObject_NotAnObjectUndefined() {
-        JsonObject obj = JsonMixed.of( "{}" ).getObject( "x" );
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> obj.asA( JsonFoo.class ) );
-        assertEquals( "Value at path `.x` is not a JsonFoo object as it does not exist", ex.getMessage() );
-    }
+  @Test
+  void testAsObject_NotAnObjectUndefined() {
+    JsonObject obj = JsonMixed.of("{}").getObject("x");
+    JsonPathException ex =
+        assertThrowsExactly(JsonPathException.class, () -> obj.asA(JsonFoo.class));
+    assertEquals(
+        "Value at path `.x` is not a JsonFoo object as it does not exist", ex.getMessage());
+  }
 
-    @Test
-    void testAsObject_MissingMemberUndefined() {
-        String json = """
+  @Test
+  void testAsObject_MissingMemberUndefined() {
+    String json =
+        """
             {"b":{"bar":""}}""";
-        Validation.Error error = assertValidationError( json, JsonRoot.class, Rule.REQUIRED, "a" );
-        assertEquals( ".a", error.path().toString() );
-    }
+    Validation.Error error = assertValidationError(json, JsonRoot.class, Rule.REQUIRED, "a");
+    assertEquals(".a", error.path().toString());
+  }
 
-    @Test
-    void testAsObject_MissingMemberRecursive() {
-        String json = """
+  @Test
+  void testAsObject_MissingMemberRecursive() {
+    String json =
+        """
             {"a": {}, "b":{"bar":""}}""";
-        Validation.Error error = assertValidationError( json, JsonRoot.class, Rule.REQUIRED, "bar" );
-        assertEquals( ".a.bar", error.path().toString() );
-    }
+    Validation.Error error = assertValidationError(json, JsonRoot.class, Rule.REQUIRED, "bar");
+    assertEquals(".a.bar", error.path().toString());
+  }
 
-    @Test
-    void testAsObject_NotAnObjectRecursive() {
-        String json = """
+  @Test
+  void testAsObject_NotAnObjectRecursive() {
+    String json =
+        """
             {"a": [], "b":{"bar":""}}""";
-        JsonMixed obj = JsonMixed.of( json );
-        assertValidationError( json, JsonRoot.class, Rule.TYPE, Set.of( NodeType.OBJECT ), NodeType.ARRAY );
-    }
+    JsonMixed obj = JsonMixed.of(json);
+    assertValidationError(json, JsonRoot.class, Rule.TYPE, Set.of(NodeType.OBJECT), NodeType.ARRAY);
+  }
 
-    @Test
-    void testRequired_AcceptNull() {
-        Validation.Error error = assertValidationError( """
-            {"a": 1}""", JsonRequiredExampleA.class, Rule.REQUIRED, "value" );
-        assertEquals( ".value", error.path().toString() );
-        assertDoesNotThrow( () -> JsonMixed.of("""
-            {"value":null}""").validate( JsonRequiredExampleA.class ));
-        assertDoesNotThrow( () -> JsonMixed.of("""
-            {"value":1}""").validate( JsonRequiredExampleA.class ));
-    }
+  @Test
+  void testRequired_AcceptNull() {
+    Validation.Error error =
+        assertValidationError(
+            """
+            {"a": 1}""",
+            JsonRequiredExampleA.class,
+            Rule.REQUIRED,
+            "value");
+    assertEquals(".value", error.path().toString());
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"value":null}""")
+                .validate(JsonRequiredExampleA.class));
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"value":1}""")
+                .validate(JsonRequiredExampleA.class));
+  }
 
-    private static void assertAsObject( Class<? extends JsonObject> of, String actualJson ) {
-        JsonObject obj = JsonMixed.ofNonStandard( actualJson ).asA( of );
-        assertNotNull( obj );
-        assertTrue( of.isInstance( obj ) );
-    }
+  private static void assertAsObject(Class<? extends JsonObject> of, String actualJson) {
+    JsonObject obj = JsonMixed.ofNonStandard(actualJson).asA(of);
+    assertNotNull(obj);
+    assertTrue(of.isInstance(obj));
+  }
 }

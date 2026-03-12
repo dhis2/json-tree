@@ -20,34 +20,41 @@ import org.junit.jupiter.api.Test;
  */
 class JsonValidationValidatorTest {
 
-    public record UserValidator() implements Validation.Validator {
+  public record UserValidator() implements Validation.Validator {
 
-        @Override
-        public void validate( JsonMixed value, Consumer<Error> addError ) {
-            if ( !value.isString() ) return;
-            if ( !Set.of( "user1", "user2" ).contains( value.string() ) )
-                addError.accept(
-                    Error.of( Rule.CUSTOM, value, "Not a valid user %s", value.string() ) );
-        }
+    @Override
+    public void validate(JsonMixed value, Consumer<Error> addError) {
+      if (!value.isString()) return;
+      if (!Set.of("user1", "user2").contains(value.string()))
+        addError.accept(Error.of(Rule.CUSTOM, value, "Not a valid user %s", value.string()));
     }
+  }
 
-    public interface JsonUserUpdate extends JsonObject {
+  public interface JsonUserUpdate extends JsonObject {
 
-        @Validator( UserValidator.class )
-        default String user() {
-            return getString( "user" ).string();
-        }
+    @Validator(UserValidator.class)
+    default String user() {
+      return getString("user").string();
     }
+  }
 
-    @Test
-    void testValidator_OK() {
-        assertDoesNotThrow( () -> JsonMixed.of( """
-            {"user": "user1"}""" ).validate( JsonUserUpdate.class ) );
-    }
+  @Test
+  void testValidator_OK() {
+    assertDoesNotThrow(
+        () ->
+            JsonMixed.of(
+                    """
+            {"user": "user1"}""")
+                .validate(JsonUserUpdate.class));
+  }
 
-    @Test
-    void testValidator_UnknownUser() {
-        assertValidationError( """
-            {"user": "user47"}""", JsonUserUpdate.class, Rule.CUSTOM, "user47" );
-    }
+  @Test
+  void testValidator_UnknownUser() {
+    assertValidationError(
+        """
+            {"user": "user47"}""",
+        JsonUserUpdate.class,
+        Rule.CUSTOM,
+        "user47");
+  }
 }

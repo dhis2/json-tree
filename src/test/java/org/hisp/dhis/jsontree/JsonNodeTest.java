@@ -44,212 +44,228 @@ import org.junit.jupiter.api.Test;
  */
 class JsonNodeTest {
 
-    @Test
-    void testEquals() {
-        assertEquals( JsonNode.of( "1" ), JsonNode.of( "1" ) );
-    }
+  @Test
+  void testEquals() {
+    assertEquals(JsonNode.of("1"), JsonNode.of("1"));
+  }
 
-    @Test
-    void testGet_String() {
-        assertGetThrowsJsonTreeException( "\"hello\"",
-            "STRING node is not an object, no member at path: .foo" );
-    }
+  @Test
+  void testGet_String() {
+    assertGetThrowsJsonTreeException(
+        "\"hello\"", "STRING node is not an object, no member at path: .foo");
+  }
 
-    @Test
-    void testGetOrNull() {
-        assertNull( JsonNode.of( "{}" ).getOrNull( "foo" ) );
-        assertNull( JsonNode.of( "[]" ).getOrNull( "[1]" ) );
-        assertThrowsExactly( JsonTreeException.class, () -> JsonNode.of( "true" ).getOrNull( "foo" ) );
-        assertThrowsExactly( JsonTreeException.class, () -> JsonNode.of( "1" ).getOrNull( "foo" ) );
-        assertThrowsExactly( JsonTreeException.class, () -> JsonNode.of( "\"x\"" ).getOrNull( "foo" ) );
-    }
+  @Test
+  void testGetOrNull() {
+    assertNull(JsonNode.of("{}").getOrNull("foo"));
+    assertNull(JsonNode.of("[]").getOrNull("[1]"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("true").getOrNull("foo"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("1").getOrNull("foo"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("\"x\"").getOrNull("foo"));
+  }
 
-    @Test
-    void testGet_Number() {
-        assertGetThrowsJsonTreeException( "42",
-            "NUMBER node is not an object, no member at path: .foo" );
-    }
+  @Test
+  void testGet_Number() {
+    assertGetThrowsJsonTreeException("42", "NUMBER node is not an object, no member at path: .foo");
+  }
 
-    @Test
-    void testGet_Boolean() {
-        assertGetThrowsJsonTreeException( "true",
-            "BOOLEAN node is not an object, no member at path: .foo" );
-    }
+  @Test
+  void testGet_Boolean() {
+    assertGetThrowsJsonTreeException(
+        "true", "BOOLEAN node is not an object, no member at path: .foo");
+  }
 
-    @Test
-    void testGet_Null() {
-        assertGetThrowsJsonTreeException( "null",
-            "NULL node is not an object, no member at path: .foo" );
-    }
+  @Test
+  void testGet_Null() {
+    assertGetThrowsJsonTreeException("null", "NULL node is not an object, no member at path: .foo");
+  }
 
-    @Test
-    void testGet_Object() {
-        JsonNode root = JsonNode.of( "{\"a\":{\"b\":{\"c\":42}}}" );
-        assertEquals( 42, root.get( "a.b.c" ).value() );
-        JsonNode b = root.get( "a.b" );
-        assertEquals( 42, b.get( "c" ).value() );
-    }
+  @Test
+  void testGet_Object() {
+    JsonNode root = JsonNode.of("{\"a\":{\"b\":{\"c\":42}}}");
+    assertEquals(42, root.get("a.b.c").value());
+    JsonNode b = root.get("a.b");
+    assertEquals(42, b.get("c").value());
+  }
 
-    @Test
-    void testGet_EmptyProperty() {
-        JsonNode root = JsonNode.of( """
-            {"": "hello"}""" );
-        assertSame( root, root.get( "" ) );
-        assertEquals( Text.of("hello"), root.get( "{}" ).value() );
-    }
+  @Test
+  void testGet_EmptyProperty() {
+    JsonNode root =
+        JsonNode.of(
+            """
+            {"": "hello"}""");
+    assertSame(root, root.get(""));
+    assertEquals(Text.of("hello"), root.get("{}").value());
+  }
 
-    @Test
-    void testGet_Object_NoValueAtPath() {
-        assertGetThrowsJsonPathException( "{\"a\":{\"b\":{\"c\":42}}}", "b",
-            "Path `.b` does not exist, object `` does not have a property `b`" );
-        assertGetThrowsJsonPathException( "{\"a\":{\"b\":{\"c\":42}}}", "a.c",
-            "Path `.a.c` does not exist, object `.a` does not have a property `c`" );
-    }
+  @Test
+  void testGet_Object_NoValueAtPath() {
+    assertGetThrowsJsonPathException(
+        "{\"a\":{\"b\":{\"c\":42}}}",
+        "b",
+        "Path `.b` does not exist, object `` does not have a property `b`");
+    assertGetThrowsJsonPathException(
+        "{\"a\":{\"b\":{\"c\":42}}}",
+        "a.c",
+        "Path `.a.c` does not exist, object `.a` does not have a property `c`");
+  }
 
-    @Test
-    void testGet_Array() {
-        JsonNode root = JsonNode.of( "[[1,2],[3,4],{\"a\":5}]" );
-        assertEquals( 1, root.get( "[0][0]" ).value() );
-        JsonNode arr1 = root.get( "[1]" );
-        assertEquals( 4, arr1.get( "[1]" ).value() );
-        assertEquals( 5, root.get( "[2].a" ).value() );
-        assertEquals( 5, root.get( "[2]" ).get( "a" ).value() );
-    }
+  @Test
+  void testGet_Array() {
+    JsonNode root = JsonNode.of("[[1,2],[3,4],{\"a\":5}]");
+    assertEquals(1, root.get("[0][0]").value());
+    JsonNode arr1 = root.get("[1]");
+    assertEquals(4, arr1.get("[1]").value());
+    assertEquals(5, root.get("[2].a").value());
+    assertEquals(5, root.get("[2]").get("a").value());
+  }
 
-    @Test
-    void testGet_Array_NoValueAtPath() {
-        assertGetThrowsJsonTreeException( "[1,2]", "a", "ARRAY node at path `` is not an object, no member at path: .a" );
-        assertGetThrowsJsonTreeException( "[1,2]", ".a", "ARRAY node at path `` is not an object, no member at path: .a" );
-        assertGetThrowsJsonPathException( "[[1,2],[]]", "[1][0]",
-            "Path `.1.0` does not exist, array `.1` has only `0` elements." );
-        assertGetThrowsJsonTreeException( "[[1,2],[]]", "[0].a", "ARRAY node at path `.0` is not an object, no member at path: .0.a" );
-    }
+  @Test
+  void testGet_Array_NoValueAtPath() {
+    assertGetThrowsJsonTreeException(
+        "[1,2]", "a", "ARRAY node at path `` is not an object, no member at path: .a");
+    assertGetThrowsJsonTreeException(
+        "[1,2]", ".a", "ARRAY node at path `` is not an object, no member at path: .a");
+    assertGetThrowsJsonPathException(
+        "[[1,2],[]]", "[1][0]", "Path `.1.0` does not exist, array `.1` has only `0` elements.");
+    assertGetThrowsJsonTreeException(
+        "[[1,2],[]]", "[0].a", "ARRAY node at path `.0` is not an object, no member at path: .0.a");
+  }
 
-    @Test
-    void testMember_NoObject() {
-        JsonNode val = JsonNode.of( "1" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.member( Text.of("a") ) );
-        assertEquals( "NUMBER node has no member property: a", ex.getMessage() );
-    }
+  @Test
+  void testMember_NoObject() {
+    JsonNode val = JsonNode.of("1");
+    JsonTreeException ex =
+        assertThrowsExactly(JsonTreeException.class, () -> val.member(Text.of("a")));
+    assertEquals("NUMBER node has no member property: a", ex.getMessage());
+  }
 
-    @Test
-    void testMembers_NoObject() {
-        JsonNode val = JsonNode.of( "1" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.members( true ) );
-        assertEquals( "NUMBER node has no members property.", ex.getMessage() );
-    }
+  @Test
+  void testMembers_NoObject() {
+    JsonNode val = JsonNode.of("1");
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> val.members(true));
+    assertEquals("NUMBER node has no members property.", ex.getMessage());
+  }
 
-    @Test
-    void testElements_NoArray() {
-        JsonNode val = JsonNode.of( "1" );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> val.elements( true ) );
-        assertEquals( "NUMBER node has no elements property.", ex.getMessage() );
-    }
+  @Test
+  void testElements_NoArray() {
+    JsonNode val = JsonNode.of("1");
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> val.elements(true));
+    assertEquals("NUMBER node has no elements property.", ex.getMessage());
+  }
 
-    @Test
-    void testReplaceWith_Path() {
-        //language=json
-        String json = """
+  @Test
+  void testReplaceWith_Path() {
+    // language=json
+    String json =
+        """
             {
             "a": 1,
             "b": [2]
             }""";
-        JsonNode obj = JsonNode.of( json );
-        JsonNode actual = obj.replaceWith( "b[0]", JsonNode.of( "3" ) );
-        assertEquals( """
+    JsonNode obj = JsonNode.of(json);
+    JsonNode actual = obj.replaceWith("b[0]", JsonNode.of("3"));
+    assertEquals(
+        """
             {
             "a": 1,
             "b": [3]
-            }""", actual.getDeclaration().toString() );
-    }
+            }""",
+        actual.getDeclaration().toString());
+  }
 
-    @Test
-    void testAddMembers_Path() {
-        //language=json
-        String json = """
+  @Test
+  void testAddMembers_Path() {
+    // language=json
+    String json =
+        """
             {
             "a": 1,
             "b": {}
             }""";
-        JsonNode actual = JsonNode.of( json ).addMembers( "b",
-            obj -> obj.addNumber( "x", 42 ) );
-        assertEquals( """
+    JsonNode actual = JsonNode.of(json).addMembers("b", obj -> obj.addNumber("x", 42));
+    assertEquals(
+        """
             {
             "a": 1,
             "b": {"x":42}
-            }""", actual.getDeclaration().toString() );
-    }
+            }""",
+        actual.getDeclaration().toString());
+  }
 
-    @Test
-    void testRemoveMembers_Path() {
-        //language=json
-        String json = """
+  @Test
+  void testRemoveMembers_Path() {
+    // language=json
+    String json =
+        """
             {
             "a": 1,
             "b": {"x": 42, "y": 1, "z": 2}
             }""";
-        JsonNode actual = JsonNode.of( json ).removeMembers( "b", Set.of( "x", "z" ) );
-        assertEquals( """
+    JsonNode actual = JsonNode.of(json).removeMembers("b", Set.of("x", "z"));
+    assertEquals(
+        """
             {
             "a": 1,
             "b": {"y":1}
-            }""", actual.getDeclaration().toString() );
+            }""",
+        actual.getDeclaration().toString());
+  }
+
+  public interface JsonBean extends JsonObject {
+
+    default String getFoo() {
+      return getString("foo").string();
     }
 
-    public interface JsonBean extends JsonObject {
+    String bar();
+  }
 
-        default String getFoo() {
-            return getString( "foo" ).string();
-        }
+  @Test
+  void testGetListener_DefaultMethod_DoesNotExist() {
+    Deque<JsonPath> rec = new LinkedList<>();
+    JsonObject obj = JsonMixed.of(JsonNode.of("{}", rec::add));
+    assertNull(obj.as(JsonBean.class).getFoo());
+    assertEquals(".foo", rec.getLast().toString());
+  }
 
-        String bar();
-    }
+  @Test
+  void testGetListener_DefaultMethod_DoesExist() {
+    Deque<JsonPath> rec = new LinkedList<>();
+    JsonObject obj = JsonMixed.of(JsonNode.of("{\"foo\": \"str\"}", rec::add));
+    assertEquals("str", obj.as(JsonBean.class).getFoo());
+    assertEquals(".foo", rec.getLast().toString());
+  }
 
-    @Test
-    void testGetListener_DefaultMethod_DoesNotExist() {
-        Deque<JsonPath> rec = new LinkedList<>();
-        JsonObject obj = JsonMixed.of( JsonNode.of( "{}", rec::add ) );
-        assertNull(obj.as( JsonBean.class ).getFoo());
-        assertEquals( ".foo", rec.getLast().toString() );
-    }
+  @Test
+  void testGetListener_AbstractMethod_DoesNotExist() {
+    Deque<JsonPath> rec = new LinkedList<>();
+    JsonObject obj = JsonMixed.of(JsonNode.of("{}", rec::add));
+    assertNull(obj.as(JsonBean.class).bar());
+    assertEquals(".bar", rec.getLast().toString());
+  }
 
-    @Test
-    void testGetListener_DefaultMethod_DoesExist() {
-        Deque<JsonPath> rec = new LinkedList<>();
-        JsonObject obj = JsonMixed.of( JsonNode.of( "{\"foo\": \"str\"}", rec::add ) );
-        assertEquals( "str", obj.as( JsonBean.class ).getFoo());
-        assertEquals( ".foo", rec.getLast().toString() );
-    }
+  @Test
+  void testGetListener_AbstractMethod_DoesExist() {
+    Deque<JsonPath> rec = new LinkedList<>();
+    JsonObject obj = JsonMixed.of(JsonNode.of("{\"bar\": \"str\"}", rec::add));
+    assertEquals("str", obj.as(JsonBean.class).bar());
+    assertEquals(".bar", rec.getLast().toString());
+  }
 
-    @Test
-    void testGetListener_AbstractMethod_DoesNotExist() {
-        Deque<JsonPath> rec = new LinkedList<>();
-        JsonObject obj = JsonMixed.of( JsonNode.of( "{}", rec::add ) );
-        assertNull( obj.as( JsonBean.class ).bar());
-        assertEquals( ".bar", rec.getLast().toString() );
-    }
+  private static void assertGetThrowsJsonPathException(String json, String path, String expected) {
+    JsonNode root = JsonNode.of(json);
+    JsonPathException ex = assertThrowsExactly(JsonPathException.class, () -> root.get(path));
+    assertEquals(expected, ex.getMessage());
+  }
 
-    @Test
-    void testGetListener_AbstractMethod_DoesExist() {
-        Deque<JsonPath> rec = new LinkedList<>();
-        JsonObject obj = JsonMixed.of( JsonNode.of( "{\"bar\": \"str\"}", rec::add ) );
-        assertEquals( "str", obj.as( JsonBean.class ).bar());
-        assertEquals( ".bar", rec.getLast().toString() );
-    }
+  private static void assertGetThrowsJsonTreeException(String json, String expected) {
+    assertGetThrowsJsonTreeException(json, ".foo", expected);
+  }
 
-    private static void assertGetThrowsJsonPathException( String json, String path, String expected ) {
-        JsonNode root = JsonNode.of( json );
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, () -> root.get( path ) );
-        assertEquals( expected, ex.getMessage() );
-    }
-
-    private static void assertGetThrowsJsonTreeException( String json, String expected ) {
-        assertGetThrowsJsonTreeException( json, ".foo", expected );
-    }
-
-    private static void assertGetThrowsJsonTreeException( String json, String path, String expected ) {
-        JsonNode root = JsonNode.of( json );
-        JsonTreeException ex = assertThrowsExactly( JsonTreeException.class, () -> root.get( path ) );
-        assertEquals( expected, ex.getMessage() );
-    }
+  private static void assertGetThrowsJsonTreeException(String json, String path, String expected) {
+    JsonNode root = JsonNode.of(json);
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> root.get(path));
+    assertEquals(expected, ex.getMessage());
+  }
 }

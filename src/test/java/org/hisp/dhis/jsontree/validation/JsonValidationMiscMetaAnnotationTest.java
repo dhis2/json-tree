@@ -14,32 +14,42 @@ import org.junit.jupiter.api.Test;
 
 class JsonValidationMiscMetaAnnotationTest {
 
-    @Retention( RUNTIME )
-    @Validation( minLength = 11, maxLength = 11, required = YES )
-    public @interface UID {}
+  @Retention(RUNTIME)
+  @Validation(minLength = 11, maxLength = 11, required = YES)
+  public @interface UID {}
 
-    public interface JsonMetaExampleA extends JsonObject {
+  public interface JsonMetaExampleA extends JsonObject {
 
-        @UID
-        default String getUID() {
-            return getString( "id" ).string();
-        }
+    @UID
+    default String getUID() {
+      return getString("id").string();
     }
+  }
 
-    @Test
-    void testMeta_MinLength() {
-        assertValidationError( """
-            {"id":  "hello"}""", JsonMetaExampleA.class, MIN_LENGTH, 11, 5 );
-    }
+  @Test
+  void testMeta_MinLength() {
+    assertValidationError(
+        """
+            {"id":  "hello"}""",
+        JsonMetaExampleA.class,
+        MIN_LENGTH,
+        11,
+        5);
+  }
 
-    @Test
-    void testMeta_MaxLength() {
-        assertValidationError( """
-            {"id":  "helloworld01"}""", JsonMetaExampleA.class, MAX_LENGTH, 11, 12 );
-    }
+  @Test
+  void testMeta_MaxLength() {
+    assertValidationError(
+        """
+            {"id":  "helloworld01"}""",
+        JsonMetaExampleA.class,
+        MAX_LENGTH,
+        11,
+        12);
+  }
 
-    @Test
-    void testMeta_Required() {
-        assertValidationError( "{}", JsonMetaExampleA.class, REQUIRED, "id" );
-    }
+  @Test
+  void testMeta_Required() {
+    assertValidationError("{}", JsonMetaExampleA.class, REQUIRED, "id");
+  }
 }

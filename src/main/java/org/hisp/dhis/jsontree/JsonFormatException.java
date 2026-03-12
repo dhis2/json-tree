@@ -39,30 +39,32 @@ import java.util.Arrays;
  */
 public final class JsonFormatException extends IllegalArgumentException {
 
-    public JsonFormatException( String message ) {
-        super( message );
-    }
+  public JsonFormatException(String message) {
+    super(message);
+  }
 
-    public JsonFormatException( char[] json, int index, char expected ) {
-        this( createParseErrorMessage( json, index, expected ) );
-    }
+  public JsonFormatException(char[] json, int index, char expected) {
+    this(createParseErrorMessage(json, index, expected));
+  }
 
-    public JsonFormatException( char[] json, int index, String expected ) {
-        this( createParseErrorMessage( json, index, expected ) );
-    }
+  public JsonFormatException(char[] json, int index, String expected) {
+    this(createParseErrorMessage(json, index, expected));
+  }
 
-    private static String createParseErrorMessage( char[] json, int index, char expected ) {
-        return createParseErrorMessage( json, index, expected == '~' ? "start of value" : "`" + expected + "`" );
-    }
+  private static String createParseErrorMessage(char[] json, int index, char expected) {
+    return createParseErrorMessage(
+        json, index, expected == '~' ? "start of value" : "`" + expected + "`");
+  }
 
-    private static String createParseErrorMessage( char[] json, int index, String expected ) {
-        int start = max( 0, index - 20 );
-        int length = min( json.length - start, 40 );
-        String section = new String( json, start, length );
-        char[] pointer = new char[index - start + 1];
-        Arrays.fill( pointer, ' ' );
-        pointer[pointer.length - 1] = '^';
-        return String.format( "Unexpected character at position %d,%n%s%n%s expected %s",
-            index, section, new String( pointer ), expected );
-    }
+  private static String createParseErrorMessage(char[] json, int index, String expected) {
+    int start = max(0, index - 20);
+    int length = min(json.length - start, 40);
+    String section = new String(json, start, length);
+    char[] pointer = new char[index - start + 1];
+    Arrays.fill(pointer, ' ');
+    pointer[pointer.length - 1] = '^';
+    return String.format(
+        "Unexpected character at position %d,%n%s%n%s expected %s",
+        index, section, new String(pointer), expected);
+  }
 }

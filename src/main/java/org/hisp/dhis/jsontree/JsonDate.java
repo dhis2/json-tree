@@ -34,23 +34,24 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * A {@link JsonDate} is a {@link JsonString} with a special format.
- * <p>
- * The {@link #date()} utility allows to access the date as {@link LocalDateTime} instead of {@link String}.
+ *
+ * <p>The {@link #date()} utility allows to access the date as {@link LocalDateTime} instead of
+ * {@link String}.
  *
  * @author Jan Bernitt
  */
 @Validation.Ignore
 public interface JsonDate extends JsonString {
 
-    default LocalDateTime date() {
-        return parsed( str -> LocalDateTime.parse( str, DateTimeFormatter.ISO_LOCAL_DATE_TIME ) );
-    }
+  default LocalDateTime date() {
+    return parsed(str -> LocalDateTime.parse(str, DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+  }
 
-    default LocalDate dateOnly() {
-        return parsed( str -> LocalDate.parse( str, DateTimeFormatter.ISO_LOCAL_DATE ) );
-    }
+  default LocalDate dateOnly() {
+    return parsed(str -> LocalDate.parse(str, DateTimeFormatter.ISO_LOCAL_DATE));
+  }
 
-    default LocalTime timeOnly() {
-        return parsed( str -> LocalTime.parse( str, DateTimeFormatter.ISO_LOCAL_TIME ) );
-    }
+  default LocalTime timeOnly() {
+    return parsed(str -> LocalTime.parse(str, DateTimeFormatter.ISO_LOCAL_TIME));
+  }
 }

@@ -13,222 +13,240 @@ import org.hisp.dhis.jsontree.internal.Surly;
  */
 final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
-    private final Juon.Format format;
-    private final StringBuilder out = new StringBuilder();
-    private final boolean[] hasChildrenAtLevel = new boolean[128];
+  private final Juon.Format format;
+  private final StringBuilder out = new StringBuilder();
+  private final boolean[] hasChildrenAtLevel = new boolean[128];
 
-    private int level = 0;
+  private int level = 0;
 
-    JuonAppender( Juon.Format format ) {
-        this.format = format;
+  JuonAppender(Juon.Format format) {
+    this.format = format;
+  }
+
+  @Override
+  public String toString() {
+    return out.toString();
+  }
+
+  static String toJuon(Juon.Format format, JsonNode value) {
+    JuonAppender bld = new JuonAppender(format);
+    bld.addElement(value);
+    return bld.out.toString();
+  }
+
+  @Override
+  public JsonObjectBuilder addMember(CharSequence name, JsonNode value) {
+    JsonNodeType type = value.getType();
+    if (type == JsonNodeType.NULL) return addRawMember(name, format.nullsInObjects().value);
+    return switch (type) {
+      case OBJECT -> addObject(name, obj -> value.members().forEach(obj::addMember));
+      case ARRAY -> addArray(name, arr -> value.elements().forEach(arr::addElement));
+      case STRING -> addString(name, value.value().toString());
+      case NUMBER -> addNumber(name, (Number) value.value());
+      case BOOLEAN -> addBoolean(name, (Boolean) value.value());
+      case NULL -> addBoolean(name, null);
+    };
+  }
+
+  @Override
+  public JsonObjectBuilder addBoolean(CharSequence name, boolean value) {
+    String raw = String.valueOf(value);
+    return addRawMember(name, format.booleanShorthands() ? raw.substring(0, 1) : raw);
+  }
+
+  @Override
+  public JsonObjectBuilder addBoolean(CharSequence name, Boolean value) {
+    if (value == null) return addRawMember(name, format.nullsInObjects().value);
+    return addBoolean(name, value.booleanValue());
+  }
+
+  @Override
+  public JsonObjectBuilder addNumber(CharSequence name, int value) {
+    return addRawMember(name, Text.of(value));
+  }
+
+  @Override
+  public JsonObjectBuilder addNumber(CharSequence name, long value) {
+    return addRawMember(name, String.valueOf(value));
+  }
+
+  @Override
+  public JsonObjectBuilder addNumber(CharSequence name, double value) {
+    JsonBuilder.checkValid(value);
+    return addRawMember(name, String.valueOf(value));
+  }
+
+  @Override
+  public JsonObjectBuilder addNumber(CharSequence name, Number value) {
+    if (value == null) return addRawMember(name, format.nullsInObjects().value);
+    JsonBuilder.checkValid(value);
+    return addRawMember(name, String.valueOf(value));
+  }
+
+  @Override
+  public JsonObjectBuilder addString(CharSequence name, CharSequence value) {
+    if (value == null) return addRawMember(name, format.nullsInObjects().value);
+    addMember(name);
+    appendEscaped(value);
+    return this;
+  }
+
+  @Override
+  public JsonObjectBuilder addArray(CharSequence name, Consumer<JsonArrayBuilder> arr) {
+    addMember(name);
+    addArray(arr);
+    return this;
+  }
+
+  @Override
+  public JsonObjectBuilder addObject(CharSequence name, Consumer<JsonObjectBuilder> obj) {
+    addMember(name);
+    addObject(obj);
+    return this;
+  }
+
+  private void addMember(CharSequence name) {
+    appendCommaWhenNeeded();
+    append(name);
+    append(':');
+  }
+
+  private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue) {
+    if (rawValue == null) return this;
+    addMember(name);
+    append(rawValue);
+    return this;
+  }
+
+  private JsonArrayBuilder addRawElement(CharSequence rawValue) {
+    appendCommaWhenNeeded();
+    if (rawValue != null && !rawValue.isEmpty()) append(rawValue);
+    return this;
+  }
+
+  @Override
+  public JsonArrayBuilder addElement(JsonNode value) {
+    JsonNodeType type = value.getType();
+    if (type == JsonNodeType.NULL) return addRawElement(format.nullsInArrays().value);
+    return switch (type) {
+      case OBJECT -> addObject(obj -> value.members().forEach(obj::addMember));
+      case ARRAY -> addArray(arr -> value.elements().forEach(arr::addElement));
+      case STRING -> addString(value.value().toString());
+      case NUMBER -> addNumber((Number) value.value());
+      case BOOLEAN -> addBoolean((Boolean) value.value());
+      case NULL -> addBoolean(null);
+    };
+  }
+
+  @Override
+  public JsonArrayBuilder addBoolean(boolean value) {
+    String raw = String.valueOf(value);
+    return addRawElement(format.booleanShorthands() ? raw.substring(0, 1) : raw);
+  }
+
+  @Override
+  public JsonArrayBuilder addBoolean(Boolean value) {
+    if (value == null) return addRawElement(format.nullsInArrays().value);
+    return addBoolean(value.booleanValue());
+  }
+
+  @Override
+  public JsonArrayBuilder addNumber(int value) {
+    return addRawElement(Text.of(value));
+  }
+
+  @Override
+  public JsonArrayBuilder addNumber(long value) {
+    return addRawElement(String.valueOf(value));
+  }
+
+  @Override
+  public JsonArrayBuilder addNumber(double value) {
+    JsonBuilder.checkValid(value);
+    return addRawElement(String.valueOf(value));
+  }
+
+  @Override
+  public JsonArrayBuilder addNumber(Number value) {
+    if (value == null) return addRawElement(format.nullsInArrays().value);
+    JsonBuilder.checkValid(value);
+    return addRawElement(value.toString());
+  }
+
+  @Override
+  public JsonArrayBuilder addString(CharSequence value) {
+    if (value == null) return addRawElement(format.nullsInArrays().value);
+    appendCommaWhenNeeded();
+    appendEscaped(value);
+    return this;
+  }
+
+  @Override
+  public JsonArrayBuilder addArray(Consumer<JsonArrayBuilder> arr) {
+    beginLevel();
+    arr.accept(this);
+    endLevel();
+    return this;
+  }
+
+  @Override
+  public JsonArrayBuilder addObject(Consumer<JsonObjectBuilder> obj) {
+    int l0 = out.length();
+    beginLevel();
+    obj.accept(this);
+    endLevel();
+    if (out.length() == l0 + 2) {
+      out.setLength(l0); // undo object
+      append("null"); // approximate the empty object with null
     }
+    return this;
+  }
 
-    @Override public String toString() {
-        return out.toString();
-    }
+  private void beginLevel() {
+    append('(');
+    hasChildrenAtLevel[++level] = false;
+  }
 
-    static String toJuon( Juon.Format format,  JsonNode value ) {
-        JuonAppender bld = new JuonAppender(format);
-        bld.addElement( value );
-        return bld.out.toString();
-    }
+  private void endLevel() {
+    level--;
+    append(')');
+  }
 
-    @Override public JsonObjectBuilder addMember( CharSequence name, JsonNode value ) {
-        JsonNodeType type = value.getType();
-        if ( type == JsonNodeType.NULL )
-            return addRawMember( name,  format.nullsInObjects().value );
-        return switch ( type ) {
-            case OBJECT -> addObject( name, obj -> value.members().forEach( obj::addMember ) );
-            case ARRAY -> addArray( name, arr -> value.elements().forEach( arr::addElement ) );
-            case STRING -> addString( name, value.value().toString() );
-            case NUMBER -> addNumber( name, (Number) value.value() );
-            case BOOLEAN -> addBoolean( name, (Boolean) value.value() );
-            case NULL -> addBoolean( name, null );
-        };
+  private void appendCommaWhenNeeded() {
+    if (!hasChildrenAtLevel[level]) {
+      hasChildrenAtLevel[level] = true;
+    } else {
+      append(',');
     }
+  }
 
-    @Override public JsonObjectBuilder addBoolean( CharSequence name, boolean value ) {
-        String raw = String.valueOf( value );
-        return addRawMember( name, format.booleanShorthands() ? raw.substring( 0, 1 ) : raw );
-    }
+  private void append(CharSequence str) {
+    out.append(str);
+  }
 
-    @Override public JsonObjectBuilder addBoolean( CharSequence name, Boolean value ) {
-        if (value == null) return addRawMember( name,  format.nullsInObjects().value );
-        return addBoolean( name, value.booleanValue() );
-    }
+  private void append(char c) {
+    out.append(c);
+  }
 
-    @Override public JsonObjectBuilder addNumber( CharSequence name, int value ) {
-        return addRawMember( name, Text.of( value ) );
-    }
+  void appendEscaped(@Surly CharSequence str) {
+    append('\'');
+    str.chars().forEachOrdered(this::appendEscaped);
+    append('\'');
+  }
 
-    @Override public JsonObjectBuilder addNumber( CharSequence name, long value ) {
-        return addRawMember( name, String.valueOf( value ) );
+  private void appendEscaped(int c) {
+    switch (c) {
+      case '\b' -> append("\\b");
+      case '\f' -> append("\\f");
+      case '\n' -> append("\\n");
+      case '\r' -> append("\\r");
+      case '\t' -> append("\\t");
+      case '\'' -> append("\\'");
+      case '\\' -> append("\\\\");
+      case -31 -> append("\\u%04X".formatted(c));
+      case 0x2028 -> append("\\u2028");
+      case 0x2029 -> append("\\u2029");
+      default -> append((char) c);
     }
-
-    @Override public JsonObjectBuilder addNumber( CharSequence name, double value ) {
-        JsonBuilder.checkValid( value );
-        return addRawMember( name, String.valueOf( value ) );
-    }
-
-    @Override public JsonObjectBuilder addNumber( CharSequence name, Number value ) {
-        if (value == null) return addRawMember( name,  format.nullsInObjects().value );
-        JsonBuilder.checkValid( value );
-        return addRawMember( name, String.valueOf( value ) );
-    }
-
-    @Override public JsonObjectBuilder addString( CharSequence name, CharSequence value ) {
-        if (value == null) return addRawMember( name,  format.nullsInObjects().value );
-        addMember( name );
-        appendEscaped( value );
-        return this;
-    }
-
-    @Override public JsonObjectBuilder addArray( CharSequence name, Consumer<JsonArrayBuilder> arr ) {
-        addMember( name );
-        addArray( arr );
-        return this;
-    }
-
-    @Override public JsonObjectBuilder addObject( CharSequence name, Consumer<JsonObjectBuilder> obj ) {
-        addMember( name );
-        addObject( obj );
-        return this;
-    }
-
-    private void addMember( CharSequence name ) {
-        appendCommaWhenNeeded();
-        append( name );
-        append( ':' );
-    }
-
-    private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue ) {
-        if (rawValue == null) return this;
-        addMember( name );
-        append( rawValue );
-        return this;
-    }
-
-    private JsonArrayBuilder addRawElement( CharSequence rawValue ) {
-        appendCommaWhenNeeded();
-        if (rawValue != null && !rawValue.isEmpty())
-            append( rawValue );
-        return this;
-    }
-
-    @Override public JsonArrayBuilder addElement( JsonNode value ) {
-        JsonNodeType type = value.getType();
-        if ( type == JsonNodeType.NULL )
-            return addRawElement( format.nullsInArrays().value );
-        return switch ( type ) {
-            case OBJECT -> addObject(obj -> value.members().forEach( obj::addMember ) );
-            case ARRAY -> addArray(  arr -> value.elements().forEach( arr::addElement ) );
-            case STRING -> addString( value.value().toString() );
-            case NUMBER -> addNumber( (Number) value.value() );
-            case BOOLEAN -> addBoolean( (Boolean) value.value() );
-            case NULL -> addBoolean( null );
-        };
-    }
-
-    @Override public JsonArrayBuilder addBoolean( boolean value ) {
-        String raw = String.valueOf( value );
-        return addRawElement( format.booleanShorthands() ? raw.substring( 0, 1 ) : raw );
-    }
-
-    @Override public JsonArrayBuilder addBoolean( Boolean value ) {
-        if (value == null) return addRawElement( format.nullsInArrays().value );
-        return addBoolean( value.booleanValue() );
-    }
-
-    @Override public JsonArrayBuilder addNumber( int value ) {
-        return addRawElement( Text.of( value ) );
-    }
-
-    @Override public JsonArrayBuilder addNumber( long value ) {
-        return addRawElement( String.valueOf( value ) );
-    }
-
-    @Override public JsonArrayBuilder addNumber( double value ) {
-        JsonBuilder.checkValid( value );
-        return addRawElement( String.valueOf( value ) );
-    }
-
-    @Override public JsonArrayBuilder addNumber( Number value ) {
-        if (value == null) return addRawElement( format.nullsInArrays().value );
-        JsonBuilder.checkValid( value );
-        return addRawElement( value.toString() );
-    }
-
-    @Override public JsonArrayBuilder addString( CharSequence value ) {
-        if (value == null) return addRawElement( format.nullsInArrays().value );
-        appendCommaWhenNeeded();
-        appendEscaped( value );
-        return this;
-    }
-
-    @Override public JsonArrayBuilder addArray( Consumer<JsonArrayBuilder> arr ) {
-        beginLevel();
-        arr.accept( this );
-        endLevel();
-        return this;
-    }
-
-    @Override public JsonArrayBuilder addObject( Consumer<JsonObjectBuilder> obj ) {
-        int l0 = out.length();
-        beginLevel();
-        obj.accept( this );
-        endLevel();
-        if ( out.length() == l0 + 2) {
-            out.setLength( l0 ); // undo object
-            append( "null" ); // approximate the empty object with null
-        }
-        return this;
-    }
-
-    private void beginLevel() {
-        append( '(' );
-        hasChildrenAtLevel[++level] = false;
-    }
-
-    private void endLevel() {
-        level--;
-        append( ')' );
-    }
-
-    private void appendCommaWhenNeeded() {
-        if ( !hasChildrenAtLevel[level] ) {
-            hasChildrenAtLevel[level] = true;
-        } else {
-            append( ',' );
-        }
-    }
-
-    private void append(CharSequence str) {
-        out.append( str );
-    }
-
-    private void append(char c) {
-        out.append( c );
-    }
-
-    void appendEscaped(@Surly CharSequence str ) {
-        append( '\'' );
-        str.chars().forEachOrdered( this::appendEscaped );
-        append( '\'' );
-    }
-
-    private void appendEscaped( int c ) {
-        switch ( c ) {
-            case '\b' -> append(  "\\b" );
-            case '\f' -> append( "\\f" );
-            case '\n' -> append( "\\n" );
-            case '\r' -> append( "\\r" );
-            case '\t' -> append( "\\t" );
-            case '\'' -> append( "\\'" );
-            case '\\' -> append( "\\\\" );
-            case -31 -> append( "\\u%04X".formatted( c ) );
-            case 0x2028 -> append( "\\u2028" );
-            case 0x2029 -> append( "\\u2029" );
-            default -> append( (char) c );
-        }
-    }
+  }
 }
