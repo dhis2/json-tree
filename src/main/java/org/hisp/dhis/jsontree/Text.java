@@ -232,6 +232,9 @@ public interface Text extends CharSequence, Comparable<Text> {
         return neg ? -n : n;
     }
 
+    /**
+     * @see String#compareTo(String)
+     */
     @Override
     default int compareTo( Text other ) {
         int n = Math.min( length(), other.length() );

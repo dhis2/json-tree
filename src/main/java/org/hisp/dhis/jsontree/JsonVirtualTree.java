@@ -345,7 +345,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             if ( isDefault ) {
                 // call the default method of the proxied type itself
                 return callDefaultMethod( proxy, method, args );
-                //TODO what if we bind to the target for JsonMixed?
             }
             // abstract extending interface method?
             return callAbstractMethod( target, method, args );

@@ -107,8 +107,8 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @see #names()
      * @since 0.11 (as Stream)
      */
-    default Stream<String> keys() { //TODO change to Text
-        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().keys().spliterator(), false ).map( Text::toString );
+    default Stream<Text> keys() {
+        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().keys().spliterator(), false );
     }
 
     /**
@@ -129,10 +129,10 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @since 0.11
      */
     //TODO change to Text (this is alos a name => key change)
-    default Stream<Map.Entry<String, E>> entries() {
+    default Stream<Map.Entry<Text, E>> entries() {
         if ( isUndefined() || isEmpty() ) return Stream.empty();
-        return stream( node().keys().spliterator(), false ).map(
-            name -> Map.entry( name.toString(), get( name.toString() ) ) );
+        return stream( node().keys().spliterator(), false )
+            .map(name -> Map.entry( name , get(name)));
     }
 
     //TODO a way to iterate/stream members without putting them into cache
@@ -162,7 +162,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.10
      */
-    default void forEach( BiConsumer<String, ? super E> action ) {
+    default void forEach( BiConsumer<Text, ? super E> action ) {
         // need to use keys() + get(key) because of wrapper type E is not accessible otherwise
         // and to preserve the path of the values
         keys().forEach( key -> action.accept( key, get( key ) ) );

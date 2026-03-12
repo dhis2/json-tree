@@ -48,8 +48,8 @@ class JsonMapTest {
     void testKeys_NonEmpty() {
         JsonMap<JsonNumber> obj = JsonMixed.of( "{\"b\":1,\"c\":2}" ).asMap( JsonNumber.class );
         JsonMap<JsonNumber> obj2 = JsonMixed.of( "{\"a\":{\"b\":1,\"c\":2}}" ).getMap( "a", JsonNumber.class );
-        assertEquals( List.of( "b", "c" ), obj.keys().toList() );
-        assertEquals( List.of( "b", "c" ), obj2.keys().toList() );
+        assertEquals( List.of( "b", "c" ), obj.keys().map( Text::toString ).toList() );
+        assertEquals( List.of( "b", "c" ), obj2.keys().map( Text::toString ).toList() );
     }
 
     @Test
@@ -83,8 +83,8 @@ class JsonMapTest {
 
         Map<String, Object> actual = new HashMap<>();
         Map<String, Object> actual2 = new HashMap<>();
-        obj.forEach( ( k, v ) -> actual.put( k, v.node().value() ) );
-        obj2.forEach( ( k, v ) -> actual2.put( k, v.node().value() ) );
+        obj.forEach( ( k, v ) -> actual.put( k.toString(), v.node().value() ) );
+        obj2.forEach( ( k, v ) -> actual2.put( k.toString(), v.node().value() ) );
         assertEquals( Map.of( "b", 1, "c", 2 ), actual );
         assertEquals( Map.of( "b", 1, "c", 2 ), actual2 );
     }
@@ -117,8 +117,8 @@ class JsonMapTest {
     void testViewAsMap_NonEmpty() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
         JsonMap<JsonArray> obj2 = JsonMixed.of( "{\"a\":{\"b\":[1],\"c\":[2]}}" ).getMap( "a", JsonArray.class );
-        assertEquals( List.of( "b", "c" ), obj.project( arr -> arr.get( 0 ) ).keys().toList() );
-        assertEquals( List.of( "b", "c" ), obj2.project( arr -> arr.get( 0 ) ).keys().toList() );
+        assertEquals( List.of( "b", "c" ), obj.project( arr -> arr.get( 0 ) ).keys().map( Text::toString ).toList() );
+        assertEquals( List.of( "b", "c" ), obj2.project( arr -> arr.get( 0 ) ).keys().map( Text::toString ).toList() );
         assertEquals( 1, obj.project( arr -> arr.getNumber( 0 ) ).get( "b" ).intValue() );
         assertEquals( 1, obj2.project( arr -> arr.getNumber( 0 ) ).get( "b" ).intValue() );
     }
@@ -127,7 +127,7 @@ class JsonMapTest {
     void testViewAsMap_Keys() {
         JsonMap<JsonArray> obj = JsonMixed.of( "{\"b\":[1],\"c\":[2]}" ).asMap( JsonArray.class );
         JsonMap<JsonNumber> view = obj.project( arr -> arr.getNumber( 0 ) );
-        assertEquals( List.of( "b", "c" ), view.keys().toList() );
+        assertEquals( List.of( "b", "c" ), view.keys().map( Text::toString ).toList() );
     }
 
     @Test
@@ -142,7 +142,7 @@ class JsonMapTest {
         String json = """
             {".":1, "{uid}":2, "[6]":3, "x{y}z": 4}""";
         JsonMap<JsonNumber> map = JsonMixed.of( json ).asMap( JsonNumber.class );
-        assertEquals( List.of( ".", "{uid}", "[6]", "x{y}z" ), map.keys().toList() );
+        assertEquals( List.of( ".", "{uid}", "[6]", "x{y}z" ), map.keys().map( Text::toString ).toList() );
     }
 
     @Test
@@ -160,6 +160,6 @@ class JsonMapTest {
         JsonMap<JsonNumber> map = JsonMixed.of( json ).asMap( JsonNumber.class );
         assertEquals( List.of( entry( ".", 1 ), entry( "{uid}", 2 ),
                 entry( "[6]", 3 ), entry( "x{y}z", 4 ) ),
-            map.entries().map( e -> entry( e.getKey(), e.getValue().intValue() ) ).toList() );
+            map.entries().map( e -> entry( e.getKey().toString(), e.getValue().intValue() ) ).toList() );
     }
 }

@@ -315,7 +315,8 @@ public final class JsonAccess implements JsonAccessors {
         JsonAccessor<?> valueAccess = accessors.accessor( getRawType( valueType ) );
         Class<?> rawKeyType = getRawType( extractTypeParameter( as, 0 ) );
         JsonAccessor<?> keyAccess = accessors.accessor( rawKeyType );
-        Function<String, ?>    toKey = name -> keyAccess.access( Json.of( name ).as( JsonMixed.class ), rawKeyType, accessors );
+        Function<Text, ?>    toKey = name -> keyAccess.access( Json.of( name.toString() )
+            .as( JsonMixed.class ), rawKeyType, accessors );
         @SuppressWarnings({"rawtypes", "unchecked"})
         Map<Object, Object> res = rawKeyType.isEnum() ? new EnumMap(rawKeyType) : new LinkedHashMap<>();
         map.entries().forEach( e ->

@@ -9,6 +9,11 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * Texts the {@link Text} API.
+ *
+ * @author Jan Bernitt (with most of the simple test cases created by AI)
+ */
 class TextTest {
 
     @DisplayName("indexOf(char)")

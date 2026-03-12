@@ -87,7 +87,7 @@ class JsonObjectTest {
         JsonObject paths = JsonMixed.of( json ).getObject( "paths" );
         assertEquals( List.of("/api/dataElements/{uid:[a-zA-Z0-9]{11}}"), paths.names() );
         JsonObject ops = paths.getObject( Text.of("/api/dataElements/{uid:[a-zA-Z0-9]{11}}" ));
-        assertEquals( List.of("get", "delete"), ops.keys().toList() );
+        assertEquals( List.of("get", "delete"), ops.keys().map( Text::toString ).toList() );
         assertEquals( "opy", ops.getObject( "delete" ).getString( "id" ).string() );
     }
 

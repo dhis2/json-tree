@@ -85,7 +85,7 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonAbstractObject<Js
                 list = new ArrayList<>( list );
                 list.sort( order );
             }
-            res.put( key, list );
+            res.put( key.toString(), list );
 
         } );
         return res;
