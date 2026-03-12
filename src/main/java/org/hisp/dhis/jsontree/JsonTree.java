@@ -28,7 +28,10 @@
 package org.hisp.dhis.jsontree;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyIterator;
 import static java.util.Objects.requireNonNull;
+import static java.util.Spliterator.ORDERED;
+import static java.util.Spliterator.SIZED;
 import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.Chars.expectChars;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
@@ -36,12 +39,15 @@ import static org.hisp.dhis.jsontree.Chars.expectDigit;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -241,7 +247,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Surly @Override
         public Iterator<Entry<Text, JsonNode>> iterator() {
-            return members( true );
+            return membersIterator( true );
         }
 
         @Override
@@ -346,7 +352,16 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        public Iterator<Entry<Text, JsonNode>> members( boolean cacheNodes ) {
+        public Spliterator<Entry<Text, JsonNode>> members(boolean remember) {
+            Iterator<Entry<Text, JsonNode>> iter = membersIterator( remember );
+            int n = isEmpty() ? 0 : size;
+            return remember && n >= 0
+                ? Spliterators.spliterator( iter, n, ORDERED | SIZED )
+                : Spliterators.spliteratorUnknownSize( iter, ORDERED );
+        }
+
+        private Iterator<Entry<Text, JsonNode>> membersIterator( boolean remember ) {
+            if (isEmpty()) return emptyIterator();
             return new Iterator<>() {
                 private final char[] json = tree.json;
                 private final Map<JsonPath, JsonNode> nodesByPath = tree.nodesByPath;
@@ -357,7 +372,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 @Override
                 public boolean hasNext() {
                     boolean hasNext = startIndex < json.length && json[startIndex] != '}';
-                    if (!hasNext && cacheNodes) size = n;
+                    if (!hasNext && size < 0) size = n;
                     return hasNext;
                 }
 
@@ -368,7 +383,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     Text name = Chars.parseString( json, startIndex );
                     JsonPath propertyPath = path.chain( name );
                     int startIndexVal = expectColon( json, skipString( json, startIndex ) );
-                    JsonNode member = cacheNodes
+                    JsonNode member = remember
                         ? nodesByPath.computeIfAbsent( propertyPath, key -> tree.autoDetect( key, startIndexVal ) )
                         : nodesByPath.get( propertyPath );
                     if ( member == null ) {
@@ -445,7 +460,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Surly @Override
         public Iterator<JsonNode> iterator() {
-            return elements( true );
+            return elementsIterator( true );
         }
 
         @Override
@@ -585,7 +600,15 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
         }
 
         @Override
-        public Iterator<JsonNode> elements( boolean cacheNodes ) {
+        public Spliterator<JsonNode> elements( boolean remember ) {
+            Iterator<JsonNode> iter = elementsIterator( remember );
+            int n = isEmpty() ? 0 : size;
+            return remember && n >= 0
+                ? Spliterators.spliterator( iter, n, ORDERED | SIZED )
+                : Spliterators.spliteratorUnknownSize( iter, ORDERED );
+        }
+
+        private Iterator<JsonNode> elementsIterator( boolean remember ) {
             return new Iterator<>() {
                 private final char[] json = tree.json;
                 private final Map<JsonPath, JsonNode> nodesByPath = tree.nodesByPath;
@@ -596,7 +619,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                 @Override
                 public boolean hasNext() {
                     boolean hasNext = startIndex < json.length && json[startIndex] != ']';
-                    if (!hasNext && cacheNodes) size = n;
+                    if (!hasNext && size < 0) size = n;
                     return hasNext;
                 }
 
@@ -605,7 +628,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
                     if ( !hasNext() )
                         throw new NoSuchElementException( "next() called without checking hasNext()" );
                     JsonPath elementPath = path.chain( n );
-                    JsonNode e = cacheNodes
+                    JsonNode e = remember
                         ? nodesByPath.computeIfAbsent( elementPath, key -> tree.autoDetect( key, startIndex ) )
                         : nodesByPath.get( elementPath );
                     if ( e == null ) {

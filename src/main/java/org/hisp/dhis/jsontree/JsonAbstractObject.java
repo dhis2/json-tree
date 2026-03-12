@@ -4,12 +4,18 @@ import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
+import static java.util.Spliterator.ORDERED;
+import static java.util.Spliterator.SIZED;
 import static java.util.stream.StreamSupport.stream;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
@@ -108,7 +114,9 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @since 0.11 (as Stream)
      */
     default Stream<Text> keys() {
-        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().keys().spliterator(), false );
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        Iterator<Text> iter = node().keys().iterator();
+        return StreamSupport.stream( Spliterators.spliterator( iter, size(), ORDERED | SIZED ), false);
     }
 
     /**
@@ -120,22 +128,16 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
         return keys().map( this::get );
     }
 
-    //TODO a way to iterate/stream values without putting them into cache
-
     /**
-     * @return a stream of map/object entries in order of their declaration. the entry keys are the raw {@link #names()}
-     * as given in the original JSON document (not the {@link #keys()})
+     * @return a stream of map/object entries in order of their declaration.
      * @throws JsonTreeException in case this node does exist but is not an object node
      * @since 0.11
      */
-    //TODO change to Text (this is alos a name => key change)
     default Stream<Map.Entry<Text, E>> entries() {
         if ( isUndefined() || isEmpty() ) return Stream.empty();
         return stream( node().keys().spliterator(), false )
             .map(name -> Map.entry( name , get(name)));
     }
-
-    //TODO a way to iterate/stream members without putting them into cache
 
     /**
      * Lists raw JSON object member names in order of declaration.
@@ -145,7 +147,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @see #keys()
      */
     default List<String> names() {
-        return isUndefined() || isEmpty() ? List.of() : stream( node().names().spliterator(), false ).toList();
+        return keys().map( Text::toString ).toList();
     }
 
     /**
@@ -154,7 +156,9 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
      * @since 1.2
      */
     default Stream<JsonPath> paths() {
-        return isUndefined() || isEmpty() ? Stream.empty() : stream( node().paths().spliterator(), false );
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        Iterator<JsonPath> iter = node().paths().iterator();
+        return StreamSupport.stream( Spliterators.spliterator( iter, size(), ORDERED | SIZED ), false);
     }
 
     /**

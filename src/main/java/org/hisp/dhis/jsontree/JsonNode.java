@@ -39,6 +39,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Spliterator;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -396,6 +397,9 @@ public interface JsonNode extends Serializable {
      * @return the nodes value as described in the above table
      */
     Object value();
+    //TODO future improvement: if there was a intValue() for number and co
+    // the parsing could even be entirely allocation free
+    // when the user accesses the value with a given target type in mind
 
     /**
      * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
@@ -482,14 +486,14 @@ public interface JsonNode extends Serializable {
      * <p>
      * The members are iterated in order of declaration in the underlying document.
      *
-     * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
+     * @param remember true, to internally "remember" the members iterated over so far, false to only iterate without
      *                   keeping references to them further on so GC can pick em up
      * @return an iterator to lazily process the members one at a time - mostly to avoid materialising all members in
      * memory for large maps. Member {@link JsonNode}s that already exist internally will be reused and returned by the
      * iterator.
      * @throws JsonTreeException if this node is not an object node that could have members
      */
-    default Iterator<Entry<Text, JsonNode>> members( boolean cacheNodes ) {
+    default Spliterator<Entry<Text, JsonNode>> members( boolean remember ) {
         throw new JsonTreeException( getType() + " node has no members property." );
     }
 
@@ -553,14 +557,14 @@ public interface JsonNode extends Serializable {
      * <p>
      * The elements are iterated in the order declared in the underlying JSON document.
      *
-     * @param cacheNodes true, to internally "remember" the members iterated over so far, false to only iterate without
+     * @param remember true, to internally "remember" the elements iterated over so far, false to only iterate without
      *                   keeping references to them further on so GC can pick em up
      * @return an iterator to lazily process the elements one at a time - mostly to avoid materialising all elements in
      * memory for large arrays. Member {@link JsonNode}s that already exist internally will be reused and returned by
      * the iterator.
      * @throws JsonTreeException if this node is not an array node that could have elements
      */
-    default Iterator<JsonNode> elements( boolean cacheNodes ) {
+    default Spliterator<JsonNode> elements( boolean remember ) {
         throw new JsonTreeException( getType() + " node has no elements property." );
     }
 

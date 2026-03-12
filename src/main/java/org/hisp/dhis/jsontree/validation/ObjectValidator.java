@@ -100,7 +100,6 @@ record ObjectValidator(
                     if ( validator != null ) res.put( JsonPath.of( property), validator );
                 } );
                 Validator dependentRequired = createDependentRequired( properties );
-                //FIXME this "" was a trick to validate the parent itself, not the property as the property empty as String => self
                 if ( dependentRequired != null ) res.put( JsonPath.SELF, dependentRequired );
                 return new ObjectValidator( type, Map.copyOf( res ) );
             } );

@@ -33,10 +33,18 @@ import org.hisp.dhis.jsontree.validation.JsonValidator;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.stream;
+import static java.util.Spliterator.ORDERED;
+import static java.util.Spliterator.SIZED;
 
 /**
  * Represents a JSON object node.
@@ -50,6 +58,45 @@ import static java.util.Arrays.stream;
  */
 @Validation.Ignore
 public interface JsonObject extends JsonAbstractObject<JsonValue> {
+
+    @Override
+    default Stream<JsonValue> values() {
+        return values(true);
+    }
+
+    /**
+     * @implNote This utilizes {@link JsonNode#members(boolean)} avoiding map lookups for each element. On
+     *     {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+     *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+     * @param remember true, to internally "remember" the elements iterated over so far, false to only iterate without
+     *                   keeping references to them further on so GC can pick em up
+     * @since 1.9
+     */
+    default Stream<JsonValue> values(boolean remember) {
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        JsonAccessors accessors = getAccessors();
+        return StreamSupport.stream( node().members(remember), false).map( e -> e.getValue().lift( accessors ) );
+    }
+
+    @Override
+    default Stream<Map.Entry<Text, JsonValue>> entries() {
+        return entries(true);
+    }
+
+    /**
+     * @implNote This utilizes {@link JsonNode#members(boolean)} avoiding map lookups for each element. On
+     *     {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+     *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+     * @param remember true, to internally "remember" the elements iterated over so far, false to only iterate without
+     *                   keeping references to them further on so GC can pick em up
+     * @since 1.9
+     */
+    default Stream<Map.Entry<Text, JsonValue>> entries(boolean remember) {
+        if (isUndefined() || isEmpty()) return Stream.empty();
+        JsonAccessors accessors = getAccessors();
+        return StreamSupport.stream( node().members(remember), false)
+            .map( e -> Map.entry( e.getKey(), e.getValue().lift( accessors ) ) );
+    }
 
     /**
      * An object property based on a default method declared in a type extending {@link JsonObject}.

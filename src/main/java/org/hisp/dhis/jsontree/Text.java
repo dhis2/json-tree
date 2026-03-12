@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 /**
@@ -407,6 +409,10 @@ public interface Text extends CharSequence, Comparable<Text> {
             rest /= 10;
         }
         return of(digits, 0, digits.length);
+    }
+
+    static Text of( Path file, Charset encoding ) {
+        return Chars.from( file, encoding, (arr, length) -> of( arr, 0, length));
     }
 
     private static void checkSubSequence( int start, int end, int length ) {

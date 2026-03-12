@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static java.lang.Character.highSurrogate;
 import static java.lang.Character.isBmpCodePoint;
@@ -295,11 +297,18 @@ final class Chars {
      * @return the character in the file
      */
     static char[] from(Path file, Charset encoding ) {
+        return from(file, encoding,  (arr, length) -> arr);
+    }
+    static <T> T from(Path file, Charset encoding, BiFunction<char[], Integer, T> wrap ) {
         try {
             byte[] src = Files.readAllBytes(file);
-            if (StandardCharsets.UTF_8.equals( encoding )) return fromUTF8( src );
-            if (StandardCharsets.ISO_8859_1.equals( encoding )) return fromIso88591( src );
-            return new String(src, encoding).toCharArray();
+            if (StandardCharsets.UTF_8.equals( encoding )) return fromUTF8( src, wrap);
+            if (StandardCharsets.ISO_8859_1.equals( encoding )) {
+                char[] res = fromIso88591( src );
+                return wrap.apply( res, res.length );
+            }
+            char[] res = new String( src, encoding ).toCharArray();
+            return wrap.apply( res, res.length );
         } catch ( IOException e ) {
             throw new UncheckedIOException( e );
         }
@@ -312,10 +321,17 @@ final class Chars {
         return dest;
     }
 
-    private static char[] fromUTF8( byte[] src) {
-        char[] dest = new char[src.length];
+    private static <T> T fromUTF8( byte[] src, BiFunction<char[], Integer, T> wrap ) {
+        int i = 0;
+        if (src.length >= 3 &&
+            src[i] == (byte) 0xEF &&
+            src[i+1] == (byte) 0xBB &&
+            src[i+2] == (byte) 0xBF) {
+            i = 3;   // skip the BOM bytes
+        }
         int offset = 0;
-        for (int i = 0; i < src.length; ) {
+        char[] dest = new char[src.length-i];
+        while ( i < src.length ) {
             int b = src[i++] & 0xFF;            // treat as unsigned
             if (b < 0x80) {                     // 0xxxxxxx (ASCII)
                 dest[offset++] = (char) b;
@@ -339,6 +355,6 @@ final class Chars {
         }
         // over-allocated slots become space
         if (offset < dest.length) Arrays.fill(dest, offset, dest.length, ' ');
-        return dest;
+        return wrap.apply(dest, offset);
     }
 }

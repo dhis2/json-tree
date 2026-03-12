@@ -5,6 +5,7 @@ import org.hisp.dhis.jsontree.internal.Surly;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -12,6 +13,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static java.util.Collections.emptyIterator;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 /**
@@ -40,22 +42,20 @@ public interface JsonAbstractArray<E extends JsonValue> extends JsonAbstractColl
         return isUndefined() || isEmpty() ? IntStream.empty() : IntStream.range( 0, size() );
     }
 
-    //TODO a way to iterate Text index values
-
     @Surly
     @Override
     default Iterator<E> iterator() {
-        return indexes().mapToObj( this::get ).iterator();
+        // we want iterator to be stream() based as stream() is overridden
+        // for less overhead in subtypes, then this will benefit from it too
+        return stream().iterator();
     }
 
     /**
      * @return this list as a {@link Stream}, if this node does not exist or is JSON {@code null} the stream is empty
      */
     default Stream<E> stream() {
-        return isUndefined() || isEmpty() ? Stream.empty() : StreamSupport.stream( spliterator(), false );
+        return isUndefined() || isEmpty() ? Stream.empty() : indexes().mapToObj( this::get );
     }
-
-    //TODO a way to iterate/stream elements without putting them into cache
 
     /**
      * True, if this list contains all the values provided given each value of the list is transformed by the toValue

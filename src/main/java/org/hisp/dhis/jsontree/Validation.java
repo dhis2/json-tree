@@ -227,6 +227,10 @@ public @interface Validation {
      */
     String pattern() default "";
 
+    // formats are mostly like named patterns,
+    // instead of repeating the pattern the name is given
+    // implying a certain format which is up to the impl
+    // so this only is useful to together with a way of linking names to a @Validation defining the constraints
     //TODO String format() default "";
 
     /*

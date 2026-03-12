@@ -34,7 +34,10 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
 
+import static java.util.Spliterators.iterator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -215,7 +218,7 @@ class JsonTreeTest {
     void testArray_IterateElements() {
         JsonNode root = JsonNode.of( "[ 1,2 , true , false, \"hello\",{},[]]" );
 
-        Iterator<JsonNode> elements = root.elements( false );
+        Iterator<JsonNode> elements = iterator(root.elements( false ));
         JsonNode e0 = elements.next();
         JsonNode e1 = elements.next();
         JsonNode e2 = elements.next();
@@ -233,9 +236,9 @@ class JsonTreeTest {
         assertEquals( "{}", e5.getDeclaration().toString() );
         assertEquals( "[]", e6.getDeclaration().toString() );
 
-        JsonNode e0kept = root.elements( true ).next();
+        JsonNode e0kept = iterator(root.elements( true )).next();
         assertNotSame( e0, e0kept );
-        assertSame( e0kept, root.elements( false ).next() );
+        assertSame( e0kept, iterator(root.elements( false )).next() );
     }
 
     @Test
@@ -325,7 +328,7 @@ class JsonTreeTest {
 
     /**
      * This test might look very much the same as the above but this test avoids accessing the object fields or array
-     * elements before using {@link JsonNode#get(String)} to resolve inner object so that these would not already be in
+     * elements before using {@link JsonNode#get(CharSequence)} to resolve inner object so that these would not already be in
      * the internal map but would need to be resolved by going the path backwards.
      */
     @Test
@@ -375,7 +378,7 @@ class JsonTreeTest {
 
         JsonNode root = doc.get( "$" );
 
-        Iterator<Entry<Text, JsonNode>> members = root.members( false );
+        Iterator<Entry<Text, JsonNode>> members = iterator(root.members( false ));
         Entry<Text, JsonNode> m1 = members.next();
         Entry<Text, JsonNode> m2 = members.next();
         Entry<Text, JsonNode> m3 = members.next();
@@ -391,9 +394,9 @@ class JsonTreeTest {
         assertEquals( "d", m4.getKey().toString() );
         assertEquals( false, m4.getValue().value() );
 
-        JsonNode m1kept = root.members( true ).next().getValue();
+        JsonNode m1kept = iterator(root.members( true )).next().getValue();
         assertNotSame( m1.getValue(), m1kept );
-        assertSame( m1kept, root.members( true ).next().getValue() );
+        assertSame( m1kept, iterator(root.members( true )).next().getValue() );
     }
 
     @Test
