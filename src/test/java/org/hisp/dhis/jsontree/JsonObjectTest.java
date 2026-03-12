@@ -62,9 +62,10 @@ class JsonObjectTest {
     void testNames_Special() {
         //language=json
         String json = """
-            {".":1,"{uid}":2,"[0]": 3}""";
+            {".":1,"{uid}":2,"[0]": 3, "": 4}""";
         JsonMixed value = JsonMixed.of( json );
-        assertEquals( List.of( ".", "{uid}", "[0]" ), value.names() );
+        assertEquals( List.of( ".", "{uid}", "[0]", "" ), value.names() );
+        assertEquals( 4, value.getNumber( Text.of("") ).intValue() );
     }
 
     @Test

@@ -96,8 +96,8 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
     private static JsonNode of( char[] json, JsonNode.GetListener onGet ) {
         JsonTree res = new JsonTree( json, new HashMap<>(), onGet );
-        JsonNode root = res.autoDetect( JsonPath.ROOT, skipWhitespace( res.json, 0 ) );
-        res.nodesByPath.put( JsonPath.ROOT, root );
+        JsonNode root = res.autoDetect( JsonPath.SELF, skipWhitespace( res.json, 0 ) );
+        res.nodesByPath.put( JsonPath.SELF, root );
         return root;
     }
 
@@ -122,7 +122,7 @@ record JsonTree(@Surly char[] json, @Surly HashMap<JsonPath, JsonNode> nodesByPa
 
         @Override
         public final JsonNode getRoot() {
-            return tree.get( JsonPath.ROOT, false );
+            return tree.get( JsonPath.SELF, false );
         }
 
         @Override

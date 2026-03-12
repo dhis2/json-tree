@@ -3,7 +3,10 @@ package org.hisp.dhis.jsontree;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -95,7 +98,7 @@ class JsonPathTest {
 
     @Test
     void testParent_Root() {
-        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.ROOT::parentPath );
+        JsonPathException ex = assertThrowsExactly( JsonPathException.class, JsonPath.SELF::parentPath );
         assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
     }
 
@@ -129,7 +132,7 @@ class JsonPathTest {
     @Test
     void testEmpty() {
         assertTrue( JsonPath.of( "" ).isEmpty() );
-        assertTrue( JsonPath.ROOT.isEmpty() );
+        assertTrue( JsonPath.SELF.isEmpty() );
         assertFalse( JsonPath.of( ".x" ).isEmpty() );
         assertFalse( JsonPath.of( "[0]" ).isEmpty() );
         assertFalse( JsonPath.of( "{x}").isEmpty() );
@@ -137,7 +140,7 @@ class JsonPathTest {
 
     @Test
     void testSize() {
-        assertEquals( 0, JsonPath.ROOT.size() );
+        assertEquals( 0, JsonPath.SELF.size() );
         assertEquals( 0, JsonPath.of( "" ).size() );
         assertEquals( 1, JsonPath.of( ".yeah" ).size() );
         assertEquals( 1, JsonPath.of( "[1234]" ).size() );
@@ -157,13 +160,13 @@ class JsonPathTest {
     @Test
     void testParentPath_Empty() {
         JsonPathException ex = assertThrowsExactly( JsonPathException.class,
-            JsonPath.ROOT::parentPath );
+            JsonPath.SELF::parentPath );
         assertEquals( "Root/self path does not have a parent.", ex.getMessage() );
     }
 
     @Test
     void testParentPath_One() {
-        assertSame( JsonPath.ROOT, JsonPath.of( ".hello" ).parentPath() );
+        assertSame( JsonPath.SELF, JsonPath.of( ".hello" ).parentPath() );
     }
 
     @Test
@@ -200,6 +203,32 @@ class JsonPathTest {
         JsonPathException ex = assertThrowsExactly( JsonPathException.class,
             () -> JsonPath.of( ".x" ).chain( -1 ) );
         assertEquals( "Path array index must be zero or positive but was: -1", ex.getMessage() );
+    }
+
+    @Test
+    void testCompareTo() {
+        List<JsonPath> unsorted = List.of(
+            JsonPath.of( "foo", "bar", "baz" ),
+            JsonPath.of( "fool", "bar", "baz" ),
+            JsonPath.of( "a" ),
+            JsonPath.of( "ear", "bar", "baz" ),
+            JsonPath.SELF,
+            JsonPath.of( "zoo", "keeeeeeeeeeeeperrrrrrrr" ),
+            JsonPath.of( "form" ),
+            JsonPath.of( "ear", "bar" )
+        );
+        TreeSet<JsonPath> sorted = new TreeSet<>( unsorted );
+    assertEquals(
+        """
+        []
+        [a]
+        [form]
+        [ear, bar]
+        [ear, bar, baz]
+        [foo, bar, baz]
+        [fool, bar, baz]
+        [zoo, keeeeeeeeeeeeperrrrrrrr]""",
+        sorted.stream().map(p -> p.segments().toString()).collect( joining("\n")));
     }
 
     private void assertSegments( String path, List<String> expected ) {

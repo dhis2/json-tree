@@ -75,7 +75,7 @@ import static java.lang.Character.toLowerCase;
  */
 final class JsonVirtualTree implements JsonMixed, Serializable {
 
-    public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, JsonPath.ROOT, JsonAccess.GLOBAL );
+    public static final JsonMixed NULL = new JsonVirtualTree( JsonNode.NULL, JsonPath.SELF, JsonAccess.GLOBAL );
 
     private static final Map<Class<?>, List<Property>> PROPERTIES = new ConcurrentHashMap<>();
 
@@ -118,11 +118,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     private transient @Surly JsonAccessors accessors;
 
     public JsonVirtualTree( @Maybe CharSequence json, @Surly JsonAccessors accessors ) {
-        this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), JsonPath.ROOT, accessors);
+        this( json == null || json.isEmpty() ? JsonNode.EMPTY_OBJECT : JsonNode.of( json ), JsonPath.SELF, accessors);
     }
 
     public JsonVirtualTree( @Surly JsonNode root, @Surly JsonAccessors accessors ) {
-        this( root, JsonPath.ROOT, accessors );
+        this( root, JsonPath.SELF, accessors );
     }
 
     private JsonVirtualTree( @Surly JsonNode root, @Surly JsonPath path, @Surly JsonAccessors accessors ) {
@@ -193,7 +193,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
     @Override
     public <T extends JsonValue> T get( Text name, Class<T> as ) {
-        if ( name.isEmpty() ) return as( as );
         return asType( as, new JsonVirtualTree( root, path.chain( name ), accessors) );
     }
 
@@ -346,6 +345,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
             if ( isDefault ) {
                 // call the default method of the proxied type itself
                 return callDefaultMethod( proxy, method, args );
+                //TODO what if we bind to the target for JsonMixed?
             }
             // abstract extending interface method?
             return callAbstractMethod( target, method, args );
@@ -484,7 +484,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     private static List<Property> componentProperties(Class<? extends Record> of) {
         return Stream.of( of.getRecordComponents() )
             .map( c ->  new JsonObject.Property(
-                of, c.getName(), JsonMixed.class, c.getName(), c.getAnnotatedType(), c ))
+                of, Text.of(c.getName()), JsonMixed.class, c.getName(), c.getAnnotatedType(), c ))
             .toList();
     }
 
@@ -498,7 +498,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                     Text name = (Text) args[0];
                     @SuppressWarnings( "unchecked" )
                     Class<? extends JsonValue> type = (Class<? extends JsonValue>) args[1];
-                    res.add( new Property( in, name.toString(), type, m.getName(), m.getAnnotatedReturnType(), m ) );
+                    res.add( new Property( in, name, type, m.getName(), m.getAnnotatedReturnType(), m ) );
                 }
             });
             invokePropertyMethod( obj, m ); // may add zero, one or more properties via the callback

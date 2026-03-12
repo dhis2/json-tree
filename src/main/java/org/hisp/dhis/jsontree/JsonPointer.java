@@ -15,12 +15,12 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 public record JsonPointer(String value) {
 
     public JsonPath decode() {
-        if (value.isEmpty()) return JsonPath.ROOT;
+        if (value.isEmpty()) return JsonPath.SELF;
         Text path = Text.of( value );
         int start = 1; // Skip the leading '/'
         int end = path.indexOf( '/', start );
         if (end < 0) return JsonPath.of( decode( path.subSequence( start, path.length() ) ) );
-        JsonPath res = JsonPath.ROOT;
+        JsonPath res = JsonPath.SELF;
         while (end >= 0) {
             res = res.chain( decode(path.subSequence( start, end )) );
             start = end + 1;

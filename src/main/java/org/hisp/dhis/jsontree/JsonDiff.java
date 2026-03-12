@@ -343,7 +343,8 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
     Map<String, PropertyInfo> res = new HashMap<>();
     for (JsonObject.Property p : properties) {
       PropertyInfo info = propertyOf(p.javaType());
-      if (info != PropertyInfo.NONE) res.put(p.jsonName(), info);
+      //TODO use Text
+      if (info != PropertyInfo.NONE) res.put(p.jsonName().toString(), info);
     }
     return Map.copyOf(res);
   }

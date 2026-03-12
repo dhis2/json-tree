@@ -45,12 +45,12 @@ import java.util.Objects;
  * @param parent null in case there is no parent (1st segment does not explicitly point to empty path)
  * @param segment null in case of this being the root (empty path)
  */
-public record JsonPath(JsonPath parent, Text segment) {
+public record JsonPath(JsonPath parent, Text segment) implements Comparable<JsonPath> {
 
     /**
-     * The empty path pointing to the root or self
+     * The empty path pointing to itself
      */
-    public static final JsonPath ROOT = new JsonPath( null, null );
+    public static final JsonPath SELF = new JsonPath( null, null );
 
     /**
      * "Parse" a path {@link String} into its {@link JsonPath} form
@@ -60,14 +60,13 @@ public record JsonPath(JsonPath parent, Text segment) {
      * @throws JsonPathException when the path cannot be split into segments as it is not a valid path
      */
     public static JsonPath of( CharSequence path ) {
-        if (path.isEmpty()) return ROOT;
+        if (path.isEmpty()) return SELF;
         if (path instanceof Text t) return new JsonPath( null, t );
-        //TODO write a test that checks if an object with a member using the empty string as member name works
         return splitPath( null, Text.of( path ) );
     }
 
     public static JsonPath of(CharSequence...segments) {
-        if (segments.length == 0) return ROOT;
+        if (segments.length == 0) return SELF;
         JsonPath res = new JsonPath(null, Text.of(segments[0] ));
         for (int i = 1; i < segments.length; i++)
             res = res.chain( Text.of( segments[i] ) );
@@ -151,7 +150,7 @@ public record JsonPath(JsonPath parent, Text segment) {
   public JsonPath parentPath() {
         if ( isEmpty() )
             throw new JsonPathException( this, "Root/self path does not have a parent." );
-        return parent == null ? ROOT : parent;
+        return parent == null ? SELF : parent;
     }
 
     /**
@@ -175,6 +174,33 @@ public record JsonPath(JsonPath parent, Text segment) {
     public int size() {
         if (isEmpty()) return 0;
         return parent == null ? 1 : parent.size() + 1;
+    }
+
+    @Override
+    public int compareTo( JsonPath b ) {
+        JsonPath a = this;
+        if (a.segment == null && b.segment == null) return 0;
+        if (a.segment == null) return -1;
+        if (b.segment == null) return 1;
+        if (a.parent == null && b.parent == null) return a.segment.compareTo( b.segment );
+        if (a.parent == null) return -1;
+        if (b.parent == null) return 1;
+        int aLen = a.size();
+        int bLen = b.size();
+        if (aLen == bLen) {
+            int res = a.parent.compareTo( b.parent );
+            return res != 0 ? res : a.segment.compareTo( b.segment );
+        } else if (aLen < bLen) {
+            for (int i = 0; i < bLen-aLen; i++) b = b.parent;
+            int res = a.parent.compareTo( b.parent );
+            if (res == 0) res = a.segment.compareTo( b.segment );
+            return res != 0 ? res : -1;
+        } else {
+            for (int i = 0; i < aLen-bLen; i++) a = a.parent;
+            int res = a.parent.compareTo( b.parent );
+            if (res == 0) res = a.segment.compareTo( b.segment );
+            return res != 0 ? res : 1;
+        }
     }
 
     @Override

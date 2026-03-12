@@ -62,7 +62,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
      * @param source   the underlying method that declared the property
      * @since 1.4
      */
-    record Property(Class<?> in, String jsonName, Class<? extends JsonValue> jsonType,
+    record Property(Class<?> in, Text jsonName, Class<? extends JsonValue> jsonType,
                     String javaName, AnnotatedType javaType, AnnotatedElement source) {}
 
     /**

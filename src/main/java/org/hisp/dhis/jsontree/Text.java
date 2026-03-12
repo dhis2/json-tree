@@ -13,7 +13,7 @@ import java.util.Arrays;
  * @author Jan Bernitt
  * @since 1.9
  */
-public interface Text extends CharSequence {
+public interface Text extends CharSequence, Comparable<Text> {
 
     /**
      * @see String#indexOf(int)
@@ -88,11 +88,11 @@ public interface Text extends CharSequence {
         if (infix.isEmpty()) return 0;
         // find + match
         int fLen = infix.length();
-        int mLen = length();
+        int mLen = endIndex - startIndex;
         if (fLen > mLen) return -1;
         char f0 = infix.charAt( 0 );
         int m0 = indexOf( f0, startIndex, endIndex );
-        while (m0 >=0 && m0+fLen <= mLen)  {
+        while (m0 >=0 && m0+fLen <= endIndex)  {
             if (regionMatches( m0, infix )) return m0;
             m0 = indexOf( f0, m0+1, endIndex );
         }
@@ -103,14 +103,14 @@ public interface Text extends CharSequence {
      * @see String#lastIndexOf(String)
      */
     default int lastIndexOf(CharSequence infix) {
-        return lastIndexOf( infix, 0, length() );
+        return lastIndexOf( infix, length()-1, 0 );
     }
 
     /**
      * @see String#lastIndexOf(String, int)
      */
     default int lastIndexOf(CharSequence infix, int startIndex) {
-        return lastIndexOf( infix, startIndex, length() );
+        return lastIndexOf( infix, startIndex, 0 );
     }
 
     default int lastIndexOf(CharSequence infix, int startIndex, int endIndex) {
@@ -118,11 +118,11 @@ public interface Text extends CharSequence {
         if (infix.isEmpty()) return 0;
         // find + match
         int fLen = infix.length();
-        int mLen = length();
+        int mLen = startIndex - endIndex + 1;
         if (fLen > mLen) return -1;
         char f0 = infix.charAt( 0 );
         int m0 = lastIndexOf( f0, startIndex, endIndex );
-        while (m0 >=0 && m0+fLen <= mLen)  {
+        while (m0 >= endIndex)  {
             if (regionMatches( m0, infix )) return m0;
             m0 = lastIndexOf( f0, m0-1, endIndex );
         }
@@ -231,6 +231,16 @@ public interface Text extends CharSequence {
         return neg ? -n : n;
     }
 
+    @Override
+    default int compareTo( Text other ) {
+        int n = Math.min( length(), other.length() );
+        for (int k = 0; k < n; k++) {
+            int res = charAt(k) - other.charAt(k);
+            if (res != 0) return res;
+        }
+        return length() - other.length();
+    }
+
     /**
      * @implNote All classes implementing {@link Text} must implement {@code equals} using the
      *     equivalent of {@link #contentEquals(CharSequence)} for instances of {@link Text}, arguments
@@ -294,6 +304,7 @@ public interface Text extends CharSequence {
             @Override
             public Slice subSequence( int start, int end ) {
                 checkSubSequence( start, end, length );
+                if (start == 0 && end == length) return this;
                 return new Slice(buffer, offset+start, end - start);
             }
 

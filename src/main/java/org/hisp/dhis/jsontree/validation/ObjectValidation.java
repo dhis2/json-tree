@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree.validation;
 
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonValue;
+import org.hisp.dhis.jsontree.Text;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validator;
@@ -58,8 +59,8 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
  */
 record ObjectValidation(
     @Surly Class<?> schema,
-    @Surly Map<String, Type> types,
-    @Surly Map<String, PropertyValidation> properties) {
+    @Surly Map<Text, Type> types,
+    @Surly Map<Text, PropertyValidation> properties) {
 
     /**
      * Cache for all validation applied to a particular object schema.
@@ -94,10 +95,10 @@ record ObjectValidation(
     }
 
     private static ObjectValidation createInstance( Class<?> schema, List<JsonObject.Property> properties ) {
-        Map<String, PropertyValidation> validations = new HashMap<>();
-        Map<String, Type> types = new HashMap<>();
+        Map<Text, PropertyValidation> validations = new HashMap<>();
+        Map<Text, Type> types = new HashMap<>();
         properties.stream().filter( ObjectValidation::isNotIgnored ).forEach( p -> {
-            validations.put(p.jsonName(), fromProperty( p ));
+            validations.put( p.jsonName(), fromProperty( p ));
             types.put( p.jsonName(), p.javaType().getType() );
         } );
         return new ObjectValidation( schema, Map.copyOf( types ), Map.copyOf( validations ) );

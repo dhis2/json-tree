@@ -12,7 +12,7 @@ class JsonPointerTest {
 
     @Test
     void rootPointer_shouldReturnRootPath() {
-        assertEquals(JsonPath.ROOT, new JsonPointer("").decode());
+        assertEquals(JsonPath.SELF, new JsonPointer("").decode());
     }
 
     @Test

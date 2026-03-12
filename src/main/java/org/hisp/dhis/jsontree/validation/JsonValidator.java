@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree.validation;
 
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
+import org.hisp.dhis.jsontree.JsonPath;
 import org.hisp.dhis.jsontree.JsonPathException;
 import org.hisp.dhis.jsontree.JsonSchemaException;
 import org.hisp.dhis.jsontree.JsonSchemaException.Info;
@@ -47,9 +48,9 @@ public final class JsonValidator {
         //TODO add a fail-fast (1st error) mode
         //TODO strict types vs convertable types mode
 
-        for ( Map.Entry<String, Validation.Validator> e : validator.properties().entrySet() ) {
-            JsonValue property = value.asObject().get( e.getKey() );
-            e.getValue().validate( property.as( JsonMixed.class ), errors::add );
+        for ( Map.Entry<JsonPath, Validation.Validator> e : validator.properties().entrySet() ) {
+            JsonMixed property = value.asObject().get( e.getKey(), JsonMixed.class );
+            e.getValue().validate( property, errors::add );
         }
         if ( !rules.isEmpty() )
             errors = errors.stream().filter( e -> rules.contains( e.rule() ) ).toList();
