@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.TerminalOp;
+
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 
 /**
@@ -42,6 +44,7 @@ public interface JsonNumber extends JsonPrimitive {
    * @return numeric value of the property or {@code null} when this property is undefined or
    *     defined as JSON {@code null}.
    */
+  @TerminalOp(canBeUndefined = true)
   Number number();
 
   /**
@@ -49,6 +52,7 @@ public interface JsonNumber extends JsonPrimitive {
    *     property is undefined or defined as JSON {@code null}.
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default Integer integer() {
     return isUndefined() ? null : intValue();
   }
@@ -60,6 +64,7 @@ public interface JsonNumber extends JsonPrimitive {
    * @throws ClassCastException in case the value is not of the default type
    */
   @SuppressWarnings("unchecked")
+  @TerminalOp(canBeUndefined = true)
   default <T extends Number> T number(T orDefault) {
     return isUndefined() ? orDefault : (T) number();
   }
@@ -71,6 +76,7 @@ public interface JsonNumber extends JsonPrimitive {
    * @throws NullPointerException in case this node is defined as JSON null
    * @see #intValue(int)
    */
+  @TerminalOp
   default int intValue() {
     Number res = number();
     if (res != null) return res.intValue();
@@ -83,6 +89,7 @@ public interface JsonNumber extends JsonPrimitive {
    * @return this number node's value as an integer or the given default if it is undefined
    * @throws JsonTreeException in case this node is not a number node
    */
+  @TerminalOp(canBeUndefined = true)
   default int intValue(int orDefault) {
     return isUndefined() ? orDefault : intValue();
   }
@@ -93,6 +100,7 @@ public interface JsonNumber extends JsonPrimitive {
    * @throws JsonTreeException in case this node is not a number node
    * @throws NullPointerException in case this node is defined as JSON null
    */
+  @TerminalOp
   default long longValue() {
     Number res = number();
     if (res != null) return res.longValue();
@@ -106,6 +114,7 @@ public interface JsonNumber extends JsonPrimitive {
    * @throws JsonTreeException in case this node is not a number node
    * @throws NullPointerException in case this node is defined as JSON null
    */
+  @TerminalOp
   default float floatValue() {
     Number res = number();
     if (res != null) return res.floatValue();
@@ -119,6 +128,7 @@ public interface JsonNumber extends JsonPrimitive {
    * @throws JsonTreeException in case this node is not a number node
    * @throws NullPointerException in case this node is defined as JSON null
    */
+  @TerminalOp
   default double doubleValue() {
     Number res = number();
     if (res != null) return res.doubleValue();

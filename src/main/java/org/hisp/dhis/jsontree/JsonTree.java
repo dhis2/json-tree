@@ -35,8 +35,11 @@ import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterator.SIZED;
 import static java.util.Spliterators.spliteratorUnknownSize;
 import static org.hisp.dhis.jsontree.Chars.expectChar;
-import static org.hisp.dhis.jsontree.Chars.expectChars;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
+import static org.hisp.dhis.jsontree.Chars.expectFalse;
+import static org.hisp.dhis.jsontree.Chars.expectMoreChar;
+import static org.hisp.dhis.jsontree.Chars.expectNull;
+import static org.hisp.dhis.jsontree.Chars.expectTrue;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -148,7 +151,7 @@ record JsonTree(
     }
 
     @Override
-    public boolean exists(JsonPath subPath) {
+    public boolean exists(@NotNull JsonPath subPath) {
       return tree.exists(path.concat(subPath));
     }
 
@@ -432,6 +435,13 @@ record JsonTree(
     }
 
     @Override
+    public boolean isMember(@NotNull Text name) {
+      if (isEmpty()) return false;
+      if (tree.nodesByPath.containsKey(path.chain(name))) return true;
+      return super.isMember(name);
+    }
+
+    @Override
     public Iterable<JsonPath> paths() {
       return keys(path::chain);
     }
@@ -527,7 +537,7 @@ record JsonTree(
     }
 
     @Override
-    public JsonNode getOrNull(JsonPath subPath) throws JsonTreeException {
+    public JsonNode getOrNull(@NotNull JsonPath subPath) throws JsonTreeException {
       if (subPath.isHead()) return getOrNull(subPath.segment());
       return tree.get(path.concat(subPath), true);
     }
@@ -848,6 +858,7 @@ record JsonTree(
   -------------------------------------------------------------------------*/
 
   static int skipNodeAutodetect(char[] json, int offset) {
+    expectMoreChar(json, offset);
     return switch (json[offset]) {
       case '{' -> // object node
           skipObject(json, offset);
@@ -924,17 +935,17 @@ record JsonTree(
 
   private static int expectCommaOrEnd(char[] json, int offset, char end) {
     offset = skipWhitespace(json, offset);
-    if (json[offset] == ',') return skipWhitespace(json, offset + 1);
-    if (json[offset] != end) return expectChar(json, offset, end); // causes fail
+    if (offset < json.length && json[offset] == ',') return skipWhitespace(json, offset + 1);
+    if (offset >= json.length || json[offset] != end) return expectChar(json, offset, end); // causes fail
     return offset; // found end, return index pointing to it
   }
 
   private static int skipBoolean(char[] json, int offset) {
-    return expectChars(json, offset, json[offset] == 't' ? "true" : "false");
+    return json[offset] == 't' ? expectTrue(json, offset) : expectFalse(json, offset);
   }
 
   private static int skipNull(char[] json, int offset) {
-    return expectChars(json, offset, "null");
+    return expectNull(json, offset);
   }
 
   private static int skipString(char[] json, int offset) {
@@ -946,7 +957,7 @@ record JsonTree(
         // found the end (if escaped we would have hopped over)
         return index;
       } else if (c == '\\') {
-        Chars.expectEscapedCharacter(json, index);
+        Chars.expectEscapableCharacter(json, index);
         // hop over escaped char or unicode
         index += json[index] == 'u' ? 5 : 1;
       } else if (c < ' ') {

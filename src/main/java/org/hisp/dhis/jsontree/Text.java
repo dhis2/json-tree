@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.NotNull;
+
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -180,7 +182,7 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   @Override
-  default Text subSequence(int start, int end) {
+  default @NotNull Text subSequence(int start, int end) {
     checkSubSequence(start, end, length());
     if (start == 0 && end == length()) return this;
     int len = end - start;
@@ -200,7 +202,7 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return true, if the text is a signed or unsigned integer value
+   * @return true, if the text is a signed or unsigned integer value (any range)
    */
   default boolean isInt() {
     if (isEmpty()) return false;
@@ -211,8 +213,7 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return this text parsed to an integer
-   * @throws NumberFormatException in case the text is not a valid integer
+   * @see Integer#parseInt(String)
    */
   default int parseInt() {
     if (!isInt()) throw new NumberFormatException("Not a number: " + this);
@@ -226,6 +227,28 @@ public interface Text extends CharSequence, Comparable<Text> {
       n += charAt(i) - '0';
     }
     return neg ? -n : n;
+  }
+
+  default long parseLong() {
+    if (!isInt()) throw new NumberFormatException("Not a number: " + this);
+    boolean neg = charAt(0) == '-';
+    int i = 0;
+    if (neg || charAt(0) == '+') i++;
+    long n = 0;
+    int end = length();
+    for (; i < end; i++) {
+      n *= 10;
+      n += charAt(i) - '0';
+    }
+    return neg ? -n : n;
+  }
+
+  /**
+   * @see Double#parseDouble(String)
+   */
+  default double parseDouble() {
+    char[] str = toCharArray();
+    return Chars.parseDouble(str, 0, str.length);
   }
 
   /**
@@ -253,6 +276,18 @@ public interface Text extends CharSequence, Comparable<Text> {
    *     Text#hashCode(Text)}.
    */
   int hashCode();
+
+  /**
+   * @param other another instance to compare to
+   * @return true, if the characters of this and the given text are both backed by what the JVM
+   *     considers the same "object" instance. This does not imply that the characters exposed by
+   *     the two {@link Text} instances are observed as being equal. They only both prevent the GC
+   *     of the same underlying storage instance. Or in other words, they share memory without being
+   *     necessarily observed as equal.
+   */
+  default boolean contentMemoryEquals(@NotNull Text other) {
+    return false;
+  }
 
   static Text copyOf(Text text) {
     return of(text.toCharArray(), 0, text.length());
@@ -302,7 +337,7 @@ public interface Text extends CharSequence, Comparable<Text> {
       }
 
       @Override
-      public Slice subSequence(int start, int end) {
+      public @NotNull Slice subSequence(int start, int end) {
         checkSubSequence(start, end, length);
         if (start == 0 && end == length) return this;
         return new Slice(buffer, offset + start, end - start);
@@ -318,6 +353,16 @@ public interface Text extends CharSequence, Comparable<Text> {
       public int parseInt() {
         if (!isInt()) throw new NumberFormatException("Not a number: " + this);
         return Chars.parseInt(buffer, offset, length);
+      }
+
+      @Override
+      public long parseLong() {
+        if (!isInt()) throw new NumberFormatException("Not a number: " + this);
+        return Chars.parseLong(buffer, offset, length);      }
+
+      @Override
+      public double parseDouble() {
+        return Chars.parseDouble(buffer, offset, length);
       }
 
       @Override
@@ -346,12 +391,17 @@ public interface Text extends CharSequence, Comparable<Text> {
       }
 
       @Override
+      public boolean contentMemoryEquals(@NotNull Text other) {
+        return other instanceof Slice s && s.buffer == buffer;
+      }
+
+      @Override
       public char[] toCharArray() {
         return Arrays.copyOfRange(buffer, offset, offset + length);
       }
 
       @Override
-      public String toString() {
+      public @NotNull String toString() {
         return length == 1 ? String.valueOf(buffer[offset]) : new String(buffer, offset, length);
       }
     }

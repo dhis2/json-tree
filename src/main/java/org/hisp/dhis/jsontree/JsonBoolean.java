@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.TerminalOp;
+
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 
 /**
@@ -42,6 +44,7 @@ public interface JsonBoolean extends JsonPrimitive {
    * @return boolean value of the property or {@code null} when this property is undefined or
    *     defined as JSON {@code null}.
    */
+  @TerminalOp(canBeUndefined = true)
   Boolean bool();
 
   /**
@@ -49,6 +52,7 @@ public interface JsonBoolean extends JsonPrimitive {
    * @return the boolean value of this node or the default if it is undefined or null
    * @throws JsonTreeException in case this node exist but is not a boolean node (or null)
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean booleanValue(boolean orDefault) {
     return isUndefined() ? orDefault : booleanValue();
   }
@@ -61,6 +65,7 @@ public interface JsonBoolean extends JsonPrimitive {
    * @throws JsonPathException when this value is not defined in the JSON content or defined JSON
    *     {@code null}.
    */
+  @TerminalOp
   default boolean booleanValue() {
     Boolean res = bool();
     if (res != null) return res;

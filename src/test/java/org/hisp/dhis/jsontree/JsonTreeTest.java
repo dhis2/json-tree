@@ -53,6 +53,20 @@ import org.junit.jupiter.api.Test;
 class JsonTreeTest {
 
   @Test
+  void testStringNode_MemorySharing() {
+    JsonNode node = JsonNode.of( //language=json
+        """
+        {
+          "foo": "bar",
+          "a": "b"
+        }""");
+    for (Entry<Text, JsonNode> member : node.members()) {
+      assertTrue(node.getDeclaration().contentMemoryEquals(member.getKey()));
+      assertTrue(node.getDeclaration().contentMemoryEquals((Text) member.getValue().value()));
+    }
+  }
+
+  @Test
   void testStringNode() {
     JsonNode node = JsonNode.of("\"hello\"");
     assertEquals(JsonNodeType.STRING, node.getType());

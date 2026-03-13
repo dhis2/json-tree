@@ -595,6 +595,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
       if (value.isArray()) {
+        //TODO toMinimizedJson is simple but costly
         List<String> elementsAsJson =
             value.asList(JsonValue.class).toList(JsonValue::toMinimizedJson);
         for (int i = 0; i < elementsAsJson.size(); i++) {

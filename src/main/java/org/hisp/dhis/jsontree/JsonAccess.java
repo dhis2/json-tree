@@ -238,7 +238,7 @@ public final class JsonAccess implements JsonAccessors {
     if (number.isUndefined()) return null;
     if (number.isNumber()) return as.apply(number.number());
     if (number.isString())
-      return as.apply(Double.parseDouble(number.as(JsonString.class).string()));
+      return as.apply(number.as(JsonString.class).text().parseDouble());
     if (number.isBoolean()) return as.apply(number.as(JsonBoolean.class).booleanValue() ? 1 : 0);
     throw new JsonAccessException("JSON does not map to a Java Number: " + number);
   }
@@ -327,7 +327,7 @@ public final class JsonAccess implements JsonAccessors {
     JsonAccessor<?> keyAccess = accessors.accessor(rawKeyType);
     Function<Text, ?> toKey =
         name ->
-            keyAccess.access(Json.of(name.toString()).as(JsonMixed.class), rawKeyType, accessors);
+            keyAccess.access(Json.of(name).as(JsonMixed.class), rawKeyType, accessors);
     @SuppressWarnings({"rawtypes", "unchecked"})
     Map<Object, Object> res = rawKeyType.isEnum() ? new EnumMap(rawKeyType) : new LinkedHashMap<>();
     map.entries()

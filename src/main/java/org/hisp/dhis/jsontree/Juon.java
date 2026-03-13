@@ -51,9 +51,9 @@ record Juon(char[] juon, StringBuilder json) {
   }
 
   static String createObject(Format format, Consumer<JsonBuilder.JsonObjectBuilder> obj) {
-    JuonAppender bld = new JuonAppender(format);
-    bld.addObject(obj);
-    return bld.toString();
+    JuonAppender res = new JuonAppender(format);
+    res.addObject(obj);
+    return res.toString();
   }
 
   static String createArray(Consumer<JsonBuilder.JsonArrayBuilder> arr) {
@@ -61,9 +61,9 @@ record Juon(char[] juon, StringBuilder json) {
   }
 
   static String createArray(Format format, Consumer<JsonBuilder.JsonArrayBuilder> arr) {
-    JuonAppender bld = new JuonAppender(format);
-    bld.addArray(arr);
-    return bld.toString();
+    JuonAppender res = new JuonAppender(format);
+    res.addArray(arr);
+    return res.toString();
   }
 
   /**

@@ -30,7 +30,7 @@ public interface Json {
     return JsonMixed.of(JsonNode.NULL);
   }
 
-  static JsonString of(String value) {
+  static JsonString of(CharSequence value) {
     return JsonMixed.of(JsonBuilder.createString(value));
   }
 

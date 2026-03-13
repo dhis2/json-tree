@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.TerminalOp;
+
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -45,6 +47,7 @@ import java.util.stream.StreamSupport;
 public interface JsonArray extends JsonAbstractArray<JsonValue> {
 
   @Override
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Stream<JsonValue> stream() {
     return stream(true);
   }
@@ -57,6 +60,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    *     iterate without keeping references to them further on so GC can pick em up
    * @since 1.9
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Stream<JsonValue> stream(boolean remember) {
     if (isUndefined() || isEmpty()) return Stream.empty();
     JsonAccessors accessors = getAccessors();
@@ -79,20 +83,24 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    * @return the array elements as a uniform list of {@link String}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   List<String> stringValues();
 
   /**
    * @return the array elements as a uniform list of {@link Number}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   List<Number> numberValues();
 
   /**
    * @return the array elements as a uniform list of {@link Boolean}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   List<Boolean> boolValues();
 
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <E> List<E> values(Function<String, E> mapper) {
     return stringValues().stream().map(mapper).toList();
   }

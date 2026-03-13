@@ -76,12 +76,16 @@ final class Chars {
     int end = offset + length;
     int n = 0;
     if (buffer[i] == '-' || buffer[i] == '+') i++;
+    boolean dotSeen = false;
     while (i < end && buffer[i] == '0') i++; // ignore leading 0
     for (; i < end; i++) {
       char c = buffer[i];
       if (isDigit(c)) {
         n++;
-      } else if (c != '.') return false;
+      } else if (c == '.') {
+        if (dotSeen) return false; // 2nd .
+        dotSeen = true;
+      } else return false;
     }
     return n <= 15;
   }
@@ -142,12 +146,12 @@ final class Chars {
       char c = json[index++];
       if (c == '"') {
         // found the end (if escaped we would have hopped over)
-        if (length == index - 1 - offset) // no escaping used
-        return Text.of(json, offset + 1, length);
+        if (length == index - 2 - offset) // no escaping used
+          return Text.of(json, offset + 1, length);
         // did use escaping...
         return parseStringWithEscaping(json, offset + 1, length);
       } else if (c == '\\') {
-        expectEscapedCharacter(json, index);
+        expectEscapableCharacter(json, index);
         // hop over escaped char or unicode
         if (json[index] == 'u') {
           int cp = parseCodePoint(json, index + 1);
@@ -237,20 +241,41 @@ final class Chars {
   Error handling
    */
 
-  static int expectChars(char[] json, int offset, CharSequence expected) {
-    int length = expected.length();
-    for (int i = 0; i < length; i++) {
-      expectChar(json, offset + i, expected.charAt(i));
-    }
-    return offset + length;
+  static int expectNull(char[] json, int offset) {
+    expectChar(json, offset++, 'n');
+    expectChar(json, offset++, 'u');
+    expectChar(json, offset++, 'l');
+    expectChar(json, offset++, 'l');
+    return offset;
+  }
+
+  static int expectTrue(char[] json, int offset) {
+    expectChar(json, offset++, 't');
+    expectChar(json, offset++, 'r');
+    expectChar(json, offset++, 'u');
+    expectChar(json, offset++, 'e');
+    return offset;
+  }
+
+  static int expectFalse(char[] json, int offset) {
+    expectChar(json, offset++, 'f');
+    expectChar(json, offset++, 'a');
+    expectChar(json, offset++, 'l');
+    expectChar(json, offset++, 's');
+    expectChar(json, offset++, 'e');
+    return offset;
   }
 
   static int expectDigit(char[] json, int offset) {
+    expectMoreChar(json, offset);
+    if (!isDigit(json[offset])) throw new JsonFormatException(json, offset, '#');
+    return offset + 1;
+  }
+
+  static void expectMoreChar(char[] json, int offset) {
     if (offset >= json.length)
       throw new JsonFormatException(
           "Expected character but reached EOI: " + getEndSection(json, offset));
-    if (!isDigit(json[offset])) throw new JsonFormatException(json, offset, '#');
-    return offset + 1;
   }
 
   static int expectChar(char[] json, int offset, char expected) {
@@ -261,10 +286,8 @@ final class Chars {
     return offset + 1;
   }
 
-  static void expectEscapedCharacter(char[] json, int offset) {
-    if (offset >= json.length)
-      throw new JsonFormatException(
-          "Expected escaped character but reached EOI: " + getEndSection(json, offset));
+  static void expectEscapableCharacter(char[] json, int offset) {
+    expectMoreChar(json, offset);
     if (!isEscapableCharacter(json[offset]))
       throw new JsonFormatException(
           json, offset, "Illegal escaped string character: " + json[offset]);

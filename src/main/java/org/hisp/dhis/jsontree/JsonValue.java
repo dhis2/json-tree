@@ -39,6 +39,7 @@ import java.util.function.Predicate;
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which is representing an
@@ -166,6 +167,7 @@ public interface JsonValue {
    *     or the conversion is not possible from the actual JSON value
    * @since 1.9
    */
+  @TerminalOp
   <T> T to(Class<T> type) throws JsonAccessException;
 
   /**
@@ -173,6 +175,7 @@ public interface JsonValue {
    * @since 0.11
    */
   @CheckNull
+  @TerminalOp(canBeUndefined = true)
   default JsonNodeType type() {
     return !exists() ? null : node().getType();
   }
@@ -183,12 +186,14 @@ public interface JsonValue {
    *
    * @return true, if the value exists, else false
    */
+  @TerminalOp(canBeUndefined = true)
   boolean exists();
 
   /**
    * @return true if the value exists and is defined JSON {@code null}
    * @throws JsonPathException in case this value does not exist in the JSON document
    */
+  @TerminalOp(canBeNull = true)
   default boolean isNull() {
     return type() == JsonNodeType.NULL;
   }
@@ -197,6 +202,7 @@ public interface JsonValue {
    * @return true if this JSON node either does not exist at all or is defined as JSON {@code null},
    *     otherwise false
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isUndefined() {
     return !exists() || isNull();
   }
@@ -205,6 +211,7 @@ public interface JsonValue {
    * @return true if the value exists and is a JSON array node (empty or not) but not JSON {@code
    *     null}
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isArray() {
     return type() == JsonNodeType.ARRAY;
   }
@@ -213,6 +220,7 @@ public interface JsonValue {
    * @return true if the value exists and is an JSON object node (empty or not) but not JSON {@code
    *     null}
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isObject() {
     return type() == JsonNodeType.OBJECT;
   }
@@ -221,6 +229,7 @@ public interface JsonValue {
    * @return true if the value exists and is an JSON number node (not JSON {@code null})
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isNumber() {
     return type() == JsonNodeType.NUMBER;
   }
@@ -230,6 +239,7 @@ public interface JsonValue {
    *     fraction of zero
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isInteger() {
     return isNumber() && ((Number) node().value()).doubleValue() % 1d == 0d;
   }
@@ -238,6 +248,7 @@ public interface JsonValue {
    * @return true if the value exists and is an JSON string node (not JSON {@code null})
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isString() {
     return type() == JsonNodeType.STRING;
   }
@@ -246,6 +257,7 @@ public interface JsonValue {
    * @return true if the value exists and is an JSON boolean node (not JSON {@code null})
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isBoolean() {
     return type() == JsonNodeType.BOOLEAN;
   }
@@ -337,6 +349,7 @@ public interface JsonValue {
    *     with the element type
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default <T, V extends JsonValue> List<T> toListFromVarargs(
       Class<V> elementType, Function<V, T> toElement) {
     return isUndefined()
@@ -358,6 +371,7 @@ public interface JsonValue {
    * @return true, if this value represents the same information, else false
    * @since 1.1
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean equivalentTo(JsonValue other) {
     return equivalentTo(this, other, JsonValue::equivalentTo);
   }
@@ -373,20 +387,25 @@ public interface JsonValue {
    * @return true, if this value only differs in formatting from the other value, otherwise false
    * @since 1.1
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean identicalTo(JsonValue other) {
     if (!equivalentTo(this, other, JsonValue::identicalTo)) return false;
     if (isNumber()) return node().getDeclaration().equals(other.node().getDeclaration());
+    //FIXME for identical I guess null != undefined => test here
     if (!isObject()) return true;
     // names must be in same order
     Iterator<Text> it1 = asObject().keys().iterator();
     Iterator<Text> it2 = other.asObject().keys().iterator();
-    while (it1.hasNext() && it2.hasNext()) if (!it1.next().equals(it2.next())) return false;
+    //FIXME must also compare the keys itself => needs test
+    while (it1.hasNext() && it2.hasNext())
+      if (!it1.next().equals(it2.next())) return false;
     return !it1.hasNext() && !it2.hasNext();
   }
 
   private static boolean equivalentTo(
       JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> compare) {
     if (a.type() != b.type()) return false;
+    //FIXME undefined => true? why? I'd think b.isUndefined()
     if (a.isUndefined()) return true; // includes null
     if (a.isString())
       return a.as(JsonString.class).text().contentEquals(b.as(JsonString.class).text());
@@ -414,7 +433,9 @@ public interface JsonValue {
    *     handling the value must be "cast" to the root object type using {@link #as(Class)} prior to
    *     calling this method
    * @return the differences
+   * @throws JsonPathException in case either of the two values compared is undefined
    */
+  @TerminalOp(canBeNull = true)
   default JsonDiff diff(JsonValue with) {
     return diff(with, Mode.DEFAULT);
   }
@@ -428,7 +449,9 @@ public interface JsonValue {
    *     calling this method
    * @param mode of how strict to make the comparison
    * @return the differences
+   * @throws JsonPathException in case either of the two values compared is undefined
    */
+  @TerminalOp(canBeNull = true)
   default JsonDiff diff(JsonValue with, Mode mode) {
     return JsonDiff.of(this, with, mode);
   }
@@ -443,6 +466,7 @@ public interface JsonValue {
    * @return the underlying {@link JsonNode} in the overall JSON document if it exists
    * @throws JsonPathException in case this value does not exist in the JSON document
    */
+  @TerminalOp(canBeNull = true)
   JsonNode node();
 
   /**
@@ -450,6 +474,7 @@ public interface JsonValue {
    * @throws JsonPathException if this node does not exist
    * @since 0.11
    */
+  @TerminalOp(canBeNull = true)
   default String toJson() {
     return node().getDeclaration().toString();
   }
@@ -459,6 +484,7 @@ public interface JsonValue {
    * @throws JsonPathException if this node does not exist
    * @since 0.11
    */
+  @TerminalOp(canBeNull = true)
   default String toMinimizedJson() {
     if (!isObject() && !isArray()) return toJson();
     if (isObject())
@@ -492,6 +518,7 @@ public interface JsonValue {
    * @param <T> type of the object to find
    * @return the first found match or JSON {@code null} object
    */
+  @TerminalOp(canBeUndefined = true)
   default <T extends JsonValue> T find(Class<T> type, Predicate<T> test) {
     if (isUndefined()) return JsonMixed.of("{}").get("notFound", type);
     JsonAccessors accessors = getAccessors();

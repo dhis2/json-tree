@@ -45,6 +45,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.hisp.dhis.jsontree.internal.CheckNull;
+import org.hisp.dhis.jsontree.internal.Language;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
@@ -204,7 +205,7 @@ public interface JsonNode extends Serializable {
    */
   default JsonValue lift(JsonAccessors accessors) {
     JsonVirtualTree root = new JsonVirtualTree(getRoot(), accessors);
-    return isRoot() ? root : root.get(getPath().toString());
+    return isRoot() ? root : root.get(getPath(), JsonValue.class);
   }
 
   /**
@@ -213,7 +214,7 @@ public interface JsonNode extends Serializable {
    */
   @NotNull
   default JsonNode getParent() {
-    return isRoot() ? this : getRoot().get(getPath().parentPath().toString());
+    return isRoot() ? this : getRoot().get(getPath().parentPath());
   }
 
   /**
@@ -329,7 +330,7 @@ public interface JsonNode extends Serializable {
    *     defined JSON {@code null})
    * @since 1.9
    */
-  boolean exists(JsonPath subPath);
+  boolean exists(@NotNull JsonPath subPath);
 
   /**
    * Whether an array or object has no elements or members.
@@ -362,7 +363,7 @@ public interface JsonNode extends Serializable {
    * @throws JsonTreeException if this is not an object node
    * @since 1.9
    */
-  default boolean isMember(Text name) {
+  default boolean isMember(@NotNull Text name) {
     return StreamSupport.stream(keys().spliterator(), false).anyMatch(name::contentEquals);
   }
 
@@ -370,7 +371,7 @@ public interface JsonNode extends Serializable {
    * @see #isMember(Text)
    * @since 0.6
    */
-  default boolean isMember(CharSequence name) {
+  default boolean isMember(@NotNull CharSequence name) {
     return isMember(Text.of(name));
   }
 

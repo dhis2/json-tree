@@ -184,7 +184,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
       case OBJECT -> addObject(name, obj -> value.members().forEach(obj::addMember));
       case ARRAY -> addArray(name, arr -> value.elements().forEach(arr::addElement));
       case NUMBER -> addNumber(name, (Number) value.value());
-      case STRING -> addString(name, value.value().toString());
+      case STRING -> addString(name, (Text) value.value());
       case BOOLEAN -> addBoolean(name, (Boolean) value.value());
       case NULL -> addBoolean(name, null);
     };

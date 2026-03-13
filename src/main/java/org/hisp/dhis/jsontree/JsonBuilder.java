@@ -135,11 +135,11 @@ public interface JsonBuilder {
    * @return JSON string node of the provided Java string value
    * @since 0.11
    */
-  static JsonNode createString(String value) {
+  static JsonNode createString(CharSequence value) {
     if (value == null) return JsonNode.NULL;
     StringBuilder json = new StringBuilder();
     new JsonAppender(MINIMIZED, json).appendEscaped(value);
-    return JsonNode.of(json.toString());
+    return JsonNode.of(json);
   }
 
   /**
@@ -450,7 +450,7 @@ public interface JsonBuilder {
       return addElements(Stream.of(values), JsonArrayBuilder::addNumber);
     }
 
-    default JsonArrayBuilder addStrings(String... values) {
+    default JsonArrayBuilder addStrings(CharSequence... values) {
       return addElements(Stream.of(values), JsonArrayBuilder::addString);
     }
 

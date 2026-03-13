@@ -16,6 +16,8 @@ import org.junit.jupiter.api.Test;
  */
 class JsonObjectTest {
 
+  //TODO test all object methods on nodes of other types => should throw
+
   @Test
   void testSize() {
     assertEquals(0, JsonMixed.of("{}").size());
@@ -109,6 +111,8 @@ class JsonObjectTest {
     assertSame(JsonObject.class, obj.asType());
     assertEquals(List.of("a", "b"), obj.names());
     assertEquals(List.of(1, 2), List.of(obj.get("a").node().value(), obj.get("b").node().value()));
+    assertEquals(1, obj.getNumber("a").intValue());
+    assertTrue(obj.has("a"));
     assertTrue(obj.has("a", "b"));
     assertFalse(obj.has("a", "b", "c"));
   }

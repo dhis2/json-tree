@@ -43,28 +43,28 @@ public final class JsonFormatException extends IllegalArgumentException {
     super(message);
   }
 
-  public JsonFormatException(char[] json, int index, char expected) {
-    this(createParseErrorMessage(json, index, expected));
+  public JsonFormatException(char[] json, int offset, char expected) {
+    this(createParseErrorMessage(json, offset, expected));
   }
 
-  public JsonFormatException(char[] json, int index, String expected) {
-    this(createParseErrorMessage(json, index, expected));
+  public JsonFormatException(char[] json, int offset, String expected) {
+    this(createParseErrorMessage(json, offset, expected));
   }
 
-  private static String createParseErrorMessage(char[] json, int index, char expected) {
+  private static String createParseErrorMessage(char[] json, int offset, char expected) {
     return createParseErrorMessage(
-        json, index, expected == '~' ? "start of value" : "`" + expected + "`");
+        json, offset, expected == '~' ? "start of value" : "`" + expected + "`");
   }
 
-  private static String createParseErrorMessage(char[] json, int index, String expected) {
-    int start = max(0, index - 20);
+  private static String createParseErrorMessage(char[] json, int offset, String expected) {
+    int start = max(0, offset - 20);
     int length = min(json.length - start, 40);
-    String section = new String(json, start, length);
-    char[] pointer = new char[index - start + 1];
+    Text section = Text.of(json, start, length);
+    char[] pointer = new char[offset - start + 1];
     Arrays.fill(pointer, ' ');
     pointer[pointer.length - 1] = '^';
     return String.format(
         "Unexpected character at position %d,%n%s%n%s expected %s",
-        index, section, new String(pointer), expected);
+        offset, section, Text.of(pointer, 0, pointer.length), expected);
   }
 }

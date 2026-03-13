@@ -505,8 +505,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   private void toSignature(Type type, StringBuilder str) {
-    if (type instanceof Class<?>) {
-      str.append(((Class<?>) type).getCanonicalName());
+    if (type instanceof Class<?> ct) {
+      str.append(ct.getCanonicalName());
       return;
     }
     if (type instanceof ParameterizedType pt) {
@@ -539,25 +539,25 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     List<Property> res = new ArrayList<>();
     propertyMethods(of)
         .forEach(
-            m -> {
+            method -> {
               @SuppressWarnings("unchecked")
-              Class<? extends JsonObject> in = (Class<? extends JsonObject>) m.getDeclaringClass();
+              Class<? extends JsonObject> in = (Class<? extends JsonObject>) method.getDeclaringClass();
               JsonObject obj =
                   JsonMixed.of("{}")
                       .as(
                           of,
-                          (method, args) -> {
-                            if (isJsonObjectGetAs(method)) {
+                          (methodViaProxy, args) -> {
+                            if (isJsonObjectGetAs(methodViaProxy)) {
                               Text name = (Text) args[0];
                               @SuppressWarnings("unchecked")
                               Class<? extends JsonValue> type =
                                   (Class<? extends JsonValue>) args[1];
                               res.add(
                                   new Property(
-                                      in, name, type, m.getName(), m.getAnnotatedReturnType(), m));
+                                      in, name, type, method.getName(), method.getAnnotatedReturnType(), method));
                             }
                           });
-              invokePropertyMethod(obj, m); // may add zero, one or more properties via the callback
+              invokePropertyMethod(obj, method); // may add zero, one or more properties via the callback
             });
     return List.copyOf(res);
   }
@@ -572,7 +572,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   private static void invokePropertyMethod(JsonObject obj, Method property) {
     try {
-      MethodHandles.lookup().unreflect(property).invokeWithArguments(obj);
+      MethodHandles.lookup().unreflect(property).asFixedArity().invokeWithArguments(obj);
     } catch (Throwable e) {
       // ignore
     }
@@ -587,8 +587,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
    *     methods are excluded.
    */
   private static boolean isJsonObjectSubTypeProperty(Method m) {
-    return m.isDefault()
-        || Modifier.isAbstract(m.getModifiers())
+    return (m.isDefault()
+        || Modifier.isAbstract(m.getModifiers()))
             && m.getParameterCount() == 0
             && isJsonMixedSubType(m.getDeclaringClass())
             && m.getReturnType() != void.class;
