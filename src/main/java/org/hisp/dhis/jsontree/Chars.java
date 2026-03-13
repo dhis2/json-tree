@@ -24,114 +24,205 @@ import java.util.function.BiFunction;
 final class Chars {
 
   /*
-  Parsing JSON Numbers
+  Parsing JSON Numbers (without allocating)
    */
 
   static Number parseNumber(char[] buffer, int offset, int length) {
-    int endInteger = skipInteger(buffer, offset, length);
-    if (endInteger > 0) {
-      int digits = endInteger - offset;
-      if (digits < 9 || digits < 10 && (buffer[offset] == '-' || buffer[offset] == '+'))
-        return parseInt(buffer, offset, digits);
-      long n = parseLong(buffer, offset, digits);
-      if (n < Integer.MAX_VALUE && n > Integer.MIN_VALUE) return (int) n;
-      return n;
-    }
-    double number = parseDouble(buffer, offset, length);
+    // this is only used for JSON nodes which already did bounds checks
+    double number = parseDoubleNoBoundsCheck(buffer, offset, length);
     if (number % 1 != 0d) return number;
     long n = (long) number;
     if (n < Integer.MAX_VALUE && n > Integer.MIN_VALUE) return (int) n;
     return n;
   }
 
-  static double parseDouble(char[] buffer, int offset, int length) {
-    if (!isExactDouble(buffer, offset, length))
-      return Double.parseDouble(new String(buffer, offset, length));
-    long n = 0;
-    long div = 1;
-    int i = offset;
-    int end = offset + length;
-    boolean neg = buffer[i] == '-';
-    if (neg || buffer[i] == '+') i++;
-    boolean fraction = false;
-    for (; i < end; i++) {
-      char c = buffer[i];
-      if (c == '.') {
-        fraction = true;
-      } else { // must be digit
-        n = n * 10 + (c - '0');
-        if (fraction) div *= 10;
-      }
+  private static final long MAX_SAFE_SIGNIFICAND = ((1L << 53) - 1);
+
+  /** 22 because 5^22 < 2^53 (and 10^k = 2^k * 5^k with any 2^k being exact) */
+  private static final int MAX_EXP = 22;
+
+  private static final double[] POW10 = new double[MAX_EXP + 1];
+
+  static {
+    POW10[0] = 1.0;
+    for (int i = 1; i <= MAX_EXP; i++) {
+      POW10[i] = POW10[i - 1] * 10.0; // exact for i ≤ 22
     }
-    double res = (double) n / (double) div;
-    return neg ? -res : res;
   }
 
   /**
-   * @return true if the number in buffer[offset..offset+length-1] can be parsed exactly using the
-   *     long-division method (i.e., total significant digits ≤ 15).
+   * @see Double#parseDouble(String)
    */
-  static boolean isExactDouble(char[] buffer, int offset, int length) {
-    int i = offset;
+  static double parseDouble(char[] num, int offset, int length) {
+    checkOutOfBounds(num, offset, length);
     int end = offset + length;
-    int n = 0;
-    if (buffer[i] == '-' || buffer[i] == '+') i++;
-    boolean dotSeen = false;
-    while (i < end && buffer[i] == '0') i++; // ignore leading 0
-    for (; i < end; i++) {
-      char c = buffer[i];
-      if (isDigit(c)) {
-        n++;
-      } else if (c == '.') {
-        if (dotSeen) return false; // 2nd .
-        dotSeen = true;
-      } else return false;
+    // strip tailing whitespace
+    while (length > 0 && num[offset + length - 1] <= ' ') length--;
+    // strip leading whitespace
+    while (offset < end && num[offset] <= ' ') {
+      offset++;
+      length--;
     }
-    return n <= 15;
+    return parseDoubleNoBoundsCheck(num, offset, length);
   }
 
-  static int skipInteger(char[] buffer, int offset, int length) {
-    int i = offset;
-    int end = offset + length;
-    if (buffer[i] == '-' || buffer[i] == '+') i++;
-    for (; i < end; i++)
-      if (!isDigit(buffer[i])) {
-        // when number is "ddd.0" we return index of . as the integer end
-        // as the numeric value is an integer
-        if (buffer[i] == '.' && i + 2 == end && buffer[i + 1] == '0') return i;
-        return -1;
+  static double parseDoubleNoBoundsCheck(char[] num, int offset, int length) {
+    int i0 = offset;
+    if (length <= 0) throw numberHasNoDigits(num, i0, 0);
+    if (length == 1) return parseInt(num, i0, length); // can only be a digit or invalid
+    // .# ?
+    if (length == 2 && num[i0] == '.') return parseInt(num, i0 + 1, 1) / 10d;
+    // ###.0+ or just zeros?
+    if (num[i0 + length - 1] == '0') {
+      int i = i0 + length - 1;
+      while (i >= i0 && num[i] == '0') i--;
+      if (i < i0) return 0d;
+      if (num[i] == '.') {
+        if (i0 == i) return 0d;
+        if (i0 + 1 == i && num[i0] == '-') return -0d;
+        if (i0 + 1 == i && num[i0] == '+') return 0d;
+        long n = parseLong(num, i0, i - i0);
+        // OBS: double has -0 and 0, long does not, so we have to restore -
+        return n == 0L && num[i0] == '-' ? -0d : n;
       }
-    return i;
+      if (i == i0 && num[i] == '-') return -0d;
+      if (i == i0 && num[i] == '+') return 0d;
+    }
+    // NaN
+    if (num[i0] == 'N') return parseDoubleNaN(num, i0, length);
+    // Infinity
+    if (num[i0] == 'I') return parseDoubleInfinity(num, i0, length);
+    // -Infinity
+    if (num[i0] == '-' && num[i0 + 1] == 'I') return -parseDoubleInfinity(num, i0 + 1, length - 1);
+
+    // a longer number, find the exponent index
+    int eOffset = skipToExponent(num, i0, length);
+    // compute the significand
+    long significand = 0;
+    int digits = 0;
+    int leadingZeros = 0;
+    int decimals = 0;
+    int i = i0;
+    int end = eOffset < 0 ? i0 + length : offset + eOffset;
+    boolean neg = num[i] == '-';
+    if (neg || num[i] == '+') i++;
+    boolean seenDot = false;
+    for (; i < end; i++) {
+      char c = num[i];
+      if (c == '.') {
+        if (seenDot) throw notANumber(num, i0, length, "Number contains multiple dots: ");
+        seenDot = true;
+      } else if (isDigit(c)) {
+        if (c == '0' && digits == leadingZeros) leadingZeros++;
+        digits++;
+        significand = significand * 10 + (c - '0');
+        if (seenDot) decimals++;
+      } else throw notANumber(num, i0, length, "Number contains illegal characters: ");
+    }
+    if (digits == 0)
+      throw notANumber(num, i0, length, "Number must have digits before the exponent but was: ");
+    // fast path requires max of 15 significand digits and only allows for exp up to 4 characters
+    // including sign
+    int expLen = eOffset < 0 ? 0 : length - eOffset - 1;
+    if (digits - leadingZeros <= 15 && expLen <= 4) {
+      int exp = eOffset < 0 ? 0 : parseInt(num, offset + eOffset + 1, expLen);
+      // compute effective exponent
+      exp -= decimals;
+      if (significand <= MAX_SAFE_SIGNIFICAND && Math.abs(exp) <= MAX_EXP) {
+        double result =
+            exp >= 0 ? (double) significand * POW10[exp] : (double) significand / POW10[-exp];
+        return neg ? -result : result;
+      }
+    }
+    // fallback
+    return Double.parseDouble(new String(num, i0, length));
   }
 
-  static int parseInt(char[] buffer, int offset, int length) {
-    boolean neg = buffer[offset] == '-';
+  private static int skipToExponent(char[] num, int offset, int length) {
+    int i = 0;
+    while (i < length && (num[offset + i] | 0b10_0000) != 'e') i++;
+    return i < length ? i : -1;
+  }
+
+  private static double parseDoubleNaN(char[] num, int offset, int length) {
+    if (length != 3 || num[offset + 1] != 'a' || num[offset + 2] != 'N')
+      throw notANumber(num, offset, length, "Number starting N expected to be NaN but was: ");
+    return Double.NaN;
+  }
+
+  private static double parseDoubleInfinity(char[] num, int offset, int length) {
+    if (length != 8
+        || num[offset + 1] != 'n'
+        || num[offset + 2] != 'f'
+        || num[offset + 3] != 'i'
+        || num[offset + 4] != 'n'
+        || num[offset + 5] != 'i'
+        || num[offset + 6] != 't'
+        || num[offset + 7] != 'y')
+      throw notANumber(num, offset, length, "Number starting I expected to be Infinity but was: ");
+    return Double.POSITIVE_INFINITY;
+  }
+
+  /**
+   * @see Integer#parseInt(String)
+   */
+  static int parseInt(char[] num, int offset, int length) {
+    if (length <= 0) throw numberHasNoDigits(num, offset, 0);
+    boolean neg = num[offset] == '-';
     int i = offset;
-    if (neg || buffer[offset] == '+') i++;
-    int n = 0;
+    if (neg || num[offset] == '+') i++;
     int end = offset + length;
+    if (i >= end) throw numberHasNoDigits(num, offset, length);
+    int n = 0;
     for (; i < end; i++) {
       n *= 10;
-      n += buffer[i] - '0';
+      char d = num[i];
+      if (!isDigit(d))
+        throw notANumber(num, offset, length, "Number contains non-digit characters: ");
+      n += d - '0';
     }
     return neg ? -n : n;
   }
 
-  static long parseLong(char[] buffer, int offset, int length) {
-    boolean neg = buffer[offset] == '-';
+  /**
+   * @see Long#parseLong(String)
+   */
+  static long parseLong(char[] num, int offset, int length) {
+    if (length <= 0) throw numberHasNoDigits(num, offset, 0);
+    boolean neg = num[offset] == '-';
     int i = offset;
-    if (neg || buffer[offset] == '+') i++;
-    long n = 0;
+    if (neg || num[offset] == '+') i++;
     int end = offset + length;
+    if (i >= end) throw numberHasNoDigits(num, offset, length);
+    long n = 0;
     for (; i < end; i++) {
       n *= 10;
-      n += buffer[i] - '0';
+      char d = num[i];
+      if (!isDigit(d))
+        throw notANumber(num, offset, length, "Number contains non-digit characters: ");
+      n += d - '0';
     }
     return neg ? -n : n;
   }
 
   private static boolean isDigit(char c) {
     return c >= '0' && c <= '9';
+  }
+
+  private static void checkOutOfBounds(char[] buffer, int offset, int length) {
+    if (offset + length > buffer.length)
+      throw new IllegalArgumentException(
+          "Length exceeds buffer %d capacity for offset %d: %d"
+              .formatted(buffer.length, offset, length));
+  }
+
+  private static NumberFormatException notANumber(
+      char[] buffer, int offset, int length, String msg) {
+    return new NumberFormatException(msg + new String(buffer, offset, length));
+  }
+
+  private static NumberFormatException numberHasNoDigits(char[] num, int offset, int length) {
+    return notANumber(num, offset, length, "Number has no digits: ");
   }
 
   /*
@@ -147,7 +238,7 @@ final class Chars {
       if (c == '"') {
         // found the end (if escaped we would have hopped over)
         if (length == index - 2 - offset) // no escaping used
-          return Text.of(json, offset + 1, length);
+        return Text.of(json, offset + 1, length);
         // did use escaping...
         return parseStringWithEscaping(json, offset + 1, length);
       } else if (c == '\\') {

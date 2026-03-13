@@ -331,6 +331,12 @@ public interface Text extends CharSequence, Comparable<Text> {
   static Text of(char[] buffer, int offset, int length) {
     record Slice(char[] buffer, int offset, int length) implements Text {
 
+      Slice {
+        if (length < 0) throw new IllegalArgumentException("length must be >= 0");
+        if (offset + length > buffer.length)
+          throw new IllegalArgumentException("offset + length must be <= buffer.length");
+      }
+
       @Override
       public char charAt(int index) {
         return buffer[offset + index];
@@ -351,13 +357,11 @@ public interface Text extends CharSequence, Comparable<Text> {
 
       @Override
       public int parseInt() {
-        if (!isInt()) throw new NumberFormatException("Not a number: " + this);
         return Chars.parseInt(buffer, offset, length);
       }
 
       @Override
       public long parseLong() {
-        if (!isInt()) throw new NumberFormatException("Not a number: " + this);
         return Chars.parseLong(buffer, offset, length);      }
 
       @Override
