@@ -216,8 +216,8 @@ final class Chars {
     return c >= '0' && c <= '9';
   }
 
-  private static NumberFormatException nanError(char[] buffer, int offset, int length, String msg) {
-    return new NumberFormatException(msg + new String(buffer, offset, length));
+  private static NumberFormatException nanError(char[] num, int offset, int length, String msg) {
+    return new NumberFormatException(msg + new String(num, offset, length));
   }
 
   private static NumberFormatException nanNoDigits(char[] num, int offset, int length) {

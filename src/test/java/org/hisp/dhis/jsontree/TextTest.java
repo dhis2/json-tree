@@ -291,18 +291,18 @@ class TextTest {
     assertNotEquals(t1.hashCode(), t3.hashCode());
   }
 
-  @DisplayName("Text.of(int) cached")
+  @DisplayName("Text.of(int) 0 to 999")
   @Test
-  void testOf_IntCache() {
+  void testOf_Int0To999() {
     for (int i = 0; i < 1000; i++) {
       assertEquals(String.valueOf(i), Text.of(i).toString());
     }
   }
 
-  @DisplayName("Text.of(int) uncached")
+  @DisplayName("Text.of(int) -1 to -999")
   @Test
-  void testOf_Int() {
-    for (int i : List.of(-44, 234567, 78943)) {
+  void testOf_IntNeg1To999() {
+    for (int i = -1; i > -1000; i--) {
       assertEquals(String.valueOf(i), Text.of(i).toString());
     }
   }

@@ -165,6 +165,7 @@ class CharsParseDoubleTest {
   void testParseInt_EdgeCases() {
     assertIntEquals(String.valueOf(Integer.MAX_VALUE));
     assertIntEquals(String.valueOf(Integer.MIN_VALUE));
+    assertIntEquals("+2147483647"); // max with plus sign
     assertIntEquals("02147483647"); // max with leading zero
     assertIntEquals("-02147483648"); // min with leading zero
     assertIntEquals("0000000000000000000000000000000000000000000000000000000000");
@@ -181,6 +182,7 @@ class CharsParseDoubleTest {
   void testParseLong_EdgeCases() {
     assertLongEquals(String.valueOf(Long.MAX_VALUE));
     assertLongEquals(String.valueOf(Long.MIN_VALUE));
+    assertLongEquals("+9223372036854775807"); // max with + sign
     assertLongEquals("09223372036854775807"); // max with leading zero
     assertLongEquals("-09223372036854775807"); // min with leading zero
     assertLongEquals("0000000000000000000000000000000000000000000000000000000000");

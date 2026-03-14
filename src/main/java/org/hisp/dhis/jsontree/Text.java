@@ -417,16 +417,18 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return An array index as {@link Text} (like used in a {@link JsonPath} segment)
+   * @return {@link Text} for of any int number
    */
-  static Text of(int index) {
-    if (index >= 0) {
-      if (index < 10) return of(Cache._100_TO_999, index * 3 + 2, 1);
-      if (index < 100) return of(Cache._100_TO_999, index * 3 + 1, 2);
-      if (index < 1000) return of(Cache._100_TO_999, (index - 100) * 3, 3);
+  static Text of(int value) {
+    if (value >= 0) {
+      if (value < 10) return of(Cache._100_TO_999, value * 3 + 2, 1);
+      if (value < 100) return of(Cache._100_TO_999, value * 3 + 1, 2);
+      if (value < 1000) return of(Cache._100_TO_999, (value - 100) * 3, 3);
     }
-    boolean neg = index < 0;
-    int rest = Math.abs(index);
+    boolean neg = value < 0;
+    boolean overflow = value == Integer.MIN_VALUE;
+    value = overflow ? value-1 : Math.abs(value);
+    int rest = value;
     int n0 = neg ? 1 : 0;
     int n = n0;
     while (rest > 0) {
@@ -435,11 +437,12 @@ public interface Text extends CharSequence, Comparable<Text> {
     }
     char[] digits = new char[n];
     if (neg) digits[0] = '-';
-    rest = Math.abs(index);
+    rest = value;
     for (int i = n - 1; i >= n0; i--) {
       digits[i] = (char) ('0' + (rest % 10));
       rest /= 10;
     }
+    if (overflow) digits[digits.length-1] +=1;
     return of(digits, 0, digits.length);
   }
 
