@@ -182,21 +182,20 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     return JsonMixed.class;
   }
 
-  private JsonNode node(JsonNodeType expected) {
+  @Override
+  public JsonNode node(@CheckNull JsonNodeType required) {
     JsonNode res = node;
     if (node == null) {
       if (!root.exists(path)) return null;
       node = root.get(path);
       res = node;
     }
-    JsonNodeType actualType = res.getType();
-    if (actualType == JsonNodeType.NULL) {
-      return null;
-    }
-    if (actualType != expected) {
+    JsonNodeType type = res.getType();
+    if (type == JsonNodeType.NULL)
+      return required == JsonNodeType.NULL ? res : null;
+    if (type != required) {
       throw new JsonTreeException(
-          String.format(
-              "Path `%s` does not contain an %s but a(n) %s: %s", path, expected, actualType, res));
+              "Path `%s` does not contain an %s but a(n) %s: %s".formatted(path, required, type, res));
     }
     return res;
   }
@@ -286,24 +285,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   @Override
   public int size() {
     return node().size();
-  }
-
-  @Override
-  public Boolean bool() {
-    JsonNode node = node(JsonNodeType.BOOLEAN);
-    return node == null ? null : (Boolean) node.value();
-  }
-
-  @Override
-  public Number number() {
-    JsonNode node = node(JsonNodeType.NUMBER);
-    return node == null ? null : (Number) node.value();
-  }
-
-  @Override
-  public Text text() {
-    JsonNode node = node(JsonNodeType.STRING);
-    return node == null ? null : (Text) node.value();
   }
 
   @Override

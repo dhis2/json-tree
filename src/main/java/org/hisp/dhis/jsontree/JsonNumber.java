@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
@@ -43,13 +44,18 @@ public interface JsonNumber extends JsonPrimitive {
   /**
    * @return numeric value of the property or {@code null} when this property is undefined or
    *     defined as JSON {@code null}.
+   * @throws JsonTreeException in case this node is not a number node (or null)
    */
   @TerminalOp(canBeUndefined = true)
-  Number number();
+  default Number number() {
+    JsonNode node = node(JsonNodeType.NUMBER);
+    return node == null ? null : (Number) node.value();
+  }
 
   /**
    * @return numeric value as integer (potentially dropping any fractions) or {@code null} if this
    *     property is undefined or defined as JSON {@code null}.
+   * @throws JsonTreeException in case this node is not a number node (or null)
    * @since 0.10
    */
   @TerminalOp(canBeUndefined = true)
@@ -60,28 +66,25 @@ public interface JsonNumber extends JsonPrimitive {
   /**
    * @param orDefault value to use if this node is undefined or defined null
    * @return the value of this number node as the type of the provided default
-   * @throws JsonTreeException in case this node is not a number node
+   * @throws JsonTreeException in case this node is not a number node (or null)
    * @throws ClassCastException in case the value is not of the default type
    */
   @SuppressWarnings("unchecked")
   @TerminalOp(canBeUndefined = true)
-  default <T extends Number> T number(T orDefault) {
-    return isUndefined() ? orDefault : (T) number();
+  default <T extends Number> T number(@NotNull T orDefault) {
+    if (isUndefined()) return orDefault;
+    return (T) orDefault.getClass().cast(number());
   }
 
   /**
-   * @return this number node's value as an integer
+   * @return this number node's value as an int
    * @throws JsonPathException in case this node does not exist
-   * @throws JsonTreeException in case this node is not a number node
-   * @throws NullPointerException in case this node is defined as JSON null
+   * @throws JsonTreeException in case this node is not a number node (including JSON null)
    * @see #intValue(int)
    */
   @TerminalOp
   default int intValue() {
-    Number res = number();
-    if (res != null) return res.intValue();
-    JsonPath path = node().getPath();
-    throw new JsonPathException(path, "Path `%s` is defined as null".formatted(path));
+    return node().intValue();
   }
 
   /**
@@ -97,42 +100,30 @@ public interface JsonNumber extends JsonPrimitive {
   /**
    * @return this number node's value as a long
    * @throws JsonPathException in case this node does not exist
-   * @throws JsonTreeException in case this node is not a number node
-   * @throws NullPointerException in case this node is defined as JSON null
+   * @throws JsonTreeException in case this node is not a number node (including JSON null)
    */
   @TerminalOp
   default long longValue() {
-    Number res = number();
-    if (res != null) return res.longValue();
-    JsonPath path = node().getPath();
-    throw new JsonPathException(path, "Path `%s` is defined as null".formatted(path));
+    return node().longValue();
   }
 
   /**
    * @return this number node's value as a float
    * @throws JsonPathException in case this node does not exist
-   * @throws JsonTreeException in case this node is not a number node
-   * @throws NullPointerException in case this node is defined as JSON null
+   * @throws JsonTreeException in case this node is not a number node (including JSON null)
    */
   @TerminalOp
   default float floatValue() {
-    Number res = number();
-    if (res != null) return res.floatValue();
-    JsonPath path = node().getPath();
-    throw new JsonPathException(path, "Path `%s` is defined as null".formatted(path));
+    return (float) node().doubleValue();
   }
 
   /**
    * @return this number node's value as a double
    * @throws JsonPathException in case this node does not exist
-   * @throws JsonTreeException in case this node is not a number node
-   * @throws NullPointerException in case this node is defined as JSON null
+   * @throws JsonTreeException in case this node is not a number node (including JSON null)
    */
   @TerminalOp
   default double doubleValue() {
-    Number res = number();
-    if (res != null) return res.doubleValue();
-    JsonPath path = node().getPath();
-    throw new JsonPathException(path, "Path `%s` is defined as null".formatted(path));
+    return node().doubleValue();
   }
 }

@@ -706,7 +706,38 @@ record JsonTree(
     @Override
     public Number value() {
       if (path.isEmpty()) checkNoDanglingTrash();
-      return Chars.parseNumber(tree.json, start, endIndex() - start);
+      // Note: parseDouble would throw NumberFormatException for illegal input
+      // but endIndex() will already do skipNumber which checks JSON number compliance
+      // or throws the expected JsonFormatException
+      double number = Chars.parseDouble(tree.json, start, endIndex() - start);
+      if (number % 1 != 0d) return number;
+      long n = (long) number;
+      if (n < Integer.MAX_VALUE && n > Integer.MIN_VALUE) return (int) n;
+      return n;
+    }
+
+    @Override
+    public int intValue() {
+      if (path.isEmpty()) checkNoDanglingTrash();
+      int length = endIndex() - start;
+      return isSignedInteger(tree.json, start, length)
+          ? Chars.parseInt(tree.json, start, length)
+          : (int) Chars.parseDouble(tree.json, start, length);
+    }
+
+    @Override
+    public long longValue() {
+      if (path.isEmpty()) checkNoDanglingTrash();
+      int length = endIndex() - start;
+      return isSignedInteger(tree.json, start, length)
+          ? Chars.parseLong(tree.json, start, length)
+          : (long) Chars.parseDouble(tree.json, start, length);
+    }
+
+    @Override
+    public double doubleValue() {
+      if (path.isEmpty()) checkNoDanglingTrash();
+      return Chars.parseDouble(tree.json, start, endIndex() - start);
     }
   }
 
@@ -1009,6 +1040,14 @@ record JsonTree(
   /** JSON only considers ASCII whitespace as whitespace */
   private static boolean isWhitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
+  }
+
+  private static boolean isSignedInteger(char[] json, int offset, int length) {
+    char sign = json[offset];
+    int i = 0;
+    if (sign == '-' || sign == '+') i++;
+    for (; i < length; i++) if (!isDigit(json[offset+i])) return false;
+    return true;
   }
 
   private static int skipChar(char[] json, int offset, char c) {

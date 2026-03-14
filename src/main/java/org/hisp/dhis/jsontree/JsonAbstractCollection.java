@@ -32,6 +32,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
+
+import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
 
@@ -157,6 +159,11 @@ public interface JsonAbstractCollection extends JsonValue {
     @Override
     public final JsonNode node() {
       return viewed.node();
+    }
+
+    @Override
+    public @CheckNull JsonNode node(@CheckNull JsonNodeType required) {
+      return viewed.node(required);
     }
 
     @Override

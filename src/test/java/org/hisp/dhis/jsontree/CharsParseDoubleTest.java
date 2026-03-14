@@ -155,6 +155,18 @@ class CharsParseDoubleTest {
     assertDoubleIsInvalid(" ");
   }
 
+  @Test
+  void testParseInt_EdgeCases() {
+    assertIntEquals(String.valueOf(Integer.MAX_VALUE));
+    assertIntEquals(String.valueOf(Integer.MIN_VALUE));
+  }
+
+  @Test
+  void testParseLong_EdgeCases() {
+    assertLongEquals(String.valueOf(Long.MAX_VALUE));
+    assertLongEquals(String.valueOf(Long.MIN_VALUE));
+  }
+
   private static void assertDoubleIsInvalid(String number) {
     assertThrowsExactly(
         NumberFormatException.class,
@@ -178,6 +190,26 @@ class CharsParseDoubleTest {
     double expected = Double.parseDouble(number);
     try {
       double actual = Chars.parseDouble(number.toCharArray(), 0, number.length());
+      assertEquals(expected, actual, "Failed for: " + number);
+    } catch (NumberFormatException ex) {
+      fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
+    }
+  }
+
+  private static void assertLongEquals(String number) {
+    long expected = Long.parseLong(number);
+    try {
+      long actual = Chars.parseLong(number.toCharArray(), 0, number.length());
+      assertEquals(expected, actual, "Failed for: " + number);
+    } catch (NumberFormatException ex) {
+      fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
+    }
+  }
+
+  private static void assertIntEquals(String number) {
+    int expected = Integer.parseInt(number);
+    try {
+      int actual = Chars.parseInt(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);

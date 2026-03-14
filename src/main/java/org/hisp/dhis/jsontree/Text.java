@@ -216,39 +216,24 @@ public interface Text extends CharSequence, Comparable<Text> {
    * @see Integer#parseInt(String)
    */
   default int parseInt() {
-    if (!isInt()) throw new NumberFormatException("Not a number: " + this);
-    boolean neg = charAt(0) == '-';
-    int i = 0;
-    if (neg || charAt(0) == '+') i++;
-    int n = 0;
-    int end = length();
-    for (; i < end; i++) {
-      n *= 10;
-      n += charAt(i) - '0';
-    }
-    return neg ? -n : n;
+    char[] num = toCharArray();
+    return Chars.parseInt(num, 0, num.length);
   }
 
+  /**
+   * @see Long#parseLong(String)
+   */
   default long parseLong() {
-    if (!isInt()) throw new NumberFormatException("Not a number: " + this);
-    boolean neg = charAt(0) == '-';
-    int i = 0;
-    if (neg || charAt(0) == '+') i++;
-    long n = 0;
-    int end = length();
-    for (; i < end; i++) {
-      n *= 10;
-      n += charAt(i) - '0';
-    }
-    return neg ? -n : n;
+    char[] num = toCharArray();
+    return Chars.parseLong(num, 0, num.length);
   }
 
   /**
    * @see Double#parseDouble(String)
    */
   default double parseDouble() {
-    char[] str = toCharArray();
-    return Chars.parseDouble(str, 0, str.length);
+    char[] num = toCharArray();
+    return Chars.parseDouble(num, 0, num.length);
   }
 
   /**

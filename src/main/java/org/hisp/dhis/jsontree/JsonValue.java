@@ -463,11 +463,26 @@ public interface JsonValue {
    * <p>This might be useful in test to access the {@link JsonNode#getDeclaration()} to modify and
    * reuse it.
    *
-   * @return the underlying {@link JsonNode} in the overall JSON document if it exists
+   * @return the underlying {@link JsonNode} if it exists
    * @throws JsonPathException in case this value does not exist in the JSON document
    */
   @TerminalOp(canBeNull = true)
   JsonNode node();
+
+  /**
+   * @param required the {@link JsonNodeType} the caller needs this node to be
+   * @return the underlying {@link JsonNode} if it exists and if it is of the required type, or Java
+   *     {@code null}, if the JSON node is undefined or defined JSON {@code null}. In effect, for a
+   *     node of {@link JsonNodeType#NULL} it means it is returned when requested with {@link
+   *     JsonNodeType#NULL}, and Java {@code null} is returned when requested with Java {@code
+   *     null}.
+   * @throws JsonTreeException in case this node exists but is not of the required type and the
+   *     actual type is not JSON {@code null}.
+   * @since 1.9
+   */
+  @CheckNull
+  @TerminalOp(canBeNull = true)
+  JsonNode node(@CheckNull JsonNodeType required);
 
   /**
    * @return JSON declaration for this value (as originally given)

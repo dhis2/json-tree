@@ -43,9 +43,13 @@ public interface JsonBoolean extends JsonPrimitive {
   /**
    * @return boolean value of the property or {@code null} when this property is undefined or
    *     defined as JSON {@code null}.
+   * @throws JsonTreeException in case this node exist but is not a boolean node (or null)
    */
   @TerminalOp(canBeUndefined = true)
-  Boolean bool();
+  default Boolean bool() {
+    JsonNode node = node(JsonNodeType.BOOLEAN);
+    return node == null ? null : (Boolean) node.value();
+  }
 
   /**
    * @param orDefault to use if this node is undefined or defined null

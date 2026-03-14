@@ -50,7 +50,10 @@ public interface JsonString extends JsonPrimitive {
    * @since 1.9
    */
   @TerminalOp(canBeNull = true)
-  Text text();
+  default Text text() {
+    JsonNode node = node(JsonNodeType.STRING);
+    return node == null ? null : (Text) node.value();
+  }
 
   /**
    * @return string value of the property or {@code null} when this property is undefined or defined

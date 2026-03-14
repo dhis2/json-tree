@@ -27,15 +27,6 @@ final class Chars {
   Parsing JSON Numbers (without allocating)
    */
 
-  static Number parseNumber(char[] buffer, int offset, int length) {
-    // this is only used for JSON nodes which already did bounds checks
-    double number = parseDoubleNoBoundsCheck(buffer, offset, length);
-    if (number % 1 != 0d) return number;
-    long n = (long) number;
-    if (n < Integer.MAX_VALUE && n > Integer.MIN_VALUE) return (int) n;
-    return n;
-  }
-
   private static final long MAX_SAFE_SIGNIFICAND = ((1L << 53) - 1);
 
   /** 22 because 5^22 < 2^53 (and 10^k = 2^k * 5^k with any 2^k being exact) */
@@ -54,7 +45,6 @@ final class Chars {
    * @see Double#parseDouble(String)
    */
   static double parseDouble(char[] num, int offset, int length) {
-    checkOutOfBounds(num, offset, length);
     int end = offset + length;
     // strip tailing whitespace
     while (length > 0 && num[offset + length - 1] <= ' ') length--;
@@ -110,17 +100,17 @@ final class Chars {
     for (; i < end; i++) {
       char c = num[i];
       if (c == '.') {
-        if (seenDot) throw notANumber(num, i0, length, "Number contains multiple dots: ");
+        if (seenDot) throw naN(num, i0, length, "Number contains multiple dots: ");
         seenDot = true;
       } else if (isDigit(c)) {
         if (c == '0' && digits == leadingZeros) leadingZeros++;
         digits++;
         significand = significand * 10 + (c - '0');
         if (seenDot) decimals++;
-      } else throw notANumber(num, i0, length, "Number contains illegal characters: ");
+      } else throw naN(num, i0, length, "Number contains illegal characters: ");
     }
     if (digits == 0)
-      throw notANumber(num, i0, length, "Number must have digits before the exponent but was: ");
+      throw naN(num, i0, length, "Number must have digits before the exponent but was: ");
     // fast path requires max of 15 significand digits and only allows for exp up to 4 characters
     // including sign
     int expLen = eOffset < 0 ? 0 : length - eOffset - 1;
@@ -146,7 +136,7 @@ final class Chars {
 
   private static double parseDoubleNaN(char[] num, int offset, int length) {
     if (length != 3 || num[offset + 1] != 'a' || num[offset + 2] != 'N')
-      throw notANumber(num, offset, length, "Number starting N expected to be NaN but was: ");
+      throw naN(num, offset, length, "Number starting N expected to be NaN but was: ");
     return Double.NaN;
   }
 
@@ -159,7 +149,7 @@ final class Chars {
         || num[offset + 5] != 'i'
         || num[offset + 6] != 't'
         || num[offset + 7] != 'y')
-      throw notANumber(num, offset, length, "Number starting I expected to be Infinity but was: ");
+      throw naN(num, offset, length, "Number starting I expected to be Infinity but was: ");
     return Double.POSITIVE_INFINITY;
   }
 
@@ -178,7 +168,7 @@ final class Chars {
       n *= 10;
       char d = num[i];
       if (!isDigit(d))
-        throw notANumber(num, offset, length, "Number contains non-digit characters: ");
+        throw naN(num, offset, length, "Number contains non-digit character `%s`: ".formatted(d));
       n += d - '0';
     }
     return neg ? -n : n;
@@ -199,7 +189,7 @@ final class Chars {
       n *= 10;
       char d = num[i];
       if (!isDigit(d))
-        throw notANumber(num, offset, length, "Number contains non-digit characters: ");
+        throw naN(num, offset, length, "Number contains non-digit character `%s`: ".formatted(d));
       n += d - '0';
     }
     return neg ? -n : n;
@@ -209,20 +199,12 @@ final class Chars {
     return c >= '0' && c <= '9';
   }
 
-  private static void checkOutOfBounds(char[] buffer, int offset, int length) {
-    if (offset + length > buffer.length)
-      throw new IllegalArgumentException(
-          "Length exceeds buffer %d capacity for offset %d: %d"
-              .formatted(buffer.length, offset, length));
-  }
-
-  private static NumberFormatException notANumber(
-      char[] buffer, int offset, int length, String msg) {
+  private static NumberFormatException naN(char[] buffer, int offset, int length, String msg) {
     return new NumberFormatException(msg + new String(buffer, offset, length));
   }
 
   private static NumberFormatException numberHasNoDigits(char[] num, int offset, int length) {
-    return notANumber(num, offset, length, "Number has no digits: ");
+    return naN(num, offset, length, "Number has no digits: ");
   }
 
   /*
@@ -237,8 +219,10 @@ final class Chars {
       char c = json[index++];
       if (c == '"') {
         // found the end (if escaped we would have hopped over)
-        if (length == index - 2 - offset) // no escaping used
-        return Text.of(json, offset + 1, length);
+        // if str length is same as JSON raw characters length no escaping was used,
+        // and we can use a direct view of the raw characters
+        if (length == index - 2 - offset)
+          return Text.of(json, offset + 1, length);
         // did use escaping...
         return parseStringWithEscaping(json, offset + 1, length);
       } else if (c == '\\') {

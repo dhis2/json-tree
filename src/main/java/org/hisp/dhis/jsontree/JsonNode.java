@@ -404,9 +404,21 @@ public interface JsonNode extends Serializable {
    */
   Object value();
 
-  // TODO future improvement: if there was a intValue() for number and co
-  // the parsing could even be entirely allocation free
-  // when the user accesses the value with a given target type in mind
+  /**
+   * @return this number node's value as an int (cast from double if needed)
+   * @since 1.9
+   */
+  default int intValue() {
+    throw new JsonTreeException(getType() + " node has no intValue property.");
+  }
+
+  default long longValue() {
+    throw new JsonTreeException(getType() + " node has no longValue property.");
+  }
+
+  default double doubleValue() {
+    throw new JsonTreeException(getType() + " node has no doubleValue property.");
+  }
 
   /**
    * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
