@@ -68,6 +68,12 @@ class CharsParseDoubleTest {
   }
 
   @Test
+  void testParseDouble_OverflowCases() {
+    // if naively handled as long it would overflow and returns wrong value
+    assertDoubleEquals("9999999999999999999.0");
+  }
+
+  @Test
   void testParseDouble_EdgeCases() {
     String cases =
         """
@@ -150,24 +156,45 @@ class CharsParseDoubleTest {
                 NaNx Infiniti -Infiniti
                 Foo bar
                 """;
-    for (String num : invalid.split("\\s+")) assertDoubleIsInvalid(num);
-    assertDoubleIsInvalid("");
-    assertDoubleIsInvalid(" ");
+    for (String num : invalid.split("\\s+")) assertDoubleThrows(num);
+    assertDoubleThrows("");
+    assertDoubleThrows(" ");
   }
 
   @Test
   void testParseInt_EdgeCases() {
     assertIntEquals(String.valueOf(Integer.MAX_VALUE));
     assertIntEquals(String.valueOf(Integer.MIN_VALUE));
+    assertIntEquals("02147483647"); // max with leading zero
+    assertIntEquals("-02147483648"); // min with leading zero
+    assertIntEquals("0000000000000000000000000000000000000000000000000000000000");
+    assertIntThrows("02147483647.0"); // max with leading zero + 0 fraction
+    assertIntThrows("-02147483648.0"); // min with leading zero + 0 fraction
+    assertIntThrows("483647.0"); // 0 fraction
+    assertIntThrows("-7483648.0"); // 0 fraction
+    assertIntThrows("2147483648"); // max + 1
+    assertIntThrows("-2147483649"); // min - 1
+    assertIntThrows("4294967296"); // overflows to positive number
   }
 
   @Test
   void testParseLong_EdgeCases() {
     assertLongEquals(String.valueOf(Long.MAX_VALUE));
     assertLongEquals(String.valueOf(Long.MIN_VALUE));
+    assertLongEquals("09223372036854775807"); // max with leading zero
+    assertLongEquals("-09223372036854775807"); // min with leading zero
+    assertLongEquals("0000000000000000000000000000000000000000000000000000000000");
+    assertLongThrows("09223372036854775807.0"); // max with leading zero + 0 fraction
+    assertLongThrows("-09223372036854775807.0"); // min with leading zero + 0 fraction
+    assertLongThrows("3372036854775807.0"); // 0 fraction
+    assertLongThrows("-36854775807.0"); // 0 fraction
+    assertLongThrows("9223372036854775808"); // max + 1
+    assertLongThrows("-9223372036854775809"); // min - 1
+    assertLongThrows("9300072036854775808"); // a too large number pre-identified
+    assertLongThrows("9223372036854775808"); // a too large number not pre-identified
   }
 
-  private static void assertDoubleIsInvalid(String number) {
+  private static void assertDoubleThrows(String number) {
     assertThrowsExactly(
         NumberFormatException.class,
         () -> Double.parseDouble(number),
@@ -202,8 +229,20 @@ class CharsParseDoubleTest {
       long actual = Chars.parseLong(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
-      fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
+      fail("Number valid for Long.parseLong was rejected: " + number.replace(' ', '_'), ex);
     }
+  }
+
+  private static void assertLongThrows(String number) {
+    assertThrowsExactly(
+        NumberFormatException.class,
+        () -> Long.parseLong(number),
+        () -> "Number is valid for Long.parseLong: `" + number + "`");
+    char[] chars = number.toCharArray();
+    assertThrowsExactly(
+        NumberFormatException.class,
+        () -> Chars.parseLong(chars, 0, chars.length),
+        "Should throw for: " + number);
   }
 
   private static void assertIntEquals(String number) {
@@ -212,8 +251,20 @@ class CharsParseDoubleTest {
       int actual = Chars.parseInt(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
-      fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
+      fail("Number valid for Integer.parseInt was rejected: " + number.replace(' ', '_'), ex);
     }
+  }
+
+  private static void assertIntThrows(String number) {
+    assertThrowsExactly(
+        NumberFormatException.class,
+        () -> Integer.parseInt(number),
+        () -> "Number is valid for Integer.parseInt: `" + number + "`");
+    char[] chars = number.toCharArray();
+    assertThrowsExactly(
+        NumberFormatException.class,
+        () -> Chars.parseInt(chars, 0, chars.length),
+        "Should throw for: " + number);
   }
 
   private void appendInteger(StringBuilder sb) {

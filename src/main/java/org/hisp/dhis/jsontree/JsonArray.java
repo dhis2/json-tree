@@ -31,6 +31,9 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -103,6 +106,39 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <E> List<E> values(Function<String, E> mapper) {
     return stringValues().stream().map(mapper).toList();
+  }
+
+  /**
+   * @return all array values as int values (cast from double if needed)
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default IntStream intValues() {
+    return isUndefined()
+        ? IntStream.empty()
+        : StreamSupport.stream(node().elements(false), false).mapToInt(JsonNode::intValue);
+  }
+
+  /**
+   * @return all array values as long values (cast from double if needed)
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default LongStream longValues() {
+    return isUndefined()
+        ? LongStream.empty()
+        : StreamSupport.stream(node().elements(false), false).mapToLong(JsonNode::longValue);
+  }
+
+  /**
+   * @return all array values as double values
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default DoubleStream doubleValues() {
+    return isUndefined()
+        ? DoubleStream.empty()
+        : StreamSupport.stream(node().elements(false), false).mapToDouble(JsonNode::doubleValue);
   }
 
   default JsonValue get(int index) {

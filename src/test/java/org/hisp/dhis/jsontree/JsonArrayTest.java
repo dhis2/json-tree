@@ -97,4 +97,19 @@ class JsonArrayTest {
     JsonMixed arr = JsonMixed.of("[[1,2], [3,4]]");
     assertEquals(List.of(1, 2), arr.getList(0, JsonNumber.class).toList(JsonNumber::integer));
   }
+
+  @Test
+  void testIntValues() {
+    //TODO
+  }
+
+  @Test
+  void testLongValues() {
+    //TODO
+  }
+
+  @Test
+  void testDoubleValues() {
+    //TODO
+  }
 }

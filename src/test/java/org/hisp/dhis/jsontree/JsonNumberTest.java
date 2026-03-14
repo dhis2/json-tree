@@ -119,4 +119,30 @@ class JsonNumberTest {
   void testNumber_WithDefaultFractionNumber() {
     assertEquals(42.5d, JsonMixed.of("42.5").number(55d));
   }
+
+  @Test
+  void testIntValue() {
+    assertEquals(3, JsonMixed.of("3").intValue());
+    assertEquals(3, JsonMixed.of("3.0").intValue());
+    assertEquals(3, JsonMixed.of("3.14").intValue());
+    assertEquals(Integer.MAX_VALUE, Json.of(Integer.MAX_VALUE).intValue());
+    assertEquals(Integer.MIN_VALUE, Json.of(Integer.MIN_VALUE).intValue());
+  }
+
+  @Test
+  void testLongValue() {
+    assertEquals(3L, JsonMixed.of("3").longValue());
+    assertEquals(3L, JsonMixed.of("3.0").longValue());
+    assertEquals(3L, JsonMixed.of("3.14").longValue());
+  }
+
+  @Test
+  void testDoubleValue() {
+    //TODO
+  }
+
+  @Test
+  void testFloatValue() {
+    //TODO
+  }
 }

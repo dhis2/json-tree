@@ -293,7 +293,7 @@ class TextTest {
 
   @DisplayName("Text.of(int) cached")
   @Test
-  void testOf_IndexCache() {
+  void testOf_IntCache() {
     for (int i = 0; i < 1000; i++) {
       assertEquals(String.valueOf(i), Text.of(i).toString());
     }
@@ -301,10 +301,17 @@ class TextTest {
 
   @DisplayName("Text.of(int) uncached")
   @Test
-  void testOf_IndexFallback() {
+  void testOf_Int() {
     for (int i : List.of(-44, 234567, 78943)) {
       assertEquals(String.valueOf(i), Text.of(i).toString());
     }
+  }
+
+  @DisplayName("Text.of(int) edge")
+  @Test
+  void testOf_Int_EdgeCases() {
+    assertEquals(String.valueOf(Integer.MAX_VALUE), Text.of(Integer.MAX_VALUE).toString());
+    assertEquals(String.valueOf(Integer.MIN_VALUE), Text.of(Integer.MIN_VALUE).toString());
   }
 
   @DisplayName("Text.hashCode(Text)")

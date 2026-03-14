@@ -406,16 +406,27 @@ public interface JsonNode extends Serializable {
 
   /**
    * @return this number node's value as an int (cast from double if needed)
+   * @throws JsonTreeException if this node is not a number node
    * @since 1.9
    */
   default int intValue() {
     throw new JsonTreeException(getType() + " node has no intValue property.");
   }
 
+  /**
+   * @return this number node's value as a long (cast from double if needed)
+   * @throws JsonTreeException if this node is not a number node
+   * @since 1.9
+   */
   default long longValue() {
     throw new JsonTreeException(getType() + " node has no longValue property.");
   }
 
+  /**
+   * @return this number node's value as a double
+   * @throws JsonTreeException if this node is not a number node
+   * @since 1.9
+   */
   default double doubleValue() {
     throw new JsonTreeException(getType() + " node has no doubleValue property.");
   }

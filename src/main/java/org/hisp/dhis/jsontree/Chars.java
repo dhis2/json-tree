@@ -58,7 +58,7 @@ final class Chars {
 
   static double parseDoubleNoBoundsCheck(char[] num, int offset, int length) {
     int i0 = offset;
-    if (length <= 0) throw numberHasNoDigits(num, i0, 0);
+    if (length <= 0) throw nanNoDigits(num, i0, 0);
     if (length == 1) return parseInt(num, i0, length); // can only be a digit or invalid
     // .# ?
     if (length == 2 && num[i0] == '.') return parseInt(num, i0 + 1, 1) / 10d;
@@ -71,9 +71,12 @@ final class Chars {
         if (i0 == i) return 0d;
         if (i0 + 1 == i && num[i0] == '-') return -0d;
         if (i0 + 1 == i && num[i0] == '+') return 0d;
-        long n = parseLong(num, i0, i - i0);
-        // OBS: double has -0 and 0, long does not, so we have to restore -
-        return n == 0L && num[i0] == '-' ? -0d : n;
+        int digits = i - i0;
+        if (digits < 19) { // < 19 cannot overflow a long
+          long n = parseLong(num, i0, digits);
+          // OBS: double has -0 and 0, long does not, so we have to restore -
+          return n == 0L && num[i0] == '-' ? -0d : n;
+        }
       }
       if (i == i0 && num[i] == '-') return -0d;
       if (i == i0 && num[i] == '+') return 0d;
@@ -100,17 +103,17 @@ final class Chars {
     for (; i < end; i++) {
       char c = num[i];
       if (c == '.') {
-        if (seenDot) throw naN(num, i0, length, "Number contains multiple dots: ");
+        if (seenDot) throw nanError(num, i0, length, "Number contains multiple decimal points: ");
         seenDot = true;
       } else if (isDigit(c)) {
         if (c == '0' && digits == leadingZeros) leadingZeros++;
         digits++;
         significand = significand * 10 + (c - '0');
         if (seenDot) decimals++;
-      } else throw naN(num, i0, length, "Number contains illegal characters: ");
+      } else throw nanIllegalChar(num, i0, length, c);
     }
     if (digits == 0)
-      throw naN(num, i0, length, "Number must have digits before the exponent but was: ");
+      throw nanError(num, i0, length, "Number has no digits before the exponent: ");
     // fast path requires max of 15 significand digits and only allows for exp up to 4 characters
     // including sign
     int expLen = eOffset < 0 ? 0 : length - eOffset - 1;
@@ -136,7 +139,7 @@ final class Chars {
 
   private static double parseDoubleNaN(char[] num, int offset, int length) {
     if (length != 3 || num[offset + 1] != 'a' || num[offset + 2] != 'N')
-      throw naN(num, offset, length, "Number starting N expected to be NaN but was: ");
+      throw nanError(num, offset, length, "Number contains illegal literal: ");
     return Double.NaN;
   }
 
@@ -149,7 +152,7 @@ final class Chars {
         || num[offset + 5] != 'i'
         || num[offset + 6] != 't'
         || num[offset + 7] != 'y')
-      throw naN(num, offset, length, "Number starting I expected to be Infinity but was: ");
+      throw nanError(num, offset, length, "Number contains illegal literal: ");
     return Double.POSITIVE_INFINITY;
   }
 
@@ -157,20 +160,27 @@ final class Chars {
    * @see Integer#parseInt(String)
    */
   static int parseInt(char[] num, int offset, int length) {
-    if (length <= 0) throw numberHasNoDigits(num, offset, 0);
+    if (length <= 0) throw nanNoDigits(num, offset, 0);
     boolean neg = num[offset] == '-';
     int i = offset;
     if (neg || num[offset] == '+') i++;
     int end = offset + length;
-    if (i >= end) throw numberHasNoDigits(num, offset, length);
+    if (i >= end) throw nanNoDigits(num, offset, length);
+    while (i < end && num[i] == '0') i++; // skip leading zeros
+    int digits = length - (i - offset);
+    if (digits == 0) return 0;
+    if (digits > 10 || digits == 10 && num[i] > '2')
+      throw nanOverflow(num, offset, length, "int");
     int n = 0;
     for (; i < end; i++) {
       n *= 10;
       char d = num[i];
       if (!isDigit(d))
-        throw naN(num, offset, length, "Number contains non-digit character `%s`: ".formatted(d));
+        throw nanIllegalChar(num, offset, length, d);
       n += d - '0';
     }
+    if (n < 0 && !(neg && -n == Integer.MIN_VALUE))
+      throw nanOverflow(num, offset, length, "int");
     return neg ? -n : n;
   }
 
@@ -178,20 +188,27 @@ final class Chars {
    * @see Long#parseLong(String)
    */
   static long parseLong(char[] num, int offset, int length) {
-    if (length <= 0) throw numberHasNoDigits(num, offset, 0);
+    if (length <= 0) throw nanNoDigits(num, offset, 0);
     boolean neg = num[offset] == '-';
     int i = offset;
     if (neg || num[offset] == '+') i++;
     int end = offset + length;
-    if (i >= end) throw numberHasNoDigits(num, offset, length);
+    if (i >= end) throw nanNoDigits(num, offset, length);
+    while (i < end && num[i] == '0') i++; // skip leading zeros
+    int digits = length - (i - offset);
+    if (digits == 0) return 0L;
+    if (digits > 19 || digits == 19 && num[i] == '9' && num[i+1] > '2')
+      throw nanOverflow(num, offset, length, "long");
     long n = 0;
     for (; i < end; i++) {
       n *= 10;
       char d = num[i];
       if (!isDigit(d))
-        throw naN(num, offset, length, "Number contains non-digit character `%s`: ".formatted(d));
+        throw nanIllegalChar(num, offset, length, d);
       n += d - '0';
     }
+    if (n < 0 && !(neg && -n == Long.MIN_VALUE))
+      throw nanOverflow(num, offset, length, "long");
     return neg ? -n : n;
   }
 
@@ -199,12 +216,20 @@ final class Chars {
     return c >= '0' && c <= '9';
   }
 
-  private static NumberFormatException naN(char[] buffer, int offset, int length, String msg) {
+  private static NumberFormatException nanError(char[] buffer, int offset, int length, String msg) {
     return new NumberFormatException(msg + new String(buffer, offset, length));
   }
 
-  private static NumberFormatException numberHasNoDigits(char[] num, int offset, int length) {
-    return naN(num, offset, length, "Number has no digits: ");
+  private static NumberFormatException nanNoDigits(char[] num, int offset, int length) {
+    return nanError(num, offset, length, "Number has no digits: ");
+  }
+
+  private static NumberFormatException nanIllegalChar(char[] num, int offset, int length, char ch) {
+    return nanError(num, offset, length, "Number contains illegal character `%s`: ".formatted(ch));
+  }
+
+  private static NumberFormatException nanOverflow(char[] num, int offset, int length, String type) {
+    return nanError(num, offset, length, "Number overflows %s range: ".formatted(type));
   }
 
   /*
