@@ -391,21 +391,20 @@ public interface JsonValue {
   default boolean identicalTo(JsonValue other) {
     if (!equivalentTo(this, other, JsonValue::identicalTo)) return false;
     if (isNumber()) return node().getDeclaration().equals(other.node().getDeclaration());
-    //FIXME for identical I guess null != undefined => test here
+    // FIXME for identical I guess null != undefined => test here
     if (!isObject()) return true;
     // names must be in same order
     Iterator<Text> it1 = asObject().keys().iterator();
     Iterator<Text> it2 = other.asObject().keys().iterator();
-    //FIXME must also compare the keys itself => needs test
-    while (it1.hasNext() && it2.hasNext())
-      if (!it1.next().equals(it2.next())) return false;
+    // FIXME must also compare the keys itself => needs test
+    while (it1.hasNext() && it2.hasNext()) if (!it1.next().equals(it2.next())) return false;
     return !it1.hasNext() && !it2.hasNext();
   }
 
   private static boolean equivalentTo(
       JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> compare) {
     if (a.type() != b.type()) return false;
-    //FIXME undefined => true? why? I'd think b.isUndefined()
+    // FIXME undefined => true? why? I'd think b.isUndefined()
     if (a.isUndefined()) return true; // includes null
     if (a.isString())
       return a.as(JsonString.class).text().contentEquals(b.as(JsonString.class).text());
@@ -466,23 +465,16 @@ public interface JsonValue {
    * @return the underlying {@link JsonNode} if it exists
    * @throws JsonPathException in case this value does not exist in the JSON document
    */
+  @NotNull
   @TerminalOp(canBeNull = true)
   JsonNode node();
 
   /**
-   * @param required the {@link JsonNodeType} the caller needs this node to be
-   * @return the underlying {@link JsonNode} if it exists and if it is of the required type, or Java
-   *     {@code null}, if the JSON node is undefined or defined JSON {@code null}. In effect, for a
-   *     node of {@link JsonNodeType#NULL} it means it is returned when requested with {@link
-   *     JsonNodeType#NULL}, and Java {@code null} is returned when requested with Java {@code
-   *     null}.
-   * @throws JsonTreeException in case this node exists but is not of the required type and the
-   *     actual type is not JSON {@code null}.
    * @since 1.9
    */
   @CheckNull
   @TerminalOp(canBeNull = true)
-  JsonNode node(@CheckNull JsonNodeType required);
+  JsonNode nodeIfExists();
 
   /**
    * @return JSON declaration for this value (as originally given)

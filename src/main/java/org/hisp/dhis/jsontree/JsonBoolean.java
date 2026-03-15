@@ -27,9 +27,9 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.TerminalOp;
-
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
+
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
  * Represents a boolean JSON node.
@@ -47,8 +47,8 @@ public interface JsonBoolean extends JsonPrimitive {
    */
   @TerminalOp(canBeUndefined = true)
   default Boolean bool() {
-    JsonNode node = node(JsonNodeType.BOOLEAN);
-    return node == null ? null : (Boolean) node.value();
+    JsonNode node = nodeIfExists();
+    return node == null || node.getType() == JsonNodeType.NULL ? null : booleanValue();
   }
 
   /**
@@ -71,9 +71,6 @@ public interface JsonBoolean extends JsonPrimitive {
    */
   @TerminalOp
   default boolean booleanValue() {
-    Boolean res = bool();
-    if (res != null) return res;
-    JsonPath path = node().getPath();
-    throw new JsonPathException(path, "Path `%s` is defined as null".formatted(path));
+    return node().booleanValue();
   }
 }

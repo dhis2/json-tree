@@ -27,10 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
+
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
-
-import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 
 /**
  * Represents a numeric JSON node.
@@ -48,8 +48,8 @@ public interface JsonNumber extends JsonPrimitive {
    */
   @TerminalOp(canBeUndefined = true)
   default Number number() {
-    JsonNode node = node(JsonNodeType.NUMBER);
-    return node == null ? null : (Number) node.value();
+    JsonNode node = nodeIfExists();
+    return node == null || node.getType() == JsonNodeType.NULL ? null : node.numberValue();
   }
 
   /**

@@ -38,7 +38,7 @@ public sealed interface JsonNodeOperation {
    * @return true when this operation targets an array index
    */
   default boolean isArrayOp() {
-    return path().segment().isInt(); // just a guess, could be numeric object member
+    return path().segment().isSignedInteger(); // just a guess, could be numeric object member
   }
 
   /**

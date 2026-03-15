@@ -201,10 +201,9 @@ class CharsParseDoubleTest {
         NumberFormatException.class,
         () -> Double.parseDouble(number),
         () -> "Number is valid for Double.parseDouble: `" + number + "`");
-    char[] chars = number.toCharArray();
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> Chars.parseDouble(chars, 0, chars.length),
+        () -> Chars.parseDouble(number.toCharArray()),
         "Should throw for: " + number);
   }
 
@@ -240,10 +239,9 @@ class CharsParseDoubleTest {
         NumberFormatException.class,
         () -> Long.parseLong(number),
         () -> "Number is valid for Long.parseLong: `" + number + "`");
-    char[] chars = number.toCharArray();
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> Chars.parseLong(chars, 0, chars.length),
+        () -> Chars.parseLong(number.toCharArray()),
         "Should throw for: " + number);
   }
 
@@ -262,10 +260,9 @@ class CharsParseDoubleTest {
         NumberFormatException.class,
         () -> Integer.parseInt(number),
         () -> "Number is valid for Integer.parseInt: `" + number + "`");
-    char[] chars = number.toCharArray();
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> Chars.parseInt(chars, 0, chars.length),
+        () -> Chars.parseInt(number.toCharArray()),
         "Should throw for: " + number);
   }
 

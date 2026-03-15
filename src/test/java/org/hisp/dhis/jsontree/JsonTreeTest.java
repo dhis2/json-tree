@@ -43,6 +43,8 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Set;
+
+import org.hisp.dhis.jsontree.JsonNode.Index;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -97,13 +99,21 @@ class JsonTreeTest {
   void testStringNode_Unsupported() {
     JsonNode node = JsonNode.of("\"hello\"");
     Exception ex = assertThrowsExactly(JsonTreeException.class, node::isEmpty);
-    assertEquals("STRING node has no empty property.", ex.getMessage());
+    assertEquals(
+        "STRING node at path (root) is not a container and does not support #isEmpty(): \"hello\"",
+        ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::size);
-    assertEquals("STRING node has no size property.", ex.getMessage());
+    assertEquals(
+        "STRING node at path (root) is not a container and does not support #size(): \"hello\"",
+        ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::elements);
-    assertEquals("STRING node has no elements property.", ex.getMessage());
+    assertEquals(
+        "STRING node at path (root) is not a ARRAY and does not support #elements(): \"hello\"",
+        ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::members);
-    assertEquals("STRING node has no members property.", ex.getMessage());
+    assertEquals(
+        "STRING node at path (root) is not a OBJECT and does not support #members(): \"hello\"",
+        ex.getMessage());
   }
 
   @Test
@@ -126,13 +136,15 @@ class JsonTreeTest {
   void testNumberNode_Unsupported() {
     JsonNode node = JsonNode.of("1e-2");
     Exception ex = assertThrowsExactly(JsonTreeException.class, node::isEmpty);
-    assertEquals("NUMBER node has no empty property.", ex.getMessage());
+    assertEquals("NUMBER node at path (root) is not a container and does not support #isEmpty(): 1e-2", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::size);
-    assertEquals("NUMBER node has no size property.", ex.getMessage());
+    assertEquals("NUMBER node at path (root) is not a container and does not support #size(): 1e-2", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::elements);
-    assertEquals("NUMBER node has no elements property.", ex.getMessage());
+    assertEquals(
+        "NUMBER node at path (root) is not a ARRAY and does not support #elements(): 1e-2",
+        ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::members);
-    assertEquals("NUMBER node has no members property.", ex.getMessage());
+    assertEquals("NUMBER node at path (root) is not a OBJECT and does not support #members(): 1e-2", ex.getMessage());
   }
 
   @Test
@@ -162,13 +174,13 @@ class JsonTreeTest {
   void testBooleanNode_Unsupported() {
     JsonNode node = JsonNode.of("false");
     Exception ex = assertThrowsExactly(JsonTreeException.class, node::isEmpty);
-    assertEquals("BOOLEAN node has no empty property.", ex.getMessage());
+    assertEquals("BOOLEAN node at path (root) is not a container and does not support #isEmpty(): false", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::size);
-    assertEquals("BOOLEAN node has no size property.", ex.getMessage());
+    assertEquals("BOOLEAN node at path (root) is not a container and does not support #size(): false", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::elements);
-    assertEquals("BOOLEAN node has no elements property.", ex.getMessage());
+    assertEquals("BOOLEAN node at path (root) is not a ARRAY and does not support #elements(): false", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::members);
-    assertEquals("BOOLEAN node has no members property.", ex.getMessage());
+    assertEquals("BOOLEAN node at path (root) is not a OBJECT and does not support #members(): false", ex.getMessage());
   }
 
   @Test
@@ -191,13 +203,13 @@ class JsonTreeTest {
   void testNullNode_Unsupported() {
     JsonNode node = JsonNode.of("null");
     Exception ex = assertThrowsExactly(JsonTreeException.class, node::isEmpty);
-    assertEquals("NULL node has no empty property.", ex.getMessage());
+    assertEquals("NULL node at path (root) is not a container and does not support #isEmpty(): null", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::size);
-    assertEquals("NULL node has no size property.", ex.getMessage());
+    assertEquals("NULL node at path (root) is not a container and does not support #size(): null", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::elements);
-    assertEquals("NULL node has no elements property.", ex.getMessage());
+    assertEquals("NULL node at path (root) is not a ARRAY and does not support #elements(): null", ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, node::members);
-    assertEquals("NULL node has no members property.", ex.getMessage());
+    assertEquals("NULL node at path (root) is not a OBJECT and does not support #members(): null", ex.getMessage());
   }
 
   @Test
@@ -222,14 +234,14 @@ class JsonTreeTest {
   void testArray_Unsupported() {
     JsonNode node = JsonNode.of("[]");
     Exception ex = assertThrowsExactly(JsonTreeException.class, node::members);
-    assertEquals("ARRAY node has no members property.", ex.getMessage());
+    assertEquals("ARRAY node at path (root) is not a OBJECT and does not support #members(): []", ex.getMessage());
   }
 
   @Test
   void testArray_IterateElements() {
     JsonNode root = JsonNode.of("[ 1,2 , true , false, \"hello\",{},[]]");
 
-    Iterator<JsonNode> elements = iterator(root.elements(false));
+    Iterator<JsonNode> elements = root.elements(Index.SKIP).iterator();
     JsonNode e0 = elements.next();
     JsonNode e1 = elements.next();
     JsonNode e2 = elements.next();
@@ -247,9 +259,10 @@ class JsonTreeTest {
     assertEquals("{}", e5.getDeclaration().toString());
     assertEquals("[]", e6.getDeclaration().toString());
 
-    JsonNode e0kept = iterator(root.elements(true)).next();
+    JsonNode e0kept = root.elements(Index.ADD).iterator().next();
     assertNotSame(e0, e0kept);
-    assertSame(e0kept, iterator(root.elements(false)).next());
+    assertSame(e0kept, root.elements(Index.CHECK).iterator().next());
+    assertNotSame(e0kept, root.elements(Index.SKIP).iterator().next());
   }
 
   @Test
@@ -391,7 +404,7 @@ class JsonTreeTest {
 
     JsonNode root = doc.get("$");
 
-    Iterator<Entry<Text, JsonNode>> members = iterator(root.members(false));
+    Iterator<Entry<Text, JsonNode>> members = root.members(Index.SKIP).iterator();
     Entry<Text, JsonNode> m1 = members.next();
     Entry<Text, JsonNode> m2 = members.next();
     Entry<Text, JsonNode> m3 = members.next();
@@ -407,9 +420,10 @@ class JsonTreeTest {
     assertEquals("d", m4.getKey().toString());
     assertEquals(false, m4.getValue().value());
 
-    JsonNode m1kept = iterator(root.members(true)).next().getValue();
+    JsonNode m1kept = root.members(Index.ADD).iterator().next().getValue();
     assertNotSame(m1.getValue(), m1kept);
-    assertSame(m1kept, iterator(root.members(true)).next().getValue());
+    assertSame(m1kept, root.members(Index.CHECK).iterator().next().getValue());
+    assertNotSame(m1kept, root.members(Index.SKIP).iterator().next().getValue());
   }
 
   @Test
@@ -450,7 +464,7 @@ class JsonTreeTest {
   void testObject_Unsupported() {
     JsonNode node = JsonNode.of("{}");
     Exception ex = assertThrowsExactly(JsonTreeException.class, node::elements);
-    assertEquals("OBJECT node has no elements property.", ex.getMessage());
+    assertEquals("OBJECT node at path (root) is not a ARRAY and does not support #elements(): {}", ex.getMessage());
   }
 
   @Test

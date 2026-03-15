@@ -27,7 +27,7 @@ class JsonStringTest {
   void testStringWithDefault_NoString() {
     JsonMixed str = JsonMixed.of("1");
     JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> str.string("hello"));
-    assertEquals("Path `` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage());
+    assertEquals("NUMBER node at path (root) is not a STRING and does not support #textValue(): 1", ex.getMessage());
   }
 
   @Test
@@ -55,7 +55,7 @@ class JsonStringTest {
     JsonMixed str = JsonMixed.of("1");
     JsonTreeException ex =
         assertThrowsExactly(JsonTreeException.class, () -> str.parsed(String::length));
-    assertEquals("Path `` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage());
+    assertEquals("NUMBER node at path (root) is not a STRING and does not support #textValue(): 1", ex.getMessage());
   }
 
   @Test

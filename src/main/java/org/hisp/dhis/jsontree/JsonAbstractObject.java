@@ -1,15 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import static java.util.Spliterator.DISTINCT;
-import static java.util.Spliterator.NONNULL;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterator.SIZED;
-import static java.util.Spliterators.spliterator;
-import static java.util.stream.StreamSupport.stream;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -53,7 +46,8 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default boolean has(CharSequence name) {
-    return exists() && node().isMember(name);
+    JsonNode node = nodeIfExists();
+    return node != null && node().isMember(name);
   }
 
   /**
@@ -65,10 +59,11 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default boolean has(CharSequence... names) {
-    // use has-variant to trigger throw for non-objects
-    if (names.length == 0) return has(List.of());
-    if (names.length == 1) return has(names[0]);
-    return has(List.of(names));
+    JsonNode node = nodeIfExists();
+    if (node == null) return false;
+    for (CharSequence name : names)
+      if (!node.isMember(name)) return false;
+    return true;
   }
 
   /**
@@ -81,10 +76,11 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default boolean has(Collection<? extends CharSequence> names) {
-    if (!exists()) return false;
-    // Note that size check would miss that arrays do not have named members
-    JsonNode node = node();
-    return names.stream().allMatch(node::isMember);
+    JsonNode node = nodeIfExists();
+    if (node == null) return false;
+    for (CharSequence name : names)
+      if (!node.isMember(name)) return false;
+    return true;
   }
 
   /**
@@ -136,8 +132,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default Stream<Text> keys() {
     if (isUndefined() || isEmpty()) return Stream.empty();
-    Iterator<Text> iter = node().keys().iterator();
-    return stream(spliterator(iter, size(), ORDERED | SIZED | DISTINCT | NONNULL), false);
+    return node().keys().stream();
   }
 
   /**
@@ -158,7 +153,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default Stream<Map.Entry<Text, E>> entries() {
     if (isUndefined() || isEmpty()) return Stream.empty();
-    return stream(node().keys().spliterator(), false).map(name -> Map.entry(name, get(name)));
+    return node().keys().stream().map(name -> Map.entry(name, get(name)));
   }
 
   /**
@@ -180,9 +175,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default Stream<JsonPath> paths() {
-    if (isUndefined() || isEmpty()) return Stream.empty();
-    Iterator<JsonPath> iter = node().paths().iterator();
-    return stream(spliterator(iter, size(), ORDERED | SIZED | DISTINCT | NONNULL), false);
+    return isUndefined() || isEmpty() ? Stream.empty() : node().paths().stream();
   }
 
   /**

@@ -33,7 +33,7 @@ class JsonArrayTest {
   void testStringValues_NotOnlyStrings() {
     JsonMixed value = JsonMixed.of("[\"a\", 1, true]");
     JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::stringValues);
-    assertEquals("Array element is not a org.hisp.dhis.jsontree.Text: 1", ex.getMessage());
+    assertEquals("NUMBER node at path .1 is not a STRING and does not support #textValue(): 1", ex.getMessage());
   }
 
   @Test
@@ -46,7 +46,7 @@ class JsonArrayTest {
   void testNumberValues_NotOnlyNumbers() {
     JsonMixed value = JsonMixed.of("[1, true, \"a\"]");
     JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::numberValues);
-    assertEquals("Array element is not a java.lang.Number: true", ex.getMessage());
+    assertEquals("BOOLEAN node at path .1 is not a NUMBER and does not support #numberValue(): true", ex.getMessage());
   }
 
   @Test
@@ -59,7 +59,7 @@ class JsonArrayTest {
   void testBoolValues_NotOnlyBooleans() {
     JsonMixed value = JsonMixed.of("[true, 1, \"a\"]");
     JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::boolValues);
-    assertEquals("Array element is not a java.lang.Boolean: 1", ex.getMessage());
+    assertEquals("NUMBER node at path .1 is not a BOOLEAN and does not support #booleanValue(): 1", ex.getMessage());
   }
 
   @Test

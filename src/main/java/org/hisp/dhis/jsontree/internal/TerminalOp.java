@@ -1,11 +1,10 @@
 package org.hisp.dhis.jsontree.internal;
 
-import org.hisp.dhis.jsontree.JsonNode;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.hisp.dhis.jsontree.JsonNode;
 
 /**
  * Marker for methods in {@link org.hisp.dhis.jsontree.JsonValue} API that cause a lookup of the

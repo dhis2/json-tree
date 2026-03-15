@@ -3,7 +3,6 @@ package org.hisp.dhis.jsontree;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -227,21 +226,24 @@ class TextTest {
     assertArrayEquals(new char[] {'h', 'e', 'l', 'l', 'o'}, t.toCharArray());
   }
 
-  @DisplayName("isInt()")
+  @DisplayName("isSignedInteger()")
   @Test
-  void testIsInt() {
-    assertTrue(Text.of(123).isInt());
-    assertTrue(Text.of("123").isInt());
-    assertTrue(Text.of(-123).isInt());
-    assertTrue(Text.of("+123").isInt());
-    assertTrue(Text.of("0").isInt());
-    assertTrue(Text.of("-0").isInt());
-    assertTrue(Text.of("+0").isInt());
-    assertTrue(Text.of("007").isInt());
-    assertFalse(Text.of("").isInt());
-    assertFalse(Text.of("12a").isInt());
-    assertFalse(Text.of("12.3").isInt());
-    assertFalse(Text.of("--1").isInt());
+  void testIsSignedInteger() {
+    assertTrue(Text.of(123).isSignedInteger());
+    assertTrue(Text.of("123").isSignedInteger());
+    assertTrue(Text.of(-123).isSignedInteger());
+    assertTrue(Text.of("+123").isSignedInteger());
+    assertTrue(Text.of("0").isSignedInteger());
+    assertTrue(Text.of("-0").isSignedInteger());
+    assertTrue(Text.of("+0").isSignedInteger());
+    assertTrue(Text.of("007").isSignedInteger());
+    assertTrue(Text.of("9999999999999999999999999999").isSignedInteger());
+
+    assertFalse(Text.of("").isSignedInteger());
+    assertFalse(Text.of(".01").isSignedInteger());
+    assertFalse(Text.of("12a").isSignedInteger());
+    assertFalse(Text.of("12.3").isSignedInteger());
+    assertFalse(Text.of("--1").isSignedInteger());
   }
 
   @DisplayName("parseInt()")

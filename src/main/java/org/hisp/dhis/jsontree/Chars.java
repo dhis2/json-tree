@@ -23,9 +23,27 @@ import java.util.function.BiFunction;
  */
 final class Chars {
 
-  /*
-  Parsing JSON Numbers (without allocating)
-   */
+  static boolean parseBoolean(char[] val) {
+    return parseBoolean(val, 0, val.length);
+  }
+
+  static boolean parseBoolean(char[] val, int offset, int length) {
+    if (length < 4 || length > 5)
+      throw new IllegalArgumentException("Not a boolean: " + new String(val, offset, length));
+    int i = offset;
+    int c0 = val[i] | 0b10_0000;
+    if (c0 == 't') {
+      if ((val[i + 1] | 0b10_0000) == 'r'
+          && (val[i + 2] | 0b10_0000) == 'u'
+          && (val[i + 3] | 0b10_0000) == 'e') return true;
+    } else if (c0 == 'f') {
+      if ((val[i + 1] | 0b10_0000) == 'a'
+          && (val[i + 2] | 0b10_0000) == 'l'
+          && (val[i + 3] | 0b10_0000) == 's'
+          && (val[i + 4] | 0b10_0000) == 'e') return false;
+    }
+    throw new IllegalArgumentException("Not a boolean: " + new String(val, offset, length));
+  }
 
   private static final long MAX_SAFE_SIGNIFICAND = ((1L << 53) - 1);
 
@@ -44,6 +62,10 @@ final class Chars {
   /**
    * @see Double#parseDouble(String)
    */
+  static double parseDouble(char[] num) {
+    return parseDouble(num, 0, num.length);
+  }
+
   static double parseDouble(char[] num, int offset, int length) {
     int end = offset + length;
     // strip tailing whitespace
@@ -112,8 +134,7 @@ final class Chars {
         if (seenDot) decimals++;
       } else throw nanIllegalChar(num, i0, length, c);
     }
-    if (digits == 0)
-      throw nanError(num, i0, length, "Number has no digits before the exponent: ");
+    if (digits == 0) throw nanError(num, i0, length, "Number has no digits before the exponent: ");
     // fast path requires max of 15 significand digits and only allows for exp up to 4 characters
     // including sign
     int expLen = eOffset < 0 ? 0 : length - eOffset - 1;
@@ -159,6 +180,10 @@ final class Chars {
   /**
    * @see Integer#parseInt(String)
    */
+  static int parseInt(char[] num) {
+    return parseInt(num, 0, num.length);
+  }
+
   static int parseInt(char[] num, int offset, int length) {
     if (length <= 0) throw nanNoDigits(num, offset, 0);
     boolean neg = num[offset] == '-';
@@ -169,24 +194,25 @@ final class Chars {
     while (i < end && num[i] == '0') i++; // skip leading zeros
     int digits = length - (i - offset);
     if (digits == 0) return 0;
-    if (digits > 10 || digits == 10 && num[i] > '2')
-      throw nanOverflow(num, offset, length, "int");
+    if (digits > 10 || digits == 10 && num[i] > '2') throw nanOverflow(num, offset, length, "int");
     int n = 0;
     for (; i < end; i++) {
       n *= 10;
       char d = num[i];
-      if (!isDigit(d))
-        throw nanIllegalChar(num, offset, length, d);
+      if (!isDigit(d)) throw nanIllegalChar(num, offset, length, d);
       n += d - '0';
     }
-    if (n < 0 && !(neg && -n == Integer.MIN_VALUE))
-      throw nanOverflow(num, offset, length, "int");
+    if (n < 0 && !(neg && -n == Integer.MIN_VALUE)) throw nanOverflow(num, offset, length, "int");
     return neg ? -n : n;
   }
 
   /**
    * @see Long#parseLong(String)
    */
+  static long parseLong(char[] num) {
+    return parseLong(num, 0, num.length);
+  }
+
   static long parseLong(char[] num, int offset, int length) {
     if (length <= 0) throw nanNoDigits(num, offset, 0);
     boolean neg = num[offset] == '-';
@@ -197,23 +223,31 @@ final class Chars {
     while (i < end && num[i] == '0') i++; // skip leading zeros
     int digits = length - (i - offset);
     if (digits == 0) return 0L;
-    if (digits > 19 || digits == 19 && num[i] == '9' && num[i+1] > '2')
+    if (digits > 19 || digits == 19 && num[i] == '9' && num[i + 1] > '2')
       throw nanOverflow(num, offset, length, "long");
     long n = 0;
     for (; i < end; i++) {
       n *= 10;
       char d = num[i];
-      if (!isDigit(d))
-        throw nanIllegalChar(num, offset, length, d);
+      if (!isDigit(d)) throw nanIllegalChar(num, offset, length, d);
       n += d - '0';
     }
-    if (n < 0 && !(neg && -n == Long.MIN_VALUE))
-      throw nanOverflow(num, offset, length, "long");
+    if (n < 0 && !(neg && -n == Long.MIN_VALUE)) throw nanOverflow(num, offset, length, "long");
     return neg ? -n : n;
   }
 
   private static boolean isDigit(char c) {
     return c >= '0' && c <= '9';
+  }
+
+  static boolean isSignedInteger(char[] json, int offset, int length) {
+    if (length <= 0) return false;
+    char sign = json[offset];
+    int i = 0;
+    if (sign == '-' || sign == '+') i++;
+    if (i > 0 && length == 1) return false;
+    for (; i < length; i++) if (!isDigit(json[offset + i])) return false;
+    return true;
   }
 
   private static NumberFormatException nanError(char[] num, int offset, int length, String msg) {
@@ -228,7 +262,8 @@ final class Chars {
     return nanError(num, offset, length, "Number contains illegal character `%s`: ".formatted(ch));
   }
 
-  private static NumberFormatException nanOverflow(char[] num, int offset, int length, String type) {
+  private static NumberFormatException nanOverflow(
+      char[] num, int offset, int length, String type) {
     return nanError(num, offset, length, "Number overflows %s range: ".formatted(type));
   }
 
@@ -236,7 +271,7 @@ final class Chars {
   Parsing JSON encoded Strings
    */
 
-  static Text parseString(char[] json, int offset) {
+  static Text decodeString(char[] json, int offset) {
     int length = 0;
     int index = offset;
     index = expectChar(json, index, '"');
@@ -246,8 +281,7 @@ final class Chars {
         // found the end (if escaped we would have hopped over)
         // if str length is same as JSON raw characters length no escaping was used,
         // and we can use a direct view of the raw characters
-        if (length == index - 2 - offset)
-          return Text.of(json, offset + 1, length);
+        if (length == index - 2 - offset) return Text.of(json, offset + 1, length);
         // did use escaping...
         return parseStringWithEscaping(json, offset + 1, length);
       } else if (c == '\\') {

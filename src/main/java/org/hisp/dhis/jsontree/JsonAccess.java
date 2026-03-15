@@ -55,7 +55,11 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
+import org.hisp.dhis.jsontree.JsonNode.Index;
 
 /**
  * Standard implementation of the {@link JsonAccessors}.
@@ -75,8 +79,8 @@ public final class JsonAccess implements JsonAccessors {
    * allows to add {@link JsonAccessor} functions. While this instance is initialized with default
    * functions they can be overridden by registering another function for the same type.
    */
-  public static final JsonAccess GLOBAL = new JsonAccess().init();
 
+  public static final JsonAccess GLOBAL = new JsonAccess().init();
   private record RecordFactory(
       MethodHandle constructor,
       RecordComponent[] components,
@@ -120,10 +124,11 @@ public final class JsonAccess implements JsonAccessors {
     return add(String.class, JsonAccess::accessAsString)
         .add(boolean.class, JsonAccess::accessAsPrimitiveBoolean)
         .add(char.class, JsonAccess::accessAsPrimitiveCharacter)
-        .add(int.class, value -> accessAsPrimitiveNumber(value, Number::intValue))
-        .add(long.class, value -> accessAsPrimitiveNumber(value, Number::longValue))
-        .add(float.class, value -> accessAsPrimitiveNumber(value, Number::floatValue))
-        .add(double.class, value -> accessAsPrimitiveNumber(value, Number::doubleValue))
+        //TODO decide if we want conversion already in the JsonNode API - at least for String? => better access to low overhead paths
+        .add(int.class, JsonNumber::intValue)
+        .add(long.class, JsonNumber::longValue)
+        .add(float.class, JsonNumber::floatValue)
+        .add(double.class, JsonNumber::doubleValue)
         .add(Boolean.class, JsonAccess::accessAsBoolean)
         .add(Character.class, JsonAccess::accessAsCharacter)
         .add(Integer.class, value -> accessAsNumber(value, Number::intValue))
@@ -146,6 +151,9 @@ public final class JsonAccess implements JsonAccessors {
         .add(Stream.class, JsonAccess::accessAsStream)
         .add(Iterator.class, JsonAccess::accessAsIterator)
         .add(Optional.class, JsonAccess::accessAsOptional)
+        .add(IntStream.class, JsonArray::intValues)
+        .add(LongStream.class, JsonArray::longValues)
+        .add(DoubleStream.class, JsonArray::doubleValues)
 
         // type-families
         .add(Enum.class, JsonAccess::accessAsEnum)
@@ -227,6 +235,7 @@ public final class JsonAccess implements JsonAccessors {
     throw new JsonAccessException("JSON does not map to a Java Boolean: " + bool);
   }
 
+  //TODO clean up once we landed on how we deal with string value access as number
   public static <T extends Number> T accessAsPrimitiveNumber(
       JsonMixed number, Function<Number, T> as) {
     T val = accessAsNumber(number, as);
@@ -252,7 +261,7 @@ public final class JsonAccess implements JsonAccessors {
   public static Character accessAsCharacter(JsonMixed str) {
     if (str.isUndefined()) return null;
     if (str.isString()) {
-      String val = str.string();
+      Text val = str.text();
       return val.isEmpty() ? null : val.charAt(0);
     }
     if (str.isNumber()) return str.toJson().charAt(0);
@@ -314,7 +323,7 @@ public final class JsonAccess implements JsonAccessors {
     JsonAccessor<?> elements = accessors.accessor(getRawType(elementType));
     // auto-box simple values in a 1 element sequence
     if (!stream.isArray()) return Stream.of(elements.access(stream, as, accessors));
-    return stream.stream().map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors));
+    return stream.stream(Index.SKIP).map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors));
   }
 
   @SuppressWarnings({"java:S1168", "java:S1452"})

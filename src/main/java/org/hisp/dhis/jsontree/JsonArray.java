@@ -27,7 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.TerminalOp;
+import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
+import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
 import java.util.List;
 import java.util.function.Function;
@@ -35,7 +36,8 @@ import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import org.hisp.dhis.jsontree.JsonNode.Index;
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
  * Represents a JSON array node.
@@ -52,22 +54,22 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @Override
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Stream<JsonValue> stream() {
-    return stream(true);
+    return stream(AUTO);
   }
 
   /**
-   * @implNote This utilizes {@link JsonNode#elements(boolean)} avoiding map lookups for each
+   * @implNote This utilizes {@link JsonNode#elements(Index)} avoiding map lookups for each
    *     element. On {@link JsonAbstractArray} level this cannot be done as the node cannot be
    *     {@link JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
-   * @param remember true, to internally "remember" the elements iterated over so far, false to only
-   *     iterate without keeping references to them further on so GC can pick em up
+   * @param index the strategy to apply when it comes to node lookup and indexing
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<JsonValue> stream(boolean remember) {
-    if (isUndefined() || isEmpty()) return Stream.empty();
+  default Stream<JsonValue> stream(JsonNode.Index index) {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return Stream.empty();
     JsonAccessors accessors = getAccessors();
-    return StreamSupport.stream(node().elements(remember), false).map(node -> node.lift(accessors));
+    return node.elements(index).stream().map(n -> n.lift(accessors));
   }
 
   /**
@@ -87,25 +89,46 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  List<String> stringValues();
+  default List<String> stringValues() {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    return node.elements(JsonNode.Index.SKIP).stream()
+        .map(JsonNode::textValue)
+        .map(Text::toString)
+        .toList();
+  }
 
   /**
    * @return the array elements as a uniform list of {@link Number}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  List<Number> numberValues();
+  default List<Number> numberValues() {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    return node.elements(JsonNode.Index.SKIP).stream().map(JsonNode::numberValue).toList();
+  }
 
   /**
    * @return the array elements as a uniform list of {@link Boolean}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  List<Boolean> boolValues();
+  default List<Boolean> boolValues() {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    return node.elements(JsonNode.Index.SKIP).stream().map(JsonNode::booleanValue).toList();
+  }
 
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default <E> List<E> values(Function<String, E> mapper) {
-    return stringValues().stream().map(mapper).toList();
+  default <E> List<E> values(Function<String, E> f) {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    return node.elements(JsonNode.Index.SKIP).stream()
+        .map(JsonNode::textValue)
+        .map(Text::toString)
+        .map(f)
+        .toList();
   }
 
   /**
@@ -114,9 +137,9 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default IntStream intValues() {
-    return isUndefined()
-        ? IntStream.empty()
-        : StreamSupport.stream(node().elements(false), false).mapToInt(JsonNode::intValue);
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return IntStream.empty();
+    return node.elements(SKIP).stream().mapToInt(JsonNode::intValue);
   }
 
   /**
@@ -125,9 +148,9 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default LongStream longValues() {
-    return isUndefined()
-        ? LongStream.empty()
-        : StreamSupport.stream(node().elements(false), false).mapToLong(JsonNode::longValue);
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return LongStream.empty();
+    return node.elements(SKIP).stream().mapToLong(JsonNode::longValue);
   }
 
   /**
@@ -136,9 +159,9 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default DoubleStream doubleValues() {
-    return isUndefined()
-        ? DoubleStream.empty()
-        : StreamSupport.stream(node().elements(false), false).mapToDouble(JsonNode::doubleValue);
+    JsonNode node = nodeIfExists();
+    if (node == null || node.getType() == JsonNodeType.NULL) return DoubleStream.empty();
+    return node.elements(SKIP).stream().mapToDouble(JsonNode::doubleValue);
   }
 
   default JsonValue get(int index) {

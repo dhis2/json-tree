@@ -20,7 +20,7 @@ class JsonBooleanTest {
   void testBooleanValue_WithDefaultNoBoolean() {
     JsonTreeException ex =
         assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("1").booleanValue(true));
-    assertEquals("Path `` does not contain an BOOLEAN but a(n) NUMBER: 1", ex.getMessage());
+    assertEquals("NUMBER node at path (root) is not a BOOLEAN and does not support #booleanValue(): 1", ex.getMessage());
   }
 
   @Test

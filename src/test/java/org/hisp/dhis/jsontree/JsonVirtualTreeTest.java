@@ -66,10 +66,10 @@ class JsonVirtualTreeTest {
         assertThrowsExactly(
             JsonTreeException.class, () -> JsonMixed.of("[]").getObject("undefined").has("foo"));
     assertEquals(
-        "ARRAY node at path `` is not an object, no member at path: .undefined", ex.getMessage());
+        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text) + .undefined: []", ex.getMessage());
     JsonObject bar = obj.getObject("users").getObject("bar");
     ex = assertThrowsExactly(JsonTreeException.class, () -> bar.has("is-array"));
-    assertEquals("ARRAY node has no keys property.", ex.getMessage());
+    assertEquals("ARRAY node at path .users.bar is not a OBJECT and does not support #isMember(Text): []", ex.getMessage());
   }
 
   @Test
@@ -329,7 +329,7 @@ class JsonVirtualTreeTest {
     JsonList<JsonNumber> list =
         JsonMixed.of("[12,42]").getObject("non-existing").asList(JsonNumber.class);
     assertEquals(
-        "ARRAY node at path `` is not an object, no member at path: .non-existing",
+        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text) + .non-existing: [12,42]",
         list.toString());
   }
 
@@ -344,5 +344,14 @@ class JsonVirtualTreeTest {
     JsonFormatException ex =
         assertThrowsExactly(JsonFormatException.class, () -> JsonMixed.ofNonStandard("{'a:12}"));
     assertEquals("Expected ' but reach EOI: {\"a:12}", ex.getMessage());
+  }
+
+  @Test
+  void testNode() {
+    JsonMixed arr = JsonMixed.of("[]");
+    JsonValue doesNotExist = arr.get(0);
+    assertNull(doesNotExist.nodeIfExists()); // force remembering
+    // still throws
+    assertThrowsExactly(JsonPathException.class, doesNotExist::node);
   }
 }

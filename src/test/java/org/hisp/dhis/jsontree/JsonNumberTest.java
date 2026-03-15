@@ -127,6 +127,8 @@ class JsonNumberTest {
     assertEquals(3, JsonMixed.of("3.14").intValue());
     assertEquals(Integer.MAX_VALUE, Json.of(Integer.MAX_VALUE).intValue());
     assertEquals(Integer.MIN_VALUE, Json.of(Integer.MIN_VALUE).intValue());
+    assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("null").intValue());
+    assertThrowsExactly(JsonPathException.class, () -> JsonMixed.of("[]").getNumber(0).intValue());
   }
 
   @Test
@@ -134,15 +136,33 @@ class JsonNumberTest {
     assertEquals(3L, JsonMixed.of("3").longValue());
     assertEquals(3L, JsonMixed.of("3.0").longValue());
     assertEquals(3L, JsonMixed.of("3.14").longValue());
+    assertEquals(Long.MAX_VALUE, Json.of(Long.MAX_VALUE).longValue());
+    assertEquals(Long.MIN_VALUE, Json.of(Long.MIN_VALUE).longValue());
+    assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("null").longValue());
+    assertThrowsExactly(JsonPathException.class, () -> JsonMixed.of("[]").getNumber(0).longValue());
   }
 
   @Test
   void testDoubleValue() {
-    //TODO
+    assertEquals(3d, JsonMixed.of("3").doubleValue());
+    assertEquals(3.0d, JsonMixed.of("3.0").doubleValue());
+    assertEquals(3.14d, JsonMixed.of("3.14").doubleValue());
+    assertEquals(Double.MAX_VALUE, Json.of(Double.MAX_VALUE).doubleValue());
+    assertEquals(Double.MIN_VALUE, Json.of(Double.MIN_VALUE).doubleValue());
+    assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("null").doubleValue());
+    assertThrowsExactly(
+        JsonPathException.class, () -> JsonMixed.of("[]").getNumber(0).doubleValue());
   }
 
   @Test
   void testFloatValue() {
-    //TODO
+    assertEquals(3f, JsonMixed.of("3").floatValue());
+    assertEquals(3.0f, JsonMixed.of("3.0").floatValue());
+    assertEquals(3.14f, JsonMixed.of("3.14").floatValue());
+    assertEquals(Float.MAX_VALUE, Json.of(Float.MAX_VALUE).floatValue());
+    assertEquals(Float.MIN_VALUE, Json.of(Float.MIN_VALUE).floatValue());
+    assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("null").floatValue());
+    assertThrowsExactly(
+        JsonPathException.class, () -> JsonMixed.of("[]").getNumber(0).floatValue());
   }
 }

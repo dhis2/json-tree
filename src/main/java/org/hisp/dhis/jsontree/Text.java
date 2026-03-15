@@ -1,10 +1,9 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.NotNull;
-
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.Arrays;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A {@link String}-like API without requiring to manifest a {@link String} instance.
@@ -202,9 +201,9 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return true, if the text is a signed or unsigned integer value (any range)
+   * @return true, if the text is a (potentially signed) integer value (of any range)
    */
-  default boolean isInt() {
+  default boolean isSignedInteger() {
     if (isEmpty()) return false;
     int i = 0;
     if (charAt(0) == '-' || charAt(0) == '+') i++;
@@ -213,27 +212,34 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
+   * In contrast to the JDK method this only accepts valid inputs.
+   *
+   * @throws IllegalArgumentException when text is neither "true" nor "false" (case-insensitive)
+   * @see Boolean#parseBoolean(String)
+   */
+  default boolean parseBoolean() {
+    return Chars.parseBoolean(toCharArray());
+  }
+
+  /**
    * @see Integer#parseInt(String)
    */
   default int parseInt() {
-    char[] num = toCharArray();
-    return Chars.parseInt(num, 0, num.length);
+    return Chars.parseInt(toCharArray());
   }
 
   /**
    * @see Long#parseLong(String)
    */
   default long parseLong() {
-    char[] num = toCharArray();
-    return Chars.parseLong(num, 0, num.length);
+    return Chars.parseLong(toCharArray());
   }
 
   /**
    * @see Double#parseDouble(String)
    */
   default double parseDouble() {
-    char[] num = toCharArray();
-    return Chars.parseDouble(num, 0, num.length);
+    return Chars.parseDouble(toCharArray());
   }
 
   /**
@@ -274,7 +280,7 @@ public interface Text extends CharSequence, Comparable<Text> {
     return false;
   }
 
-  static Text copyOf(Text text) {
+  static Text copyOf(@NotNull Text text) {
     return of(text.toCharArray(), 0, text.length());
   }
 
@@ -284,7 +290,7 @@ public interface Text extends CharSequence, Comparable<Text> {
    * @see #copyOf(Text) to force a copy
    * @since 1.9
    */
-  static Text of(CharSequence text) {
+  static Text of(@NotNull CharSequence text) {
     if (text instanceof Text t) return t;
     if (text instanceof String s) return of(s);
     int len = text.length();
@@ -335,9 +341,13 @@ public interface Text extends CharSequence, Comparable<Text> {
       }
 
       @Override
-      public boolean isInt() {
-        if (buffer == Cache._100_TO_999) return true;
-        return Text.super.isInt();
+      public boolean isSignedInteger() {
+        return buffer == Cache._100_TO_999 || Chars.isSignedInteger(buffer, offset, length);
+      }
+
+      @Override
+      public boolean parseBoolean() {
+        return Chars.parseBoolean(Slice.this.buffer, offset, length);
       }
 
       @Override

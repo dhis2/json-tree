@@ -1,9 +1,9 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.NotNull;
-
 import static java.util.Objects.requireNonNull;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
+
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * As defined by <a href="https://datatracker.ietf.org/doc/html/rfc6901/">RFC-6901</a>.

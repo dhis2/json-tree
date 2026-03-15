@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonAccessors.JsonAccessor;
 import org.hisp.dhis.jsontree.internal.CheckNull;
@@ -121,6 +120,12 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
    */
   private static final Map<Method, MethodHandle> OTHER_MH_CACHE = new ConcurrentHashMap<>();
 
+  /**
+   * A special instance we use to remember that a lookup found the node does not exist,
+   * so we don't have to look it up again later but also don't spend another field for that.
+   */
+  private static final JsonNode DOES_NOT_EXIST = JsonNode.of("\"<?>\"");
+
   private final @NotNull JsonNode root;
   private final @NotNull JsonPath path;
   private JsonNode node; // remember once it was resolved from root
@@ -183,21 +188,12 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   @Override
-  public JsonNode node(@CheckNull JsonNodeType required) {
-    JsonNode res = node;
-    if (node == null) {
-      if (!root.exists(path)) return null;
-      node = root.get(path);
-      res = node;
-    }
-    JsonNodeType type = res.getType();
-    if (type == JsonNodeType.NULL)
-      return required == JsonNodeType.NULL ? res : null;
-    if (type != required) {
-      throw new JsonTreeException(
-              "Path `%s` does not contain an %s but a(n) %s: %s".formatted(path, required, type, res));
-    }
-    return res;
+  public @CheckNull JsonNode nodeIfExists() {
+      if (node == null) {
+        if (!exists()) return null;
+        node = root.get(path);
+      }
+      return node == DOES_NOT_EXIST ? null : node;
   }
 
   @Override
@@ -240,8 +236,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   @Override
-  public JsonNode node() {
-    if (node != null) return node;
+  public @NotNull JsonNode node() {
+    if (node != null) {
+      // root.get(path) => throws
+      return node == DOES_NOT_EXIST ? root.get(path) : node;
+    }
     node = root.get(path);
     return node;
   }
@@ -252,44 +251,17 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   @Override
-  public List<String> stringValues() {
-    return arrayList(Text.class, Text::toString);
-  }
-
-  @Override
-  public List<Number> numberValues() {
-    return arrayList(Number.class, Function.identity());
-  }
-
-  @Override
-  public List<Boolean> boolValues() {
-    return arrayList(Boolean.class, Function.identity());
-  }
-
-  private <T, E> List<T> arrayList(Class<E> elementType, Function<E, T> map) {
-    JsonNode array = node(JsonNodeType.ARRAY);
-    if (array == null || array.isEmpty()) return List.of();
-    List<T> res = new ArrayList<>(array.size());
-    for (JsonNode e : array.elements()) {
-      @SuppressWarnings("unchecked")
-      E value = (E) e.value();
-      if (!elementType.isInstance(value)) {
-        throw new JsonTreeException(
-            "Array element is not a " + elementType.getName() + ": " + e.getDeclaration());
-      }
-      res.add(map.apply(value));
-    }
-    return res;
-  }
-
-  @Override
   public int size() {
     return node().size();
   }
 
   @Override
   public boolean exists() {
-    return path.isEmpty() || root.exists(path);
+    if (path.isEmpty()) return true; // root always exists
+    if (node == DOES_NOT_EXIST) return false;
+    boolean exists = root.exists(path);
+    if (!exists) node = DOES_NOT_EXIST;
+    return exists;
   }
 
   @Override
