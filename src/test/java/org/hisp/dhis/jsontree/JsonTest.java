@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree;
 
+import static java.util.Map.entry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
@@ -158,20 +159,20 @@ class JsonTest {
   @Test
   void testObject_Stream() {
     assertJson("{}", Json.object(Json::of, Stream.<Map.Entry<String, Number>>empty()));
-    assertJson("{\"a\":1}", Json.object(Json::of, Stream.of(Map.entry("a", 1))));
+    assertJson("{\"a\":1}", Json.object(Json::of, Stream.of(entry("a", 1))));
     assertJson(
         "{\"a\":\"b\",\"c\":\"d\"}",
-        Json.object(Json::of, Stream.of(Map.entry("a", "b"), Map.entry("c", "d"))));
+        Json.object(Json::of, Stream.of(entry("a", "b"), entry("c", "d"))));
   }
 
   @Test
   void testObject_Iterable() {
     assertJson("null", Json.object(Json::of, (List<Map.Entry<String, Number>>) null));
     assertJson("{}", Json.object(Json::of, List.<Map.Entry<String, Number>>of()));
-    assertJson("{\"a\":true}", Json.object(Json::of, List.of(Map.entry("a", true))));
+    assertJson("{\"a\":true}", Json.object(Json::of, List.of(entry("a", true))));
     assertJson(
         "{\"a\":\"b\",\"c\":\"d\"}",
-        Json.object(Json::of, List.of(Map.entry("a", "b"), Map.entry("c", "d"))));
+        Json.object(Json::of, List.of(entry("a", "b"), entry("c", "d"))));
   }
 
   @Test

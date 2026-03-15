@@ -49,7 +49,7 @@ public interface JsonNumber extends JsonPrimitive {
   @TerminalOp(canBeUndefined = true)
   default Number number() {
     JsonNode node = nodeIfExists();
-    return node == null || node.getType() == JsonNodeType.NULL ? null : node.numberValue();
+    return node == null || node.isNull() ? null : node.numberValue();
   }
 
   /**

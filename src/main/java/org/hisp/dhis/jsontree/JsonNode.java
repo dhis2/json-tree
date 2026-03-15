@@ -43,6 +43,7 @@ import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -68,7 +69,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  *
  * @author Jan Bernitt
  */
-public interface JsonNode extends Serializable {
+public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
 
   /**
    * The low level API does offer different behaviour when it comes to
@@ -395,6 +396,13 @@ public interface JsonNode extends Serializable {
   }
 
   /**
+   * @return true, if this node represents a JSON {@code null} value
+   */
+  default boolean isNull() {
+    return getType() == JsonNodeType.NULL;
+  }
+
+  /**
    * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
    *
    * <p>Check for member existence.
@@ -544,7 +552,7 @@ public interface JsonNode extends Serializable {
    * @return this {@link #value()} as a sequence of {@link Entry}s
    * @throws JsonTreeException if this node is not an object node that could have members
    */
-  default Streamable<Entry<Text, JsonNode>> members() {
+  default Streamable<JsonNode> members() {
     throw notA(OBJECT, this, "members()");
   }
 
@@ -600,7 +608,7 @@ public interface JsonNode extends Serializable {
    *     internally will be reused and returned by the iterator.
    * @throws JsonTreeException if this node is not an object node that could have members
    */
-  default Streamable<Entry<Text, JsonNode>> members(JsonNode.Index index) {
+  default Streamable<JsonNode> members(JsonNode.Index index) {
     throw notA(OBJECT, this, "members(Index)");
   }
 

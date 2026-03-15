@@ -55,7 +55,7 @@ public interface JsonString extends JsonPrimitive {
   @TerminalOp(canBeNull = true)
   default Text text() {
     JsonNode node = nodeIfExists();
-    return node == null || node.getType() == JsonNodeType.NULL ? null : node.textValue();
+    return node == null || node.isNull() ? null : node.textValue();
   }
 
   /**

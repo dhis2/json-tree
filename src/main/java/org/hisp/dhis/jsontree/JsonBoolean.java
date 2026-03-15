@@ -48,7 +48,7 @@ public interface JsonBoolean extends JsonPrimitive {
   @TerminalOp(canBeUndefined = true)
   default Boolean bool() {
     JsonNode node = nodeIfExists();
-    return node == null || node.getType() == JsonNodeType.NULL ? null : booleanValue();
+    return node == null || node.isNull() ? null : booleanValue();
   }
 
   /**

@@ -404,7 +404,7 @@ class JsonTreeTest {
 
     JsonNode root = doc.get("$");
 
-    Iterator<Entry<Text, JsonNode>> members = root.members(Index.SKIP).iterator();
+    Iterator<JsonNode> members = root.members(Index.SKIP).iterator();
     Entry<Text, JsonNode> m1 = members.next();
     Entry<Text, JsonNode> m2 = members.next();
     Entry<Text, JsonNode> m3 = members.next();

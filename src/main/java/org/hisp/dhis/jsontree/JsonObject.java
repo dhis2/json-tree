@@ -170,7 +170,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
   default Stream<JsonValue> values(JsonNode.Index index) { //TODO add tests
     if (isUndefined() || isEmpty()) return Stream.empty();
     JsonAccessors accessors = getAccessors();
-    return node().members(index).stream().map(e -> e.getValue().lift(accessors));
+    return node().members(index).stream().map(e -> e.lift(accessors));
   }
 
   @Override

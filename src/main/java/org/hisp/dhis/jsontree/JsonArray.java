@@ -67,7 +67,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Stream<JsonValue> stream(JsonNode.Index index) {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return Stream.empty();
+    if (node == null || node.isNull()) return Stream.empty();
     JsonAccessors accessors = getAccessors();
     return node.elements(index).stream().map(n -> n.lift(accessors));
   }
@@ -91,7 +91,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<String> stringValues() {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    if (node == null || node.isNull()) return List.of();
     return node.elements(JsonNode.Index.SKIP).stream()
         .map(JsonNode::textValue)
         .map(Text::toString)
@@ -105,7 +105,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<Number> numberValues() {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    if (node == null || node.isNull()) return List.of();
     return node.elements(JsonNode.Index.SKIP).stream().map(JsonNode::numberValue).toList();
   }
 
@@ -116,14 +116,14 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<Boolean> boolValues() {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    if (node == null || node.isNull()) return List.of();
     return node.elements(JsonNode.Index.SKIP).stream().map(JsonNode::booleanValue).toList();
   }
 
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <E> List<E> values(Function<String, E> f) {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return List.of();
+    if (node == null || node.isNull()) return List.of();
     return node.elements(JsonNode.Index.SKIP).stream()
         .map(JsonNode::textValue)
         .map(Text::toString)
@@ -138,7 +138,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default IntStream intValues() {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return IntStream.empty();
+    if (node == null || node.isNull()) return IntStream.empty();
     return node.elements(SKIP).stream().mapToInt(JsonNode::intValue);
   }
 
@@ -149,7 +149,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default LongStream longValues() {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return LongStream.empty();
+    if (node == null || node.isNull()) return LongStream.empty();
     return node.elements(SKIP).stream().mapToLong(JsonNode::longValue);
   }
 
@@ -160,7 +160,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default DoubleStream doubleValues() {
     JsonNode node = nodeIfExists();
-    if (node == null || node.getType() == JsonNodeType.NULL) return DoubleStream.empty();
+    if (node == null || node.isNull()) return DoubleStream.empty();
     return node.elements(SKIP).stream().mapToDouble(JsonNode::doubleValue);
   }
 

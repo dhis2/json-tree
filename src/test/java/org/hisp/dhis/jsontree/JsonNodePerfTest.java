@@ -10,10 +10,9 @@ class JsonNodePerfTest {
 
   public static void main(String[] args){
     JsonNode array = arrayOf0To(10000);
-    Iterator<Text> iter = array.values().iterator();
     int sum = 0;
-    while (iter.hasNext())
-      sum += iter.next().parseInt();
+    for (Text v : array.values())
+      sum += v.parseInt();
     System.out.println(sum);
     System.out.println(array.values().stream().mapToInt(Text::parseInt).sum());
   }

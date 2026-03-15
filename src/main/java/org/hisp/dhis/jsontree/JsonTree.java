@@ -30,9 +30,6 @@ package org.hisp.dhis.jsontree;
 import static java.lang.String.format;
 import static java.util.Collections.emptyIterator;
 import static java.util.Objects.requireNonNull;
-import static java.util.Spliterator.NONNULL;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterator.SIZED;
 import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
 import static org.hisp.dhis.jsontree.Chars.expectFalse;
@@ -140,6 +137,28 @@ record JsonTree(
       this.path = path;
       this.start = start;
     }
+
+    /*
+    Map.Entry
+     */
+    @Override
+    public Text getKey() {
+      return path.segment();
+    }
+
+    @Override
+    public JsonNode getValue() {
+      return this;
+    }
+
+    @Override
+    public JsonNode setValue(JsonNode value) {
+      throw new UnsupportedOperationException("JSON nodes are immutable");
+    }
+
+    /*
+    JsonNode
+     */
 
     @Override
     public final @NotNull JsonNode getRoot() {
@@ -265,7 +284,7 @@ record JsonTree(
   }
 
   private static final class LazyJsonObject extends LazyJsonNode
-      implements Streamable<Entry<Text, JsonNode>> {
+      implements Streamable<JsonNode> {
 
     private int size = -1;
 
@@ -274,19 +293,19 @@ record JsonTree(
     }
 
     @Override
-    public Iterable<Entry<Text, JsonNode>> value() {
+    public Iterable<JsonNode> value() {
       if (path.isEmpty()) checkNoDanglingTrash();
       return this;
     }
 
     @NotNull
     @Override
-    public Iterator<Entry<Text, JsonNode>> iterator() {
+    public Iterator<JsonNode> iterator() {
       return membersIterator(Index.AUTO);
     }
 
     @Override
-    public @NotNull Stream<Entry<Text, JsonNode>> stream() {
+    public @NotNull Stream<JsonNode> stream() {
       return JsonTree.stream(iterator(), size());
     }
 
@@ -320,7 +339,7 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<Entry<Text, JsonNode>> members() {
+    public Streamable<JsonNode> members() {
       return this;
     }
 
@@ -397,11 +416,11 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<Entry<Text, JsonNode>> members(Index index) {
+    public Streamable<JsonNode> members(Index index) {
       return new StreamableAdapter<>(() -> membersIterator(index), this::size, this::isEmpty);
     }
 
-    private Iterator<Entry<Text, JsonNode>> membersIterator(Index op) {
+    private Iterator<JsonNode> membersIterator(Index op) {
       if (isEmpty()) return emptyIterator();
       return new Iterator<>() {
         private final char[] json = tree.json;
@@ -416,7 +435,7 @@ record JsonTree(
         }
 
         @Override
-        public Entry<Text, JsonNode> next() {
+        public JsonNode next() {
           if (!hasNext())
             throw new NoSuchElementException("next() called without checking hasNext()");
           Text name = Chars.decodeString(json, offset);
@@ -426,12 +445,12 @@ record JsonTree(
           if (end < offset) {
             // duplicate keys case: skip the duplicate
             offset = expectCommaOrEnd(json, skipNodeAutodetect(json, offset), '}');
-            return Map.entry(name, member);
+            return member;
           }
           n++;
           offset = expectCommaOrEnd(json, end, '}');
           if (size < 0 && !hasNext()) size = n;
-          return Map.entry(name, member);
+          return member;
         }
       };
     }
