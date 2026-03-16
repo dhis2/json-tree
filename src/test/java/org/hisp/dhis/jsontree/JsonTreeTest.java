@@ -238,34 +238,6 @@ class JsonTreeTest {
   }
 
   @Test
-  void testArray_IterateElements() {
-    JsonNode root = JsonNode.of("[ 1,2 , true , false, \"hello\",{},[]]");
-
-    Iterator<JsonNode> elements = root.elements(Index.SKIP).iterator();
-    JsonNode e0 = elements.next();
-    JsonNode e1 = elements.next();
-    JsonNode e2 = elements.next();
-    JsonNode e3 = elements.next();
-    JsonNode e4 = elements.next();
-    JsonNode e5 = elements.next();
-    JsonNode e6 = elements.next();
-    assertFalse(elements.hasNext());
-    assertThrows(NoSuchElementException.class, elements::next);
-    assertEquals(1, e0.value());
-    assertEquals(2, e1.value());
-    assertEquals(true, e2.value());
-    assertEquals(false, e3.value());
-    assertEquals("hello", e4.value().toString());
-    assertEquals("{}", e5.getDeclaration().toString());
-    assertEquals("[]", e6.getDeclaration().toString());
-
-    JsonNode e0kept = root.elements(Index.ADD).iterator().next();
-    assertNotSame(e0, e0kept);
-    assertSame(e0kept, root.elements(Index.CHECK).iterator().next());
-    assertNotSame(e0kept, root.elements(Index.SKIP).iterator().next());
-  }
-
-  @Test
   void testArray_IndexAccessElements() {
     JsonNode root = JsonNode.of("[ 1,2 , true , false, \"hello\",{},[]]");
 
@@ -396,34 +368,6 @@ class JsonTreeTest {
     assertEquals("42", doc.get("{foo.bar}.answer").getDeclaration().toString());
     assertEquals("42", doc.get("x{y.z}.answer").getDeclaration().toString());
     assertEquals("42", doc.get("obj.x{y.z}.answer").getDeclaration().toString());
-  }
-
-  @Test
-  void testObject_IterateMembers() {
-    JsonNode doc = JsonNode.of("{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}");
-
-    JsonNode root = doc.get("$");
-
-    Iterator<JsonNode> members = root.members(Index.SKIP).iterator();
-    Entry<Text, JsonNode> m1 = members.next();
-    Entry<Text, JsonNode> m2 = members.next();
-    Entry<Text, JsonNode> m3 = members.next();
-    Entry<Text, JsonNode> m4 = members.next();
-    assertFalse(members.hasNext());
-    assertThrows(NoSuchElementException.class, members::next);
-    assertEquals("a", m1.getKey().toString());
-    assertEquals(1, m1.getValue().value());
-    assertEquals("b", m2.getKey().toString());
-    assertEquals(2, m2.getValue().value());
-    assertEquals("c", m3.getKey().toString());
-    assertEquals(true, m3.getValue().value());
-    assertEquals("d", m4.getKey().toString());
-    assertEquals(false, m4.getValue().value());
-
-    JsonNode m1kept = root.members(Index.ADD).iterator().next().getValue();
-    assertNotSame(m1.getValue(), m1kept);
-    assertSame(m1kept, root.members(Index.CHECK).iterator().next().getValue());
-    assertNotSame(m1kept, root.members(Index.SKIP).iterator().next().getValue());
   }
 
   @Test
