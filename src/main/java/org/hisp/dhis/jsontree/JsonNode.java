@@ -39,9 +39,12 @@ import static org.hisp.dhis.jsontree.JsonTreeException.notA;
 import static org.hisp.dhis.jsontree.JsonTreeException.notAContainer;
 import static org.hisp.dhis.jsontree.JsonTreeException.notAnObject;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -52,17 +55,22 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.internal.CheckNull;
-import org.hisp.dhis.jsontree.internal.Language;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
- * API of a JSON tree as it actually exist in an HTTP response with a JSON payload.
+ * API of a JSON tree as it actually exist, parsed lazily on access.
  *
+ * <h3>Laziness and Eager Throw</h3>
  * <p>Operations are lazily evaluated to make working with the JSON tree efficient.
  *
  * <p>Trying to use operations that are not supported for the {@link JsonNodeType}, like accessing
  * the {@link #members()} or {@link #elements()} of a {@link JsonNode} that is not an object or
  * array respectively, will throw an {@link JsonTreeException} immediately.
+ *
+ * <h3>Laziness and Validation</h3>
+ * A {@link JsonFormatException} is first encountered when the node containing the error is
+ * parsed due to user access. A node is only fully validated when an operation needed to
+ * find the {@link #endIndex()}.
  *
  * <p>Likewise, trying to resolve nodes in the tree that do not exist results in a {@link
  * JsonPathException} immediately.
@@ -107,10 +115,6 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
      */
     AUTO
   }
-
-  // TODO tree needs to have a Index auto field so the index array+object, check others can be
-  // changed globally
-  // when constructing the JsonNode or JsonValue
 
   /**
    * JSON {@code null} as root of a tree
@@ -162,19 +166,6 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   }
 
   /**
-   * Create a new lazily parsed {@link JsonNode} tree.
-   *
-   * <p>
-   *
-   * @param json JSON input
-   * @return the given JSON input as {@link JsonNode} tree
-   * @since 0.10
-   */
-  static JsonNode ofNonStandard(@Language("json5") String json) {
-    return JsonTree.ofNonStandard(json);
-  }
-
-  /**
    * Creates a new lazily parsed {@link JsonNode} tree from special URL object notation.
    *
    * <p>Note that the {@link JsonNode}'s {@link JsonNode#getDeclaration()} will be the equivalent
@@ -197,7 +188,12 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 0.10
    */
   static JsonNode of(CharSequence json, GetListener onGet) {
-    return JsonTree.of(json, onGet);
+    return of(json, onGet, Index.AUTO);
+  }
+
+  static JsonNode of(CharSequence json, GetListener onGet, JsonNode.Index auto) {
+    if (json instanceof String s) return JsonTree.of(s.toCharArray(), onGet, auto);
+    return JsonTree.of(Text.of(json).toCharArray(), onGet, auto);
   }
 
   /**
@@ -206,6 +202,7 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 1.0
    */
   static JsonNode of(Path file) {
+    //TODO open the API to byte[] => char[]
     return of(file, null);
   }
 
@@ -228,7 +225,19 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 1.0
    */
   static JsonNode of(Path file, Charset encoding, GetListener onGet) {
-    return JsonTree.of(file, encoding, onGet);
+    return of(file, encoding, onGet, Index.AUTO);
+  }
+
+  static JsonNode of(Path file, Charset encoding, GetListener onGet, JsonNode.Index auto) {
+    try {
+      return of(Files.readAllBytes(file), encoding, onGet, auto);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  static JsonNode of(byte[] bytes, Charset encoding, @CheckNull GetListener onGet, JsonNode.Index auto) {
+    return JsonTree.of(Chars.decode(bytes, encoding), onGet, auto);
   }
 
   /**
@@ -283,7 +292,7 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @return the node at the given path or null if no such node exists
    * @throws JsonTreeException when the operation is called on a non-object node
    */
-  default JsonNode getOrNull(Text name) throws JsonTreeException {
+  default JsonNode getIfExists(Text name) throws JsonTreeException {
     throw notAnObject(JsonPath.of(name), this, "getOrNull(Text)");
   }
 
@@ -318,14 +327,14 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 1.5
    */
   @CheckNull
-  default JsonNode getOrNull(@NotNull CharSequence path) throws JsonPathException {
+  default JsonNode getIfExists(@NotNull CharSequence path) throws JsonPathException {
     if (path.isEmpty()) return this;
     if (path instanceof String p) {
       if ("$".equals(p)) return getRoot();
       if (p.charAt(0) == '$' && p.length() > 1 && JsonPath.isSyntaxIndicator(p.charAt(1)))
-        return getRoot().getOrNull(p.substring(1));
+        return getRoot().getIfExists(p.substring(1));
     }
-    return getOrNull(JsonPath.of(path));
+    return getIfExists(JsonPath.of(path));
   }
 
   /**
@@ -348,9 +357,9 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 1.5
    */
   @CheckNull
-  default JsonNode getOrNull(@NotNull JsonPath subPath) throws JsonTreeException {
+  default JsonNode getIfExists(@NotNull JsonPath subPath) throws JsonTreeException {
     if (subPath.isEmpty()) return this;
-    throw notAnObject(subPath, this, "getOrNull(JsonPath)");
+    throw notAnObject(subPath, this, "getIfExists(JsonPath)");
   }
 
   /**
@@ -540,8 +549,8 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 1.9
    */
   @CheckNull
-  default JsonNode memberOrNull(Text name) throws JsonPathException {
-    throw notA(OBJECT, this, "memberOrNull(Text)");
+  default JsonNode memberIfExists(Text name) throws JsonPathException {
+    throw notA(OBJECT, this, "memberIfExists(Text)");
   }
 
   /**
@@ -582,19 +591,6 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    */
   default Streamable<JsonPath> paths() {
     throw notA(OBJECT, this, "paths()");
-  }
-
-  /**
-   * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
-   *
-   * <p>The names are iterated in order of declaration in the underlying document.
-   *
-   * @return the raw property names of this object node as they occur in the JSON document
-   * @throws JsonTreeException if this node is not an object node that could have members
-   * @since 1.1
-   */
-  default Streamable<String> names() {
-    throw notA(OBJECT, this, "names()");
   }
 
   /**
@@ -643,16 +639,16 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 1.9
    */
   @CheckNull
-  default JsonNode elementOrNull(Text index) throws JsonPathException, JsonTreeException {
-    throw notA(ARRAY, this, "elementOrNull(Text)");
+  default JsonNode elementIfExists(Text index) throws JsonPathException, JsonTreeException {
+    throw notA(ARRAY, this, "elementIfExists(Text)");
   }
 
   /**
-   * @see #elementOrNull(Text)
+   * @see #elementIfExists(Text)
    * @since 1.5
    */
-  default JsonNode elementOrNull(int index) throws JsonPathException, JsonTreeException {
-    return elementOrNull(Text.of(index));
+  default JsonNode elementIfExists(int index) throws JsonPathException, JsonTreeException {
+    return elementIfExists(Text.of(index));
   }
 
   /**
@@ -694,6 +690,11 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   default Streamable<Text> values() {
     throw notA(ARRAY, this, "values()");
   }
+
+  /*
+  Search API
+   */
+  //TODO future: use Stream + Stream.Builder API + JsonPath (RFC 9535)
 
   /**
    * Visit subtree of this node including this node.

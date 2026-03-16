@@ -5,13 +5,12 @@ import static java.lang.Character.isBmpCodePoint;
 import static java.lang.Character.lowSurrogate;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.System.Logger.Level.WARNING;
+import static org.hisp.dhis.jsontree.JsonFormatException.insufficientCodePointCharacters;
+import static org.hisp.dhis.jsontree.JsonFormatException.notAHexDigit;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.function.BiFunction;
 
@@ -22,6 +21,8 @@ import java.util.function.BiFunction;
  * @since 1.9
  */
 final class Chars {
+
+  private static final System.Logger log = System.getLogger(Chars.class.getName());
 
   static boolean parseBoolean(char[] val) {
     return parseBoolean(val, 0, val.length);
@@ -283,7 +284,7 @@ final class Chars {
         // and we can use a direct view of the raw characters
         if (length == index - 2 - offset) return Text.of(json, offset + 1, length);
         // did use escaping...
-        return parseStringWithEscaping(json, offset + 1, length);
+        return decodeStringWithEscaping(json, offset + 1, length);
       } else if (c == '\\') {
         expectEscapableCharacter(json, index);
         // hop over escaped char or unicode
@@ -310,7 +311,7 @@ final class Chars {
    * @implNote When this runs we already know we find the end of the string, so some checks have
    *     been removed. The only checks required are code point decoding issues.
    */
-  private static Text parseStringWithEscaping(char[] json, int offset, int length) {
+  private static Text decodeStringWithEscaping(char[] json, int offset, int length) {
     char[] text = new char[length];
     int i = 0;
     int index = offset;
@@ -353,7 +354,7 @@ final class Chars {
 
   private static int parseCodePoint(char[] json, int offset) {
     if (offset + 3 >= json.length)
-      throw new JsonFormatException("Insufficient characters for code point at index " + offset);
+      throw insufficientCodePointCharacters(json, offset);
     int cp = 0;
     for (int i = 0; i < 4; i++) {
       char c = json[offset + i];
@@ -362,9 +363,7 @@ final class Chars {
             case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> c - '0';
             case 'a', 'b', 'c', 'd', 'e', 'f' -> c - 'a' + 10;
             case 'A', 'B', 'C', 'D', 'E', 'F' -> c - 'A' + 10;
-            default ->
-                throw new JsonFormatException(
-                    "Invalid hexadecimal digit: '" + c + "' at index " + (offset + i));
+            default -> throw notAHexDigit(json, offset + i);
           };
       cp = (cp << 4) | digit; // equivalent to cp = cp * 16 + digit
     }
@@ -444,7 +443,7 @@ final class Chars {
   }
 
   /*
-  Reading inputs to char[]
+  Reading binary inputs to char[]
    */
 
   /**
@@ -452,72 +451,87 @@ final class Chars {
    *     memory. Therefore, the general approach to IO is not to stream or buffer but to get the
    *     JSON into memory as efficient as possible. Mainly this is about avoiding extra intermediate
    *     representations and short-lived objects during the charset decoding.
-   * @param file a JSON file
+   * @param bytes binary of a JSON file
    * @param encoding the encoding assumed
    * @return the character in the file
    */
-  static char[] from(Path file, Charset encoding) {
-    return from(file, encoding, (arr, length) -> arr);
+  static char[] decode(byte[] bytes, Charset encoding) {
+    return decode(bytes, encoding, (arr, length) -> arr);
   }
 
-  static <T> T from(Path file, Charset encoding, BiFunction<char[], Integer, T> wrap) {
-    try {
-      byte[] src = Files.readAllBytes(file);
-      if (StandardCharsets.UTF_8.equals(encoding)) return fromUTF8(src, wrap);
+  static <T> T decode(byte[] bytes, Charset encoding, BiFunction<char[], Integer, T> wrap) {
+      if (StandardCharsets.UTF_8.equals(encoding)) return decodeUTF8(bytes, wrap);
       if (StandardCharsets.ISO_8859_1.equals(encoding)) {
-        char[] res = fromIso88591(src);
+        char[] res = decodeIso88591(bytes);
         return wrap.apply(res, res.length);
       }
-      char[] res = new String(src, encoding).toCharArray();
+      char[] res = new String(bytes, encoding).toCharArray();
       return wrap.apply(res, res.length);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
   }
 
-  private static char[] fromIso88591(byte[] src) {
+  private static char[] decodeIso88591(byte[] src) {
     char[] dest = new char[src.length];
     for (int i = 0; i < src.length; i++) dest[i] = (char) (src[i] & 0xFF); // ISO‑8859‑1 / Latin‑1
     return dest;
   }
 
-  private static <T> T fromUTF8(byte[] src, BiFunction<char[], Integer, T> wrap) {
+  private static <T> T decodeUTF8(byte[] src, BiFunction<char[], Integer, T> wrap) {
     int i = 0;
-    if (src.length >= 3
+    int length = src.length;
+    if (length >= 3
         && src[i] == (byte) 0xEF
         && src[i + 1] == (byte) 0xBB
         && src[i + 2] == (byte) 0xBF) {
       i = 3; // skip the BOM bytes
     }
+    int errors = 0;
     int offset = 0;
-    char[] dest = new char[src.length - i];
-    while (i < src.length) {
+    char[] dest = new char[length - i];
+    while (i < length) {
       int b = src[i++] & 0xFF; // treat as unsigned
       if (b < 0x80) { // 0xxxxxxx (ASCII)
         dest[offset++] = (char) b;
       } else if ((b & 0xE0) == 0xC0) { // 110xxxxx → 2 bytes
-        int cp = ((b & 0x1F) << 6) | (src[i++] & 0x3F);
-        dest[offset++] = (char) cp;
+        if (i < length) {
+          int cp = ((b & 0x1F) << 6) | (src[i++] & 0x3F);
+          dest[offset++] = (char) cp;
+        } else {
+          dest[offset++] = '�'; // Invalid UTF‑8, replacement character;
+          errors++;
+        }
       } else if ((b & 0xF0) == 0xE0) { // 1110xxxx → 3 bytes
-        int cp = ((b & 0x0F) << 12) | ((src[i++] & 0x3F) << 6) | (src[i++] & 0x3F);
-        dest[offset++] = (char) cp;
+        if (i + 1 < length) {
+          int cp = ((b & 0x0F) << 12) | ((src[i++] & 0x3F) << 6) | (src[i++] & 0x3F);
+          dest[offset++] = (char) cp;
+        } else {
+          i = length;
+          dest[offset++] = '�'; // Invalid UTF‑8, replacement character;
+          errors++;
+        }
       } else if ((b & 0xF8) == 0xF0) { // 11110xxx → 4 bytes (supplementary)
-        int cp =
-            ((b & 0x07) << 18)
-                | ((src[i++] & 0x3F) << 12)
-                | ((src[i++] & 0x3F) << 6)
-                | (src[i++] & 0x3F);
-        // Convert to surrogate pair
-        cp -= 0x10000;
-        dest[offset++] = (char) (0xD800 | (cp >> 10));
-        dest[offset++] = (char) (0xDC00 | (cp & 0x3FF));
+        if (i + 2 < length) {
+          int cp =
+              ((b & 0x07) << 18)
+                  | ((src[i++] & 0x3F) << 12)
+                  | ((src[i++] & 0x3F) << 6)
+                  | (src[i++] & 0x3F);
+          // Convert to surrogate pair
+          cp -= 0x10000;
+          dest[offset++] = (char) (0xD800 | (cp >> 10));
+          dest[offset++] = (char) (0xDC00 | (cp & 0x3FF));
+        } else {
+          i = length;
+          dest[offset++] = '�'; // Invalid UTF‑8, replacement character;
+          errors++;
+        }
       } else {
-        // Invalid UTF‑8 – you may decide to insert a replacement character
-        dest[offset++] = '�'; // replacement character
+        dest[offset++] = '�'; // Invalid UTF‑8, replacement character
+        errors++;
       }
     }
     // over-allocated slots become space
     if (offset < dest.length) Arrays.fill(dest, offset, dest.length, ' ');
+    if (errors > 0) log.log(WARNING, "UTF-8 contained %d illegal byte sequences".formatted(errors));
     return wrap.apply(dest, offset);
   }
 }

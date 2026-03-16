@@ -59,11 +59,11 @@ class JsonNodeTest {
 
   @Test
   void testGetOrNull() {
-    assertNull(JsonNode.of("{}").getOrNull("foo"));
-    assertNull(JsonNode.of("[]").getOrNull("[1]"));
-    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("true").getOrNull("foo"));
-    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("1").getOrNull("foo"));
-    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("\"x\"").getOrNull("foo"));
+    assertNull(JsonNode.of("{}").getIfExists("foo"));
+    assertNull(JsonNode.of("[]").getIfExists("[1]"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("true").getIfExists("foo"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("1").getIfExists("foo"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("\"x\"").getIfExists("foo"));
   }
 
   @Test

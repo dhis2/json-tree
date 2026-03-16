@@ -36,11 +36,11 @@ import static org.hisp.dhis.jsontree.Chars.expectFalse;
 import static org.hisp.dhis.jsontree.Chars.expectMoreChar;
 import static org.hisp.dhis.jsontree.Chars.expectNull;
 import static org.hisp.dhis.jsontree.Chars.expectTrue;
+import static org.hisp.dhis.jsontree.JsonFormatException.insufficientCodePointCharacters;
+import static org.hisp.dhis.jsontree.JsonFormatException.notAHexDigit;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.nio.charset.Charset;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -61,58 +61,32 @@ import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
- * {@link JsonTree} is a JSON parser specifically designed as a verifying tool for JSON trees which
- * skips though JSON trees to extract only a specific {@link JsonNode} at a certain path while have
- * subsequent operations benefit from partial parsing work already done in previous calls.
+ * {@link JsonTree} is a JSON parser is a JSON standard compliant JSON parser exposing the node tree
+ * as {@link JsonNode} API.
  *
- * <p>Supported paths:
- *
- * <pre>
- * $ = root
- * $.property = field property in root object
- * $.a.b = field b in a in root object
- * $[0] = index 0 of root array
- * $.a[1] index 1 of array in a field in root
- * </pre>
- *
- * <p>This parser follows the JSON standard as defined by <a
- * href="https://www.json.org/">json.org</a>.
+ * <p>It is designed to be efficient and use very little extra memory. Only nodes accessed by the
+ * API user are materialized. For the rest of the JSON the parser will merely skip over the input
+ * until the target path is found. The materialized nodes themselves are lazy again. They merely
+ * point to their start index position in the input. Only when the user accesses their value or a
+ * value nested inside the tree expands further.
  *
  * @author Jan Bernitt
  * @implNote This uses records because JVMs starting with JDK 21/22 will consider record fields as
  *     {@code @Stable} which might help optimize access to the {@link #json} char array.
+ * @param json the input JSON
+ * @param auto how to behave in case an operation with a {@link JsonNode.Index} is called with
+ *     {@link JsonNode.Index#AUTO}
+ * @param nodesByPath the cache for nodes that have been materialized through access
+ * @param onGet callback invoked when object members are resolved
  */
 record JsonTree(
-    char @NotNull[] json,
+    char @NotNull [] json,
     @NotNull JsonNode.Index auto,
     @NotNull HashMap<JsonPath, JsonNode> nodesByPath,
     @CheckNull JsonNode.GetListener onGet) {
 
-  static JsonNode of(@NotNull CharSequence json, @CheckNull JsonNode.GetListener onGet) {
-    if (json instanceof String s) return of(s.toCharArray(), onGet);
-    return of(Text.of(json).toCharArray(), onGet);
-  }
-
-  static JsonNode of(Path json, Charset encoding, JsonNode.GetListener onGet) {
-    return of(Chars.from(json, encoding), onGet);
-  }
-
-  /**
-   * @param json valid JSON, except it also allows single quoted strings and dangling commas
-   * @return a lazy tree of the provided JSON
-   * @since 0.11
-   */
-  static JsonNode ofNonStandard(@NotNull String json) {
-    //TODO make a Json5 class with a of() method, remove this
-    //TODO make JSON5 inspired where this can be rewritten in place
-    // disallow (throw) any JSON5 that does not work
-    char[] jsonChars = json.toCharArray();
-    adjustToStandard(jsonChars);
-    return of(jsonChars, null);
-  }
-
-  private static JsonNode of(char[] json, JsonNode.GetListener onGet) {
-    JsonTree res = new JsonTree(json, JsonNode.Index.AUTO, new HashMap<>(), onGet);
+  static JsonNode of(char @NotNull [] json, @CheckNull JsonNode.GetListener onGet, @NotNull JsonNode.Index auto) {
+    JsonTree res = new JsonTree(json, auto, new HashMap<>(), onGet);
     JsonNode root = res.autoDetect(JsonPath.SELF, skipWhitespace(res.json, 0));
     res.nodesByPath.put(JsonPath.SELF, root);
     return root;
@@ -130,7 +104,7 @@ record JsonTree(
     final JsonTree tree;
     final JsonPath path;
     final int start;
-    private int end = -1;
+    int end = -1;
 
     LazyJsonNode(JsonTree tree, JsonPath path, int start) {
       this.tree = tree;
@@ -172,9 +146,7 @@ record JsonTree(
 
     @Override
     public final Text getDeclaration() {
-      return path.isEmpty() // avoid parse caused by endIndex() if root
-          ? Text.of(tree.json, 0, tree.json.length)
-          : Text.of(tree.json, start, endIndex() - start);
+      return Text.of(tree.json, start, endIndex() - start);
     }
 
     @Override
@@ -189,7 +161,10 @@ record JsonTree(
 
     @Override
     public final int endIndex() {
-      if (end < 0) end = skipNodeAutodetect(tree.json, start);
+      if (end < 0) {
+        end = skipNodeAutodetect(tree.json, start);
+        if (path.isEmpty()) checkNoDanglingTrash(end);
+      }
       return end;
     }
 
@@ -259,8 +234,8 @@ record JsonTree(
      * the JSON) should be lazy and at least deferred until actual usage an issue with dangling
      * trash can first be checked for when user accesses the {@link #value()}.
      */
-    final void checkNoDanglingTrash() {
-      Chars.expectEndOfBuffer(tree.json, skipWhitespace(tree.json, endIndex()));
+    final void checkNoDanglingTrash(int end) {
+      Chars.expectEndOfBuffer(tree.json, skipWhitespace(tree.json, end));
     }
 
     /*
@@ -278,7 +253,7 @@ record JsonTree(
 
       @Serial
       private Object readResolve() {
-        return JsonTree.of(json, null).get(JsonPath.of(path));
+        return JsonTree.of(json,null, Index.AUTO).get(JsonPath.of(path));
       }
     }
   }
@@ -294,7 +269,6 @@ record JsonTree(
 
     @Override
     public Iterable<JsonNode> value() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       return this;
     }
 
@@ -320,8 +294,8 @@ record JsonTree(
     }
 
     @Override
-    public JsonNode getOrNull(Text name) throws JsonTreeException {
-      return memberOrNull(name);
+    public JsonNode getIfExists(Text name) throws JsonTreeException {
+      return memberIfExists(name);
     }
 
     @NotNull
@@ -333,8 +307,8 @@ record JsonTree(
 
     @CheckNull
     @Override
-    public JsonNode getOrNull(@NotNull JsonPath subPath) {
-      if (subPath.isHead()) return getOrNull(subPath.segment());
+    public JsonNode getIfExists(@NotNull JsonPath subPath) {
+      if (subPath.isHead()) return getIfExists(subPath.segment());
       return tree.get(path.concat(subPath), true);
     }
 
@@ -347,7 +321,10 @@ record JsonTree(
     public boolean isEmpty() {
       if (size >= 0) return size == 0;
       // avoid computing value with a "cheap" check
-      return tree.json[skipWhitespace(tree.json, start + 1)] == '}';
+      char[] json = tree.json;
+      int offset = skipWhitespace(json, start + 1);
+      if (offset >= json.length) expectChar(json, offset, '}'); // throws
+      return json[offset] == '}';
     }
 
     @Override
@@ -380,7 +357,7 @@ record JsonTree(
     }
 
     @Override
-    public JsonNode memberOrNull(Text name) throws JsonPathException {
+    public JsonNode memberIfExists(Text name) throws JsonPathException {
       return member(name, true);
     }
 
@@ -476,11 +453,6 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<String> names() {
-      return keys(Text::toString);
-    }
-
-    @Override
     public Streamable<Text> keys() {
       return keys(name -> name);
     }
@@ -524,7 +496,6 @@ record JsonTree(
 
     @Override
     public Iterable<JsonNode> value() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       return this;
     }
 
@@ -556,9 +527,9 @@ record JsonTree(
     }
 
     @Override
-    public JsonNode getOrNull(Text name) throws JsonTreeException {
+    public JsonNode getIfExists(Text name) throws JsonTreeException {
       if (name.isSignedInteger()) return element(name.parseInt(), name, true);
-      return super.getOrNull(name);
+      return super.getIfExists(name);
     }
 
     @NotNull
@@ -569,8 +540,8 @@ record JsonTree(
     }
 
     @Override
-    public JsonNode getOrNull(@NotNull JsonPath subPath) throws JsonTreeException {
-      if (subPath.isHead()) return getOrNull(subPath.segment());
+    public JsonNode getIfExists(@NotNull JsonPath subPath) throws JsonTreeException {
+      if (subPath.isHead()) return getIfExists(subPath.segment());
       return tree.get(path.concat(subPath), true);
     }
 
@@ -616,12 +587,12 @@ record JsonTree(
     }
 
     @Override
-    public JsonNode elementOrNull(int index) {
+    public JsonNode elementIfExists(int index) {
       return element(index, Text.of(index), true);
     }
 
     @Override
-    public JsonNode elementOrNull(Text index) {
+    public JsonNode elementIfExists(Text index) {
       if (!index.isSignedInteger()) return super.get(index);
       return element(index.parseInt(), index, true);
     }
@@ -766,7 +737,6 @@ record JsonTree(
 
     @Override
     public Number numberValue() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       double number = Chars.parseDouble(tree.json, start, endIndex() - start);
       if (number % 1 != 0d) return number;
       long n = (long) number;
@@ -776,7 +746,6 @@ record JsonTree(
 
     @Override
     public int intValue() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       int length = endIndex() - start;
       return Chars.isSignedInteger(tree.json, start, length)
           ? Chars.parseInt(tree.json, start, length)
@@ -785,7 +754,6 @@ record JsonTree(
 
     @Override
     public long longValue() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       int length = endIndex() - start;
       return Chars.isSignedInteger(tree.json, start, length)
           ? Chars.parseLong(tree.json, start, length)
@@ -794,7 +762,6 @@ record JsonTree(
 
     @Override
     public double doubleValue() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       return Chars.parseDouble(tree.json, start, endIndex() - start);
     }
   }
@@ -812,7 +779,6 @@ record JsonTree(
 
     @Override
     public Text textValue() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       return Chars.decodeString(tree.json, start);
     }
 
@@ -850,13 +816,11 @@ record JsonTree(
 
     @Override
     public boolean booleanValue() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       return endIndex() == start + 4;
     }
 
     @Override
     public Text textValue() {
-      if (path.isEmpty()) checkNoDanglingTrash();
       return getDeclaration();
     }
   }
@@ -874,7 +838,7 @@ record JsonTree(
 
     @Override
     public Object value() {
-      if (path.isEmpty()) checkNoDanglingTrash();
+      endIndex();
       return null;
     }
   }
@@ -896,9 +860,9 @@ record JsonTree(
       Text segment = path.segments().get(segCur);
       JsonNodeType type = parent.getType();
       if (type == JsonNodeType.ARRAY) {
-        parent = orNull ? parent.elementOrNull(segment) : parent.element(segment);
+        parent = orNull ? parent.elementIfExists(segment) : parent.element(segment);
       } else if (type == JsonNodeType.OBJECT) {
-        parent = orNull ? parent.memberOrNull(segment) : parent.member(segment);
+        parent = orNull ? parent.memberIfExists(segment) : parent.member(segment);
       } else {
         throw new JsonPathException(path, format("Malformed path %s at %s.", path, segment));
       }
@@ -917,9 +881,9 @@ record JsonTree(
       if (type.isSimple()) return false;
       Text segment = path.segments().get(segCur);
       if (type == JsonNodeType.ARRAY) {
-        node = node.elementOrNull(segment);
+        node = node.elementIfExists(segment);
       } else if (type == JsonNodeType.OBJECT) {
-        node = node.memberOrNull(segment);
+        node = node.memberIfExists(segment);
       }
       segCur++;
     }
@@ -992,16 +956,11 @@ record JsonTree(
   private static int skipNodeAutodetect(char[] json, int offset) {
     expectMoreChar(json, offset);
     return switch (json[offset]) {
-      case '{' -> // object node
-          skipObject(json, offset);
-      case '[' -> // array node
-          skipArray(json, offset);
-      case '"' -> // string node
-          skipString(json, offset); // true => boolean node
-      case 't', 'f' -> // false => boolean node
-          skipBoolean(json, offset);
-      case 'n' -> // null node
-          skipNull(json, offset);
+      case '{' -> skipObject(json, offset);
+      case '[' -> skipArray(json, offset);
+      case '"' -> skipString(json, offset);
+      case 't', 'f' -> skipBoolean(json, offset);
+      case 'n' -> skipNull(json, offset);
       default -> // must be number node then...
           skipNumber(json, offset);
     };
@@ -1061,11 +1020,11 @@ record JsonTree(
     return c;
   }
 
-  private static int expectColon(char[] json, int offset) {
+  static int expectColon(char[] json, int offset) {
     return skipWhitespace(json, expectChar(json, skipWhitespace(json, offset), ':'));
   }
 
-  private static int expectCommaOrEnd(char[] json, int offset, char end) {
+  static int expectCommaOrEnd(char[] json, int offset, char end) {
     offset = skipWhitespace(json, offset);
     if (offset < json.length && json[offset] == ',') return skipWhitespace(json, offset + 1);
     if (offset >= json.length || json[offset] != end) return expectChar(json, offset, end); // causes fail
@@ -1080,7 +1039,7 @@ record JsonTree(
     return expectNull(json, offset);
   }
 
-  private static int skipString(char[] json, int offset) {
+  static int skipString(char[] json, int offset) {
     int index = offset;
     index = expectChar(json, index, '"');
     while (index < json.length) {
@@ -1091,6 +1050,12 @@ record JsonTree(
       } else if (c == '\\') {
         Chars.expectEscapableCharacter(json, index);
         // hop over escaped char or unicode
+        if (json[index] == 'u') {
+          if (index + 4 >= json.length)
+            throw insufficientCodePointCharacters(json, offset);
+          for (int i = 1; i < 5; i++)
+            if (!isHexDigit(json[index + i])) throw notAHexDigit(json, index + i);
+        }
         index += json[index] == 'u' ? 5 : 1;
       } else if (c < ' ') {
         throw new JsonFormatException(
@@ -1102,7 +1067,7 @@ record JsonTree(
     return expectChar(json, index, '"');
   }
 
-  private static int skipNumber(char[] json, int offset) {
+  static int skipNumber(char[] json, int offset) {
     int index = offset;
     index = skipChar(json, index, '-');
     index = expectDigit(json, index);
@@ -1121,7 +1086,7 @@ record JsonTree(
     return skipDigits(json, index);
   }
 
-  private static int skipWhitespace(char[] json, int offset) {
+  static int skipWhitespace(char[] json, int offset) {
     int index = offset;
     while (index < json.length && isWhitespace(json[index])) index++;
     return index;
@@ -1138,8 +1103,12 @@ record JsonTree(
     return c >= '0' && c <= '9';
   }
 
+  private static boolean isHexDigit(char c) {
+    return isDigit(c) || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
+  }
+
   /** JSON only considers ASCII whitespace as whitespace */
-  private static boolean isWhitespace(char c) {
+  static boolean isWhitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
   }
 
@@ -1158,6 +1127,10 @@ record JsonTree(
     }
     return offset;
   }
+
+  /*
+  Stream support
+   */
 
   private static <T> Stream<T> stream(Iterator<T> iterator, int knownExactSize) {
     return StreamSupport.stream(new ItemSpliterator<>(iterator, knownExactSize), false);
@@ -1214,76 +1187,5 @@ record JsonTree(
     public int characteristics() {
       return ORDERED | SIZED | NONNULL | IMMUTABLE;
     }
-  }
-
-  /*
-  Adjusting non-standard conform JSON to standard conform JSON.
-  The actual parser only accepts standard conform JSON input.
-  The lenient parsing is implemented by rewriting the input to be standard conform.
-   */
-
-  /**
-   * Skips through the input and - switches single quotes of string values and member names to
-   * double quotes. - removes dangling commas for arrays and objects
-   */
-  private static void adjustToStandard(char[] json) {
-    adjustNodeAutodetect(json, 0);
-  }
-
-  static int adjustNodeAutodetect(char[] json, int atIndex) {
-    return switch (json[atIndex]) {
-      case '{' -> // object node
-          adjustObject(json, atIndex);
-      case '[' -> // array node
-          adjustArray(json, atIndex);
-      case '\'' -> adjustString(json, atIndex);
-      case '"' -> // string node
-          skipString(json, atIndex); // true => boolean node
-      case 't', 'f' -> // false => boolean node
-          skipBoolean(json, atIndex);
-      case 'n' -> // null node
-          skipNull(json, atIndex);
-      default -> // must be number node then...
-          skipNumber(json, atIndex);
-    };
-  }
-
-  static int adjustObject(char[] json, int fromIndex) {
-    int index = fromIndex;
-    index = expectChar(json, index, '{');
-    index = skipWhitespace(json, index);
-    while (index < json.length && json[index] != '}') {
-      index = adjustString(json, index);
-      index = expectColon(json, index);
-      index = adjustNodeAutodetect(json, index);
-      // blank dangling ,
-      if (json[index] == ',' && json[index + 1] == '}') json[index++] = ' ';
-      index = expectCommaOrEnd(json, index, '}');
-    }
-    return expectChar(json, index, '}');
-  }
-
-  static int adjustArray(char[] json, int fromIndex) {
-    int index = fromIndex;
-    index = expectChar(json, index, '[');
-    index = skipWhitespace(json, index);
-    while (index < json.length && json[index] != ']') {
-      index = adjustNodeAutodetect(json, index);
-      // blank dangling ,
-      if (json[index] == ',' && json[index + 1] == ']') json[index++] = ' ';
-      index = expectCommaOrEnd(json, index, ']');
-    }
-    return expectChar(json, index, ']');
-  }
-
-  static int adjustString(char[] json, int fromIndex) {
-    int index = fromIndex;
-    if (json[index] == '"') return skipString(json, fromIndex);
-    index = expectChar(json, index, '\'');
-    json[index - 1] = '"';
-    while (index < json.length && json[index] != '\'') index++;
-    index = expectChar(json, index, '\'');
-    json[index - 1] = '"';
-    return index;
   }
 }

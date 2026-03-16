@@ -739,19 +739,5 @@ class JsonTreeTest {
     assertEquals(0, root.count(JsonNodeType.NULL));
   }
 
-  @Test
-  void testOfNonStandard_SingleQuotes() {
-    assertEquals("\"hello\"", JsonNode.ofNonStandard("'hello'").getDeclaration().toString());
-    assertEquals(
-        "{\"hello\":42}", JsonNode.ofNonStandard("{'hello':42}").getDeclaration().toString());
-    assertEquals(
-        "{\"hello\":\"you\"}",
-        JsonNode.ofNonStandard("{'hello':'you'}").getDeclaration().toString());
-  }
 
-  @Test
-  void testOfNonStandard_DanglingCommas() {
-    assertEquals("[1,2 ]", JsonNode.ofNonStandard("[1,2,]").getDeclaration().toString());
-    assertEquals("{\"a\":1 }", JsonNode.ofNonStandard("{'a':1,}").getDeclaration().toString());
-  }
 }

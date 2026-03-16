@@ -50,8 +50,7 @@ class CharsTest {
     Path file = tempDir.resolve("without_bom.json");
 
     Files.writeString(file, UNICODE_EXAMPLE, UTF_8, StandardOpenOption.CREATE);
-
-    assertContentEquals(UNICODE_EXAMPLE, Chars.from(file, UTF_8));
+    assertContentEquals(UNICODE_EXAMPLE, Chars.decode(Files.readAllBytes(file), UTF_8));
   }
 
   @Test
@@ -59,7 +58,7 @@ class CharsTest {
     Path file = tempDir.resolve("with_bom.json");
     writeContentWithBOM(file);
 
-    assertContentEquals(UNICODE_EXAMPLE, Chars.from(file, UTF_8));
+    assertContentEquals(UNICODE_EXAMPLE, Chars.decode(Files.readAllBytes(file), UTF_8));
   }
 
   @Test
@@ -68,7 +67,7 @@ class CharsTest {
 
     Files.writeString(file, ISO_EXAMPLE, ISO_8859_1, StandardOpenOption.CREATE);
 
-    assertContentEquals(ISO_EXAMPLE, Chars.from(file, ISO_8859_1));
+    assertContentEquals(ISO_EXAMPLE, Chars.decode(Files.readAllBytes(file), ISO_8859_1));
   }
 
   @Test

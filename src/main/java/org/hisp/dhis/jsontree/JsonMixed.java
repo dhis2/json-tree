@@ -8,6 +8,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.nio.file.Path;
+
+import org.hisp.dhis.jsontree.internal.Language;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
@@ -49,6 +51,10 @@ public interface JsonMixed
     return of(json, JsonAccess.GLOBAL);
   }
 
+  static JsonMixed of(@Language("json") String json) {
+    return of(json, JsonAccess.GLOBAL);
+  }
+
   /**
    * View the provided JSON string as virtual lazy evaluated tree using the provided {@link
    * JsonAccessors} for mapping to Java method return type.
@@ -62,23 +68,6 @@ public interface JsonMixed
     return json == null || "null".contentEquals(json)
         ? JsonVirtualTree.NULL
         : new JsonVirtualTree(json, accessors);
-  }
-
-  /**
-   * Uses a more lenient parser to read the provided JSON input.
-   *
-   * <p>Beyond the standard this allows:
-   *
-   * <ul>
-   *   <li>single quoted strings (no escape)
-   * </ul>
-   *
-   * @param json a JSON input that is not standard conform
-   * @return root of the virtual tree representing the given JSON input
-   * @since 0.10
-   */
-  static JsonMixed ofNonStandard(String json) {
-    return of(JsonNode.ofNonStandard(json));
   }
 
   /**

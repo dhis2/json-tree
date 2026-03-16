@@ -1,6 +1,9 @@
 package org.hisp.dhis.jsontree;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -457,7 +460,12 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   static Text of(Path file, Charset encoding) {
-    return Chars.from(file, encoding, (arr, length) -> of(arr, 0, length));
+    try {
+      byte[] bytes = Files.readAllBytes(file);
+      return Chars.decode(bytes, encoding, (arr, length) -> of(arr, 0, length));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   private static void checkSubSequence(int start, int end, int length) {

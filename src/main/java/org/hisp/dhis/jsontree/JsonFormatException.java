@@ -51,6 +51,15 @@ public final class JsonFormatException extends IllegalArgumentException {
     this(createParseErrorMessage(json, offset, expected));
   }
 
+  public static JsonFormatException insufficientCodePointCharacters(char[] json, int offset) {
+    return new JsonFormatException("Insufficient characters for code point at index " + offset);
+  }
+
+  public static JsonFormatException notAHexDigit(char[] json, int offset) {
+    throw new JsonFormatException(
+        "Invalid hexadecimal digit: '" + json[offset] + "' at index " + (offset));
+  }
+
   private static String createParseErrorMessage(char[] json, int offset, char expected) {
     return createParseErrorMessage(
         json, offset, expected == '~' ? "start of value" : "`" + expected + "`");

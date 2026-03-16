@@ -49,7 +49,7 @@ class JsonVirtualTreeTest {
   @Test
   void testCustomObjectTypeMultiMap() {
     JsonMultiMap<JsonNumber> multiMap =
-        JsonMixed.ofNonStandard("{'foo':[1,23], 'bar': [34,56]}").asMultiMap(JsonNumber.class);
+        Json5.of("{'foo':[1,23], 'bar': [34,56]}").asMultiMap(JsonNumber.class);
     assertFalse(multiMap.isEmpty());
     assertTrue(multiMap.isObject());
     assertEquals(23, multiMap.get("foo").get(1).intValue());
@@ -58,7 +58,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testObjectHas() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'users': {'foo':{'id':'foo'}, 'bar':[]}}");
+    JsonObject obj = Json5.of("{'users': {'foo':{'id':'foo'}, 'bar':[]}}");
     assertTrue(obj.has("users"));
     assertTrue(obj.getObject("users").has("foo", "bar"));
     assertFalse(obj.has("no-a-member"));
@@ -74,7 +74,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testNumber() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'number': 13, 'fraction': 4.2}");
+    JsonObject obj = Json5.of("{'number': 13, 'fraction': 4.2}");
 
     assertEquals(13, obj.getNumber("number").number());
     assertEquals(4.2f, obj.getNumber("fraction").number().floatValue(), 0.001f);
@@ -84,7 +84,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testIntValue() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'number':13}");
+    JsonObject obj = Json5.of("{'number':13}");
     assertEquals(13, obj.getNumber("number").intValue());
     JsonNumber missing = obj.getNumber("missing");
     assertThrowsExactly(JsonPathException.class, missing::intValue);
@@ -92,7 +92,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testString() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'text': 'plain'}");
+    JsonObject obj = Json5.of("{'text': 'plain'}");
 
     assertEquals("plain", obj.getString("text").string());
     assertTrue(obj.getString("text").exists());
@@ -101,7 +101,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testBool() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'flag': true}");
+    JsonObject obj = Json5.of("{'flag': true}");
 
     assertTrue(obj.getBoolean("flag").bool());
     assertTrue(obj.getBoolean("flag").exists());
@@ -110,7 +110,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testNull() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'value': null}");
+    JsonObject obj = Json5.of("{'value': null}");
 
     assertNull(obj.getBoolean("value").bool());
     assertNull(obj.getString("value").string());
@@ -124,7 +124,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testBooleanValue() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'flag': true}");
+    JsonObject obj = Json5.of("{'flag': true}");
 
     assertTrue(obj.getBoolean("flag").booleanValue());
     JsonBoolean missing = obj.getBoolean("missing");
@@ -133,14 +133,14 @@ class JsonVirtualTreeTest {
 
   @Test
   void testNotExists() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'flag': true}");
+    JsonObject obj = Json5.of("{'flag': true}");
 
     assertFalse(obj.getString("no").exists());
   }
 
   @Test
   void testSizeArray() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'numbers': [1,2,3,4]}");
+    JsonObject obj = Json5.of("{'numbers': [1,2,3,4]}");
 
     assertEquals(4, obj.getArray("numbers").size());
     assertFalse(obj.getArray("numbers").isNull());
@@ -148,28 +148,28 @@ class JsonVirtualTreeTest {
 
   @Test
   void testStringValues() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'letters': ['a','b','c']}");
+    JsonObject obj = Json5.of("{'letters': ['a','b','c']}");
 
     assertEquals(asList("a", "b", "c"), obj.getArray("letters").stringValues());
   }
 
   @Test
   void testNumberValues() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'digits': [1,2,3]}");
+    JsonObject obj = Json5.of("{'digits': [1,2,3]}");
 
     assertEquals(asList(1, 2, 3), obj.getArray("digits").numberValues());
   }
 
   @Test
   void testBoolValues() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'flags': [true, false, true]}");
+    JsonObject obj = Json5.of("{'flags': [true, false, true]}");
 
     assertEquals(asList(true, false, true), obj.getArray("flags").boolValues());
   }
 
   @Test
   void testArrayValuesMappedView() {
-    JsonArray arr = JsonMixed.ofNonStandard("[{'a':'x'},{'a':'y'},{'a':'z','b':1}]");
+    JsonArray arr = Json5.of("[{'a':'x'},{'a':'y'},{'a':'z','b':1}]");
     JsonList<JsonString> view = arr.projectAsList(e -> e.asObject().getString("a"));
     assertEquals(asList("x", "y", "z"), view.toList(JsonString::string));
   }
@@ -177,7 +177,7 @@ class JsonVirtualTreeTest {
   @Test
   void testListValuesMappedView() {
     JsonList<JsonObject> list =
-        JsonMixed.ofNonStandard("[{'a':'x','b':1},{'a':'y'},{'a':'z','b':3}]")
+        Json5.of("[{'a':'x','b':1},{'a':'y'},{'a':'z','b':3}]")
             .asList(JsonObject.class);
     assertEquals(
         asList("x", "y", "z"), list.project(e -> e.getString("a")).toList(JsonString::string));
@@ -190,14 +190,14 @@ class JsonVirtualTreeTest {
 
   @Test
   void testIsNull() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'optional': null }");
+    JsonObject obj = Json5.of("{'optional': null }");
 
     assertTrue(obj.getArray("optional").isNull());
   }
 
   @Test
   void testIsArray() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'array': [], 'notAnArray': 42 }");
+    JsonObject obj = Json5.of("{'array': [], 'notAnArray': 42 }");
 
     assertTrue(JsonMixed.of("[]").isArray());
     assertTrue(obj.getArray("array").isArray());
@@ -207,7 +207,7 @@ class JsonVirtualTreeTest {
 
   @Test
   void testIsObject() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'object': {}, 'notAnObject': 42 }");
+    JsonObject obj = Json5.of("{'object': {}, 'notAnObject': 42 }");
 
     assertTrue(obj.isObject());
     assertTrue(obj.getArray("object").isObject());
@@ -217,37 +217,37 @@ class JsonVirtualTreeTest {
 
   @Test
   void testBooleanNode() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'a': true }");
+    JsonObject obj = Json5.of("{'a': true }");
     assertEquals("true", obj.getBoolean("a").toJson());
   }
 
   @Test
   void testNumberNode() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'a': 42 }");
+    JsonObject obj = Json5.of("{'a': 42 }");
     assertEquals("42", obj.getNumber("a").toJson());
   }
 
   @Test
   void testStringNode() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'a': 'hello, again' }");
+    JsonObject obj = Json5.of("{'a': 'hello, again' }");
     assertEquals("\"hello, again\"", obj.getString("a").toJson());
   }
 
   @Test
   void testArrayNode() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'a': ['hello, again', 12] }");
+    JsonObject obj = Json5.of("{'a': ['hello, again', 12] }");
     assertEquals("[\"hello, again\", 12]", obj.getArray("a").toJson());
   }
 
   @Test
   void testObjectNode() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'a': ['hello, again', 12] }");
+    JsonObject obj = Json5.of("{'a': ['hello, again', 12] }");
     assertEquals("{\"a\": [\"hello, again\", 12] }", obj.toJson());
   }
 
   @Test
   void testObjectGet() {
-    JsonObject obj = JsonMixed.ofNonStandard("{'x':{'a':[1], 'b':2, 'c':3}}");
+    JsonObject obj = Json5.of("{'x':{'a':[1], 'b':2, 'c':3}}");
     assertEquals(1, obj.getNumber("x{a}[0]").intValue());
     assertEquals(1, obj.getObject("x").getArray("{a}").getNumber(0).intValue());
     assertEquals(1, obj.getObject("x").node().get("{a}").get("[0]").value());
@@ -276,7 +276,7 @@ class JsonVirtualTreeTest {
   @Test
   void testListContainsAll() {
     JsonList<JsonString> list =
-        JsonMixed.ofNonStandard("[{'a':'x'}, {'a':'y'}]")
+        Json5.of("[{'a':'x'}, {'a':'y'}]")
             .as(JsonArray.class)
             .projectAsList(e -> e.asObject().getString("a"));
     assertTrue(list.containsAll(JsonString::string, Set.of("y", "x")));
@@ -285,7 +285,7 @@ class JsonVirtualTreeTest {
   @Test
   void testListContains() {
     JsonList<JsonString> list =
-        JsonMixed.ofNonStandard("[{'a':'x'}, {'a':'y'}]")
+        Json5.of("[{'a':'x'}, {'a':'y'}]")
             .as(JsonArray.class)
             .projectAsList(e -> e.asObject().getString("a"));
     assertTrue(list.contains(JsonString::string, "y"::equals));
@@ -295,7 +295,7 @@ class JsonVirtualTreeTest {
   @Test
   void testListContainsUnique() {
     JsonList<JsonString> list =
-        JsonMixed.ofNonStandard("[{'a':'x'}, {'a':'y'}, {'a':'y'}]")
+        Json5.of("[{'a':'x'}, {'a':'y'}, {'a':'y'}]")
             .as(JsonArray.class)
             .projectAsList(e -> e.asObject().getString("a"));
     assertTrue(list.containsUnique(JsonString::string, "x"::equals));
@@ -305,7 +305,7 @@ class JsonVirtualTreeTest {
   @Test
   void testListFirst() {
     JsonList<JsonObject> list =
-        JsonMixed.ofNonStandard("[{'a':'x'}, {'a':'y','b':1}, {'a':'y','b':2}]")
+        Json5.of("[{'a':'x'}, {'a':'y','b':1}, {'a':'y','b':2}]")
             .asList(JsonObject.class);
     assertEquals(
         1,
@@ -320,7 +320,7 @@ class JsonVirtualTreeTest {
   void testToString() {
     JsonList<JsonNumber> list = JsonMixed.of("[12,42]").asList(JsonNumber.class);
     assertEquals("[12,42]", list.toString());
-    JsonMap<JsonNumber> map = JsonMixed.ofNonStandard("{'a':12,'b':42}").asMap(JsonNumber.class);
+    JsonMap<JsonNumber> map = Json5.of("{'a':12,'b':42}").asMap(JsonNumber.class);
     assertEquals("{\"a\":12,\"b\":42}", map.toString());
   }
 
@@ -337,13 +337,6 @@ class JsonVirtualTreeTest {
   void testToString_MalformedJson() {
     JsonMap<JsonNumber> map = JsonMixed.of("{\"a:12}").asMap(JsonNumber.class);
     assertEquals("Expected \" but reach EOI: {\"a:12}", map.get("a").toString());
-  }
-
-  @Test
-  void testToString_MalformedNonStandardJson() {
-    JsonFormatException ex =
-        assertThrowsExactly(JsonFormatException.class, () -> JsonMixed.ofNonStandard("{'a:12}"));
-    assertEquals("Expected ' but reach EOI: {\"a:12}", ex.getMessage());
   }
 
   @Test
