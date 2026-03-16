@@ -11,13 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * While does only test {@link Chars#parseDouble(char[], int, int)} directly the function uses
- * {@link Chars#parseInt(char[], int, int)} and {@link Chars#parseLong(char[], int, int)} internally
+ * While does only test {@link Numbers#parseDouble(char[], int, int)} directly the function uses
+ * {@link Numbers#parseInt(char[], int, int)} and {@link Numbers#parseLong(char[], int, int)} internally
  * to parse exponents and doubles without decimals. That way these do have coverage.
  *
  * @author Jan Bernitt (with AI suggestions for edge cases)
  */
-class CharsParseDoubleTest {
+class NumbersTest {
 
   private static final int NUM_RANDOM_TESTS = 10_000;
   private final Random rng = new Random(123456789L);
@@ -203,7 +203,7 @@ class CharsParseDoubleTest {
         () -> "Number is valid for Double.parseDouble: `" + number + "`");
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> Chars.parseDouble(number.toCharArray()),
+        () -> Numbers.parseDouble(number.toCharArray()),
         "Should throw for: " + number);
   }
 
@@ -217,7 +217,7 @@ class CharsParseDoubleTest {
   private static void assertDoubleEqualsExact(String number) {
     double expected = Double.parseDouble(number);
     try {
-      double actual = Chars.parseDouble(number.toCharArray(), 0, number.length());
+      double actual = Numbers.parseDouble(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
@@ -227,7 +227,7 @@ class CharsParseDoubleTest {
   private static void assertLongEquals(String number) {
     long expected = Long.parseLong(number);
     try {
-      long actual = Chars.parseLong(number.toCharArray(), 0, number.length());
+      long actual = Numbers.parseLong(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Long.parseLong was rejected: " + number.replace(' ', '_'), ex);
@@ -241,14 +241,14 @@ class CharsParseDoubleTest {
         () -> "Number is valid for Long.parseLong: `" + number + "`");
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> Chars.parseLong(number.toCharArray()),
+        () -> Numbers.parseLong(number.toCharArray()),
         "Should throw for: " + number);
   }
 
   private static void assertIntEquals(String number) {
     int expected = Integer.parseInt(number);
     try {
-      int actual = Chars.parseInt(number.toCharArray(), 0, number.length());
+      int actual = Numbers.parseInt(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Integer.parseInt was rejected: " + number.replace(' ', '_'), ex);
@@ -262,7 +262,7 @@ class CharsParseDoubleTest {
         () -> "Number is valid for Integer.parseInt: `" + number + "`");
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> Chars.parseInt(number.toCharArray()),
+        () -> Numbers.parseInt(number.toCharArray()),
         "Should throw for: " + number);
   }
 

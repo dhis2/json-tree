@@ -36,7 +36,7 @@ import static org.hisp.dhis.jsontree.Chars.expectFalse;
 import static org.hisp.dhis.jsontree.Chars.expectMoreChar;
 import static org.hisp.dhis.jsontree.Chars.expectNull;
 import static org.hisp.dhis.jsontree.Chars.expectTrue;
-import static org.hisp.dhis.jsontree.Chars.parseNumber;
+import static org.hisp.dhis.jsontree.Numbers.parseNumber;
 import static org.hisp.dhis.jsontree.JsonFormatException.insufficientCodePointCharacters;
 import static org.hisp.dhis.jsontree.JsonFormatException.notAHexDigit;
 
@@ -379,7 +379,7 @@ record JsonTree(
       char[] json = tree.json;
       int index = skipWhitespace(json, expectChar(json, start, '{'));
       while (index < json.length && json[index] != '}') {
-        Text property = Chars.decodeString(json, index);
+        Text property = Chars.unescapeJsonString(json, index);
         index = expectColon(json, skipString(json, index));
         if (name.equals(property)) {
           int mStart = index;
@@ -416,7 +416,7 @@ record JsonTree(
         public JsonNode next() {
           if (!hasNext())
             throw new NoSuchElementException("next() called without checking hasNext()");
-          Text name = Chars.decodeString(json, offset);
+          Text name = Chars.unescapeJsonString(json, offset);
           offset = expectColon(json, skipString(json, offset));
           JsonNode member = tree.autoDetect(path.chain(name), offset, index);
           int end = member.endIndex();
@@ -440,7 +440,7 @@ record JsonTree(
       char[] json = tree.json;
       int offset = skipWhitespace(json, expectChar(json, start, '{'));
       while (offset < json.length && json[offset] != '}') {
-        Text m = Chars.decodeString(json, offset);
+        Text m = Chars.unescapeJsonString(json, offset);
         if (m.equals(name)) return true;
         offset = expectColon(json, skipString(json, offset)); // move after :
         offset = expectCommaOrEnd(json, skipNodeAutodetect(json, offset), '}');
@@ -473,7 +473,7 @@ record JsonTree(
             public E next() {
               if (!hasNext())
                 throw new NoSuchElementException("next() called without checking hasNext()");
-              Text name = Chars.decodeString(json, offset);
+              Text name = Chars.unescapeJsonString(json, offset);
               offset = expectColon(json, skipString(json, offset)); // move after :
               JsonNode member = tree.autoDetect(path.chain(name), offset, Index.ADD);
               // move after value
@@ -749,22 +749,22 @@ record JsonTree(
     @Override
     public int intValue() {
       int length = endIndex() - start;
-      return Chars.isSignedInteger(tree.json, start, length)
-          ? Chars.parseInt(tree.json, start, length)
-          : (int) Chars.parseDouble(tree.json, start, length);
+      return Numbers.isSignedInteger(tree.json, start, length)
+          ? Numbers.parseInt(tree.json, start, length)
+          : (int) Numbers.parseDouble(tree.json, start, length);
     }
 
     @Override
     public long longValue() {
       int length = endIndex() - start;
-      return Chars.isSignedInteger(tree.json, start, length)
-          ? Chars.parseLong(tree.json, start, length)
-          : (long) Chars.parseDouble(tree.json, start, length);
+      return Numbers.isSignedInteger(tree.json, start, length)
+          ? Numbers.parseLong(tree.json, start, length)
+          : (long) Numbers.parseDouble(tree.json, start, length);
     }
 
     @Override
     public double doubleValue() {
-      return Chars.parseDouble(tree.json, start, endIndex() - start);
+      return Numbers.parseDouble(tree.json, start, endIndex() - start);
     }
   }
 
@@ -781,7 +781,7 @@ record JsonTree(
 
     @Override
     public Text textValue() {
-      return Chars.decodeString(tree.json, start);
+      return Chars.unescapeJsonString(tree.json, start);
     }
 
     @Override

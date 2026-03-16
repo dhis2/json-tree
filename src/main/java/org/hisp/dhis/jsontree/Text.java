@@ -230,25 +230,25 @@ public interface Text extends CharSequence, Comparable<Text> {
    * @see Integer#parseInt(String)
    */
   default int parseInt() {
-    return Chars.parseInt(toCharArray());
+    return Numbers.parseInt(toCharArray());
   }
 
   /**
    * @see Long#parseLong(String)
    */
   default long parseLong() {
-    return Chars.parseLong(toCharArray());
+    return Numbers.parseLong(toCharArray());
   }
 
   /**
    * @see Double#parseDouble(String)
    */
   default double parseDouble() {
-    return Chars.parseDouble(toCharArray());
+    return Numbers.parseDouble(toCharArray());
   }
 
   default Number parseNumber() {
-    return Chars.parseNumber(toCharArray());
+    return Numbers.parseNumber(toCharArray());
   }
 
   /**
@@ -361,7 +361,7 @@ public interface Text extends CharSequence, Comparable<Text> {
 
       @Override
       public boolean isSignedInteger() {
-        return buffer == Cache._100_TO_999 || Chars.isSignedInteger(buffer, offset, length);
+        return buffer == Cache._100_TO_999 || Numbers.isSignedInteger(buffer, offset, length);
       }
 
       @Override
@@ -371,22 +371,22 @@ public interface Text extends CharSequence, Comparable<Text> {
 
       @Override
       public int parseInt() {
-        return Chars.parseInt(buffer, offset, length);
+        return Numbers.parseInt(buffer, offset, length);
       }
 
       @Override
       public long parseLong() {
-        return Chars.parseLong(buffer, offset, length);
+        return Numbers.parseLong(buffer, offset, length);
       }
 
       @Override
       public double parseDouble() {
-        return Chars.parseDouble(buffer, offset, length);
+        return Numbers.parseDouble(buffer, offset, length);
       }
 
       @Override
       public Number parseNumber() {
-        return Chars.parseNumber(buffer, offset, length);
+        return Numbers.parseNumber(buffer, offset, length);
       }
 
       @Override
