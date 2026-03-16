@@ -164,7 +164,7 @@ class JsonVirtualTreeTest {
   void testBoolValues() {
     JsonObject obj = Json5.of("{'flags': [true, false, true]}");
 
-    assertEquals(asList(true, false, true), obj.getArray("flags").boolValues());
+    assertEquals(asList(true, false, true), obj.getArray("flags").booleanValues());
   }
 
   @Test

@@ -43,6 +43,8 @@ public final class JsonFormatException extends IllegalArgumentException {
     super(message);
   }
 
+  //TODO move all callers to dedicated static methods
+
   public JsonFormatException(char[] json, int offset, char expected) {
     this(createParseErrorMessage(json, offset, expected));
   }

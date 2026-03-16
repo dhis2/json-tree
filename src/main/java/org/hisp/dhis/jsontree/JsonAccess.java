@@ -116,26 +116,32 @@ public final class JsonAccess implements JsonAccessors {
     return add(as, (JsonAccessor<T>) accessor);
   }
 
+  public <T, E> JsonAccess add(Class<T> as, SimpleJsonAccessor<E> accessor, Function<E, T> f) {
+    return add(as, value -> {
+      E val = accessor.access(value);
+      return val == null ? null : f.apply(val);});
+  }
+
   public <T> JsonAccess addStringAs(Class<T> as, Function<String, T> parse) {
     return add(as, value -> accessAsString(value, parse));
   }
 
   public JsonAccess init() {
-    return add(String.class, JsonAccess::accessAsString)
-        .add(boolean.class, JsonAccess::accessAsPrimitiveBoolean)
-        .add(char.class, JsonAccess::accessAsPrimitiveCharacter)
-        //TODO decide if we want conversion already in the JsonNode API - at least for String? => better access to low overhead paths
+    return add(String.class, JsonString::string)
+        .add(Text.class, JsonString::text)
+        .add(boolean.class, JsonBoolean::booleanValue)
+        .add(char.class, JsonString::charValue)
         .add(int.class, JsonNumber::intValue)
         .add(long.class, JsonNumber::longValue)
         .add(float.class, JsonNumber::floatValue)
         .add(double.class, JsonNumber::doubleValue)
-        .add(Boolean.class, JsonAccess::accessAsBoolean)
-        .add(Character.class, JsonAccess::accessAsCharacter)
-        .add(Integer.class, value -> accessAsNumber(value, Number::intValue))
-        .add(Long.class, value -> accessAsNumber(value, Number::longValue))
-        .add(Float.class, value -> accessAsNumber(value, Number::floatValue))
-        .add(Double.class, value -> accessAsNumber(value, Number::doubleValue))
-        .add(Number.class, value -> accessAsNumber(value, Function.identity()))
+        .add(Boolean.class, JsonBoolean::bool)
+        .add(Character.class, JsonString::character)
+        .add(Number.class, JsonNumber::number)
+        .add(Integer.class, JsonNumber::integer)
+        .add(Long.class, JsonNumber::number, Number::longValue)
+        .add(Float.class, JsonNumber::number, Number::floatValue)
+        .add(Double.class, JsonNumber::number, Number::doubleValue)
         .add(URL.class, value -> value.as(JsonURL.class).url())
         .add(UUID.class, value -> value.parsed(UUID::fromString))
         .add(LocalDateTime.class, value -> value.as(JsonDate.class).date())
@@ -209,63 +215,6 @@ public final class JsonAccess implements JsonAccessors {
                         .collect(Collectors.joining(","))));
       }
     }
-  }
-
-  public static Boolean accessAsPrimitiveBoolean(JsonMixed bool) {
-    Boolean val = accessAsBoolean(bool);
-    if (val == null)
-      throw new JsonAccessException("JSON is undefined, Java is a primitive boolean");
-    return val;
-  }
-
-  public static Boolean accessAsBoolean(JsonMixed bool) {
-    if (bool.isUndefined()) return null;
-    if (bool.isBoolean()) return bool.booleanValue();
-    if (bool.isNumber()) {
-      double val = bool.as(JsonNumber.class).doubleValue();
-      if (val == 0.0d) return false;
-      if (val == 1.0d) return true;
-    } else if (bool.isString()) {
-      String val = bool.as(JsonString.class).string().toLowerCase();
-      if ("on".equals(val) || "yes".equals(val) || "true".equals(val) || "t".equals(val))
-        return true;
-      if ("off".equals(val) || "no".equals(val) || "false".equals(val) || "f".equals(val))
-        return false;
-    }
-    throw new JsonAccessException("JSON does not map to a Java Boolean: " + bool);
-  }
-
-  //TODO clean up once we landed on how we deal with string value access as number
-  public static <T extends Number> T accessAsPrimitiveNumber(
-      JsonMixed number, Function<Number, T> as) {
-    T val = accessAsNumber(number, as);
-    if (val == null) throw new JsonAccessException("JSON is undefined, Java is a primitive number");
-    return val;
-  }
-
-  public static <T extends Number> T accessAsNumber(JsonMixed number, Function<Number, T> as) {
-    if (number.isUndefined()) return null;
-    if (number.isNumber()) return as.apply(number.number());
-    if (number.isString())
-      return as.apply(number.as(JsonString.class).text().parseDouble());
-    if (number.isBoolean()) return as.apply(number.as(JsonBoolean.class).booleanValue() ? 1 : 0);
-    throw new JsonAccessException("JSON does not map to a Java Number: " + number);
-  }
-
-  public static Character accessAsPrimitiveCharacter(JsonMixed str) {
-    Character val = accessAsCharacter(str);
-    if (val == null) throw new JsonAccessException("JSON is undefined, Java is a primitive char");
-    return val;
-  }
-
-  public static Character accessAsCharacter(JsonMixed str) {
-    if (str.isUndefined()) return null;
-    if (str.isString()) {
-      Text val = str.text();
-      return val.isEmpty() ? null : val.charAt(0);
-    }
-    if (str.isNumber()) return str.toJson().charAt(0);
-    throw new JsonAccessException("JSON does not map to a Java Character: " + str);
   }
 
   public static Date accessAsDate(JsonMixed date) {

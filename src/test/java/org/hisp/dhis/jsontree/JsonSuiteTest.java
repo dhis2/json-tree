@@ -422,6 +422,6 @@ class JsonSuiteTest {
   private static void runTest(String filename) {
     Charset encoding = filename.contains("latin") ? ISO_8859_1 : UTF_8;
     JsonNode root = JsonNode.of(Paths.get("./src/test/resources/suite", filename), encoding, null);
-    root.endIndex();
+    root.endIndex(); // causes validation to occur
   }
 }

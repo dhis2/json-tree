@@ -21,6 +21,8 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  */
 public interface Text extends CharSequence, Comparable<Text> {
 
+  Text EMPTY = Text.of(new char[0], 0, 0);
+
   /**
    * @see String#indexOf(int)
    */
@@ -245,6 +247,10 @@ public interface Text extends CharSequence, Comparable<Text> {
     return Chars.parseDouble(toCharArray());
   }
 
+  default Number parseNumber() {
+    return Chars.parseNumber(toCharArray());
+  }
+
   /**
    * @see String#compareTo(String)
    */
@@ -297,9 +303,14 @@ public interface Text extends CharSequence, Comparable<Text> {
     if (text instanceof Text t) return t;
     if (text instanceof String s) return of(s);
     int len = text.length();
+    if (len == 0) return EMPTY;
+    Text cached = Cache.get(text.charAt(0), len);
+    if (cached != null && cached.contentEquals(text)) return cached;
     char[] buffer = new char[len];
     for (int i = 0; i < len; i++) buffer[i] = text.charAt(i);
-    return of(buffer, 0, len);
+    Text res = of(buffer, 0, len);
+    Cache.set(res);
+    return res;
   }
 
   /**
@@ -308,8 +319,13 @@ public interface Text extends CharSequence, Comparable<Text> {
    *     the {@link JsonNode} API instead.
    */
   static Text of(String text) {
+    if (text.isEmpty()) return EMPTY;
+    Text cached = Cache.get(text.charAt(0), text.length());
+    if (cached != null && cached.contentEquals(text)) return cached;
     char[] buffer = text.toCharArray();
-    return of(buffer, 0, buffer.length);
+    Text res = of(buffer, 0, buffer.length);
+    Cache.set(res);
+    return res;
   }
 
   /**
@@ -360,11 +376,17 @@ public interface Text extends CharSequence, Comparable<Text> {
 
       @Override
       public long parseLong() {
-        return Chars.parseLong(buffer, offset, length);      }
+        return Chars.parseLong(buffer, offset, length);
+      }
 
       @Override
       public double parseDouble() {
         return Chars.parseDouble(buffer, offset, length);
+      }
+
+      @Override
+      public Number parseNumber() {
+        return Chars.parseNumber(buffer, offset, length);
       }
 
       @Override
@@ -412,11 +434,13 @@ public interface Text extends CharSequence, Comparable<Text> {
 
   /**
    * @apiNote should be considered private
-   * @implNote A private cache for digits of 0-999. It saves on allocation of a character buffer and
-   *     increases the chance of the characters already being in CPU cache as we reuse the same
-   *     memory region for small-ish indexes.
    */
   record Cache() {
+    /**
+     * @implNote A private cache for digits of 0-999. It saves on allocation of a character buffer
+     *     and increases the chance of the characters already being in CPU cache as we reuse the
+     *     same memory region for small-ish indexes.
+     */
     private static final char[] _100_TO_999 = new char[900 * 3];
 
     static {
@@ -426,6 +450,25 @@ public interface Text extends CharSequence, Comparable<Text> {
         _100_TO_999[j++] = (char) ('0' + (i % 100 / 10));
         _100_TO_999[j++] = (char) ('0' + i % 10);
       }
+    }
+
+    /**
+     * A cache for short texts starting with a lower case letter like often used in path segment
+     * names. This avoids allocation in a loop where certain object members are accessed using
+     * {@link String}s. This is a typical use case of a JSON object API.
+     */
+    private static final Text[][] STARTING_A_Z_LENGTH_1_TO_16 = new Text[26][16];
+
+    static Text get(char c, int length) {
+      if (length < 1 || length > 16 || c < 'a' || c > 'z') return null;
+      return STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1];
+    }
+
+    static void set(Text text) {
+      char c = text.charAt(0);
+      int length = text.length();
+      if (length < 1 || length > 16 || c < 'a' || c > 'z') return;
+      STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1] = text;
     }
   }
 
@@ -440,7 +483,7 @@ public interface Text extends CharSequence, Comparable<Text> {
     }
     boolean neg = value < 0;
     boolean overflow = value == Integer.MIN_VALUE;
-    value = overflow ? value-1 : Math.abs(value);
+    value = overflow ? value - 1 : Math.abs(value);
     int rest = value;
     int n0 = neg ? 1 : 0;
     int n = n0;
@@ -455,7 +498,7 @@ public interface Text extends CharSequence, Comparable<Text> {
       digits[i] = (char) ('0' + (rest % 10));
       rest /= 10;
     }
-    if (overflow) digits[digits.length-1] +=1;
+    if (overflow) digits[digits.length - 1] += 1;
     return of(digits, 0, digits.length);
   }
 

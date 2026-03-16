@@ -126,10 +126,9 @@ class TextTest {
     assertEquals(6, t.lastIndexOf("world"));
     assertEquals(14, t.lastIndexOf("llo"));
     assertEquals(-1, t.lastIndexOf("xyz"));
-    assertEquals(
-        0,
-        t.lastIndexOf("")); // empty returns 0? but lastIndexOf empty? spec says return 0? we follow
+    // empty returns 0? but lastIndexOf empty? spec says return 0? we follow
     // implementation.
+    assertEquals(0, t.lastIndexOf(""));
   }
 
   @DisplayName("lastIndexOf(CharSequence, int)")
@@ -314,6 +313,30 @@ class TextTest {
   void testOf_Int_EdgeCases() {
     assertEquals(String.valueOf(Integer.MAX_VALUE), Text.of(Integer.MAX_VALUE).toString());
     assertEquals(String.valueOf(Integer.MIN_VALUE), Text.of(Integer.MIN_VALUE).toString());
+  }
+
+  @Test
+  void testOf_String_Cache() {
+    Text hello = Text.of("hello");
+    assertEquals("hello", hello.toString());
+    assertSame(hello, Text.of("hello"), "should be same from cache");
+    Text hero = Text.of("hero");
+    assertSame(hello, Text.of("hello"), "still same from cache");
+    assertSame(hero, Text.of("hero"), "also same");
+    Text help = Text.of("help");
+    assertEquals("help", help.toString());
+    assertEquals("hero", hero.toString(), "content has not changed");
+    assertSame(help, Text.of("help"), "now help is cached");
+    assertNotSame(hero, Text.of("hero"), "hero is not cached any more");
+    assertSame(hello, Text.of("hello"), "but hello is still cached");
+  }
+
+  @Test
+  void testOf_String_CacheLimit() {
+    Text cached = Text.of("a234567890123456");
+    assertSame(cached, Text.of("a234567890123456"));
+    Text tooLong = Text.of("a2345678901234567");
+    assertNotSame(tooLong, Text.of("a2345678901234567"));
   }
 
   @DisplayName("Text.hashCode(Text)")

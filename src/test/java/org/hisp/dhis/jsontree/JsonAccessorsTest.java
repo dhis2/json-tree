@@ -120,8 +120,7 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_Integer() {
-    PrimitivesBean obj =
-        Json5.of("{'aInt':42, 'aBigInteger': -13}").as(PrimitivesBean.class);
+    PrimitivesBean obj = Json5.of("{'aInt':42, 'aBigInteger': -13}").as(PrimitivesBean.class);
     assertEquals(42, obj.aInt());
     assertEquals(42, obj.aInt(8));
     assertEquals(Integer.valueOf(-13), obj.aBigInteger());
@@ -129,6 +128,15 @@ class JsonAccessorsTest {
   }
 
   @Test
+  void testAccess_Integer_String() {
+    PrimitivesBean obj = Json5.of("{'aInt':'42', 'aBigInteger': '-13'}").as(PrimitivesBean.class);
+    assertEquals(42, obj.aInt());
+    assertEquals(42, obj.aInt(8));
+    assertEquals(Integer.valueOf(-13), obj.aBigInteger());
+    assertEquals(Integer.valueOf(-13), obj.aBigInteger(22));
+  }
+
+    @Test
   void testAccess_IntegerNonExistent() {
     PrimitivesBean obj = JsonMixed.of("{}").as(PrimitivesBean.class);
     assertThrowsExactly(JsonAccessException.class, obj::aInt);
@@ -139,8 +147,16 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_Long() {
-    PrimitivesBean obj =
-        Json5.of("{'aLong':42, 'aBigLong': -13}").as(PrimitivesBean.class);
+    PrimitivesBean obj = Json5.of("{'aLong':42, 'aBigLong': -13}").as(PrimitivesBean.class);
+    assertEquals(42L, obj.aLong());
+    assertEquals(42L, obj.aLong(8));
+    assertEquals(Long.valueOf(-13), obj.aBigLong());
+    assertEquals(Long.valueOf(-13), obj.aBigLong(22L));
+  }
+
+  @Test
+  void testAccess_Long_String() {
+    PrimitivesBean obj = Json5.of("{'aLong':'42', 'aBigLong': '-13'}").as(PrimitivesBean.class);
     assertEquals(42L, obj.aLong());
     assertEquals(42L, obj.aLong(8));
     assertEquals(Long.valueOf(-13), obj.aBigLong());
@@ -158,8 +174,16 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_Float() {
-    PrimitivesBean obj =
-        Json5.of("{'aFloat':4.2, 'aBigFloat': -1.3}").as(PrimitivesBean.class);
+    PrimitivesBean obj = Json5.of("{'aFloat':4.2, 'aBigFloat': -1.3}").as(PrimitivesBean.class);
+    assertEquals(4.2f, obj.aFloat(), 0.01f);
+    assertEquals(4.2f, obj.aFloat(8f), 0.01f);
+    assertEquals(Float.valueOf(-1.3f), obj.aBigFloat());
+    assertEquals(Float.valueOf(-1.3f), obj.aBigFloat(22f));
+  }
+
+  @Test
+  void testAccess_Float_String() {
+    PrimitivesBean obj = Json5.of("{'aFloat':'4.2', 'aBigFloat': '-1.3'}").as(PrimitivesBean.class);
     assertEquals(4.2f, obj.aFloat(), 0.01f);
     assertEquals(4.2f, obj.aFloat(8f), 0.01f);
     assertEquals(Float.valueOf(-1.3f), obj.aBigFloat());
@@ -177,8 +201,16 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_Double() {
-    PrimitivesBean obj =
-        Json5.of("{'aDouble':4.2, 'aBigDouble': -1.3}").as(PrimitivesBean.class);
+    PrimitivesBean obj = Json5.of("{'aDouble':4.2, 'aBigDouble': -1.3}").as(PrimitivesBean.class);
+    assertEquals(4.2d, obj.aDouble(), 0.01d);
+    assertEquals(4.2d, obj.aDouble(8d), 0.01d);
+    assertEquals(Double.valueOf(-1.3d), obj.aBigDouble());
+    assertEquals(Double.valueOf(-1.3d), obj.aBigDouble(22d));
+  }
+
+  @Test
+  void testAccess_Double_String() {
+    PrimitivesBean obj = Json5.of("{'aDouble':'4.2', 'aBigDouble': '-1.3'}").as(PrimitivesBean.class);
     assertEquals(4.2d, obj.aDouble(), 0.01d);
     assertEquals(4.2d, obj.aDouble(8d), 0.01d);
     assertEquals(Double.valueOf(-1.3d), obj.aBigDouble());
@@ -196,12 +228,29 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_Char() {
-    PrimitivesBean obj =
-        Json5.of("{'aChar':'a', 'aBigCharacter': 'B'}").as(PrimitivesBean.class);
+    PrimitivesBean obj = Json5.of("{'aChar':'a', 'aBigCharacter': 'B'}").as(PrimitivesBean.class);
     assertEquals('a', obj.aChar());
     assertEquals('a', obj.aChar('8'));
     assertEquals(Character.valueOf('B'), obj.aBigCharacter());
     assertEquals(Character.valueOf('B'), obj.aBigCharacter('X'));
+  }
+
+  @Test
+  void testAccess_Char_Number() {
+    PrimitivesBean obj = Json5.of("{'aChar':1, 'aBigCharacter': 42}").as(PrimitivesBean.class);
+    assertEquals('1', obj.aChar());
+    assertEquals('1', obj.aChar('8'));
+    assertEquals(Character.valueOf('4'), obj.aBigCharacter());
+    assertEquals(Character.valueOf('4'), obj.aBigCharacter('X'));
+  }
+
+  @Test
+  void testAccess_Char_Boolean() {
+    PrimitivesBean obj = Json5.of("{'aChar':true, 'aBigCharacter': false}").as(PrimitivesBean.class);
+    assertEquals('t', obj.aChar());
+    assertEquals('t', obj.aChar('8'));
+    assertEquals(Character.valueOf('f'), obj.aBigCharacter());
+    assertEquals(Character.valueOf('f'), obj.aBigCharacter('X'));
   }
 
   @Test
@@ -217,6 +266,16 @@ class JsonAccessorsTest {
   void testAccess_Boolean() {
     PrimitivesBean obj =
         Json5.of("{'aBoolean':true, 'aBigBoolean': true}").as(PrimitivesBean.class);
+    assertTrue(obj.aBoolean());
+    assertTrue(obj.aBoolean(false));
+    assertEquals(Boolean.TRUE, obj.aBigBoolean());
+    assertEquals(Boolean.TRUE, obj.aBigBoolean(false));
+  }
+
+  @Test
+  void testAccess_Boolean_String() {
+    PrimitivesBean obj =
+        Json5.of("{'aBoolean':'true', 'aBigBoolean': 'true'}").as(PrimitivesBean.class);
     assertTrue(obj.aBoolean());
     assertTrue(obj.aBoolean(false));
     assertEquals(Boolean.TRUE, obj.aBigBoolean());
@@ -279,8 +338,7 @@ class JsonAccessorsTest {
   @Test
   void testAccess_ExtendedObjectList() {
     NestedBean obj =
-        Json5.of("{'list': [{'a':3}, {'a':4, 'list': [{'a':5}]}]}")
-            .as(NestedBean.class);
+        Json5.of("{'list': [{'a':3}, {'a':4, 'list': [{'a':5}]}]}").as(NestedBean.class);
     assertEquals(
         List.of(3, 4), obj.list().project(e -> e.getNumber("a")).toList(JsonNumber::intValue));
     assertEquals(5, obj.list().get(1).list().get(0).a());
@@ -303,8 +361,7 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_DateLocalDateTime() {
-    DateBean obj =
-        Json5.of("{'aLocalDateTime':'2000-01-01T00:00'}").as(DateBean.class);
+    DateBean obj = Json5.of("{'aLocalDateTime':'2000-01-01T00:00'}").as(DateBean.class);
     assertEquals(LocalDate.of(2000, 1, 1).atStartOfDay(), obj.aLocalDateTime());
   }
 
@@ -352,21 +409,18 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_ListAutoBox() {
-    assertEquals(
-        List.of("foo"), Json5.of("{'names':'foo'}").as(ListBean.class).names());
+    assertEquals(List.of("foo"), Json5.of("{'names':'foo'}").as(ListBean.class).names());
   }
 
   @Test
   void testAccess_ListString() {
     assertEquals(
-        List.of("foo", "bar"),
-        Json5.of("{'names':['foo','bar']}").as(ListBean.class).names());
+        List.of("foo", "bar"), Json5.of("{'names':['foo','bar']}").as(ListBean.class).names());
   }
 
   @Test
   void testAccess_ListInteger() {
-    assertEquals(
-        List.of(1, 2, 3), Json5.of("{'ages':[1,2,3]}").as(ListBean.class).ages());
+    assertEquals(List.of(1, 2, 3), Json5.of("{'ages':[1,2,3]}").as(ListBean.class).ages());
   }
 
   @Test
@@ -425,14 +479,12 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_SetInteger() {
-    assertEquals(
-        Set.of(1, 2, 3), Json5.of("{'ages':[1,2,3,3]}").as(SetBean.class).ages());
+    assertEquals(Set.of(1, 2, 3), Json5.of("{'ages':[1,2,3,3]}").as(SetBean.class).ages());
   }
 
   @Test
   void testAccess_SetSetEnum() {
-    SetBean obj =
-        Json5.of("{'styles':[['FULL', 'SHORT'], ['NARROW']]}").as(SetBean.class);
+    SetBean obj = Json5.of("{'styles':[['FULL', 'SHORT'], ['NARROW']]}").as(SetBean.class);
     Set<Set<TextStyle>> actual = obj.styles();
     assertEquals(Set.of(Set.of(TextStyle.FULL, TextStyle.SHORT), Set.of(TextStyle.NARROW)), actual);
     assertInstanceOf(LinkedHashSet.class, actual);
@@ -441,8 +493,7 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_SetRecursiveDefinition() {
-    Set<SetBean> root =
-        Json5.of("{'recursive':[{'ages':[1,2,3]}]}").as(SetBean.class).recursive();
+    Set<SetBean> root = Json5.of("{'recursive':[{'ages':[1,2,3]}]}").as(SetBean.class).recursive();
     assertEquals(1, root.size());
     assertEquals(Set.of(1, 2, 3), root.iterator().next().ages());
   }
@@ -480,15 +531,13 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_MapEnumValues() {
-    MapBean obj =
-        Json5.of("{'styles': {'a': 'FULL', 'b': 'SHORT'}}").as(MapBean.class);
+    MapBean obj = Json5.of("{'styles': {'a': 'FULL', 'b': 'SHORT'}}").as(MapBean.class);
     assertEquals(Map.of("a", TextStyle.FULL, "b", TextStyle.SHORT), obj.styles());
   }
 
   @Test
   void testAccess_MapMapStringValues() {
-    MapBean obj =
-        Json5.of("{'messages': {'a':{'hello':'world'}, 'b':{}}}").as(MapBean.class);
+    MapBean obj = Json5.of("{'messages': {'a':{'hello':'world'}, 'b':{}}}").as(MapBean.class);
     assertEquals(Map.of("a", Map.of("hello", "world"), "b", Map.of()), obj.messages());
   }
 
@@ -562,8 +611,7 @@ class JsonAccessorsTest {
 
   @Test
   void testAccess_StreamOfListOfStrings() {
-    StreamBean obj =
-        Json5.of("{'lists':[['a','b'],['1','2']]}").as(StreamBean.class);
+    StreamBean obj = Json5.of("{'lists':[['a','b'],['1','2']]}").as(StreamBean.class);
     assertEquals(List.of(List.of("a", "b"), List.of("1", "2")), obj.lists().toList());
   }
 
@@ -586,8 +634,7 @@ class JsonAccessorsTest {
   void testAccess_OptionalEmpty() {
     assertEquals(Optional.empty(), JsonMixed.of("{}").as(OptionalBean.class).maybeString());
     assertEquals(
-        Optional.empty(),
-        Json5.of("{'maybeString':null}").as(OptionalBean.class).maybeString());
+        Optional.empty(), Json5.of("{'maybeString':null}").as(OptionalBean.class).maybeString());
   }
 
   @Test

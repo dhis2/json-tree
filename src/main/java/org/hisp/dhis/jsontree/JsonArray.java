@@ -58,9 +58,9 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   }
 
   /**
-   * @implNote This utilizes {@link JsonNode#elements(Index)} avoiding map lookups for each
-   *     element. On {@link JsonAbstractArray} level this cannot be done as the node cannot be
-   *     {@link JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+   * @implNote This utilizes {@link JsonNode#elements(Index)} avoiding map lookups for each element.
+   *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+   *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
    * @param index the strategy to apply when it comes to node lookup and indexing
    * @since 1.9
    */
@@ -114,7 +114,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default List<Boolean> boolValues() {
+  default List<Boolean> booleanValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return List.of();
     return node.elements(JsonNode.Index.SKIP).stream().map(JsonNode::booleanValue).toList();
@@ -162,6 +162,30 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return DoubleStream.empty();
     return node.elements(SKIP).stream().mapToDouble(JsonNode::doubleValue);
+  }
+
+  /**
+   * Uses {@link #getAccessors()} for type conversion.
+   *
+   * @param to element target type
+   * @return a stream of all array values accessed as the given type in the order defined in JSON
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default <E> Stream<E> streamValues(Class<E> to) {
+    return stream(SKIP).map(e -> e.to(to));
+  }
+
+  /**
+   * Uses {@link #getAccessors()} for type conversion.
+   *
+   * @param to element target type
+   * @return a list of all array values accessed as the given type in the order defined in JSON
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default <E> List<E> listValues(Class<E> to) {
+    return streamValues(to).toList();
   }
 
   default JsonValue get(int index) {

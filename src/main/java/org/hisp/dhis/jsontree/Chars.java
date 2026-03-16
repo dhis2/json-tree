@@ -237,6 +237,18 @@ final class Chars {
     return neg ? -n : n;
   }
 
+  static Number parseNumber(char[] num) {
+    return parseNumber(num, 0, num.length);
+  }
+
+  static Number parseNumber(char[] num, int offset, int length) {
+    double number = Chars.parseDouble(num, offset, length);
+    if (number % 1 != 0d) return number;
+    long n = (long) number;
+    if (n < Integer.MAX_VALUE && n > Integer.MIN_VALUE) return (int) n;
+    return n;
+  }
+
   private static boolean isDigit(char c) {
     return c >= '0' && c <= '9';
   }

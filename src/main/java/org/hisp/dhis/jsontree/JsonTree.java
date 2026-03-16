@@ -36,6 +36,7 @@ import static org.hisp.dhis.jsontree.Chars.expectFalse;
 import static org.hisp.dhis.jsontree.Chars.expectMoreChar;
 import static org.hisp.dhis.jsontree.Chars.expectNull;
 import static org.hisp.dhis.jsontree.Chars.expectTrue;
+import static org.hisp.dhis.jsontree.Chars.parseNumber;
 import static org.hisp.dhis.jsontree.JsonFormatException.insufficientCodePointCharacters;
 import static org.hisp.dhis.jsontree.JsonFormatException.notAHexDigit;
 
@@ -737,11 +738,12 @@ record JsonTree(
 
     @Override
     public Number numberValue() {
-      double number = Chars.parseDouble(tree.json, start, endIndex() - start);
-      if (number % 1 != 0d) return number;
-      long n = (long) number;
-      if (n < Integer.MAX_VALUE && n > Integer.MIN_VALUE) return (int) n;
-      return n;
+      return parseNumber(tree.json, start, endIndex() - start);
+    }
+
+    @Override
+    public Text textValue() {
+      return getDeclaration();
     }
 
     @Override
@@ -785,6 +787,11 @@ record JsonTree(
     @Override
     public boolean booleanValue() {
       return textValue().parseBoolean();
+    }
+
+    @Override
+    public Number numberValue() {
+      return textValue().parseNumber();
     }
 
     @Override

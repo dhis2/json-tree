@@ -138,7 +138,9 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   JsonNode EMPTY_ARRAY = JsonNode.of("[]");
 
   /**
-   * Allows to observe all object member path lookups in the tree.
+   * Allows to observe all individual object member path lookups in the tree.
+   * This does not include member iteration of any sort but only lookup by
+   * name using {@link JsonNode#member(Text)}.
    *
    * @since 0.10
    */

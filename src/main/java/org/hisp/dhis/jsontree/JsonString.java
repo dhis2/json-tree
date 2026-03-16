@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonTreeException.notA;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.util.function.Function;
@@ -52,10 +53,29 @@ public interface JsonString extends JsonPrimitive {
    * @throws JsonTreeException in case this node exists but is not a string node (or null)
    * @since 1.9
    */
-  @TerminalOp(canBeNull = true)
+  @TerminalOp(canBeUndefined = true)
   default Text text() {
     JsonNode node = nodeIfExists();
     return node == null || node.isNull() ? null : node.textValue();
+  }
+
+  /**
+   * @return the first character of the text or null if it is empty or undefined
+   * @throws JsonTreeException in case this node exists but is not a string node (or null)
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true)
+  default Character character() {
+    Text str = text();
+    return str == null || str.isEmpty() ? null : str.charAt(0);
+  }
+
+  @TerminalOp
+  default char charValue() {
+    JsonNode node = node();
+    Text str = node.textValue();
+    if (str.isEmpty()) throw notA(JsonNodeType.STRING, node, "charValue()");
+    return str.charAt(0);
   }
 
   /**
@@ -63,7 +83,7 @@ public interface JsonString extends JsonPrimitive {
    *     as JSON {@code null}.
    * @throws JsonTreeException in case this node exists but is not a string node (or null)
    */
-  @TerminalOp(canBeNull = true)
+  @TerminalOp(canBeUndefined = true)
   default String string() {
     return string(null);
   }
@@ -73,7 +93,7 @@ public interface JsonString extends JsonPrimitive {
    * @return this string node string value or the default if undefined or defined null
    * @throws JsonTreeException in case this node exists but is not a string node (or null)
    */
-  @TerminalOp(canBeNull = true)
+  @TerminalOp(canBeUndefined = true)
   default String string(String orDefault) {
     return isUndefined() ? orDefault : text().toString();
   }
@@ -85,7 +105,7 @@ public interface JsonString extends JsonPrimitive {
    *     calling provided parser with result of {@link #string()}.
    */
   @CheckNull
-  @TerminalOp(canBeNull = true)
+  @TerminalOp(canBeUndefined = true)
   default <T> T parsed(@NotNull Function<String, T> parser) {
     String value = string();
     return value == null ? null : parser.apply(value);

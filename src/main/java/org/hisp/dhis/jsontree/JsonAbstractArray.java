@@ -1,9 +1,11 @@
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;

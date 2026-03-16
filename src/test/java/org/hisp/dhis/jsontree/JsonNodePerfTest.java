@@ -2,42 +2,48 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.Iterator;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class JsonNodePerfTest {
 
   public static void main(String[] args){
-    JsonNode array = arrayOf0To(10000);
-    int sum = 0;
+    CharSequence json = arrayOf100KTo100KAnd(10000);
+    JsonNode array = JsonNode.of(json);
+    double sum = 0;
     for (Text v : array.values())
-      sum += v.parseInt();
+      sum += v.parseDouble();
+    System.out.println(sumJdkDouble_ParseDouble(json));
     System.out.println(sum);
-    System.out.println(array.values().stream().mapToInt(Text::parseInt).sum());
+    System.out.println(array.values().stream().mapToDouble(Text::parseDouble).sum());
   }
 
   @Test
-  void test() {
-    runSum10K();
-  }
-
-  private static void runSum10K() {
+  void testParseDouble10K() {
     int n = 10000;
-    JsonNode node = arrayOf0To(n);
-    int sum = 0;
-    for (int i = 0; i < n; i++) sum += i;
-    assertEquals(sum, node.values().stream().mapToInt(Text::parseInt).sum());
+    JsonNode node = JsonNode.of(arrayOf100KTo100KAnd(n));
+    double sum = 0;
+    for (int i = 0; i < n; i++) sum += 100_000d + i;
+    assertEquals(sum, node.values().stream().mapToDouble(Text::parseDouble).sum());
   }
 
-  private static JsonNode arrayOf0To(int n) {
-    StringBuilder json = new StringBuilder(n*3);
+  private static double sumJdkDouble_ParseDouble(CharSequence array) {
+    double sum = 0d;
+    for (int i = 0; i < 10_000; i++) {
+      int start = 1 + i * 9;
+      int end = start+8;
+      sum += Double.parseDouble(array.subSequence(start, end).toString());
+    }
+    return sum;
+  }
+
+  private static CharSequence arrayOf100KTo100KAnd(int n) {
+    StringBuilder json = new StringBuilder(n*9+2); // 8 digits + , each + []
     json.append('[');
     for (int i = 0; i < n; i++) {
       if (i > 0) json.append(',');
-      json.append(i);
+      json.append(100_000 + i).append('.').append('0');
     }
     json.append(']');
-    return JsonNode.of(json);
+    return json;
   }
 }
