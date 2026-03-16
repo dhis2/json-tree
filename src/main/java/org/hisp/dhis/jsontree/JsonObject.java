@@ -33,7 +33,6 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonNode.Index;
@@ -54,6 +53,11 @@ import org.hisp.dhis.jsontree.validation.JsonValidator;
  */
 @Validation.Ignore
 public interface JsonObject extends JsonAbstractObject<JsonValue> {
+
+  @Override
+  default JsonObject getValue() {
+    return this;
+  }
 
   /**
    * An object property based on a default method declared in a type extending {@link JsonObject}.
@@ -155,43 +159,22 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
 
   @Override
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonValue> values() {
-    return values(AUTO);
-  }
-
-  /**
-   * @implNote This utilizes {@link JsonNode#members(Index)} avoiding map lookups for each
-   *     element. On {@link JsonAbstractArray} level this cannot be done as the node cannot be
-   *     {@link JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
-   * @param index the strategy to apply when it comes to node lookup and indexing
-   * @since 1.9
-   */
-  @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonValue> values(JsonNode.Index index) { //TODO add tests
-    if (isUndefined() || isEmpty()) return Stream.empty();
-    JsonAccessors accessors = getAccessors();
-    return node().members(index).stream().map(e -> e.lift(accessors));
-  }
-
-  @Override
-  @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<Map.Entry<Text, JsonValue>> entries() {
+  default Stream<JsonValue> entries() {
     return entries(AUTO);
   }
 
   /**
-   * @implNote This utilizes {@link JsonNode#members(Index)} avoiding map lookups for each
-   *     element. On {@link JsonAbstractArray} level this cannot be done as the node cannot be
-   *     {@link JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+   * @implNote This utilizes {@link JsonNode#members(Index)} avoiding map lookups for each element.
+   *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+   *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
    * @param index the strategy to apply when it comes to node lookup and indexing
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<Map.Entry<Text, JsonValue>> entries(JsonNode.Index index) { //TODO add tests
+  default Stream<JsonValue> entries(JsonNode.Index index) { // TODO add tests
     if (isUndefined() || isEmpty()) return Stream.empty();
     JsonAccessors accessors = getAccessors();
-    return node().members(index).stream()
-        .map(e -> Map.entry(e.getKey(), e.getValue().lift(accessors)));
+    return node().members(index).stream().map(e -> e.lift(accessors));
   }
 
   /**

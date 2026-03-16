@@ -67,12 +67,12 @@ class JsonValidationRequiredTest {
   public interface JsonEntry extends JsonObject {
 
     @Required
-    default String getKey() {
+    default String key() {
       return getString("key").string();
     }
 
     @Required
-    default Number getValue() {
+    default Number value() {
       return getNumber("value").number();
     }
   }

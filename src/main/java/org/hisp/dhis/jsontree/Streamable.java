@@ -1,8 +1,7 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.NotNull;
-
 import java.util.stream.Stream;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A source for both {@link #iterator()}s and {@link #stream()}s.

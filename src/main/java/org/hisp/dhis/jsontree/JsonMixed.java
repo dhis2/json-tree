@@ -8,7 +8,6 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.nio.file.Path;
-
 import org.hisp.dhis.jsontree.internal.Language;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -77,5 +76,10 @@ public interface JsonMixed
    */
   static JsonMixed of(Path file) {
     return of(JsonNode.of(file));
+  }
+
+  @Override
+  default JsonMixed getValue() {
+    return this;
   }
 }

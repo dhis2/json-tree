@@ -31,6 +31,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -85,7 +86,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  * @see JsonMixed
  */
 @Validation.Ignore
-public interface JsonValue {
+public interface JsonValue extends Map.Entry<Text, JsonValue> {
 
   /**
    * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
@@ -148,6 +149,21 @@ public interface JsonValue {
    */
   @NotNull
   JsonPath path();
+
+  @Override
+  default Text getKey() {
+    return path().segment();
+  }
+
+  @Override
+  default JsonValue getValue() {
+    return this;
+  }
+
+  @Override
+  default JsonValue setValue(JsonValue value) {
+    throw new UnsupportedOperationException("A JSON value is an immutable view");
+  }
 
   /**
    * The "mapping" uses the node's {@link #getAccessors()} to map the JSON to the given Java target

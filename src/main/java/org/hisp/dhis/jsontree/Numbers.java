@@ -6,8 +6,8 @@ package org.hisp.dhis.jsontree;
  * <p>Doubles that cannot be computed exactly from long division have to fall back to the slow
  * {@link Double#parseDouble(String)} but whenever that is not the case the methods provided here
  * are reasonably fast and allocation free.
- * <p>
- * Luckily most doubles encountered in practice are neither very small nor very large so long
+ *
+ * <p>Luckily most doubles encountered in practice are neither very small nor very large so long
  * division is exact and the parsing stays allocation free.
  *
  * @author Jan Bernitt

@@ -121,8 +121,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   private static final Map<Method, MethodHandle> OTHER_MH_CACHE = new ConcurrentHashMap<>();
 
   /**
-   * A special instance we use to remember that a lookup found the node does not exist,
-   * so we don't have to look it up again later but also don't spend another field for that.
+   * A special instance we use to remember that a lookup found the node does not exist, so we don't
+   * have to look it up again later but also don't spend another field for that.
    */
   private static final JsonNode DOES_NOT_EXIST = JsonNode.of("\"<?>\"");
 
@@ -148,12 +148,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     this.path = path;
     if (path.isEmpty()) node = root;
     this.accessors = accessors;
-  }
-
-  @Serial
-  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-    in.defaultReadObject(); // restore non‑transient fields
-    accessors = JsonAccess.GLOBAL; // set transient field
   }
 
   @NotNull
@@ -189,11 +183,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   @Override
   public @CheckNull JsonNode nodeIfExists() {
-      if (node == null) {
-        if (!exists()) return null;
-        node = root.get(path);
-      }
-      return node == DOES_NOT_EXIST ? null : node;
+    if (node == null) {
+      if (!exists()) return null;
+      node = root.get(path);
+    }
+    return node == DOES_NOT_EXIST ? null : node;
   }
 
   @Override
@@ -494,7 +488,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         .forEach(
             method -> {
               @SuppressWarnings("unchecked")
-              Class<? extends JsonObject> in = (Class<? extends JsonObject>) method.getDeclaringClass();
+              Class<? extends JsonObject> in =
+                  (Class<? extends JsonObject>) method.getDeclaringClass();
               JsonObject obj =
                   JsonMixed.of("{}")
                       .as(
@@ -507,10 +502,16 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                                   (Class<? extends JsonValue>) args[1];
                               res.add(
                                   new Property(
-                                      in, name, type, method.getName(), method.getAnnotatedReturnType(), method));
+                                      in,
+                                      name,
+                                      type,
+                                      method.getName(),
+                                      method.getAnnotatedReturnType(),
+                                      method));
                             }
                           });
-              invokePropertyMethod(obj, method); // may add zero, one or more properties via the callback
+              invokePropertyMethod(
+                  obj, method); // may add zero, one or more properties via the callback
             });
     return List.copyOf(res);
   }
@@ -540,11 +541,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
    *     methods are excluded.
    */
   private static boolean isJsonObjectSubTypeProperty(Method m) {
-    return (m.isDefault()
-        || Modifier.isAbstract(m.getModifiers()))
-            && m.getParameterCount() == 0
-            && isJsonMixedSubType(m.getDeclaringClass())
-            && m.getReturnType() != void.class;
+    return (m.isDefault() || Modifier.isAbstract(m.getModifiers()))
+        && m.getParameterCount() == 0
+        && isJsonMixedSubType(m.getDeclaringClass())
+        && m.getReturnType() != void.class;
   }
 
   /*

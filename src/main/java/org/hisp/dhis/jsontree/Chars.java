@@ -131,8 +131,7 @@ final class Chars {
   }
 
   private static int parseCodePoint(char[] json, int offset) {
-    if (offset + 3 >= json.length)
-      throw insufficientCodePointCharacters(json, offset);
+    if (offset + 3 >= json.length) throw insufficientCodePointCharacters(json, offset);
     int cp = 0;
     for (int i = 0; i < 4; i++) {
       char c = json[offset + i];
@@ -238,13 +237,13 @@ final class Chars {
   }
 
   static <T> T decode(byte[] bytes, Charset encoding, BiFunction<char[], Integer, T> wrap) {
-      if (StandardCharsets.UTF_8.equals(encoding)) return decodeUTF8(bytes, wrap);
-      if (StandardCharsets.ISO_8859_1.equals(encoding)) {
-        char[] res = decodeIso88591(bytes);
-        return wrap.apply(res, res.length);
-      }
-      char[] res = new String(bytes, encoding).toCharArray();
+    if (StandardCharsets.UTF_8.equals(encoding)) return decodeUTF8(bytes, wrap);
+    if (StandardCharsets.ISO_8859_1.equals(encoding)) {
+      char[] res = decodeIso88591(bytes);
       return wrap.apply(res, res.length);
+    }
+    char[] res = new String(bytes, encoding).toCharArray();
+    return wrap.apply(res, res.length);
   }
 
   private static char[] decodeIso88591(byte[] src) {

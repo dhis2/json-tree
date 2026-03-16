@@ -41,6 +41,11 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 @Validation.Ignore
 public interface JsonNumber extends JsonPrimitive {
 
+  @Override
+  default JsonNumber getValue() {
+    return this;
+  }
+
   /**
    * @return numeric value of the property or {@code null} when this property is undefined or
    *     defined as JSON {@code null}.

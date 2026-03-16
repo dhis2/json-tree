@@ -4,7 +4,6 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -61,8 +60,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
   default boolean has(CharSequence... names) {
     JsonNode node = nodeIfExists();
     if (node == null) return false;
-    for (CharSequence name : names)
-      if (!node.isMember(name)) return false;
+    for (CharSequence name : names) if (!node.isMember(name)) return false;
     return true;
   }
 
@@ -78,8 +76,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
   default boolean has(Collection<? extends CharSequence> names) {
     JsonNode node = nodeIfExists();
     if (node == null) return false;
-    for (CharSequence name : names)
-      if (!node.isMember(name)) return false;
+    for (CharSequence name : names) if (!node.isMember(name)) return false;
     return true;
   }
 
@@ -142,7 +139,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default Stream<E> values() {
-    return keys().map(this::get);
+    return entries();
   }
 
   /**
@@ -151,9 +148,9 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    * @since 0.11
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<Map.Entry<Text, E>> entries() {
+  default Stream<E> entries() {
     if (isUndefined() || isEmpty()) return Stream.empty();
-    return node().keys().stream().map(name -> Map.entry(name, get(name)));
+    return node().keys().stream().map(this::get);
   }
 
   /**

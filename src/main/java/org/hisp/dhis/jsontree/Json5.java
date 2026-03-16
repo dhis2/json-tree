@@ -21,7 +21,7 @@ import static org.hisp.dhis.jsontree.JsonTree.skipWhitespace;
  *   <li>No numbers with trailing decimal point
  *   <li>No number literals NaN, Infinity and -Infinity (unless they are enclosed in space)
  *   <li>No whitespace other than what is permitted by JSON
- *   <li>Double quotes in strings become single quotes</li>
+ *   <li>Double quotes in strings become single quotes
  * </ul>
  *
  * @author Jan Bernitt
@@ -90,7 +90,7 @@ public interface Json5 {
     i = expectChar(json5, i, '\'');
     json5[i - 1] = '"';
     while (i < json5.length && json5[i] != '\'') {
-      if (json5[i] == '"' && json5[i-1] != '\\') json5[i] = '\'';
+      if (json5[i] == '"' && json5[i - 1] != '\\') json5[i] = '\'';
       i++;
     }
     i = expectChar(json5, i, '\'');
@@ -110,7 +110,7 @@ public interface Json5 {
       i++;
     }
     if (json5[i] == '.') {
-      if (i == 0 || !(isWhitespace(json5[i - 1]) || json5[i-1] == '+'))
+      if (i == 0 || !(isWhitespace(json5[i - 1]) || json5[i - 1] == '+'))
         throw new JsonFormatException(
             "JSON5* only permits leading decimal points if spaced to the left");
       json5[i - 1] = '0'; // insert zero before decimal point

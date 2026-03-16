@@ -61,6 +61,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * API of a JSON tree as it actually exist, parsed lazily on access.
  *
  * <h3>Laziness and Eager Throw</h3>
+ *
  * <p>Operations are lazily evaluated to make working with the JSON tree efficient.
  *
  * <p>Trying to use operations that are not supported for the {@link JsonNodeType}, like accessing
@@ -68,9 +69,10 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * array respectively, will throw an {@link JsonTreeException} immediately.
  *
  * <h3>Laziness and Validation</h3>
- * A {@link JsonFormatException} is first encountered when the node containing the error is
- * parsed due to user access. A node is only fully validated when an operation needed to
- * find the {@link #endIndex()}.
+ *
+ * A {@link JsonFormatException} is first encountered when the node containing the error is parsed
+ * due to user access. A node is only fully validated when an operation needed to find the {@link
+ * #endIndex()}.
  *
  * <p>Likewise, trying to resolve nodes in the tree that do not exist results in a {@link
  * JsonPathException} immediately.
@@ -138,9 +140,8 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   JsonNode EMPTY_ARRAY = JsonNode.of("[]");
 
   /**
-   * Allows to observe all individual object member path lookups in the tree.
-   * This does not include member iteration of any sort but only lookup by
-   * name using {@link JsonNode#member(Text)}.
+   * Allows to observe all individual object member path lookups in the tree. This does not include
+   * member iteration of any sort but only lookup by name using {@link JsonNode#member(Text)}.
    *
    * @since 0.10
    */
@@ -204,7 +205,6 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
    * @since 1.0
    */
   static JsonNode of(Path file) {
-    //TODO open the API to byte[] => char[]
     return of(file, null);
   }
 
@@ -238,7 +238,8 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
     }
   }
 
-  static JsonNode of(byte[] bytes, Charset encoding, @CheckNull GetListener onGet, JsonNode.Index auto) {
+  static JsonNode of(
+      byte[] bytes, Charset encoding, @CheckNull GetListener onGet, JsonNode.Index auto) {
     return JsonTree.of(Chars.decode(bytes, encoding), onGet, auto);
   }
 
@@ -696,7 +697,7 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   /*
   Search API
    */
-  //TODO future: use Stream + Stream.Builder API + JsonPath (RFC 9535)
+  // TODO future: use Stream + Stream.Builder API + JsonPath (RFC 9535)
 
   /**
    * Visit subtree of this node including this node.

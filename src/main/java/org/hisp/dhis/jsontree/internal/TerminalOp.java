@@ -10,8 +10,8 @@ import org.hisp.dhis.jsontree.JsonNode;
  * Marker for methods in {@link org.hisp.dhis.jsontree.JsonValue} API that cause a lookup of the
  * {@link JsonNode} and as such can fail with an exception because the virtual expectation does not
  * match the actual JSON.
- * <p>
- * The main purpose is to understand the contract of a terminal method at a glance.
+ *
+ * <p>The main purpose is to understand the contract of a terminal method at a glance.
  *
  * @since 1.9
  */

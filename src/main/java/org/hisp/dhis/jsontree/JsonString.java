@@ -47,6 +47,11 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 @Validation.Ignore
 public interface JsonString extends JsonPrimitive {
 
+  @Override
+  default JsonString getValue() {
+    return this;
+  }
+
   /**
    * @return the text of the string node, {@code null} when this property is undefined or defined as
    *     JSON {@code null}.

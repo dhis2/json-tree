@@ -45,7 +45,8 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  *     path)
  * @param segment null in case of this being the root (empty path)
  */
-public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment) implements Comparable<JsonPath> {
+public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
+    implements Comparable<JsonPath> {
 
   /** The empty path pointing to itself */
   public static final JsonPath SELF = new JsonPath(null, null);

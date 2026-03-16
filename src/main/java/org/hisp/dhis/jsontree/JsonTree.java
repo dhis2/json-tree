@@ -36,9 +36,9 @@ import static org.hisp.dhis.jsontree.Chars.expectFalse;
 import static org.hisp.dhis.jsontree.Chars.expectMoreChar;
 import static org.hisp.dhis.jsontree.Chars.expectNull;
 import static org.hisp.dhis.jsontree.Chars.expectTrue;
-import static org.hisp.dhis.jsontree.Numbers.parseNumber;
 import static org.hisp.dhis.jsontree.JsonFormatException.insufficientCodePointCharacters;
 import static org.hisp.dhis.jsontree.JsonFormatException.notAHexDigit;
+import static org.hisp.dhis.jsontree.Numbers.parseNumber;
 
 import java.io.Serial;
 import java.io.Serializable;

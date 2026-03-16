@@ -79,8 +79,8 @@ public final class JsonAccess implements JsonAccessors {
    * allows to add {@link JsonAccessor} functions. While this instance is initialized with default
    * functions they can be overridden by registering another function for the same type.
    */
-
   public static final JsonAccess GLOBAL = new JsonAccess().init();
+
   private record RecordFactory(
       MethodHandle constructor,
       RecordComponent[] components,
@@ -117,9 +117,12 @@ public final class JsonAccess implements JsonAccessors {
   }
 
   public <T, E> JsonAccess add(Class<T> as, SimpleJsonAccessor<E> accessor, Function<E, T> f) {
-    return add(as, value -> {
-      E val = accessor.access(value);
-      return val == null ? null : f.apply(val);});
+    return add(
+        as,
+        value -> {
+          E val = accessor.access(value);
+          return val == null ? null : f.apply(val);
+        });
   }
 
   public <T> JsonAccess addStringAs(Class<T> as, Function<String, T> parse) {
@@ -272,7 +275,8 @@ public final class JsonAccess implements JsonAccessors {
     JsonAccessor<?> elements = accessors.accessor(getRawType(elementType));
     // auto-box simple values in a 1 element sequence
     if (!stream.isArray()) return Stream.of(elements.access(stream, as, accessors));
-    return stream.stream(Index.SKIP).map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors));
+    return stream.stream(Index.SKIP)
+        .map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors));
   }
 
   @SuppressWarnings({"java:S1168", "java:S1452"})
@@ -284,8 +288,7 @@ public final class JsonAccess implements JsonAccessors {
     Class<?> rawKeyType = getRawType(extractTypeParameter(as, 0));
     JsonAccessor<?> keyAccess = accessors.accessor(rawKeyType);
     Function<Text, ?> toKey =
-        name ->
-            keyAccess.access(Json.of(name).as(JsonMixed.class), rawKeyType, accessors);
+        name -> keyAccess.access(Json.of(name).as(JsonMixed.class), rawKeyType, accessors);
     @SuppressWarnings({"rawtypes", "unchecked"})
     Map<Object, Object> res = rawKeyType.isEnum() ? new EnumMap(rawKeyType) : new LinkedHashMap<>();
     map.entries()

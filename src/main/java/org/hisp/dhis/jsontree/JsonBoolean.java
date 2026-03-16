@@ -40,6 +40,11 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 @Validation.Ignore
 public interface JsonBoolean extends JsonPrimitive {
 
+  @Override
+  default JsonBoolean getValue() {
+    return this;
+  }
+
   /**
    * @return boolean value of the property or {@code null} when this property is undefined or
    *     defined as JSON {@code null}.

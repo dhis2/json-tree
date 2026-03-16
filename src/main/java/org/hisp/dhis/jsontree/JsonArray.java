@@ -52,6 +52,11 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 public interface JsonArray extends JsonAbstractArray<JsonValue> {
 
   @Override
+  default JsonArray getValue() {
+    return this;
+  }
+
+  @Override
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Stream<JsonValue> stream() {
     return stream(AUTO);
