@@ -42,7 +42,7 @@ public interface JsonBoolean extends JsonPrimitive {
 
   @Override
   default JsonBoolean getValue() {
-    return this;
+    return this; // return type override
   }
 
   /**

@@ -53,7 +53,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
 
   @Override
   default JsonArray getValue() {
-    return this;
+    return this; // return type override
   }
 
   @Override

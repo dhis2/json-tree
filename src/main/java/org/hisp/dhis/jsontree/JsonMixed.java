@@ -80,6 +80,6 @@ public interface JsonMixed
 
   @Override
   default JsonMixed getValue() {
-    return this;
+    return this; // return type override
   }
 }

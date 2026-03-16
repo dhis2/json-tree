@@ -36,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -226,6 +228,28 @@ class JsonValueTest {
     assertEquals(1, JsonMixed.of("1").to(Integer.class));
     assertArrayEquals(new Integer[] {1}, JsonMixed.of("1").to(Integer[].class));
     assertEquals(99, JsonMixed.of("[1,42,99]").get(2).to(int.class));
+  }
+
+  @DisplayName("JsonValue API implements Map.Entry")
+  @Test
+  void testMapEntry() {
+    // this is more a compile time test
+    // to see that the getValue() method's
+    // return type is overridden to be compatible
+    JsonMixed node = JsonMixed.of("1");
+    assertSame( node, node.getValue());
+    JsonNumber number = node.getValue();
+    assertSame( number, number.getValue());
+    JsonString string = node.getValue();
+    assertSame( string, string.getValue());
+    JsonBoolean bool = node.getValue();
+    assertSame( bool, bool.getValue());
+    JsonArray array = node.getValue();
+    assertSame( array, array.getValue());
+    JsonObject object = node.getValue();
+    assertSame( object, object.getValue());
+    JsonValue value = node.getValue();
+    assertSame( value, value.getValue());
   }
 
   record Address(String street, int zip, String city) {

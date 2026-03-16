@@ -66,7 +66,8 @@ class JsonVirtualTreeTest {
         assertThrowsExactly(
             JsonTreeException.class, () -> JsonMixed.of("[]").getObject("undefined").has("foo"));
     assertEquals(
-        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text) + .undefined: []", ex.getMessage());
+        "ARRAY node at path (root) is not a OBJECT and does not support #getOrNull(Text:\".undefined\"): []",
+        ex.getMessage());
     JsonObject bar = obj.getObject("users").getObject("bar");
     ex = assertThrowsExactly(JsonTreeException.class, () -> bar.has("is-array"));
     assertEquals("ARRAY node at path .users.bar is not a OBJECT and does not support #isMember(Text): []", ex.getMessage());
@@ -329,7 +330,7 @@ class JsonVirtualTreeTest {
     JsonList<JsonNumber> list =
         JsonMixed.of("[12,42]").getObject("non-existing").asList(JsonNumber.class);
     assertEquals(
-        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text) + .non-existing: [12,42]",
+        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text:\".non-existing\"): [12,42]",
         list.toString());
   }
 

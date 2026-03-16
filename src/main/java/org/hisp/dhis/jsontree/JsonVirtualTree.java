@@ -184,8 +184,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   @Override
   public @CheckNull JsonNode nodeIfExists() {
     if (node == null) {
-      if (!exists()) return null;
-      node = root.get(path);
+      node = root.getIfExists(path);
+      if (node == null) node = DOES_NOT_EXIST;
     }
     return node == DOES_NOT_EXIST ? null : node;
   }

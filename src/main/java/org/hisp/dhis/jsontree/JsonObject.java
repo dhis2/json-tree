@@ -56,7 +56,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
 
   @Override
   default JsonObject getValue() {
-    return this;
+    return this; // return type override
   }
 
   /**

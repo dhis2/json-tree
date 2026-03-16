@@ -43,7 +43,7 @@ public interface JsonNumber extends JsonPrimitive {
 
   @Override
   default JsonNumber getValue() {
-    return this;
+    return this; // return type override
   }
 
   /**

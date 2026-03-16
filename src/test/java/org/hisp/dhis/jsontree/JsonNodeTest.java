@@ -54,7 +54,7 @@ class JsonNodeTest {
   void testGet_String() {
     assertGetThrowsJsonTreeException(
         "\"hello\"",
-        "STRING node at path (root) is not a OBJECT and does not support #get(JsonPath) + .foo: \"hello\"");
+        "STRING node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): \"hello\"");
   }
 
   @Test
@@ -68,18 +68,23 @@ class JsonNodeTest {
 
   @Test
   void testGet_Number() {
-    assertGetThrowsJsonTreeException("42", "NUMBER node at path (root) is not a OBJECT and does not support #get(JsonPath) + .foo: 42");
+    assertGetThrowsJsonTreeException(
+        "42",
+        "NUMBER node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): 42");
   }
 
   @Test
   void testGet_Boolean() {
     assertGetThrowsJsonTreeException(
-        "true", "BOOLEAN node at path (root) is not a OBJECT and does not support #get(JsonPath) + .foo: true");
+        "true",
+        "BOOLEAN node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): true");
   }
 
   @Test
   void testGet_Null() {
-    assertGetThrowsJsonTreeException("null", "NULL node at path (root) is not a OBJECT and does not support #get(JsonPath) + .foo: null");
+    assertGetThrowsJsonTreeException(
+        "null",
+        "NULL node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): null");
   }
 
   @Test
@@ -125,13 +130,19 @@ class JsonNodeTest {
   @Test
   void testGet_Array_NoValueAtPath() {
     assertGetThrowsJsonTreeException(
-        "[1,2]", "a", "ARRAY node at path (root) is not a OBJECT and does not support #get(Text) + .a: [1,2]");
+        "[1,2]",
+        "a",
+        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text:\".a\"): [1,2]");
     assertGetThrowsJsonTreeException(
-        "[1,2]", ".a", "ARRAY node at path (root) is not a OBJECT and does not support #get(Text) + .a: [1,2]");
+        "[1,2]",
+        ".a",
+        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text:\".a\"): [1,2]");
     assertGetThrowsJsonPathException(
         "[[1,2],[]]", "[1][0]", "Path `.1.0` does not exist, array `.1` has only `0` elements.");
     assertGetThrowsJsonTreeException(
-        "[[1,2],[]]", "[0].a", "ARRAY node at path .0 is not a OBJECT and does not support #get(Text) + .a: [1,2]");
+        "[[1,2],[]]",
+        "[0].a",
+        "ARRAY node at path .0 is not a OBJECT and does not support #get(Text:\".a\"): [1,2]");
   }
 
   @Test

@@ -34,11 +34,11 @@ public final class JsonTreeException extends UnsupportedOperationException {
 
   public static JsonTreeException notAnObject(JsonPath subPath, JsonNode node, String operation) {
     return new JsonTreeException(
-        "%s node at path %s is not a OBJECT and does not support #%s + %s: %s"
+        "%s node at path %s is not a OBJECT and does not support #%s:\"%s\"): %s"
             .formatted(
                 node.getType(),
                 node.getPath().toDisplayString(),
-                operation,
+                operation.substring(0, operation.length()-1),
                 subPath.toDisplayString(),
                 excerpt(node)));
   }

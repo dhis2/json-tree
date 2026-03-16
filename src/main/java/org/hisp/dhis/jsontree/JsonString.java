@@ -49,7 +49,7 @@ public interface JsonString extends JsonPrimitive {
 
   @Override
   default JsonString getValue() {
-    return this;
+    return this; // return type override
   }
 
   /**
