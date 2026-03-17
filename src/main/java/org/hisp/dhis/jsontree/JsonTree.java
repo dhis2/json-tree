@@ -1085,10 +1085,9 @@ record JsonTree(
       index = expectDigit(json, index);
       index = skipDigits(json, index);
     }
-    before = index;
-    index = skipChar(json, index, 'e', 'E');
-    if (index == before) return index;
-    index = skipChar(json, index, '+', '-');
+    if (index >= json.length || (json[index] | 0b10_0000) != 'e') return index;
+    index++;
+    if (index < json.length && (json[index] == '+' || json[index] == '-')) index++;
     index = expectDigit(json, index);
     return skipDigits(json, index);
   }
@@ -1121,18 +1120,6 @@ record JsonTree(
 
   private static int skipChar(char[] json, int offset, char c) {
     return offset < json.length && json[offset] == c ? offset + 1 : offset;
-  }
-
-  private static int skipChar(char[] json, int offset, char... anyOf) {
-    if (offset >= json.length) {
-      return offset;
-    }
-    for (char c : anyOf) {
-      if (json[offset] == c) {
-        return offset + 1;
-      }
-    }
-    return offset;
   }
 
   /*
