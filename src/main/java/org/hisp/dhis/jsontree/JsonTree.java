@@ -33,11 +33,9 @@ import static java.util.Objects.requireNonNull;
 import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
 import static org.hisp.dhis.jsontree.Chars.expectFalse;
-import static org.hisp.dhis.jsontree.Chars.expectMoreChar;
 import static org.hisp.dhis.jsontree.Chars.expectNull;
 import static org.hisp.dhis.jsontree.Chars.expectTrue;
-import static org.hisp.dhis.jsontree.JsonFormatException.insufficientCodePointCharacters;
-import static org.hisp.dhis.jsontree.JsonFormatException.notAHexDigit;
+import static org.hisp.dhis.jsontree.JsonFormatException.expected;
 import static org.hisp.dhis.jsontree.Numbers.parseNumber;
 
 import java.io.Serial;
@@ -915,9 +913,8 @@ record JsonTree(
   }
 
   private JsonNode autoDetectNoIndexLookup(JsonPath path, int offset) {
-    if (offset >= json.length) {
-      throw new JsonFormatException(json, offset, "a JSON value but found EOI");
-    }
+    if (offset >= json.length)
+      throw expected("<json-node>", json, offset);
     char c = json[offset];
     return switch (c) {
       case '{' -> new LazyJsonObject(this, path, offset);
@@ -927,9 +924,7 @@ record JsonTree(
       case 'n' -> new LazyJsonNull(this, path, offset);
       case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ->
           new LazyJsonNumber(this, path, offset);
-      default ->
-          throw new JsonFormatException(
-              json, offset, "start of a JSON value but found: `" + c + "`");
+      default -> throw expected("<json-node>", json, offset);
     };
   }
 
@@ -961,7 +956,7 @@ record JsonTree(
   }
 
   private static int skipNodeAutodetect(char[] json, int offset) {
-    expectMoreChar(json, offset);
+    if (offset >= json.length) throw expected("<json-node>", json, offset);
     return switch (json[offset]) {
       case '{' -> skipObject(json, offset);
       case '[' -> skipArray(json, offset);
@@ -1059,16 +1054,13 @@ record JsonTree(
         // hop over escaped char or unicode
         if (json[index] == 'u') {
           if (index + 4 >= json.length)
-            throw insufficientCodePointCharacters(json, offset);
+            throw expected("[0-9a-f-A-F]", json, offset);
           for (int i = 1; i < 5; i++)
-            if (!isHexDigit(json[index + i])) throw notAHexDigit(json, index + i);
+            if (!isHexDigit(json[index + i])) throw expected("[0-9a-f-A-F]", json, index + i);
         }
         index += json[index] == 'u' ? 5 : 1;
       } else if (c < ' ') {
-        throw new JsonFormatException(
-            json,
-            index - 1,
-            "Control code character is not allowed in JSON string but found: " + (int) c);
+        throw expected("<non-control-code>", json, index - 1);
       }
     }
     return expectChar(json, index, '"');

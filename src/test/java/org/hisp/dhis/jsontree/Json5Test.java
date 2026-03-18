@@ -22,7 +22,12 @@ class Json5Test {
   void testOf_SingleQuotesNoEndQuote() {
     JsonFormatException ex =
         assertThrowsExactly(JsonFormatException.class, () -> Json5.of("{'a:12}"));
-    assertEquals("Expected ' but reach EOI: {\"a:12}", ex.getMessage());
+    assertEquals(
+        """
+        Unexpected EOI at position 7,
+        {"a:12}
+               ^ expected '""",
+        ex.getMessage());
   }
 
   @Test

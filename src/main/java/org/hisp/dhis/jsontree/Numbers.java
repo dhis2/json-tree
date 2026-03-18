@@ -222,7 +222,7 @@ final class Numbers {
     return n;
   }
 
-  static boolean isDigit(char c) {
+  private static boolean isDigit(char c) {
     return c >= '0' && c <= '9';
   }
 

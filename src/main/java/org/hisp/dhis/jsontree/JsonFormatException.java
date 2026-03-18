@@ -33,38 +33,22 @@ import static java.lang.Math.min;
 import java.util.Arrays;
 
 /**
- * Thrown when the JSON content turns out to be invalid JSON.
+ * Thrown when a JSON input is found to be invalid JSON.
  *
  * @author Jan Bernitt
  */
 public final class JsonFormatException extends IllegalArgumentException {
 
-  public JsonFormatException(String message) {
+  private JsonFormatException(String message) {
     super(message);
   }
 
-  // TODO move all callers to dedicated static methods
-
-  public JsonFormatException(char[] json, int offset, char expected) {
-    this(createParseErrorMessage(json, offset, expected));
+  public static JsonFormatException expected(char expected, char[] json, int offset) {
+    return new JsonFormatException(createParseErrorMessage(json,offset, ""+expected));
   }
 
-  public JsonFormatException(char[] json, int offset, String expected) {
-    this(createParseErrorMessage(json, offset, expected));
-  }
-
-  public static JsonFormatException insufficientCodePointCharacters(char[] json, int offset) {
-    return new JsonFormatException("Insufficient characters for code point at index " + offset);
-  }
-
-  public static JsonFormatException notAHexDigit(char[] json, int offset) {
-    throw new JsonFormatException(
-        "Invalid hexadecimal digit: '" + json[offset] + "' at index " + (offset));
-  }
-
-  private static String createParseErrorMessage(char[] json, int offset, char expected) {
-    return createParseErrorMessage(
-        json, offset, expected == '~' ? "start of value" : "`" + expected + "`");
+  public static JsonFormatException expected(String pattern, char[] json, int offset) {
+    return new JsonFormatException(createParseErrorMessage(json,offset, pattern));
   }
 
   private static String createParseErrorMessage(char[] json, int offset, String expected) {
@@ -74,8 +58,11 @@ public final class JsonFormatException extends IllegalArgumentException {
     char[] pointer = new char[offset - start + 1];
     Arrays.fill(pointer, ' ');
     pointer[pointer.length - 1] = '^';
+    String template = "Unexpected character at position %d,%n%s%n%s expected %s";
+    if (offset >= json.length)
+      template = template.replace("character", "EOI");
     return String.format(
-        "Unexpected character at position %d,%n%s%n%s expected %s",
+        template,
         offset, section, Text.of(pointer, 0, pointer.length), expected);
   }
 }

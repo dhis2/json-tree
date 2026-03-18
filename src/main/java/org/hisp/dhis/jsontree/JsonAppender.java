@@ -27,8 +27,6 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
-
 import java.io.PrintStream;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -174,6 +172,18 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     return this;
   }
 
+  private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue, boolean quoted) {
+    appendCommaWhenNeeded();
+    append('"');
+    append(name);
+    append('"');
+    append(colon);
+    if (quoted) append('"');
+    append(rawValue);
+    if (quoted) append('"');
+    return this;
+  }
+
   @Override
   public JsonObjectBuilder addMember(CharSequence name, JsonNode value) {
     JsonNodeType type = value.getType();
@@ -213,15 +223,15 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, double value) {
-    checkValid(value);
-    return addRawMember(name, String.valueOf(value));
+    return addRawMember(name, String.valueOf(value), JsonBuilder.requiresString(value));
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, Number value) {
     if (value == null && config.excludeNullMembers()) return this;
-    checkValid(value);
-    return addRawMember(name, value == null ? "null" : value.toString());
+    return value == null
+        ? addRawMember(name, "null")
+        : addRawMember(name, value.toString(), JsonBuilder.requiresString(value));
   }
 
   @Override
@@ -273,6 +283,14 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     return this;
   }
 
+  private JsonArrayBuilder addRawElement(CharSequence rawValue, boolean quoted) {
+    appendCommaWhenNeeded();
+    if (quoted) append('"');
+    appendStr.accept(rawValue);
+    if (quoted) append('"');
+    return this;
+  }
+
   @Override
   public JsonArrayBuilder addElement(JsonNode value) {
     JsonNodeType type = value.getType();
@@ -310,14 +328,14 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   @Override
   public JsonArrayBuilder addNumber(double value) {
-    checkValid(value);
-    return addRawElement(String.valueOf(value));
+    return addRawElement(String.valueOf(value), JsonBuilder.requiresString(value));
   }
 
   @Override
   public JsonArrayBuilder addNumber(Number value) {
-    checkValid(value);
-    return addRawElement(value == null ? "null" : value.toString());
+    return value == null
+        ? addRawElement("null")
+        : addRawElement(value.toString(), JsonBuilder.requiresString(value));
   }
 
   @Override

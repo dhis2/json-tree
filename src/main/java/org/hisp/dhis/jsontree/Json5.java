@@ -1,6 +1,7 @@
 package org.hisp.dhis.jsontree;
 
 import static org.hisp.dhis.jsontree.Chars.expectChar;
+import static org.hisp.dhis.jsontree.JsonFormatException.expected;
 import static org.hisp.dhis.jsontree.JsonTree.expectColon;
 import static org.hisp.dhis.jsontree.JsonTree.expectCommaOrEnd;
 import static org.hisp.dhis.jsontree.JsonTree.isWhitespace;
@@ -100,7 +101,7 @@ public interface Json5 {
 
   private static int toJsonNumber(char[] json5, int offset) {
     int i = offset;
-    char c = json5[i];
+    char c = json5[i]; // we know it exist at this point
     if (c == 'N') return toJsonQuotedNumberLiteral(json5, i, "NaN");
     if (c == 'I') return toJsonQuotedNumberLiteral(json5, i, "Infinity");
     if (c == '-' && i + 1 < json5.length && json5[i + 1] == 'I')
@@ -111,8 +112,7 @@ public interface Json5 {
     }
     if (json5[i] == '.') {
       if (i == 0 || !(isWhitespace(json5[i - 1]) || json5[i - 1] == '+'))
-        throw new JsonFormatException(
-            "JSON5* only permits leading decimal points if spaced to the left");
+        throw expected("<json5-leading-dot-left-padded>", json5, i);
       json5[i - 1] = '0'; // insert zero before decimal point
       i--;
     }
@@ -121,9 +121,9 @@ public interface Json5 {
 
   private static int toJsonQuotedNumberLiteral(char[] json5, int offset, String literal) {
     int i = offset;
-    if (i == 0 || !isWhitespace(json5[i - 1])) throw numberLiteralNoSpace(literal);
+    if (i == 0 || !isWhitespace(json5[i - 1])) throw numberLiteralNoSpace(literal, json5, i);
     i = expectChars(literal, json5, i);
-    if (!canInsertQuote(json5, i)) throw numberLiteralNoSpace(literal);
+    if (!canInsertQuote(json5, i)) throw numberLiteralNoSpace(literal, json5, i);
     json5[offset - 1] = '"';
     insertEndQuote(json5, i);
     return i + 1;
@@ -133,8 +133,7 @@ public interface Json5 {
     int i = offset;
     i = expectChar(json5, i, '/');
     if (i >= json5.length || (json5[i] != '/' && json5[i] != '*'))
-      throw new JsonFormatException(
-          "JSON5 contains / but does not complete to comment opening of // or /*");
+      throw expected("[/*]", json5, i);
     json5[offset] = ' '; // blank first /
     if (json5[i] == '/') {
       while (i < json5.length && json5[i] != '\n') json5[i++] = ' ';
@@ -150,12 +149,9 @@ public interface Json5 {
 
   private static int expectChars(String sequence, char[] json5, int offset) {
     int length = sequence.length();
-    if (offset + length > json5.length)
-      throw new JsonFormatException("JSON expected %s but found EOI".formatted(sequence));
     for (int i = 0; i < length; i++)
-      if (json5[offset + i] != sequence.charAt(i))
-        throw new JsonFormatException(
-            "JSON5 expected %s but found: %s".formatted(sequence, new String(json5, 0, length)));
+      if (offset+i > json5.length || json5[offset + i] != sequence.charAt(i))
+        throw expected(sequence, json5, offset);
     return offset + length;
   }
 
@@ -178,8 +174,7 @@ public interface Json5 {
     }
   }
 
-  private static JsonFormatException numberLiteralNoSpace(String literal) {
-    return new JsonFormatException(
-        "JSON5* only permits %s if enclosed in whitespace".formatted(literal));
+  private static JsonFormatException numberLiteralNoSpace(String literal, char[] json5, int offset) {
+    return expected("<json5-%s-spaced>".formatted(literal), json5, offset);
   }
 }

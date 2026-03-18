@@ -120,7 +120,12 @@ class JsonTreeTest {
   void testStringNode_EOI() {
     JsonNode node = JsonNode.of("\"hello");
     JsonFormatException ex = assertThrowsExactly(JsonFormatException.class, node::value);
-    assertEquals("Expected \" but reach EOI: \"hello", ex.getMessage());
+    assertEquals(
+        """
+        Unexpected EOI at position 6,
+        "hello
+              ^ expected \"""",
+        ex.getMessage());
   }
 
   @Test
@@ -151,7 +156,12 @@ class JsonTreeTest {
   void testNumberNode_EOI() {
     JsonNode node = JsonNode.of("-");
     JsonFormatException ex = assertThrowsExactly(JsonFormatException.class, node::value);
-    assertEquals("Expected character but reached EOI: -", ex.getMessage());
+    assertEquals(
+        """
+        Unexpected EOI at position 1,
+        -
+         ^ expected [0-9]""",
+        ex.getMessage());
   }
 
   @Test
@@ -471,7 +481,7 @@ class JsonTreeTest {
             + nl
             + "{\"a\": hello }"
             + nl
-            + "      ^ expected start of a JSON value but found: `h`",
+            + "      ^ expected <json-node>",
         ex.getMessage());
   }
 

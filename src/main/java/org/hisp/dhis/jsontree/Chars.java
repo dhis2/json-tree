@@ -6,8 +6,7 @@ import static java.lang.Character.lowSurrogate;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.System.Logger.Level.WARNING;
-import static org.hisp.dhis.jsontree.JsonFormatException.insufficientCodePointCharacters;
-import static org.hisp.dhis.jsontree.JsonFormatException.notAHexDigit;
+import static org.hisp.dhis.jsontree.JsonFormatException.expected;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -73,16 +72,13 @@ final class Chars {
         }
         index += 1; // u or escaped char
       } else if (c < ' ') {
-        throw new JsonFormatException(
-            json,
-            index - 1,
-            "Control code character is not allowed in JSON string but found: " + (int) c);
+        throw expected("<non-control-code>", json, index - 1);
       }
       length++;
     }
     // throws...
     expectChar(json, index, '"');
-    throw new JsonFormatException("Invalid string");
+    throw expected('"', json, index);
   }
 
   /**
@@ -119,7 +115,7 @@ final class Chars {
           case 'r' -> text[i++] = '\r';
           case 't' -> text[i++] = '\t';
           case '"' -> text[i++] = '"';
-          default -> throw new JsonFormatException(json, index, '?');
+          default -> throw expected("<escaped>", json, index);
         }
       } else {
         text[i++] = c;
@@ -127,11 +123,11 @@ final class Chars {
     }
     // throws...
     expectChar(json, index, '"');
-    throw new JsonFormatException("Invalid string");
+    throw expected('"', json, index);
   }
 
   private static int parseCodePoint(char[] json, int offset) {
-    if (offset + 3 >= json.length) throw insufficientCodePointCharacters(json, offset);
+    if (offset + 3 >= json.length) throw expected("[0-9a-f-A-F]", json, offset);
     int cp = 0;
     for (int i = 0; i < 4; i++) {
       char c = json[offset + i];
@@ -140,7 +136,7 @@ final class Chars {
             case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> c - '0';
             case 'a', 'b', 'c', 'd', 'e', 'f' -> c - 'a' + 10;
             case 'A', 'B', 'C', 'D', 'E', 'F' -> c - 'A' + 10;
-            default -> throw notAHexDigit(json, offset + i);
+            default -> throw expected("[0-9a-f-A-F]", json, offset + i);
           };
       cp = (cp << 4) | digit; // equivalent to cp = cp * 16 + digit
     }
@@ -177,30 +173,17 @@ final class Chars {
   }
 
   static int expectDigit(char[] json, int offset) {
-    expectMoreChar(json, offset);
-    if (!Numbers.isDigit(json[offset])) throw new JsonFormatException(json, offset, '#');
+    if (offset >= json.length || !isDigit(json[offset])) throw expected("[0-9]", json, offset);
     return offset + 1;
   }
 
-  static void expectMoreChar(char[] json, int offset) {
-    if (offset >= json.length)
-      throw new JsonFormatException(
-          "Expected character but reached EOI: " + getEndSection(json, offset));
-  }
-
   static int expectChar(char[] json, int offset, char expected) {
-    if (offset >= json.length)
-      throw new JsonFormatException(
-          "Expected " + expected + " but reach EOI: " + getEndSection(json, offset));
-    if (json[offset] != expected) throw new JsonFormatException(json, offset, expected);
+    if (offset >= json.length || json[offset] != expected) throw expected(expected, json, offset);
     return offset + 1;
   }
 
   static void expectEscapableCharacter(char[] json, int offset) {
-    expectMoreChar(json, offset);
-    if (!isEscapableCharacter(json[offset]))
-      throw new JsonFormatException(
-          json, offset, "Illegal escaped string character: " + json[offset]);
+    if (offset >= json.length || !isEscapableCharacter(json[offset])) throw expected("<escaped>", json, offset);
   }
 
   private static boolean isEscapableCharacter(char c) {
@@ -208,15 +191,12 @@ final class Chars {
         || c == 't' || c == 'u';
   }
 
-  static void expectEndOfBuffer(char[] json, int offset) {
-    if (json.length > offset) {
-      throw new JsonFormatException(
-          "Unexpected input after end of root value: " + getEndSection(json, offset));
-    }
+  private static boolean isDigit(char c) {
+    return c >= '0' && c <= '9';
   }
 
-  private static String getEndSection(char[] json, int offset) {
-    return new String(json, max(0, min(json.length, offset) - 20), min(20, json.length));
+  static void expectEndOfBuffer(char[] json, int offset) {
+    if (json.length > offset) throw expected("<end>", json, offset);
   }
 
   /*

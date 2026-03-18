@@ -72,15 +72,13 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, double value) {
-    JsonBuilder.checkValid(value);
-    return addRawMember(name, String.valueOf(value));
+    return addRawMember(name, String.valueOf(value), JsonBuilder.requiresString(value));
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, Number value) {
     if (value == null) return addRawMember(name, format.nullsInObjects().value);
-    JsonBuilder.checkValid(value);
-    return addRawMember(name, String.valueOf(value));
+    return addRawMember(name, String.valueOf(value), JsonBuilder.requiresString(value));
   }
 
   @Override
@@ -118,9 +116,26 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
     return this;
   }
 
+  private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue, boolean quoted) {
+    if (rawValue == null) return this;
+    addMember(name);
+    if (quoted) append('\'');
+    append(rawValue);
+    if (quoted) append('\'');
+    return this;
+  }
+
   private JsonArrayBuilder addRawElement(CharSequence rawValue) {
     appendCommaWhenNeeded();
     if (rawValue != null && !rawValue.isEmpty()) append(rawValue);
+    return this;
+  }
+
+  private JsonArrayBuilder addRawElement(CharSequence rawValue, boolean quoted) {
+    appendCommaWhenNeeded();
+    if (quoted) append('\'');
+    if (rawValue != null && !rawValue.isEmpty()) append(rawValue);
+    if (quoted) append('\'');
     return this;
   }
 
@@ -162,15 +177,13 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonArrayBuilder addNumber(double value) {
-    JsonBuilder.checkValid(value);
-    return addRawElement(String.valueOf(value));
+    return addRawElement(String.valueOf(value), JsonBuilder.requiresString(value));
   }
 
   @Override
   public JsonArrayBuilder addNumber(Number value) {
     if (value == null) return addRawElement(format.nullsInArrays().value);
-    JsonBuilder.checkValid(value);
-    return addRawElement(value.toString());
+    return addRawElement(value.toString(), JsonBuilder.requiresString(value));
   }
 
   @Override

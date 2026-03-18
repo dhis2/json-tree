@@ -87,6 +87,11 @@ class JuonTest {
   @Test
   void testArray() {
     assertEquals(JsonNode.of("[]"), JsonNode.ofUrlObjectNotation("()"));
+    assertEquals(JsonNode.of("[1]"), JsonNode.ofUrlObjectNotation("(1)"));
+    assertEquals(JsonNode.of("[true]"), JsonNode.ofUrlObjectNotation("(true)"));
+    assertEquals(JsonNode.of("[false]"), JsonNode.ofUrlObjectNotation("(false)"));
+    assertEquals(JsonNode.of("[null]"), JsonNode.ofUrlObjectNotation("(null)"));
+    assertEquals(JsonNode.of("[1,null]"), JsonNode.ofUrlObjectNotation("(1,)"));
     assertEquals(JsonNode.of("[1,2,3]"), JsonNode.ofUrlObjectNotation("(1,2,3)"));
     assertEquals(JsonNode.of("[true,false]"), JsonNode.ofUrlObjectNotation("(true,false)"));
     assertEquals(

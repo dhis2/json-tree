@@ -337,7 +337,12 @@ class JsonVirtualTreeTest {
   @Test
   void testToString_MalformedJson() {
     JsonMap<JsonNumber> map = JsonMixed.of("{\"a:12}").asMap(JsonNumber.class);
-    assertEquals("Expected \" but reach EOI: {\"a:12}", map.get("a").toString());
+    assertEquals(
+        """
+        Unexpected EOI at position 7,
+        {"a:12}
+               ^ expected \"""",
+        map.get("a").toString());
   }
 
   @Test

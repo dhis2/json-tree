@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Stream;
+
+import org.hisp.dhis.jsontree.internal.Language;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -59,9 +61,9 @@ class JsonTest {
     assertJson("1.7976931348623157E308", Json.of(Double.MAX_VALUE));
     assertJson("4.9E-324", Json.of(Double.MIN_VALUE));
     assertJson("1.05E-12", Json.of(Double.valueOf("10.5e-13")));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Double.NaN));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Double.POSITIVE_INFINITY));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Double.NEGATIVE_INFINITY));
+    assertJson("\"NaN\"", Json.of(Double.NaN));
+    assertJson("\"Infinity\"", Json.of(Double.POSITIVE_INFINITY));
+    assertJson("\"-Infinity\"", Json.of(Double.NEGATIVE_INFINITY));
   }
 
   @Test
@@ -71,9 +73,9 @@ class JsonTest {
     assertJson("3.4028235E38", Json.of(Float.MAX_VALUE));
     assertJson("1.4E-45", Json.of(Float.MIN_VALUE));
     assertJson("1.05E-12", Json.of(Float.valueOf("10.5e-13")));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Float.NaN));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Float.POSITIVE_INFINITY));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Float.NEGATIVE_INFINITY));
+    assertJson("\"NaN\"", Json.of(Float.NaN));
+    assertJson("\"Infinity\"", Json.of(Float.POSITIVE_INFINITY));
+    assertJson("\"-Infinity\"", Json.of(Float.NEGATIVE_INFINITY));
   }
 
   @Test
@@ -83,16 +85,12 @@ class JsonTest {
     assertJson("2.4", Json.of(Float.valueOf(2.4f)));
     assertJson("42.42", Json.of(Double.valueOf(42.42d)));
     assertJson("null", Json.of((Number) null));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Double.valueOf(Double.NaN)));
-    assertThrowsExactly(
-        JsonFormatException.class, () -> Json.of(Double.valueOf(Double.POSITIVE_INFINITY)));
-    assertThrowsExactly(
-        JsonFormatException.class, () -> Json.of(Double.valueOf(Double.NEGATIVE_INFINITY)));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.of(Float.valueOf(Float.NaN)));
-    assertThrowsExactly(
-        JsonFormatException.class, () -> Json.of(Float.valueOf(Float.POSITIVE_INFINITY)));
-    assertThrowsExactly(
-        JsonFormatException.class, () -> Json.of(Float.valueOf(Float.NEGATIVE_INFINITY)));
+    assertJson("\"NaN\"", Json.of(Double.valueOf(Double.NaN)));
+    assertJson("\"Infinity\"", Json.of(Double.valueOf(Double.POSITIVE_INFINITY)));
+    assertJson("\"-Infinity\"", Json.of(Double.valueOf(Double.NEGATIVE_INFINITY)));
+    assertJson("\"NaN\"", Json.of(Float.valueOf(Float.NaN)));
+    assertJson("\"Infinity\"", Json.of(Float.valueOf(Float.POSITIVE_INFINITY)));
+    assertJson("\"-Infinity\"", Json.of(Float.valueOf(Float.NEGATIVE_INFINITY)));
   }
 
   @Test
@@ -153,7 +151,7 @@ class JsonTest {
   @Test
   void testArray_Doubles() {
     assertJson("[1.0,2.0,3.0]", Json.array(1d, 2d, 3d));
-    assertThrowsExactly(JsonFormatException.class, () -> Json.array(1d, Double.NaN, 3d));
+    assertJson("[1.0,\"NaN\",3.0]", Json.array(1d, Double.NaN, 3d));
   }
 
   @Test
@@ -203,7 +201,7 @@ class JsonTest {
     assertJson("{}", Json.object());
   }
 
-  private static void assertJson(String expected, JsonValue value) {
+  private static void assertJson(@Language("json5") String expected, JsonValue value) {
     assertEquals(expected, value.toJson());
   }
 }

@@ -2,8 +2,11 @@ package org.hisp.dhis.jsontree;
 
 import java.util.function.Consumer;
 
+import static org.hisp.dhis.jsontree.JsonFormatException.expected;
+
 /**
  * JUON is short for JS URL Object Notation.
+ * //TODO rename to JURL
  *
  * <p>JS here is used in the same vain as it is used in JSON. Meaning the fundamental types of JUON
  * are the same as those used by JSON.
@@ -81,17 +84,16 @@ record Juon(char[] juon, StringBuilder json) {
   }
 
   private int toJsonAutoDetect(int index) {
-    char c = peek(index);
-    return switch (c) {
+    if (index >= juon.length) throw expected("<juon-value>", juon, index);
+    return switch (juon[index]) {
       case '(' -> toJsonObjectOrArray(index);
       case '\'' -> toJsonString(index);
       case 't', 'f' -> toJsonBoolean(index);
       case 'n', ',' -> toJsonNull(index);
       case '-', '.' -> toJsonNumber(index);
       default -> {
-        if (isDigit(c)) yield toJsonNumber(index);
-        throw new JsonFormatException(
-            "Expected start of a value at index %d but was: %s".formatted(index, c));
+        if (isDigit(juon[index])) yield toJsonNumber(index);
+        throw expected("<juan-node>", juon, index);
       }
     };
   }
@@ -112,10 +114,9 @@ record Juon(char[] juon, StringBuilder json) {
     // might be true/false/null 1st element in an array
     while (isLowerLetter(peek(i))) i++;
     c = peek(i); // what followed the lower letter word?
-    if (c == ',') return toJsonArray(index);
+    if (c == ',' || c == ')') return toJsonArray(index);
     if (c == ':') return toJsonObject(index);
-    throw new JsonFormatException(
-        "Expected object or array at index %d but found %s at index %d".formatted(index, c, i));
+    throw expected("<object-or-array>", juon, index);
   }
 
   private int toJsonObject(int index) {
@@ -159,8 +160,7 @@ record Juon(char[] juon, StringBuilder json) {
   private int toJsonMemberName(int index) {
     char c = peek(index);
     if (!isNameFirstChar(c))
-      throw new JsonFormatException(
-          "Expected start of a name at index %d but was: %s".formatted(index, c));
+      throw expected("<member-name>", juon, index);
     append('"');
     index = toJsonChar(index); // add start letter
     while (isNameChar(peek(index))) index = toJsonChar(index);
@@ -240,8 +240,7 @@ record Juon(char[] juon, StringBuilder json) {
     char c = peek(index);
     if (c == 't') return toJsonLiteral(index, "true");
     if (c == 'f') return toJsonLiteral(index, "false");
-    throw new JsonFormatException(
-        "Expected true/false at index %d but found: %s".formatted(index, c));
+    throw expected("[tf]", juon, index);
   }
 
   private int toJsonNull(int index) {
@@ -259,9 +258,7 @@ record Juon(char[] juon, StringBuilder json) {
   }
 
   private int toJsonSymbol(int index, char inJuon, char inJson) {
-    if (peek(index) != inJuon)
-      throw new JsonFormatException(
-          "Expected %s at %d but found: %s".formatted(inJuon, index, peek(index)));
+    if (peek(index) != inJuon) throw expected(inJuon + " => " + inJson, juon, index);
     append(inJson);
     return toJsonWhitespace(index + 1);
   }
@@ -280,10 +277,8 @@ record Juon(char[] juon, StringBuilder json) {
     int l = literal.length();
     for (int i = 0; i < l; i++) {
       char c = peek(index + i);
-      if (c != literal.charAt(i)) {
-        throw new JsonFormatException(
-            "Expected %s at index %d but found: %s".formatted(literal, index, c));
-      }
+      if (c != literal.charAt(i))
+        throw expected(literal.charAt(i), juon, index + i);
       append(c);
     }
     return toJsonWhitespace(index + l);
@@ -294,8 +289,7 @@ record Juon(char[] juon, StringBuilder json) {
   }
 
   private char peek(int index) {
-    if (!hasChar(index))
-      throw new JsonFormatException("Unexpected end of input at index: %d".formatted(index));
+    if (!hasChar(index)) expected("<?>", juon, index);
     return juon[index];
   }
 
