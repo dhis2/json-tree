@@ -169,8 +169,8 @@ public interface Jurl {
   }
 
   private static int toJsonStringUnquoted(char[] jurl, int offset, TextBuilder json) {
-    int i = offset;
-    if (!isUrlUnreserved(jurl[i])) throw expected("<member-name>", jurl, i);
+    //TODO must check that true, false, null and valid numbers are not strings
+    int i = offset; // we got here from autodetect, so it is safe and a isUrlUnreserved
     json.append('"');
     while (i < jurl.length && isUrlUnreserved(jurl[i])) json.append(jurl[i++]);
     json.append('"');

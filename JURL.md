@@ -49,7 +49,7 @@ An object is a comma-separated list of key-value pairs enclosed in parentheses `
 
 **Syntax:**
 
-```bnf
+```ebnf
 <object>  ::= "(" [ <members> ] [ "," ] ")"
 <members> ::= <member> ( "," <member> )* 
 <member>  ::= <unqouted-string> ":" [ <value> ]
@@ -73,7 +73,7 @@ An array is a comma-separated list of values enclosed in parentheses `(` and `)`
 
 **Syntax:**
 
-```
+```ebnf
 <array>    ::= "(" [ <elements> ] [ "," ] ")"
 <elements> ::= <value> ( "," <value> )* 
 ```
@@ -103,7 +103,7 @@ Strings can be represented in two ways:
 
 **Syntax:**
 
-```
+```ebnf
 <string>          ::= "'" ( <string-char> )* "'" | <unquoted-string>
 <unquoted-string> ::= ( <safe-char> )+
 <safe-char>       ::= <letter> | <digit> | <separator>
@@ -162,7 +162,7 @@ Numbers follow a similar syntax to JSON but with some relaxations:
 
 **Syntax:**
 
-```
+```ebnf
 <number>   ::= [ "-" ] ( <int> | <float> ) [ <exponent> ]
 <int>      ::= ( <digit> )+
 <float>    ::= "." ( <digit> )+ | ( <digit> )+ "." [ ( <digit> )* ]
