@@ -524,8 +524,22 @@ public interface JsonValue extends Map.Entry<Text, JsonValue> {
     return node().getDeclaration().toString();
   }
 
-  //TODO toJurl()
-  //TODO possibly even toJson5()
+  /**
+   * @return This node in standard JURL notation
+   * @since 1.9
+   */
+  @TerminalOp(canBeNull = true)
+  default String toJurl() {
+      return toJurl(Jurl.STANDARD);
+  }
+
+  /**
+   * @return This node in JURL notation with given format rules
+   * @since 1.9
+   */
+  default String toJurl(Jurl.Format format) {
+    return JurlBuilder.toJurl(format, node());
+  }
 
   /**
    * @return JSON declaration for this value in a minimized formatting

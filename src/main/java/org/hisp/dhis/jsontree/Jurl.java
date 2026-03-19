@@ -67,8 +67,14 @@ public interface Jurl {
     }
   }
 
-  Format MINIMAL = new Format(true, Format.Nulls.EMPTY, Format.Nulls.OMIT);
-  Format PLAIN = new Format(false, Format.Nulls.PLAIN, Format.Nulls.PLAIN);
+  /**
+   * Uses shorthands, object members with null values
+   */
+  Format MINIMAL = new Format(true, Format.Nulls.SHORTHAND, Format.Nulls.OMIT);
+  /**
+   * No shorthands, nulls plain (as in JSON)
+   */
+  Format STANDARD = new Format(false, Format.Nulls.PLAIN, Format.Nulls.PLAIN);
 
 
   /*

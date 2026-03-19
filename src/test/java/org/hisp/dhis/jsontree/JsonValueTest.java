@@ -373,4 +373,15 @@ class JsonValueTest {
     assertEquals("Backyard 44", actual.street());
     assertEquals(4444, actual.zip());
   }
+
+  @Test
+  void testToJurl() {
+    assertEquals("(1,2,false,null,null)", JsonMixed.of("[1,2,false,null,{}]").toJurl());
+  }
+
+  @Test
+  void testToJurl_Format() {
+    assertEquals("(1,2,f,n,n)", JsonMixed.of("[1,2,false,null,{}]").toJurl(Jurl.MINIMAL));
+  }
+
 }

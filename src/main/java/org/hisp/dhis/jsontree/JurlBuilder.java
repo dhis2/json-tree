@@ -220,7 +220,13 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
     probe.members = 0;
     obj.accept(probe);
     if (probe.members == 0) {
-      append("null"); // approximate the empty object with null
+      appendCommaWhenNeeded();
+      // approximate the empty object with null
+      String value = format.nullsInArrays().value;
+      if (value == null) {
+        append("null");
+      } else
+        append(value);
       return this;
     }
     beginLevel();

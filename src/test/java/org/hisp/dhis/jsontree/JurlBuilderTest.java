@@ -58,7 +58,7 @@ class JurlBuilderTest {
     Consumer<JsonArrayBuilder> builder =
         arr -> arr.addBoolean(true).addBoolean(false).addBoolean(null);
     assertEquals("(t,f,)", Jurl.createArray(builder));
-    assertEquals("(true,false,null)", Jurl.createArray(Jurl.PLAIN, builder));
+    assertEquals("(true,false,null)", Jurl.createArray(Jurl.STANDARD, builder));
   }
 
   @Test
@@ -301,7 +301,7 @@ class JurlBuilderTest {
         "when the 'node' member is omitted the entire object is empty and approximated to null");
     assertEquals(
         "(node:null)",
-        Jurl.createObject(Jurl.PLAIN, builder),
+        Jurl.createObject(Jurl.STANDARD, builder),
         "but when null members are included plain the object no longer is empty");
   }
 
