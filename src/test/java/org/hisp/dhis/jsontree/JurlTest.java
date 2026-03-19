@@ -154,7 +154,7 @@ class JurlTest {
   }
 
   @Test
-  void testArray_Array() {
+  void testArray_Nested() {
     assertJurlEquals(JsonMixed.of("[[]]"), "(())");
     assertJurlEquals(JsonMixed.of("[[],[]]"), "((),())");
     assertJurlEquals(JsonMixed.of("[[[]]]"), "((()))");
@@ -193,7 +193,7 @@ class JurlTest {
   }
 
   @Test
-  void testObject_Object() {
+  void testObject_Nested() {
     assertJurlEquals(JsonMixed.of("{\"a\":{\"b\":null}}"), "(a:(b:))");
     assertJurlEquals(JsonMixed.of("{\"a\":{\"b\":null},\"c\":{\"d\":null}}"), "(a:(b:),c:(d:))");
     assertJurlEquals(JsonMixed.of("{\"a\":{\"b\":{\"c\":null}}}"), "(a:(b:(c:)))");
@@ -204,7 +204,7 @@ class JurlTest {
   }
 
   @Test
-  void testMixed_Minimal() {
+  void testExample_ShorthandsOmittedNulls() {
     String expected =
         """
             {"name":"John","age":42,"license":false,"keywords":["hello","world"],"void":null}""";
@@ -214,13 +214,31 @@ class JurlTest {
   }
 
   @Test
-  void testMixed_Example() {
+  void testExample_Full() {
     String expected =
         """
             {"name":"Freddy","age":30,"car":null,"addresses":[{"street":"Elm Street","zip":1428,"city":"Springwood","invoice":true}]}""";
     assertJurlEquals(
         JsonMixed.of(expected),
         "(name:'Freddy',age:30,car:,addresses:((street:'Elm Street',zip:1428,city:'Springwood',invoice:t)))");
+  }
+
+  @Test
+  void testExample_Dhis2FilterParameter() {
+    assertJurlEquals(
+        JsonMixed.of(
+            """
+        {"p":"dataElement","op":"eq","v":"de123456789"}"""),
+        "(p:dataElement,op:eq,v:de123456789)");
+  }
+
+  @Test
+  void testExample_Dhis2FieldsParameter() {
+    assertJurlEquals(
+        JsonMixed.of(
+            """
+        ["name","id",{"dataElements":["id","name"]},{"orgUnits":"size"}]"""),
+        "(name,id,(dataElements:(id,name)),(orgUnits:size))");
   }
 
   private static void assertJurlEquals(JsonValue expected, String input) {

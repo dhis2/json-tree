@@ -27,22 +27,23 @@ public interface Jurl {
     return JsonMixed.of(json);
   }
 
-  //TODO test for DHIS2 filters as JSON with nesting
-
   private static int toJsonAutoDetect(char[] jurl, int offset, TextBuilder json) {
     if (offset >= jurl.length) throw expected("<value>", jurl, offset);
     return switch (jurl[offset]) {
-      case '(' -> toJsonArrayOrObject(jurl, offset, json);
+      case '(' -> toJsonContainer(jurl, offset, json);
       case '\'' -> toJsonString(jurl, offset, json);
-      case 't', 'f', '-', '.', 'n' -> toJsonAutoPrimitive(jurl, offset, json);
+      case 't', 'f', '-', '.', 'n' -> toJsonPrimitive(jurl, offset, json);
       default -> {
-        if (isUnquotedString(jurl[offset])) yield toJsonAutoPrimitive(jurl,offset, json);
+        if (isUnquotedString(jurl[offset])) yield toJsonPrimitive(jurl,offset, json);
         throw expected("<value>", jurl, offset);
       }
     };
   }
 
-  private static int toJsonArrayOrObject(char[] jurl, int offset, TextBuilder json) {
+  /**
+   * Either an array or an object
+   */
+  private static int toJsonContainer(char[] jurl, int offset, TextBuilder json) {
     if (offset + 1 >= jurl.length) throw expected("<container>", jurl, offset);
     char c = jurl[offset + 1];
     // () => empty array
@@ -162,7 +163,7 @@ public interface Jurl {
     throw expected('\'', jurl, i);
   }
 
-  private static int toJsonAutoPrimitive(char[] jurl, int offset, TextBuilder json) {
+  private static int toJsonPrimitive(char[] jurl, int offset, TextBuilder json) {
     int i = offset; // we got here from autodetect, so it is safe and a isUrlUnreserved
     while (i < jurl.length && isUnquotedString(jurl[i])) i++;
     int len = i - offset;
@@ -314,6 +315,9 @@ public interface Jurl {
     return c >= 'a' && c <= 'z';
   }
 
+  /**
+   * The characters allowed in a quoted string
+   */
   private static boolean isQuotedString(char c) {
     // test most common first
     if (isLetter(c) || isDigit(c) || c == ' ') return true;
@@ -326,8 +330,7 @@ public interface Jurl {
   }
 
   /**
-   * In URL the "Unreserved" set contains {@code ~} and does not contain {@code @} but the idea here
-   * is the same.
+   * The characters allowed in an unquoted string or object member name
    */
   private static boolean isUnquotedString(char c) {
     return isLetter(c) || isDigit(c) || c == '-' || c == '.' || c == '_' || c == '@';
