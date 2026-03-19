@@ -31,7 +31,9 @@ import static org.hisp.dhis.jsontree.JsonTree.skipWhitespace;
 public interface Json5 {
   /**
    * @param json5 JSON or JSON5 input
-   * @return the input converted to a JSON content exposed as {@link JsonMixed}
+   * @return the input converted to JSON exposed as {@link JsonMixed}
+   * @throws JsonFormatException in case the input is invalid JSON5 (though some validation might
+   *     still be lazy and first occur on access)
    */
   static JsonMixed of(String json5) {
     return of(json5, JsonNode.Index.AUTO);
@@ -39,7 +41,7 @@ public interface Json5 {
 
   static JsonMixed of(String json5, JsonNode.Index auto) {
     char[] chars = json5.toCharArray();
-    toJsonAutodetect(chars, 0);
+    toJsonAutodetect(chars, skipWhitespace(chars, 0));
     return JsonMixed.of(JsonTree.of(chars, null, auto));
   }
 

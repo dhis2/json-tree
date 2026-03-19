@@ -11,6 +11,9 @@ import org.hisp.dhis.jsontree.internal.NotNull;
 /**
  * A {@link String}-like API without requiring to manifest a {@link String} instance.
  *
+ * @apiNote A {@link Text} must always be observed as if it is an immutable value. It is highly
+ *     recommended to not extend the interface but instead use {@link Text#of(char[], int, int)} or
+ *     on of the other {@code of}-methods to create instances.
  * @implNote The {@link Text} abstraction exists to enable views without defensive copying to allow
  *     for a very small memory overhead of sub-sequences found within a JSON document. Most
  *     prominent the JSON string node values and the names of object properties. This takes
@@ -481,24 +484,9 @@ public interface Text extends CharSequence, Comparable<Text> {
       if (value < 100) return of(Cache._100_TO_999, value * 3 + 1, 2);
       if (value < 1000) return of(Cache._100_TO_999, (value - 100) * 3, 3);
     }
-    boolean neg = value < 0;
-    boolean overflow = value == Integer.MIN_VALUE;
-    value = overflow ? value - 1 : Math.abs(value);
-    int rest = value;
-    int n0 = neg ? 1 : 0;
-    int n = n0;
-    while (rest > 0) {
-      n++;
-      rest /= 10;
-    }
-    char[] digits = new char[n];
-    if (neg) digits[0] = '-';
-    rest = value;
-    for (int i = n - 1; i >= n0; i--) {
-      digits[i] = (char) ('0' + (rest % 10));
-      rest /= 10;
-    }
-    if (overflow) digits[digits.length - 1] += 1;
+    int len = TextBuilder.characterCount(value);
+    char[] digits = new char[len];
+    TextBuilder.appendInt(value, digits, 0, len);
     return of(digits, 0, digits.length);
   }
 

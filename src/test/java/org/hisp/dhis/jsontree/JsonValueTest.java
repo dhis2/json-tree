@@ -131,6 +131,44 @@ class JsonValueTest {
   }
 
   @Test
+  void testIsNaN() {
+    assertTrue(Json.of("NaN").isNaN());
+    assertTrue(Json.of(Double.NaN).isNaN());
+    assertTrue(Json5.of(" NaN ").isNaN());
+    assertFalse(Json.of("N").isNaN());
+    assertFalse(Json.of("Nan").isNaN());
+    assertFalse(Json.of("nan").isNaN());
+    assertFalse(Json.ofNull().isNaN());
+    assertFalse(Json.of(true).isNaN());
+    assertFalse(Json.of(false).isNaN());
+    assertFalse(JsonMixed.of("[]").isNaN());
+    assertFalse(JsonMixed.of("{}").isNaN());
+    assertFalse(Json.of(1.3d).isNaN());
+    assertFalse(Json.of(0.0d).isNaN());
+  }
+
+  @Test
+  void testIsInfinity() {
+    assertTrue(Json.of("Infinity").isInfinity());
+    assertTrue(Json.of(Double.POSITIVE_INFINITY).isInfinity());
+    assertTrue(Json5.of(" Infinity ").isInfinity());
+    assertFalse(Json.of("I").isInfinity());
+    assertFalse(Json.of("infinity").isInfinity());
+    assertTrue(Json.of("-Infinity").isInfinity());
+    assertTrue(Json.of(Double.NEGATIVE_INFINITY).isInfinity());
+    assertTrue(Json5.of(" -Infinity ").isInfinity());
+    assertFalse(Json.of("-I").isInfinity());
+    assertFalse(Json.of("-infinity").isInfinity());
+    assertFalse(Json.ofNull().isInfinity());
+    assertFalse(Json.of(true).isInfinity());
+    assertFalse(Json.of(false).isInfinity());
+    assertFalse(JsonMixed.of("[]").isInfinity());
+    assertFalse(JsonMixed.of("{}").isInfinity());
+    assertFalse(Json.of(1.3d).isInfinity());
+    assertFalse(Json.of(0.0d).isInfinity());
+  }
+
+  @Test
   void testToListFromVarargs_Undefined() {
     assertEquals(
         List.of(),

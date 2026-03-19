@@ -261,6 +261,28 @@ public interface JsonValue extends Map.Entry<Text, JsonValue> {
   }
 
   /**
+   * @return true, if this node is a string of exactly "NaN" as specified for the special value for
+   *     Java doubles
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true)
+  default boolean isNaN() {
+    return isString() && node().textValue().contentEquals("NaN");
+  }
+
+  /**
+   * @return true, if this node is a string of exactly "Infinity" or "-Infinity" as specified for the
+   *     special value for Java doubles
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true)
+  default boolean isInfinity() {
+    return isString()
+        && (node().textValue().contentEquals("Infinity")
+            || node().textValue().contentEquals("-Infinity"));
+  }
+
+  /**
    * @return true if the value exists and is an JSON string node (not JSON {@code null})
    * @since 0.10
    */
@@ -501,6 +523,9 @@ public interface JsonValue extends Map.Entry<Text, JsonValue> {
   default String toJson() {
     return node().getDeclaration().toString();
   }
+
+  //TODO toJurl()
+  //TODO possibly even toJson5()
 
   /**
    * @return JSON declaration for this value in a minimized formatting
