@@ -1,14 +1,16 @@
 package org.hisp.dhis.jsontree;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Test the {@link Juon} parser accessible via {@link Jurl#of(String)}.
@@ -18,110 +20,176 @@ import java.nio.charset.StandardCharsets;
 class JurlTest {
 
   @Test
-  void testBoolean() {
-    assertEquals(JsonMixed.of("true"), Jurl.of("true"));
-    assertEquals(JsonMixed.of("false"), Jurl.of("false"));
+  void testTrash() {
+    JsonFormatException ex = assertThrowsExactly(JsonFormatException.class, () -> Jurl.of("{}"));
+    assertEquals(
+        """
+      Unexpected character at position 0,
+      {}
+      ^ expected <value>""",
+        ex.getMessage());
   }
 
   @Test
-  void testBoolean_Shorthand() {
-    assertEquals(JsonMixed.of("true"), Jurl.of("t"));
-    assertEquals(JsonMixed.of("false"), Jurl.of("f"));
+  void testBoolean() {
+    assertJurlEquals(JsonMixed.of("true"), "true");
+    assertJurlEquals(JsonMixed.of("false"), "false");
+    assertJurlEquals(JsonMixed.of("true"), "t");
+    assertJurlEquals(JsonMixed.of("false"), "f");
   }
 
   @Test
   void testNull() {
-    assertEquals(JsonMixed.of("null"), Jurl.of("null"));
-  }
-
-  @Test
-  void testNull_Shorthand() {
-    assertEquals(JsonMixed.of("null"), Jurl.of("n"));
-  }
-
-  @Test
-  void testNull_Omit() {
-    assertEquals(JsonMixed.of("null"), Jurl.of(null));
-    assertEquals(JsonMixed.of("null"), Jurl.of(""));
-    assertEquals(JsonMixed.of("null"), Jurl.of(" "));
+    assertJurlEquals(JsonMixed.of("null"), "null");
+    assertJurlEquals(JsonMixed.of("null"), "n");
+    assertJurlEquals(JsonMixed.of("null"), "");
+    assertJurlEquals(JsonMixed.of("null"), " ");
   }
 
   @Test
   void testNumber() {
-    assertEquals(JsonMixed.of("1234"), Jurl.of("1234"));
-    assertEquals(JsonMixed.of("42.12"), Jurl.of("42.12"));
-    assertEquals(JsonMixed.of("-0.12"), Jurl.of("-0.12"));
-    assertEquals(JsonMixed.of("-0.12e-3"), Jurl.of("-0.12e-3"));
-    assertEquals(JsonMixed.of("0.12e12"), Jurl.of("0.12E12"));
+    assertJurlEquals(JsonMixed.of("1234"), "1234");
+    assertJurlEquals(JsonMixed.of("42.12"), "42.12");
+    assertJurlEquals(JsonMixed.of("-0.12"), "-0.12");
+    assertJurlEquals(JsonMixed.of("-0.12e-3"), "-0.12e-3");
+    assertJurlEquals(JsonMixed.of("0.12e12"), "0.12E12");
   }
 
   @Test
   void testNumber_OmitLeadingZero() {
-    assertEquals(JsonMixed.of("0.12"), Jurl.of(".12"));
+    assertJurlEquals(JsonMixed.of("0.12"), ".12");
   }
 
   @Test
   void testNumber_OmitTailingZero() {
-    assertEquals(JsonMixed.of("0.0"), Jurl.of("0."));
+    assertJurlEquals(JsonMixed.of("0.0"), "0.");
   }
 
   @Test
-  void testString() {
-    assertEquals(JsonMixed.of("\"\""), Jurl.of("''"));
-    assertEquals(JsonMixed.of("\"a\""), Jurl.of("'a'"));
-    assertEquals(JsonMixed.of("\"hello world\""), Jurl.of("'hello world'"));
+  void testQuotedString() {
+    assertJurlEquals(JsonMixed.of("\"\""), "''");
+    assertJurlEquals(JsonMixed.of("\"a\""), "'a'");
+    assertJurlEquals(JsonMixed.of("\"hello world\""), "'hello world'");
+
+    JsonFormatException ex = assertThrowsExactly(JsonFormatException.class, () -> Jurl.of("'%'"));
+    assertEquals(
+        """
+      Unexpected character at position 1,
+      '%'
+       ^ expected <url-safe-character>""",
+        ex.getMessage());
+  }
+
+  @Test
+  void testQuotedString_EscapingMnemonic() {
+    String mnemonics =
+        "~a=& ~P=& ~e== ~g== ~p=+ ~U=+ ~h=# ~M=# ~c=% ~O=% ~q=' ~Q=' ~d=\" ~L=\" ~~=~ ~b=\\";
+    Map<String, String> singles =
+        Stream.of(mnemonics.split(" ")).collect(toMap(e -> e.substring(0, 2), e -> e.substring(3)));
+    for (Map.Entry<String, String> e : singles.entrySet())
+      assertJurlEquals(Json.of(e.getValue()), "'%s'".formatted(e.getKey()));
+    assertJurlEquals(Json.of(" "), "'~s'");
+    assertJurlEquals(Json.of(" "), "'~J'");
+  }
+
+  @Test
+  void testQuotedString_EscapingHexadecimal() {
+    assertJurlEquals(Json.of(" "), "'~20'");
+    assertJurlEquals(Json.of("("), "'~28'");
+    assertJurlEquals(Json.of(")"), "'~29'");
+
+    JsonFormatException ex = assertThrowsExactly(JsonFormatException.class, () -> Jurl.of("'~GA'"));
+    assertEquals(
+        """
+      Unexpected character at position 2,
+      '~GA'
+        ^ expected <hex-digits>""",
+        ex.getMessage());
+
+    assertThrowsExactly(JsonFormatException.class, () -> Jurl.of("'~AG'"));
+  }
+
+  @Test
+  void testUnquotedString() {
+    // string that might be misinterpreted as other literals
+    assertJurlEquals(JsonMixed.of("\"no\""), "no");
+    assertJurlEquals(JsonMixed.of("\"truely\""), "truely");
+    assertJurlEquals(JsonMixed.of("\"255.255.255.0\""), "255.255.255.0");
+  }
+
+  @Test
+  void testUnquotedString_Space() {
+    JsonFormatException ex =
+        assertThrowsExactly(JsonFormatException.class, () -> Jurl.of("hello world"));
+    assertEquals(
+        """
+      Unexpected character at position 5,
+      hello world
+           ^ expected <end-of-input>""",
+        ex.getMessage());
   }
 
   @Test
   void testArray() {
-    assertEquals(JsonMixed.of("[]"), Jurl.of("()"));
-    assertEquals(JsonMixed.of("[1]"), Jurl.of("(1)"));
-    assertEquals(JsonMixed.of("[true]"), Jurl.of("(true)"));
-    assertEquals(JsonMixed.of("[false]"), Jurl.of("(false)"));
-    assertEquals(JsonMixed.of("[null]"), Jurl.of("(null)"));
-    assertEquals(JsonMixed.of("[1]"), Jurl.of("(1,)"));
-    assertEquals(JsonMixed.of("[1,2,3]"), Jurl.of("(1,2,3)"));
-    assertEquals(JsonMixed.of("[true,false]"), Jurl.of("(true,false)"));
-    assertEquals(JsonMixed.of("[\"a\",\"b\",\"c\",\"d\"]"), Jurl.of("('a','b','c','d')"));
+    assertJurlEquals(JsonMixed.of("[]"), "()");
+    assertJurlEquals(JsonMixed.of("[1]"), "(1)");
+    assertJurlEquals(JsonMixed.of("[true]"), "(true)");
+    assertJurlEquals(JsonMixed.of("[false]"), "(false)");
+    assertJurlEquals(JsonMixed.of("[null]"), "(null)");
+    assertJurlEquals(JsonMixed.of("[1,2,3]"), "(1,2,3)");
+    assertJurlEquals(JsonMixed.of("[true,false]"), "(true,false)");
+    assertJurlEquals(JsonMixed.of("[\"a\",\"b\",\"c\",\"d\"]"), "('a','b','c','d')");
+    // dangling comma
+    assertJurlEquals(JsonMixed.of("[1]"), "(1,)");
+    assertJurlEquals(JsonMixed.of("[1,2]"), "(1,2,)");
+    // omitted null
+    assertJurlEquals(JsonMixed.of("[]"), "(,)");
+    assertJurlEquals(JsonMixed.of("[null,null]"), "(,,)");
+    assertJurlEquals(JsonMixed.of("[1]"), "(1,)");
+    assertJurlEquals(JsonMixed.of("[null,1]"), "(,1)");
+    assertJurlEquals(JsonMixed.of("[null,null,3]"), "(,,3)");
+    assertJurlEquals(JsonMixed.of("[1,null,3]"), "(1,,3)");
+    assertJurlEquals(JsonMixed.of("[1,null]"), "(1,,)");
+    assertJurlEquals(JsonMixed.of("[1,null,0.3,null,5]"), "(1,,.3,,5)");
   }
 
   @Test
   void testArray_Array() {
-    assertEquals(JsonMixed.of("[[]]"), Jurl.of("(())"));
-    assertEquals(JsonMixed.of("[[],[]]"), Jurl.of("((),())"));
-    assertEquals(JsonMixed.of("[[[]]]"), Jurl.of("((()))"));
-    assertEquals(JsonMixed.of("[[[1,2],[3,4]],[5,6]]"), Jurl.of("(((1,2),(3,4)),(5,6))"));
-  }
-
-  @Test
-  void testArray_OmitNulls() {
-    assertEquals(JsonMixed.of("[]"), Jurl.of("(,)"));
-    assertEquals(JsonMixed.of("[null,null,3]"), Jurl.of("(,,3)"));
-    assertEquals(JsonMixed.of("[1,null,3]"), Jurl.of("(1,,3)"));
-    assertEquals(JsonMixed.of("[1,null]"), Jurl.of("(1,,)"));
-    assertEquals(JsonMixed.of("[1,null,0.3,null,5]"), Jurl.of("(1,,.3,,5)"));
+    assertJurlEquals(JsonMixed.of("[[]]"), "(())");
+    assertJurlEquals(JsonMixed.of("[[],[]]"), "((),())");
+    assertJurlEquals(JsonMixed.of("[[[]]]"), "((()))");
+    assertJurlEquals(JsonMixed.of("[[[1,2],[3,4]],[5,6]]"), "(((1,2),(3,4)),(5,6))");
   }
 
   @Test
   void testObject() {
-    assertEquals(JsonMixed.of("{\"hi\":\"ho\"}"), Jurl.of("(hi:'ho')"));
-    assertEquals(JsonMixed.of("{\"hi\":\"ho\"}"), Jurl.of("(hi:ho)"));
-    assertEquals(
+    assertJurlEquals(JsonMixed.of("{\"a\":1}"), "(a:1)");
+    assertJurlEquals(JsonMixed.of("{\"hi\":\"ho\"}"), "(hi:'ho')");
+    assertJurlEquals(JsonMixed.of("{\"hi\":\"ho\"}"), "(hi:ho)");
+    assertJurlEquals(
         JsonMixed.of("{\"no\":1,\"surprises\":{\"please\":true}}"),
-        Jurl.of("(no:1,surprises:(please:true))"));
-  }
+        "(no:1,surprises:(please:true))");
 
-  @Test
-  @DisplayName("In contrast to JSON, in JURL nulls in objects can be omitted (left empty)")
-  void testObject_OmitNulls() {
-    assertEquals(JsonMixed.of("{\"a\":null}"), Jurl.of("(a:)"));
-    assertEquals(JsonMixed.of("{\"a\":null,\"b\":null}"), Jurl.of("(a:,b:)"));
-    assertEquals(JsonMixed.of("{\"a\":null,\"b\":null,\"c\":3}"), Jurl.of("(a:,b:,c:3)"));
-    assertEquals(JsonMixed.of("{\"a\":1,\"b\":null,\"c\":3}"), Jurl.of("(a:1,b:,c:3)"));
-    assertEquals(JsonMixed.of("{\"a\":1,\"b\":null,\"c\":null}"), Jurl.of("(a:1,b:,c:)"));
+    // dangling comma
+    assertJurlEquals(JsonMixed.of("{\"a\":1,\"b\":2}"), "(a:1,b:2,)");
+
+    // omitted nulls
+    assertJurlEquals(JsonMixed.of("{\"a\":null}"), "(a:)");
+    assertJurlEquals(JsonMixed.of("{\"a\":null,\"b\":null}"), "(a:,b:)");
+    assertJurlEquals(JsonMixed.of("{\"a\":null,\"b\":null,\"c\":3}"), "(a:,b:,c:3)");
+    assertJurlEquals(JsonMixed.of("{\"a\":1,\"b\":null,\"c\":3}"), "(a:1,b:,c:3)");
+    assertJurlEquals(JsonMixed.of("{\"a\":1,\"b\":null,\"c\":null}"), "(a:1,b:,c:)");
+    assertJurlEquals(
+        JsonMixed.of("{\"a\":1,\"b\":null,\"c\":0.3,\"d\":null,\"e\":5}"), "(a:1,b:,c:.3,d:,e:5)");
+
+    JsonFormatException ex =
+        assertThrowsExactly(JsonFormatException.class, () -> Jurl.of("(a:1,,)"));
     assertEquals(
-        JsonMixed.of("{\"a\":1,\"b\":null,\"c\":0.3,\"d\":null,\"e\":5}"),
-        Jurl.of("(a:1,b:,c:.3,d:,e:5)"));
+        """
+        Unexpected character at position 5,
+        (a:1,,)
+             ^ expected <member-name>""",
+        ex.getMessage());
   }
 
   @Test
@@ -155,9 +223,9 @@ class JurlTest {
         "(name:'Freddy',age:30,car:,addresses:((street:'Elm Street',zip:1428,city:'Springwood',invoice:t)))");
   }
 
-  private static void assertJurlEquals(JsonMixed expected, String actual) {
+  private static void assertJurlEquals(JsonValue expected, String input) {
     // on the client
-    String encoded = URLEncoder.encode(actual, UTF_8);
+    String encoded = URLEncoder.encode(input, UTF_8);
     // on the server
     String decoded = URLDecoder.decode(encoded, UTF_8);
     assertEquals(expected, Jurl.of(decoded));

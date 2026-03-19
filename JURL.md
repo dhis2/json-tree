@@ -8,6 +8,19 @@ JURL is a notation for encoding JSON-like data in URL query parameters. It is de
 
 JURL supports the same data types as JSON: objects, arrays, strings, numbers, booleans, and null. However, the syntax differs in several ways to accommodate URL constraints and improve brevity.
 
+## Differences from JSON
+
+- Objects and arrays both use round brackets `()` instead of `{}` and `[]`.
+- Object member names are unquoted and limited to URL unreserved characters plus `@`.
+- Strings may be unquoted if they consist only of URL unreserved characters plus `@`.
+- Strings use single quotes `'` instead of double quotes.
+- Numbers allow leading or trailing decimal points.
+- Scientific notation does not allow a plus sign in the exponent.
+- Boolean and null shortcuts: `t`, `f`, `n`.
+- Whitespace is not allowed outside strings.
+- Empty parentheses `()` denote an empty array; empty object is not representable (use `null` as a placeholder).
+- Commas have special rules for omitted values and trailing commas (see below).
+
 ## Character Set and URL Safety
 
 JURL strings and unquoted identifiers may only contain characters that are safe for inclusion in a URL query parameter value. 
@@ -53,7 +66,7 @@ An object is a comma-separated list of key-value pairs enclosed in parentheses `
 <object>  ::= "(" [ <members> ] [ "," ] ")"
 <members> ::= <member> ( "," <member> )* 
 <member>  ::= <unqouted-string> ":" [ <value> ]
-<value>   ::= <object> | <array> | <number> | <string> | <boolean> | <null>
+<value>   ::= <object> | <array> | <number> | <boolean> | <null> | <string>
 <boolean> ::= "true" | "false" | "t" | "f"
 <null>    ::= "null" | "n" 
 ``` 
@@ -152,6 +165,17 @@ Additionally, any character can be represented by its hexadecimal ASCII value us
 - `'~a'` → `"&"`
 - `'~d'` → `'"'`
 
+**Escaping Examples:**
+
+- `'~q'` → `"'"` (single quote)
+- `'~d'` → `'"'` (double quote)
+- `'~s'` → `" "` (space)
+- `'~a'` → `"&"`
+- `'~~'` → `"~"`
+- `'~b'` → `"\\"`
+- `'~20'` → `" "` (space via hex)
+- `'hello~20world'` → `"hello world"`
+
 ### Numbers
 
 Numbers follow a similar syntax to JSON but with some relaxations:
@@ -188,24 +212,13 @@ These tokens are case-sensitive and must be in lowercase.
 
 Whitespace (spaces, tabs, newlines) is **not permitted** anywhere outside of quoted strings. In quoted strings, spaces are allowed as raw characters.
 
-## Differences from JSON
+## Clarifications
 
-- Objects and arrays both use round brackets `()` instead of `{}` and `[]`.
-- Object member names are unquoted and limited to URL unreserved characters plus `@`.
-- Strings may be unquoted if they consist only of URL unreserved characters plus `@`.
-- Strings use single quotes `'` instead of double quotes.
-- Numbers allow leading or trailing decimal points.
-- Scientific notation does not allow a plus sign in the exponent.
-- Boolean and null shortcuts: `t`, `f`, `n`.
-- Whitespace is not allowed outside strings.
-- Empty parentheses `()` denote an empty array; empty object is not representable (use `null` as a placeholder).
-- Commas have special rules for omitted values and trailing commas (see below).
-
-## Handling of Omitted Values and Dangling Commas
+### Handling of Omitted Values and Dangling Commas
 
 JURL allows omitting null values in arrays and object members to reduce verbosity. This interacts with the allowance of trailing commas, which are ignored. The following examples illustrate the behavior:
 
-### Arrays
+#### Arrays
 
 | JURL     | JSON Equivalent | Explanation                                                              |
 |----------|-----------------|--------------------------------------------------------------------------|
@@ -217,7 +230,7 @@ JURL allows omitting null values in arrays and object members to reduce verbosit
 | `(,,)`   | `[null,null]`   | First comma leading (null before), second trailing (ignored) → two nulls |
 | `(1,2,)` | `[1,2]`         | Trailing comma ignored                                                   |
 
-### Objects
+#### Objects
 
 | JURL       | JSON Equivalent    | Explanation                                             |
 |------------|--------------------|---------------------------------------------------------|
@@ -228,24 +241,26 @@ JURL allows omitting null values in arrays and object members to reduce verbosit
 | `(a:1,b:)` | `{"a":1,"b":null}` | Second member has null value                            |
 | `(a:1,,)`  | Invalid            | Two commas in a row would require a missing member name |
 
-## Escaping Examples
-
-- `'~q'` → `"'"` (single quote)
-- `'~d'` → `'"'` (double quote)
-- `'~s'` → `" "` (space)
-- `'~a'` → `"&"`
-- `'~~'` → `"~"`
-- `'~b'` → `"\\"`
-- `'~20'` → `" "` (space via hex)
-- `'hello~20world'` → `"hello world"`
-
-## Implementation Notes
+### Handling of Unquotes Strings, Numbers, Boolean and Null literals
 
 Boolean literals, null literals and numbers all qualify to also be unquoted strings.
-This ambiguity must be handled by a parser to translate the character sequence of `true`, `false` and `null`
-to their JSON equivalent (no string). If a character sequence can be a number is shall be converted
-to a JSON number (no string). The shorthands for true, false and null however are not to be changed
-and remain the exact character sequence given in the input, so they must be translated to a JSON string. 
+As indicated by the syntax given earlier if a character sequence is a valid number, boolean or null literal
+they do translate to the corresponding JSON type. Only if none of these match they translate to a JSON string.
+
+| JURL            | JSON Equivalent   | Explanation                          |
+|-----------------|-------------------|--------------------------------------|
+| `true`, `t`     | `true`            |                                      |
+| `false`, `f`    | `false`           |                                      |
+| `null`, `n`     | `null`            |                                      |
+| `no`            | `"no"`            | Does not match any literal or number |
+| `truely`        | `"truely"`        | Does not match any literal or number |
+| `100`           | `100`             | Matches number                       |
+| `255.255.255.0` | `"255.255.255.0"` | Does not match a number              |
+
+Clients have to pay attention that a value meant as string which could match a literal shorthand
+is sent with single quotes. For numbers and full literals this is not an issue
+(in `json-tree`) as number and boolean nodes can be treated as strings and the string
+as not be altered.
 
 ## Security Considerations
 

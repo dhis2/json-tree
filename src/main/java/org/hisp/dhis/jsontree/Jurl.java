@@ -22,27 +22,21 @@ public interface Jurl {
     if (jurl == null || jurl.isEmpty() || jurl.isBlank()) return Json.ofNull();
     char[] chars = jurl.toCharArray();
     TextBuilder json = new TextBuilder(chars.length*2);
-    toJsonAutoDetect(chars, 0, json);
+    int end = toJsonAutoDetect(chars, 0, json);
+    if (end < chars.length) throw expected("<end-of-input>", chars, end);
     return JsonMixed.of(json);
   }
 
-  //TODO test for filters as JSON with nesting
+  //TODO test for DHIS2 filters as JSON with nesting
 
   private static int toJsonAutoDetect(char[] jurl, int offset, TextBuilder json) {
     if (offset >= jurl.length) throw expected("<value>", jurl, offset);
     return switch (jurl[offset]) {
       case '(' -> toJsonArrayOrObject(jurl, offset, json);
       case '\'' -> toJsonString(jurl, offset, json);
-      case 't', 'f' -> toJsonBoolean(jurl, offset, json);
-      case 'n' -> toJsonNull(jurl, offset, json);
-      case '-', '.' -> toJsonNumber(jurl, offset, json);
-      case ',' -> {
-        json.append("null");
-        yield offset+1;
-      }
+      case 't', 'f', '-', '.', 'n' -> toJsonAutoPrimitive(jurl, offset, json);
       default -> {
-        if (isDigit(jurl[offset])) yield toJsonNumber(jurl, offset, json);
-        if (isUrlUnreserved(jurl[offset])) yield toJsonStringUnquoted(jurl,offset, json);
+        if (isUnquotedString(jurl[offset])) yield toJsonAutoPrimitive(jurl,offset, json);
         throw expected("<value>", jurl, offset);
       }
     };
@@ -67,7 +61,7 @@ public interface Jurl {
     if (c == '\'') return toJsonArray(jurl, offset, json);
     // we need to skip the unreserved to see if we find :
     int i = offset+1;
-    while (i < jurl.length && isUrlUnreserved(jurl[i])) i++;
+    while (i < jurl.length && isUnquotedString(jurl[i])) i++;
     if (i >= jurl.length) throw expected("<end-of-container>", jurl, i);
     c = jurl[i]; // skipping letter found , or ) => must be an array
     if (c == ',' || c == ')') return toJsonArray(jurl, offset, json);
@@ -80,9 +74,9 @@ public interface Jurl {
     while (true) {
       if (i >= jurl.length) throw expected("<member-name>", jurl, i);
       char c = jurl[i];
-      if (!isUrlUnreserved(c)) throw expected("<member-name>", jurl, i);
+      if (!isUnquotedString(c)) throw expected("<member-name>", jurl, i);
       json.append('"');
-      while (i < jurl.length && isUrlUnreserved(jurl[i])) json.append(jurl[i++]);
+      while (i < jurl.length && isUnquotedString(jurl[i])) json.append(jurl[i++]);
       json.append('"');
       i = expectChar(jurl, i, ':');
       json.append(':');
@@ -145,36 +139,67 @@ public interface Jurl {
         if (i >= jurl.length) throw expected("<escaped-character>", jurl, i);
         switch (jurl[i++]) {
           case '~' -> json.append('~');
-          case 'b' -> json.append('\\');
+          case 'b' -> json.append("\\\\"); // backslash escaped for JSON
           case 'a', 'P' -> json.append('&');
           case 'e', 'g' -> json.append('=');
           case 'p', 'U' -> json.append('+');
           case 'h', 'M' -> json.append('#');
           case 'c', 'O' -> json.append('%');
-          case 'q', 'Q' -> json.append("\\\\"); // backslash escaped for JSON
+          case 'q', 'Q' -> json.append('\'');
           case 'd', 'L' -> json.append("\\\""); // " escaped for JSON
           case 's', 'J' -> json.append(' ');
           default -> {
             // ~XX
-            if (!isHexDigit(c) || i >= jurl.length || !isHexDigit(jurl[i]))
-              throw expected("<escaped-character>", jurl, i);
-            json.append((char)(hexValue(c)*16 + hexValue(jurl[i++])));
+            if (!isHexDigit(jurl[i-1]) || i >= jurl.length || !isHexDigit(jurl[i]))
+              throw expected("<hex-digits>", jurl, i-1);
+            json.append((char)(hexValue(jurl[i-1])*16 + hexValue(jurl[i++])));
           }
         }
-      } else if (isUrlSafeCharacter(c)) {
+      } else if (isQuotedString(c)) {
         json.append(c); // these are also all allowed plain in JSON
       } else throw expected("<url-safe-character>", jurl, i-1);
     }
     throw expected('\'', jurl, i);
   }
 
-  private static int toJsonStringUnquoted(char[] jurl, int offset, TextBuilder json) {
-    //TODO must check that true, false, null and valid numbers are not strings
+  private static int toJsonAutoPrimitive(char[] jurl, int offset, TextBuilder json) {
     int i = offset; // we got here from autodetect, so it is safe and a isUrlUnreserved
+    while (i < jurl.length && isUnquotedString(jurl[i])) i++;
+    int len = i - offset;
+    i = offset;
+    char c0 = jurl[i];
+    // literal ?
+    if (len == 1) {
+      if (c0 == 't') {
+        json.append("true");
+        return offset + 1;
+      } else if (c0 == 'f') {
+        json.append("false");
+        return offset + 1;
+      }
+      if (c0 == 'n') {
+        json.append("null");
+        return offset + 1;
+      }
+    } else if (len == 4) {
+      if (c0 == 't' && jurl[i+1] == 'r' && jurl[i+2] == 'u' && jurl[i+3] == 'e') {
+        json.append("true");
+        return offset+4;
+      } else if (c0 == 'n' && jurl[i+1] == 'u' && jurl[i+2] == 'l' && jurl[i+3] == 'l') {
+        json.append("null");
+        return offset+4;
+      }
+    } else if (len == 5 && c0 == 'f' && jurl[i+1] == 'a' && jurl[i+2] == 'l' && jurl[i+3] == 's' && jurl[i+4] == 'e') {
+      json.append("false");
+      return offset+5;
+    }
+    // else => number
+    if (isNumber(jurl, offset)) return toJsonNumber(jurl, offset, json);
+    // else => string
     json.append('"');
-    while (i < jurl.length && isUrlUnreserved(jurl[i])) json.append(jurl[i++]);
+    for (int j = 0; j < len; j++) json.append(jurl[offset + j]);
     json.append('"');
-    return i;
+    return offset+len;
   }
 
   private static int toJsonNumber(char[] jurl, int offset, TextBuilder json) {
@@ -182,7 +207,6 @@ public interface Jurl {
     // sign
     if (c == '-') {
       json.append('-');
-      //TODO prevent --
       return toJsonNumber(jurl,offset + 1, json);
     }
     // integer part
@@ -221,28 +245,53 @@ public interface Jurl {
     return i;
   }
 
-  private static int toJsonBoolean(char[] jurl, int offset, TextBuilder json) {
+  /**
+   * {@code . digit+ exponent?} or {@code digit+ [. digit* exponent?]}
+   */
+  private static boolean isNumber(char[] jurl, int offset) {
     int i = offset;
-    char c = jurl[i]; // we got here from autodetect so it is safe
-    if (c == 't') {
-      json.append("true");
-      if (i+4 >= jurl.length) return offset+1;
-      if (jurl[i+1] == 'r' && jurl[i+2] == 'u' && jurl[i+3] == 'e') return offset+4;
-      return offset+1;
-    } else {
-      json.append("false");
-      if (i+5 >= jurl.length) return offset+1;
-      if (jurl[i+1] == 'a' && jurl[i+2] == 'l' && jurl[i+3] == 's' && jurl[i+4] == 'e') return offset+5;
-      return offset+1;
-    }
+    if (jurl[i] == '-') i++; // skip past - sign
+    if (i >= jurl.length) return false; // just a -
+    char c = jurl[i];
+    // . digit+ [exponent]
+    if (c == '.') return isDecimal(jurl, i);
+    // digit+ [. [ digit* [exponent]]]
+    int s = i;
+    while (i < jurl.length && isDigit(jurl[i])) i++;
+    if (i == s) return false; // no digits
+    // end of unquoted?
+    if (i >= jurl.length || !isUnquotedString(jurl[i])) return true;
+    // just a trailing . ?
+    if (jurl[i] == '.' && (i+1 >= jurl.length || !isUnquotedString(jurl[i+1]))) return true;
+    // full decimal?
+    return isDecimal(jurl, i);
   }
 
-  private static int toJsonNull(char[] jurl, int offset, TextBuilder json) {
-    json.append("null");
-    if (offset + 4 >= jurl.length) return offset+1; // can only be short form
+  /**
+   * {@code [. digit+ exponent?]}
+   */
+  private static boolean isDecimal(char[] jurl, int offset) {
     int i = offset;
-    if (jurl[i+1] == 'u' && jurl[i+2] == 'l' && jurl[i+3] == 'l') return offset+4;
-    return offset+1;
+    if (i >= jurl.length || jurl[i] != '.') return false;
+    i++; // skip .
+    int s = i;
+    while (i < jurl.length && isDigit(jurl[i])) i++;
+    return i > s && (i >= jurl.length || !isUnquotedString(jurl[i]) || isExponent(jurl, i));
+  }
+
+  /**
+   * {@code e/E digit+}
+   */
+  private static boolean isExponent(char[] jurl, int offset) {
+    int i = offset;
+    if (i >= jurl.length || (jurl[i] != 'e' && jurl[i] != 'E')) return false;
+    i++; // skip e/E
+    if (i >= jurl.length) return false; // just an e/E
+    char c = jurl[i];
+    if (c == '-') i++; // skip -
+    int s = i;
+    while (i < jurl.length && isDigit(jurl[i])) i++;
+    return i > s && (i >= jurl.length || !isUnquotedString(jurl[i]));
   }
 
   private static boolean isDigit(char c) {
@@ -250,7 +299,7 @@ public interface Jurl {
   }
 
   private static boolean isHexDigit(char c) {
-    return isDigit(c) || c >= 'A' && c <= 'F';
+    return isDigit(c) || (c >= 'A' && c <= 'F');
   }
 
   private static boolean isLetter(char c) {
@@ -265,11 +314,7 @@ public interface Jurl {
     return c >= 'a' && c <= 'z';
   }
 
-  /**
-   * Strictly a space is not URL safe, but it is changed to + and back on the URL encoder/decoder
-   * level so from JURLs perspective it can be used plain.
-   */
-  private static boolean isUrlSafeCharacter(char c) {
+  private static boolean isQuotedString(char c) {
     // test most common first
     if (isLetter(c) || isDigit(c) || c == ' ') return true;
     // Ranges of consecutive punctuation
@@ -284,7 +329,7 @@ public interface Jurl {
    * In URL the "Unreserved" set contains {@code ~} and does not contain {@code @} but the idea here
    * is the same.
    */
-  private static boolean isUrlUnreserved(char c) {
+  private static boolean isUnquotedString(char c) {
     return isLetter(c) || isDigit(c) || c == '-' || c == '.' || c == '_' || c == '@';
   }
 
