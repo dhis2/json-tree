@@ -36,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -126,6 +128,44 @@ class JsonValueTest {
     assertTrue(JsonValue.of("1.00000").isInteger());
     assertFalse(JsonValue.of("1.5").isInteger());
     assertFalse(JsonValue.of("0.4").isInteger());
+  }
+
+  @Test
+  void testIsNaN() {
+    assertTrue(Json.of("NaN").isNaN());
+    assertTrue(Json.of(Double.NaN).isNaN());
+    assertTrue(Json5.of(" NaN ").isNaN());
+    assertFalse(Json.of("N").isNaN());
+    assertFalse(Json.of("Nan").isNaN());
+    assertFalse(Json.of("nan").isNaN());
+    assertFalse(Json.ofNull().isNaN());
+    assertFalse(Json.of(true).isNaN());
+    assertFalse(Json.of(false).isNaN());
+    assertFalse(JsonMixed.of("[]").isNaN());
+    assertFalse(JsonMixed.of("{}").isNaN());
+    assertFalse(Json.of(1.3d).isNaN());
+    assertFalse(Json.of(0.0d).isNaN());
+  }
+
+  @Test
+  void testIsInfinity() {
+    assertTrue(Json.of("Infinity").isInfinity());
+    assertTrue(Json.of(Double.POSITIVE_INFINITY).isInfinity());
+    assertTrue(Json5.of(" Infinity ").isInfinity());
+    assertFalse(Json.of("I").isInfinity());
+    assertFalse(Json.of("infinity").isInfinity());
+    assertTrue(Json.of("-Infinity").isInfinity());
+    assertTrue(Json.of(Double.NEGATIVE_INFINITY).isInfinity());
+    assertTrue(Json5.of(" -Infinity ").isInfinity());
+    assertFalse(Json.of("-I").isInfinity());
+    assertFalse(Json.of("-infinity").isInfinity());
+    assertFalse(Json.ofNull().isInfinity());
+    assertFalse(Json.of(true).isInfinity());
+    assertFalse(Json.of(false).isInfinity());
+    assertFalse(JsonMixed.of("[]").isInfinity());
+    assertFalse(JsonMixed.of("{}").isInfinity());
+    assertFalse(Json.of(1.3d).isInfinity());
+    assertFalse(Json.of(0.0d).isInfinity());
   }
 
   @Test
@@ -228,6 +268,28 @@ class JsonValueTest {
     assertEquals(99, JsonMixed.of("[1,42,99]").get(2).to(int.class));
   }
 
+  @DisplayName("JsonValue API implements Map.Entry")
+  @Test
+  void testMapEntry() {
+    // this is more a compile time test
+    // to see that the getValue() method's
+    // return type is overridden to be compatible
+    JsonMixed node = JsonMixed.of("1");
+    assertSame( node, node.getValue());
+    JsonNumber number = node.getValue();
+    assertSame( number, number.getValue());
+    JsonString string = node.getValue();
+    assertSame( string, string.getValue());
+    JsonBoolean bool = node.getValue();
+    assertSame( bool, bool.getValue());
+    JsonArray array = node.getValue();
+    assertSame( array, array.getValue());
+    JsonObject object = node.getValue();
+    assertSame( object, object.getValue());
+    JsonValue value = node.getValue();
+    assertSame( value, value.getValue());
+  }
+
   record Address(String street, int zip, String city) {
     static Address of(String address) {
       String[] parts = address.split("\\s*,\\s*");
@@ -311,4 +373,15 @@ class JsonValueTest {
     assertEquals("Backyard 44", actual.street());
     assertEquals(4444, actual.zip());
   }
+
+  @Test
+  void testToJurl() {
+    assertEquals("(1,2,false,null,null)", JsonMixed.of("[1,2,false,null,{}]").toJurl());
+  }
+
+  @Test
+  void testToJurl_Format() {
+    assertEquals("(1,2,f,n,n)", JsonMixed.of("[1,2,false,null,{}]").toJurl(Jurl.MINIMAL));
+  }
+
 }

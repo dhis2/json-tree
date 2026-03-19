@@ -10,6 +10,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.internal.NotNull;
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
@@ -35,12 +36,14 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @return indexes of the elements contained in this array
    * @since 0.11
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default IntStream indexes() {
     return isUndefined() || isEmpty() ? IntStream.empty() : IntStream.range(0, size());
   }
 
   @NotNull
   @Override
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Iterator<E> iterator() {
     // we want iterator to be stream() based as stream() is overridden
     // for less overhead in subtypes, then this will benefit from it too
@@ -51,6 +54,7 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @return this list as a {@link Stream}, if this node does not exist or is JSON {@code null} the
    *     stream is empty
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Stream<E> stream() {
     return isUndefined() || isEmpty() ? Stream.empty() : indexes().mapToObj(this::get);
   }
@@ -64,6 +68,7 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @param <T> type of the values compared
    * @return true if all values are found, otherwise false
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> boolean containsAll(Function<E, T> toValue, Collection<T> values) {
     return count(toValue, values::contains) == values.size();
   }
@@ -76,6 +81,7 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @param <T> type of the values compared
    * @return true if any value is found returning true for the test performed
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> boolean contains(Function<E, T> toValue, Predicate<T> test) {
     return count(toValue, test) > 0;
   }
@@ -88,6 +94,7 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @param <T> type of the values compared
    * @return true if only one value is found returning true for the test performed
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> boolean containsUnique(Function<E, T> toValue, Predicate<T> test) {
     return count(toValue, test) == 1;
   }
@@ -100,6 +107,7 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @param <T> type of the values compared
    * @return number of elements matching the test
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> int count(Function<E, T> toValue, Predicate<T> test) {
     return (int) stream().filter(e -> test.test(toValue.apply(e))).count();
   }
@@ -113,6 +121,7 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @param test matcher to find the element
    * @return the first matching element, or an element that does not exist
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default E first(Predicate<E> test) {
     return stream().filter(test).findFirst().orElseGet(() -> get(size()));
   }
@@ -121,9 +130,10 @@ public interface JsonAbstractArray<E extends JsonValue>
    * @param schema the schema to validate all elements of this array against
    * @param rules optional set of {@link Rule}s to check, empty includes all
    * @throws JsonSchemaException in case this value does not match the given schema
-   * @throws IllegalArgumentException in case the given schema is not an interface
+   * @throws UnsupportedOperationException in case the given schema is not an interface
    * @since 1.0
    */
+  @TerminalOp(mustBeArray = true)
   default void validateEach(Class<?> schema, Rule... rules) {
     forEach(e -> JsonValidator.validate(e, schema, rules));
   }

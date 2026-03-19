@@ -3,7 +3,6 @@ package org.hisp.dhis.jsontree;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -127,10 +126,9 @@ class TextTest {
     assertEquals(6, t.lastIndexOf("world"));
     assertEquals(14, t.lastIndexOf("llo"));
     assertEquals(-1, t.lastIndexOf("xyz"));
-    assertEquals(
-        0,
-        t.lastIndexOf("")); // empty returns 0? but lastIndexOf empty? spec says return 0? we follow
+    // empty returns 0? but lastIndexOf empty? spec says return 0? we follow
     // implementation.
+    assertEquals(0, t.lastIndexOf(""));
   }
 
   @DisplayName("lastIndexOf(CharSequence, int)")
@@ -227,21 +225,24 @@ class TextTest {
     assertArrayEquals(new char[] {'h', 'e', 'l', 'l', 'o'}, t.toCharArray());
   }
 
-  @DisplayName("isInt()")
+  @DisplayName("isSignedInteger()")
   @Test
-  void testIsInt() {
-    assertTrue(Text.of(123).isInt());
-    assertTrue(Text.of("123").isInt());
-    assertTrue(Text.of(-123).isInt());
-    assertTrue(Text.of("+123").isInt());
-    assertTrue(Text.of("0").isInt());
-    assertTrue(Text.of("-0").isInt());
-    assertTrue(Text.of("+0").isInt());
-    assertTrue(Text.of("007").isInt());
-    assertFalse(Text.of("").isInt());
-    assertFalse(Text.of("12a").isInt());
-    assertFalse(Text.of("12.3").isInt());
-    assertFalse(Text.of("--1").isInt());
+  void testIsSignedInteger() {
+    assertTrue(Text.of(123).isSignedInteger());
+    assertTrue(Text.of("123").isSignedInteger());
+    assertTrue(Text.of(-123).isSignedInteger());
+    assertTrue(Text.of("+123").isSignedInteger());
+    assertTrue(Text.of("0").isSignedInteger());
+    assertTrue(Text.of("-0").isSignedInteger());
+    assertTrue(Text.of("+0").isSignedInteger());
+    assertTrue(Text.of("007").isSignedInteger());
+    assertTrue(Text.of("9999999999999999999999999999").isSignedInteger());
+
+    assertFalse(Text.of("").isSignedInteger());
+    assertFalse(Text.of(".01").isSignedInteger());
+    assertFalse(Text.of("12a").isSignedInteger());
+    assertFalse(Text.of("12.3").isSignedInteger());
+    assertFalse(Text.of("--1").isSignedInteger());
   }
 
   @DisplayName("parseInt()")
@@ -291,20 +292,51 @@ class TextTest {
     assertNotEquals(t1.hashCode(), t3.hashCode());
   }
 
-  @DisplayName("Text.of(int) cached")
+  @DisplayName("Text.of(int) 0 to 999")
   @Test
-  void testOf_IndexCache() {
+  void testOf_Int0To999() {
     for (int i = 0; i < 1000; i++) {
       assertEquals(String.valueOf(i), Text.of(i).toString());
     }
   }
 
-  @DisplayName("Text.of(int) uncached")
+  @DisplayName("Text.of(int) -1 to -999")
   @Test
-  void testOf_IndexFallback() {
-    for (int i : List.of(-44, 234567, 78943)) {
+  void testOf_IntNeg1To999() {
+    for (int i = -1; i > -1000; i--) {
       assertEquals(String.valueOf(i), Text.of(i).toString());
     }
+  }
+
+  @DisplayName("Text.of(int) edge")
+  @Test
+  void testOf_Int_EdgeCases() {
+    assertEquals(String.valueOf(Integer.MAX_VALUE), Text.of(Integer.MAX_VALUE).toString());
+    assertEquals(String.valueOf(Integer.MIN_VALUE), Text.of(Integer.MIN_VALUE).toString());
+  }
+
+  @Test
+  void testOf_String_Cache() {
+    Text hello = Text.of("hello");
+    assertEquals("hello", hello.toString());
+    assertSame(hello, Text.of("hello"), "should be same from cache");
+    Text hero = Text.of("hero");
+    assertSame(hello, Text.of("hello"), "still same from cache");
+    assertSame(hero, Text.of("hero"), "also same");
+    Text help = Text.of("help");
+    assertEquals("help", help.toString());
+    assertEquals("hero", hero.toString(), "content has not changed");
+    assertSame(help, Text.of("help"), "now help is cached");
+    assertNotSame(hero, Text.of("hero"), "hero is not cached any more");
+    assertSame(hello, Text.of("hello"), "but hello is still cached");
+  }
+
+  @Test
+  void testOf_String_CacheLimit() {
+    Text cached = Text.of("a234567890123456");
+    assertSame(cached, Text.of("a234567890123456"));
+    Text tooLong = Text.of("a2345678901234567");
+    assertNotSame(tooLong, Text.of("a2345678901234567"));
   }
 
   @DisplayName("Text.hashCode(Text)")

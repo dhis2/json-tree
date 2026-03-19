@@ -1,11 +1,18 @@
 package org.hisp.dhis.jsontree;
 
+import static java.lang.Double.NaN;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -31,9 +38,7 @@ class JsonArrayTest {
 
   @Test
   void testStringValues_NotOnlyStrings() {
-    JsonMixed value = JsonMixed.of("[\"a\", 1, true]");
-    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::stringValues);
-    assertEquals("Array element is not a org.hisp.dhis.jsontree.Text: 1", ex.getMessage());
+    assertEquals(List.of("a", "1", "true"), JsonMixed.of("[\"a\", 1, true]").stringValues());
   }
 
   @Test
@@ -46,20 +51,24 @@ class JsonArrayTest {
   void testNumberValues_NotOnlyNumbers() {
     JsonMixed value = JsonMixed.of("[1, true, \"a\"]");
     JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::numberValues);
-    assertEquals("Array element is not a java.lang.Number: true", ex.getMessage());
+    assertEquals(
+        "BOOLEAN node at path .1 is not a NUMBER and does not support #numberValue(): true",
+        ex.getMessage());
   }
 
   @Test
-  void testBoolValues_NoArray() {
+  void testBooleanValues_NoArray() {
     JsonMixed value = JsonMixed.of("1");
-    assertThrowsExactly(JsonTreeException.class, value::boolValues);
+    assertThrowsExactly(JsonTreeException.class, value::booleanValues);
   }
 
   @Test
-  void testBoolValues_NotOnlyBooleans() {
+  void testBooleanValues_NotOnlyBooleans() {
     JsonMixed value = JsonMixed.of("[true, 1, \"a\"]");
-    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::boolValues);
-    assertEquals("Array element is not a java.lang.Boolean: 1", ex.getMessage());
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::booleanValues);
+    assertEquals(
+        "NUMBER node at path .1 is not a BOOLEAN and does not support #booleanValue(): 1",
+        ex.getMessage());
   }
 
   @Test
@@ -96,5 +105,35 @@ class JsonArrayTest {
   void testGetList_IndexAs() {
     JsonMixed arr = JsonMixed.of("[[1,2], [3,4]]");
     assertEquals(List.of(1, 2), arr.getList(0, JsonNumber.class).toList(JsonNumber::integer));
+  }
+
+  @Test
+  void testIntValues() {
+    assertArrayEquals(
+        IntStream.range(1, 5).toArray(), JsonMixed.of("[1,2,3,4]").intValues().toArray());
+  }
+
+  @Test
+  void testLongValues() {
+    assertArrayEquals(
+        LongStream.range(1L, 5L).toArray(), JsonMixed.of("[1,2,3,4]").longValues().toArray());
+  }
+
+  @Test
+  void testDoubleValues() {
+    assertArrayEquals(
+        DoubleStream.of(1d, NaN, 3.1d).toArray(),
+        Json5.of("[1, NaN, 3.1]").doubleValues().toArray());
+  }
+
+  @Test
+  void testListValues() {
+    assertEquals(List.of(1d, NaN, 3.1d), Json5.of("[1, NaN, 3.1]").listValues(double.class));
+  }
+
+  @Test
+  void streamValues() {
+    assertEquals(
+        Stream.of(1, 2, 3).toList(), Json5.of("[1, '2', 3.0]").streamValues(int.class).toList());
   }
 }

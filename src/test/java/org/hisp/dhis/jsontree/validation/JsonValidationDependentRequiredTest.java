@@ -78,7 +78,7 @@ class JsonValidationDependentRequiredTest {
     }
 
     @Validation(dependentRequired = "update", acceptNull = YES)
-    default JsonMixed getValue() {
+    default JsonMixed value() {
       return get("value", JsonMixed.class);
     }
   }

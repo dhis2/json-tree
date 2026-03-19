@@ -39,17 +39,17 @@ import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests the {@link JuonAppender} implementation of {@link Juon}.
+ * Tests the {@link JurlBuilder} implementation.
  *
  * @author Jan Bernitt
  */
-class JuonAppenderTest {
+class JurlBuilderTest {
 
   @Test
   void testObject_Boolean() {
     assertEquals(
         "(a:t,b:f)",
-        Juon.createObject(
+        Jurl.createObject(
             obj -> obj.addBoolean("a", true).addBoolean("b", false).addBoolean("c", null)));
   }
 
@@ -57,109 +57,109 @@ class JuonAppenderTest {
   void testArray_Boolean() {
     Consumer<JsonArrayBuilder> builder =
         arr -> arr.addBoolean(true).addBoolean(false).addBoolean(null);
-    assertEquals("(t,f,)", Juon.createArray(builder));
-    assertEquals("(true,false,null)", Juon.createArray(Juon.PLAIN, builder));
+    assertEquals("(t,f,n)", Jurl.createArray(builder));
+    assertEquals("(true,false,null)", Jurl.createArray(Jurl.STANDARD, builder));
   }
 
   @Test
   void testObject_Int() {
-    assertEquals("(int:42)", Juon.createObject(obj -> obj.addNumber("int", 42)));
+    assertEquals("(int:42)", Jurl.createObject(obj -> obj.addNumber("int", 42)));
   }
 
   @Test
   void testArray_Int() {
-    assertEquals("(42)", Juon.createArray(arr -> arr.addNumber(42)));
+    assertEquals("(42)", Jurl.createArray(arr -> arr.addNumber(42)));
   }
 
   @Test
   void testObject_Double() {
-    assertEquals("(double:42.42)", Juon.createObject(obj -> obj.addNumber("double", 42.42)));
+    assertEquals("(double:42.42)", Jurl.createObject(obj -> obj.addNumber("double", 42.42)));
   }
 
   @Test
   void testArray_Double() {
-    assertEquals("(42.42)", Juon.createArray(arr -> arr.addNumber(42.42)));
+    assertEquals("(42.42)", Jurl.createArray(arr -> arr.addNumber(42.42)));
   }
 
   @Test
   void testObject_Long() {
     assertEquals(
         "(long:" + Long.MAX_VALUE + ")",
-        Juon.createObject(obj -> obj.addNumber("long", Long.MAX_VALUE)));
+        Jurl.createObject(obj -> obj.addNumber("long", Long.MAX_VALUE)));
   }
 
   @Test
   void testArray_Long() {
     assertEquals(
-        "(" + Long.MAX_VALUE + ")", Juon.createArray(arr -> arr.addNumber(Long.MAX_VALUE)));
+        "(" + Long.MAX_VALUE + ")", Jurl.createArray(arr -> arr.addNumber(Long.MAX_VALUE)));
   }
 
   @Test
   void testObject_BigInteger() {
     assertEquals(
-        "(bint:42)", Juon.createObject(obj -> obj.addNumber("bint", BigInteger.valueOf(42L))));
+        "(bint:42)", Jurl.createObject(obj -> obj.addNumber("bint", BigInteger.valueOf(42L))));
   }
 
   @Test
   void testArray_BigInteger() {
-    assertEquals("(42)", Juon.createArray(arr -> arr.addNumber(BigInteger.valueOf(42L))));
+    assertEquals("(42)", Jurl.createArray(arr -> arr.addNumber(BigInteger.valueOf(42L))));
   }
 
   @Test
   void testObject_String() {
-    assertEquals("(s:'hello')", Juon.createObject(obj -> obj.addString("s", "hello")));
+    assertEquals("(s:'hello')", Jurl.createObject(obj -> obj.addString("s", "hello")));
   }
 
   @Test
   void testObject_StringNull() {
-    assertEquals("null", Juon.createObject(obj -> obj.addString("s", null)));
+    assertEquals("n", Jurl.createObject(obj -> obj.addString("s", null)));
   }
 
   @Test
   void testObject_StringEscapes() {
-    assertEquals("(s:'\"oh yes\"')", Juon.createObject(obj -> obj.addString("s", "\"oh yes\"")));
+    assertEquals("(s:'~doh yes~d')", Jurl.createObject(obj -> obj.addString("s", "\"oh yes\"")));
   }
 
   @Test
   void testArray_String() {
-    assertEquals("('hello')", Juon.createArray(arr -> arr.addString("hello")));
+    assertEquals("('hello')", Jurl.createArray(arr -> arr.addString("hello")));
   }
 
   @Test
   void testArray_StringEscapes() {
-    assertEquals("('hello\\\\ world')", Juon.createArray(arr -> arr.addString("hello\\ world")));
+    assertEquals("('hello~b world')", Jurl.createArray(arr -> arr.addString("hello\\ world")));
   }
 
   @Test
   void testObject_IntArray() {
     assertEquals(
         "(array:(1,2))",
-        Juon.createObject(obj -> obj.addArray("array", arr -> arr.addNumbers(1, 2))));
+        Jurl.createObject(obj -> obj.addArray("array", arr -> arr.addNumbers(1, 2))));
   }
 
   @Test
   void testArray_IntArray() {
-    assertEquals("((1,2))", Juon.createArray(arr -> arr.addArray(a -> a.addNumbers(1, 2))));
+    assertEquals("((1,2))", Jurl.createArray(arr -> arr.addArray(a -> a.addNumbers(1, 2))));
   }
 
   @Test
   void testObject_DoubleArray() {
     assertEquals(
         "(array:(1.5,2.5))",
-        Juon.createObject(obj -> obj.addArray("array", arr -> arr.addNumbers(1.5d, 2.5d))));
+        Jurl.createObject(obj -> obj.addArray("array", arr -> arr.addNumbers(1.5d, 2.5d))));
   }
 
   @Test
   void testArray_DoubleArray() {
     assertEquals(
-        "((1.5,2.5))", Juon.createArray(arr -> arr.addArray(a -> a.addNumbers(1.5d, 2.5d))));
+        "((1.5,2.5))", Jurl.createArray(arr -> arr.addArray(a -> a.addNumbers(1.5d, 2.5d))));
   }
 
   @Test
   void testObject_LongArray() {
     assertEquals(
         "(array:(" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "))",
-        Juon.createObject(
+        Jurl.createObject(
             obj -> obj.addArray("array", arr -> arr.addNumbers(Long.MIN_VALUE, Long.MAX_VALUE))));
   }
 
@@ -167,26 +167,26 @@ class JuonAppenderTest {
   void testArray_LongArray() {
     assertEquals(
         "((" + Long.MIN_VALUE + "," + Long.MAX_VALUE + "))",
-        Juon.createArray(arr -> arr.addArray(a -> a.addNumbers(Long.MIN_VALUE, Long.MAX_VALUE))));
+        Jurl.createArray(arr -> arr.addArray(a -> a.addNumbers(Long.MIN_VALUE, Long.MAX_VALUE))));
   }
 
   @Test
   void testObject_StringArray() {
     assertEquals(
         "(array:('a','b'))",
-        Juon.createObject(obj -> obj.addArray("array", arr -> arr.addStrings("a", "b"))));
+        Jurl.createObject(obj -> obj.addArray("array", arr -> arr.addStrings("a", "b"))));
   }
 
   @Test
   void testArray_StringArray() {
-    assertEquals("(('a','b'))", Juon.createArray(arr -> arr.addArray(a -> a.addStrings("a", "b"))));
+    assertEquals("(('a','b'))", Jurl.createArray(arr -> arr.addArray(a -> a.addStrings("a", "b"))));
   }
 
   @Test
   void testObject_OtherArray() {
     assertEquals(
         "(array:('SOURCE','CLASS','RUNTIME'))",
-        Juon.createObject(
+        Jurl.createObject(
             obj ->
                 obj.addArray(
                     "array",
@@ -201,7 +201,7 @@ class JuonAppenderTest {
   void testArray_OtherArray() {
     assertEquals(
         "(('SOURCE','CLASS','RUNTIME'))",
-        Juon.createArray(
+        Jurl.createArray(
             arr ->
                 arr.addArray(
                     a ->
@@ -215,7 +215,7 @@ class JuonAppenderTest {
   void testArray_OtherCollection() {
     assertEquals(
         "(('SOURCE','CLASS','RUNTIME'))",
-        Juon.createArray(
+        Jurl.createArray(
             arr ->
                 arr.addArray(
                     a ->
@@ -229,27 +229,27 @@ class JuonAppenderTest {
   void testObject_ObjectBuilder() {
     assertEquals(
         "(obj:(inner:42))",
-        Juon.createObject(outer -> outer.addObject("obj", obj -> obj.addNumber("inner", 42))));
+        Jurl.createObject(outer -> outer.addObject("obj", obj -> obj.addNumber("inner", 42))));
   }
 
   @Test
   void testArray_ObjectBuilder() {
     assertEquals(
         "((42,14))",
-        Juon.createArray(arr -> arr.addArray(arr2 -> arr2.addNumber(42).addNumber(14))));
+        Jurl.createArray(arr -> arr.addArray(arr2 -> arr2.addNumber(42).addNumber(14))));
   }
 
   @Test
   void testArray_ArrayBuilder() {
     assertEquals(
-        "((inner:42))", Juon.createArray(arr -> arr.addObject(obj -> obj.addNumber("inner", 42))));
+        "((inner:42))", Jurl.createArray(arr -> arr.addObject(obj -> obj.addNumber("inner", 42))));
   }
 
   @Test
   void testObject_ObjectMap() {
     assertEquals(
         "(obj:(field:42))",
-        Juon.createObject(
+        Jurl.createObject(
             outer ->
                 outer.addObject(
                     "obj",
@@ -262,7 +262,7 @@ class JuonAppenderTest {
   void testArray_ObjectMap() {
     assertEquals(
         "((field:42))",
-        Juon.createArray(
+        Jurl.createArray(
             arr ->
                 arr.addObject(
                     obj -> obj.addMembers(Map.of("field", 42), JsonObjectBuilder::addNumber))));
@@ -272,7 +272,7 @@ class JuonAppenderTest {
   void testObject_MembersMap() {
     assertEquals(
         "(field:42)",
-        Juon.createObject(
+        Jurl.createObject(
             outer ->
                 outer.addMembers(Map.of("field", 42).entrySet(), JsonObjectBuilder::addNumber)));
   }
@@ -281,7 +281,7 @@ class JuonAppenderTest {
   void testArray_ElementsCollection() {
     assertEquals(
         "((42))",
-        Juon.createArray(
+        Jurl.createArray(
             arr -> arr.addArray(a -> a.addElements(List.of(42), JsonArrayBuilder::addNumber))));
   }
 
@@ -289,25 +289,25 @@ class JuonAppenderTest {
   void testObject_JsonNode() {
     assertEquals(
         "(node:('a','b'))",
-        Juon.createObject(obj -> obj.addMember("node", JsonNode.of("[\"a\",\"b\"]"))));
+        Jurl.createObject(obj -> obj.addMember("node", JsonNode.of("[\"a\",\"b\"]"))));
   }
 
   @Test
   void testObject_JsonNodeNull() {
     Consumer<JsonObjectBuilder> builder = obj -> obj.addMember("node", JsonNode.NULL);
     assertEquals(
-        "null",
-        Juon.createObject(builder),
+        "n",
+        Jurl.createObject(builder),
         "when the 'node' member is omitted the entire object is empty and approximated to null");
     assertEquals(
         "(node:null)",
-        Juon.createObject(Juon.PLAIN, builder),
+        Jurl.createObject(Jurl.STANDARD, builder),
         "but when null members are included plain the object no longer is empty");
   }
 
   @Test
   void testArray_JsonNode() {
     assertEquals(
-        "(('a','b'))", Juon.createArray(arr -> arr.addElement(JsonNode.of("[\"a\",\"b\"]"))));
+        "(('a','b'))", Jurl.createArray(arr -> arr.addElement(JsonNode.of("[\"a\",\"b\"]"))));
   }
 }

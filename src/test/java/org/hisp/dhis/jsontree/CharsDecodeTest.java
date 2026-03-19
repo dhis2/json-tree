@@ -15,7 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Tests the {@link Chars} utility, mainly the file IO and {@link java.nio.charset.Charset}
  * decoding.
  */
-class CharsTest {
+class CharsDecodeTest {
 
   @TempDir private Path tempDir;
 
@@ -50,8 +50,7 @@ class CharsTest {
     Path file = tempDir.resolve("without_bom.json");
 
     Files.writeString(file, UNICODE_EXAMPLE, UTF_8, StandardOpenOption.CREATE);
-
-    assertContentEquals(UNICODE_EXAMPLE, Chars.from(file, UTF_8));
+    assertContentEquals(UNICODE_EXAMPLE, Chars.decode(Files.readAllBytes(file), UTF_8));
   }
 
   @Test
@@ -59,7 +58,7 @@ class CharsTest {
     Path file = tempDir.resolve("with_bom.json");
     writeContentWithBOM(file);
 
-    assertContentEquals(UNICODE_EXAMPLE, Chars.from(file, UTF_8));
+    assertContentEquals(UNICODE_EXAMPLE, Chars.decode(Files.readAllBytes(file), UTF_8));
   }
 
   @Test
@@ -68,7 +67,7 @@ class CharsTest {
 
     Files.writeString(file, ISO_EXAMPLE, ISO_8859_1, StandardOpenOption.CREATE);
 
-    assertContentEquals(ISO_EXAMPLE, Chars.from(file, ISO_8859_1));
+    assertContentEquals(ISO_EXAMPLE, Chars.decode(Files.readAllBytes(file), ISO_8859_1));
   }
 
   @Test
@@ -80,7 +79,7 @@ class CharsTest {
   }
 
   private static void writeContentWithBOM(Path file) throws IOException {
-    byte[] contentBytes = CharsTest.UNICODE_EXAMPLE.getBytes(UTF_8);
+    byte[] contentBytes = CharsDecodeTest.UNICODE_EXAMPLE.getBytes(UTF_8);
     byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
     byte[] bytesWithBom = new byte[bom.length + contentBytes.length];
     System.arraycopy(bom, 0, bytesWithBom, 0, bom.length);
