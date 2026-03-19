@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Test the {@link Juon} parser accessible via {@link Jurl#of(String)}.
+ * Test the {@link Jurl} parser accessible via {@link Jurl#of(String)}.
  *
  * @author Jan Bernitt
  */

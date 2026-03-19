@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.function.Consumer;
+
 import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.JsonFormatException.expected;
 
@@ -26,6 +28,52 @@ public interface Jurl {
     if (end < chars.length) throw expected("<end-of-input>", chars, end);
     return JsonMixed.of(json);
   }
+
+  /*
+  Builder
+   */
+
+  static String createObject(Consumer<JsonBuilder.JsonObjectBuilder> obj) {
+    return createObject(MINIMAL, obj);
+  }
+
+  static String createObject(Format format, Consumer<JsonBuilder.JsonObjectBuilder> obj) {
+    JurlBuilder res = new JurlBuilder(format);
+    res.addObject(obj);
+    return res.toString();
+  }
+
+  static String createArray(Consumer<JsonBuilder.JsonArrayBuilder> arr) {
+    return createArray(MINIMAL, arr);
+  }
+
+  static String createArray(Format format, Consumer<JsonBuilder.JsonArrayBuilder> arr) {
+    JurlBuilder res = new JurlBuilder(format);
+    res.addArray(arr);
+    return res.toString();
+  }
+
+  record Format(boolean booleanShorthands, Nulls nullsInArrays, Nulls nullsInObjects) {
+    enum Nulls {
+      PLAIN("null"),
+      SHORTHAND("n"),
+      EMPTY(""),
+      OMIT(null);
+      final String value;
+
+      Nulls(String value) {
+        this.value = value;
+      }
+    }
+  }
+
+  Format MINIMAL = new Format(true, Format.Nulls.EMPTY, Format.Nulls.OMIT);
+  Format PLAIN = new Format(false, Format.Nulls.PLAIN, Format.Nulls.PLAIN);
+
+
+  /*
+  Transcoder to JSON
+   */
 
   private static int toJsonAutoDetect(char[] jurl, int offset, TextBuilder json) {
     if (offset >= jurl.length) throw expected("<value>", jurl, offset);
@@ -318,7 +366,7 @@ public interface Jurl {
   /**
    * The characters allowed in a quoted string
    */
-  private static boolean isQuotedString(char c) {
+  static boolean isQuotedString(char c) {
     // test most common first
     if (isLetter(c) || isDigit(c) || c == ' ') return true;
     // Ranges of consecutive punctuation

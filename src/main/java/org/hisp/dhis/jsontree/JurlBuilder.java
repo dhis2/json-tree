@@ -9,18 +9,20 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * Builder for JUON
  *
  * @author Jan Bernitt
- * @since 1.3
+ * @since 1.9
  */
-final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
+final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
 
-  private final Juon.Format format;
-  private final StringBuilder out = new StringBuilder();
+  private final Jurl.Format format;
+  private final TextBuilder out = new TextBuilder();
   private final boolean[] hasChildrenAtLevel = new boolean[128];
+  private final Probe probe;
 
   private int level = 0;
 
-  JuonAppender(Juon.Format format) {
+  JurlBuilder(Jurl.Format format) {
     this.format = format;
+    this.probe = new Probe(format.nullsInObjects() != Jurl.Format.Nulls.OMIT);
   }
 
   @Override
@@ -28,8 +30,8 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
     return out.toString();
   }
 
-  static String toJuon(Juon.Format format, JsonNode value) {
-    JuonAppender bld = new JuonAppender(format);
+  static String toJurl(Jurl.Format format, JsonNode value) {
+    JurlBuilder bld = new JurlBuilder(format);
     bld.addElement(value);
     return bld.out.toString();
   }
@@ -50,8 +52,9 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonObjectBuilder addBoolean(CharSequence name, boolean value) {
-    String raw = String.valueOf(value);
-    return addRawMember(name, format.booleanShorthands() ? raw.substring(0, 1) : raw);
+    return format.booleanShorthands()
+      ? addRawMember(name, value ? "t":"f")
+      : addRawMember(name, value ? "true" : "false");
   }
 
   @Override
@@ -62,23 +65,31 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, int value) {
-    return addRawMember(name, Text.of(value));
+    addMember(name);
+    out.append(value);
+    return this;
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, long value) {
-    return addRawMember(name, String.valueOf(value));
+    addMember(name);
+    out.append(value);
+    return this;
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, double value) {
-    return addRawMember(name, String.valueOf(value), JsonBuilder.requiresString(value));
+    addMember(name);
+    appendDouble(value);
+    return this;
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, Number value) {
     if (value == null) return addRawMember(name, format.nullsInObjects().value);
-    return addRawMember(name, String.valueOf(value), JsonBuilder.requiresString(value));
+    if (value instanceof Integer) return addNumber(name, value.intValue());
+    if (value instanceof Long) return addNumber(name, value.longValue());
+    return addNumber(name, value.doubleValue());
   }
 
   @Override
@@ -116,26 +127,9 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
     return this;
   }
 
-  private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue, boolean quoted) {
-    if (rawValue == null) return this;
-    addMember(name);
-    if (quoted) append('\'');
-    append(rawValue);
-    if (quoted) append('\'');
-    return this;
-  }
-
   private JsonArrayBuilder addRawElement(CharSequence rawValue) {
     appendCommaWhenNeeded();
     if (rawValue != null && !rawValue.isEmpty()) append(rawValue);
-    return this;
-  }
-
-  private JsonArrayBuilder addRawElement(CharSequence rawValue, boolean quoted) {
-    appendCommaWhenNeeded();
-    if (quoted) append('\'');
-    if (rawValue != null && !rawValue.isEmpty()) append(rawValue);
-    if (quoted) append('\'');
     return this;
   }
 
@@ -155,8 +149,9 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonArrayBuilder addBoolean(boolean value) {
-    String raw = String.valueOf(value);
-    return addRawElement(format.booleanShorthands() ? raw.substring(0, 1) : raw);
+    return format.booleanShorthands()
+        ? addRawElement(value ? "t" : "f")
+        : addRawElement(value ? "true" : "false");
   }
 
   @Override
@@ -167,23 +162,41 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonArrayBuilder addNumber(int value) {
-    return addRawElement(Text.of(value));
+    appendCommaWhenNeeded();
+    out.append(value);
+    return this;
   }
 
   @Override
   public JsonArrayBuilder addNumber(long value) {
-    return addRawElement(String.valueOf(value));
+    appendCommaWhenNeeded();
+    out.append(value);
+    return this;
   }
 
   @Override
   public JsonArrayBuilder addNumber(double value) {
-    return addRawElement(String.valueOf(value), JsonBuilder.requiresString(value));
+    appendCommaWhenNeeded();
+    appendDouble(value);
+    return this;
+  }
+
+  private void appendDouble(double value) {
+    if (JsonBuilder.requiresString(value)) {
+      if (Double.isNaN(value)) out.append("\"NaN\"");
+      if (value == Double.POSITIVE_INFINITY) out.append("\"Infinity\"");
+      if (value == Double.NEGATIVE_INFINITY) out.append("\"-Infinity\"");
+    } else {
+      out.append(value);
+    }
   }
 
   @Override
   public JsonArrayBuilder addNumber(Number value) {
     if (value == null) return addRawElement(format.nullsInArrays().value);
-    return addRawElement(value.toString(), JsonBuilder.requiresString(value));
+    if (value instanceof Integer) return addNumber(value.intValue());
+    if (value instanceof Long) return addNumber(value.longValue());
+    return addNumber(value.doubleValue());
   }
 
   @Override
@@ -204,14 +217,15 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonArrayBuilder addObject(Consumer<JsonObjectBuilder> obj) {
-    int l0 = out.length();
+    probe.members = 0;
+    obj.accept(probe);
+    if (probe.members == 0) {
+      append("null"); // approximate the empty object with null
+      return this;
+    }
     beginLevel();
     obj.accept(this);
     endLevel();
-    if (out.length() == l0 + 2) {
-      out.setLength(l0); // undo object
-      append("null"); // approximate the empty object with null
-    }
     return this;
   }
 
@@ -243,23 +257,104 @@ final class JuonAppender implements JsonObjectBuilder, JsonArrayBuilder {
 
   void appendEscaped(@NotNull CharSequence str) {
     append('\'');
-    str.chars().forEachOrdered(this::appendEscaped);
+    for (int i = 0; i < str.length(); i++) {
+      appendEscaped(str.charAt(i));
+    }
     append('\'');
   }
 
-  private void appendEscaped(int c) {
-    switch (c) {
-      case '\b' -> append("\\b");
-      case '\f' -> append("\\f");
-      case '\n' -> append("\\n");
-      case '\r' -> append("\\r");
-      case '\t' -> append("\\t");
-      case '\'' -> append("\\'");
-      case '\\' -> append("\\\\");
-      case -31 -> append("\\u%04X".formatted(c));
-      case 0x2028 -> append("\\u2028");
-      case 0x2029 -> append("\\u2029");
-      default -> append((char) c);
+  private void appendEscaped(char c) {
+    if (Jurl.isQuotedString(c)) {
+      out.append(c);
+    } else {
+      switch (c) {
+        case '&' -> out.append("~a");
+        case '=' -> out.append("~e");
+        case '+' -> out.append("~p");
+        case '#' -> out.append("~h");
+        case '%' -> out.append("~c");
+        case '\'' -> out.append("~q");
+        case '"' -> out.append("~d");
+        case '~' -> out.append("~~");
+        case '\\' -> out.append("~b");
+        default -> {
+          out.append('~');
+          out.append(toHexDigit(c / 16));
+          out.append(toHexDigit(c % 16));
+        }
+      }
+    }
+  }
+
+  private static char toHexDigit(int value) {
+    if (value < 10) return (char) ('0'+value);
+    return (char) ('A'+(value-10));
+  }
+
+  private final class Probe implements JsonObjectBuilder {
+    private final boolean countNulls;
+    int members;
+
+    private Probe(boolean countNulls) {
+      this.countNulls = countNulls;
+    }
+
+
+    @Override
+    public JsonObjectBuilder addMember(CharSequence name, JsonNode value) {
+      return count(value.isNull() ? null : value);
+    }
+
+    @Override
+    public JsonObjectBuilder addBoolean(CharSequence name, boolean value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addBoolean(CharSequence name, Boolean value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addNumber(CharSequence name, int value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addNumber(CharSequence name, long value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addNumber(CharSequence name, double value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addNumber(CharSequence name, Number value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addString(CharSequence name, CharSequence value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addArray(CharSequence name, Consumer<JsonArrayBuilder> value) {
+      members++;
+      return this;
+    }
+
+    @Override
+    public JsonObjectBuilder addObject(CharSequence name, Consumer<JsonObjectBuilder> value) {
+      members++;
+      return this;
+    }
+
+    private JsonObjectBuilder count(Object value) {
+      if (value != null || countNulls) members++;
+      return this;
     }
   }
 }
