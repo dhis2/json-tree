@@ -21,7 +21,9 @@ import static java.lang.Character.lowSurrogate;
  * @author Jan Bernitt
  * @since 1.9
  */
-public final class TextBuilder implements Appendable, CharSequence {
+public final class TextBuilder implements Appender, CharSequence {
+
+  //TODO test this class
 
   private char[] buffer;
   private int length = 0;
@@ -123,6 +125,7 @@ public final class TextBuilder implements Appendable, CharSequence {
     return this;
   }
 
+  @Override
   public TextBuilder append(int value) {
     int len = characterCount(value);
     ensureCapacity(len);
@@ -132,6 +135,7 @@ public final class TextBuilder implements Appendable, CharSequence {
     return this;
   }
 
+  @Override
   public TextBuilder append(long value) {
     int len = characterCount(value);
     ensureCapacity(len);
@@ -141,6 +145,7 @@ public final class TextBuilder implements Appendable, CharSequence {
     return this;
   }
 
+  @Override
   public TextBuilder append(double value) {
     if (Double.isNaN(value)) return append("NaN");
     if (value == Double.POSITIVE_INFINITY) return append("Infinity");
@@ -150,14 +155,10 @@ public final class TextBuilder implements Appendable, CharSequence {
     return append(String.valueOf(value));
   }
 
+  @Override
   public TextBuilder appendCodePoint(int cp) {
     ensureCapacity(2);
-    if (isBmpCodePoint(cp)) {
-      buffer[length++] = (char) cp;
-    } else {
-      buffer[length++] = highSurrogate(cp);
-      buffer[length++] = lowSurrogate(cp);
-    }
+    Appender.super.appendCodePoint(cp);
     return this;
   }
 

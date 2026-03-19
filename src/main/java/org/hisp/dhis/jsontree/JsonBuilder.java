@@ -27,10 +27,15 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.StreamSupport.stream;
 
+import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -137,7 +142,7 @@ public interface JsonBuilder {
    */
   static JsonNode createString(CharSequence value) {
     if (value == null) return JsonNode.NULL;
-    StringBuilder json = new StringBuilder(value.length() + 2);
+    TextBuilder json = new TextBuilder(value.length() + 2);
     new JsonAppender(MINIMIZED, json).appendEscaped(value);
     return JsonNode.of(json);
   }
@@ -181,7 +186,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static JsonNode createObject(PrettyPrint config, Consumer<JsonObjectBuilder> obj) {
-    return new JsonAppender(config, new StringBuilder()).toObject(obj);
+    return new JsonAppender(config, new TextBuilder()).toObject(obj);
   }
 
   /**
@@ -200,7 +205,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static JsonNode createArray(PrettyPrint config, Consumer<JsonArrayBuilder> arr) {
-    return new JsonAppender(config, new StringBuilder()).toArray(arr);
+    return new JsonAppender(config, new TextBuilder()).toArray(arr);
   }
 
   /**
@@ -218,8 +223,10 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamObject(PrettyPrint config, OutputStream out, Consumer<JsonObjectBuilder> obj) {
-    try (PrintStream jsonStream = new PrintStream(out)) {
-      new JsonAppender(config, jsonStream).toObject(obj);
+    try (OutputStreamWriter jsonStream = new OutputStreamWriter(out, UTF_8)) {
+      new JsonAppender(config, Appender.of(jsonStream)).visitObject(obj);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
@@ -238,8 +245,10 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamArray(PrettyPrint config, OutputStream out, Consumer<JsonArrayBuilder> arr) {
-    try (PrintStream jsonStream = new PrintStream(out)) {
-      new JsonAppender(config, jsonStream).toArray(arr);
+    try (OutputStreamWriter jsonStream = new OutputStreamWriter(out, UTF_8)) {
+      new JsonAppender(config, Appender.of(jsonStream)).visitArray(arr);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

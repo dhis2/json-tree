@@ -57,7 +57,7 @@ class JurlBuilderTest {
   void testArray_Boolean() {
     Consumer<JsonArrayBuilder> builder =
         arr -> arr.addBoolean(true).addBoolean(false).addBoolean(null);
-    assertEquals("(t,f,)", Jurl.createArray(builder));
+    assertEquals("(t,f,n)", Jurl.createArray(builder));
     assertEquals("(true,false,null)", Jurl.createArray(Jurl.STANDARD, builder));
   }
 
@@ -112,7 +112,7 @@ class JurlBuilderTest {
 
   @Test
   void testObject_StringNull() {
-    assertEquals("null", Jurl.createObject(obj -> obj.addString("s", null)));
+    assertEquals("n", Jurl.createObject(obj -> obj.addString("s", null)));
   }
 
   @Test
@@ -296,7 +296,7 @@ class JurlBuilderTest {
   void testObject_JsonNodeNull() {
     Consumer<JsonObjectBuilder> builder = obj -> obj.addMember("node", JsonNode.NULL);
     assertEquals(
-        "null",
+        "n",
         Jurl.createObject(builder),
         "when the 'node' member is omitted the entire object is empty and approximated to null");
     assertEquals(
