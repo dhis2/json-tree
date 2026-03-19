@@ -245,10 +245,6 @@ public interface Jurl {
     return offset+1;
   }
 
-  private static boolean isWhitespace(char c) {
-    return c == ' ' || c == '\n' || c == '\t' || c == '\r';
-  }
-
   private static boolean isDigit(char c) {
     return c >= '0' && c <= '9';
   }
