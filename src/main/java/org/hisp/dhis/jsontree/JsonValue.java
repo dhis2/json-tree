@@ -429,21 +429,18 @@ public interface JsonValue extends Map.Entry<Text, JsonValue> {
   default boolean identicalTo(JsonValue other) {
     if (!equivalentTo(this, other, JsonValue::identicalTo)) return false;
     if (isNumber()) return node().getDeclaration().equals(other.node().getDeclaration());
-    // FIXME for identical I guess null != undefined => test here
     if (!isObject()) return true;
     // names must be in same order
     Iterator<Text> it1 = asObject().keys().iterator();
     Iterator<Text> it2 = other.asObject().keys().iterator();
-    // FIXME must also compare the keys itself => needs test
     while (it1.hasNext() && it2.hasNext()) if (!it1.next().equals(it2.next())) return false;
     return !it1.hasNext() && !it2.hasNext();
   }
 
   private static boolean equivalentTo(
-      JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> compare) {
+      JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> eqItems) {
     if (a.type() != b.type()) return false;
-    // FIXME undefined => true? why? I'd think b.isUndefined()
-    if (a.isUndefined()) return true; // includes null
+    if (a.isUndefined()) return true; // types are same, must be either both null or both undefined
     if (a.isString())
       return a.as(JsonString.class).text().contentEquals(b.as(JsonString.class).text());
     if (a.isBoolean())
@@ -454,12 +451,12 @@ public interface JsonValue extends Map.Entry<Text, JsonValue> {
       JsonArray ar = a.as(JsonArray.class);
       JsonArray br = b.as(JsonArray.class);
       return ar.size() == br.size()
-          && ar.indexes().allMatch(i -> compare.test(ar.get(i), br.get(i)));
+          && ar.indexes().allMatch(i -> eqItems.test(ar.get(i), br.get(i)));
     }
     JsonObject ao = a.asObject();
     JsonObject bo = b.asObject();
     return ao.size() == bo.size()
-        && ao.keys().allMatch(key -> compare.test(ao.get(key), bo.get(key)));
+        && ao.keys().allMatch(key -> eqItems.test(ao.get(key), bo.get(key)));
   }
 
   /**

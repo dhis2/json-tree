@@ -81,15 +81,6 @@ public final class JsonAccess implements JsonAccessors {
    */
   public static final JsonAccess GLOBAL = new JsonAccess().init();
 
-  private record RecordFactory(
-      MethodHandle constructor,
-      RecordComponent[] components,
-      MethodHandle factory1,
-      Type component1) {}
-
-  private static final Map<Class<? extends Record>, RecordFactory> RECORD_FACTORY_BY_TYPE =
-      new ConcurrentHashMap<>();
-
   private final Map<Class<?>, JsonAccessor<?>> byResultType = new ConcurrentHashMap<>();
 
   @Override
@@ -300,35 +291,50 @@ public final class JsonAccess implements JsonAccessors {
     return res;
   }
 
+  /**
+   * Information needed to create an instance of a {@link Record} type.
+   *
+   * @param constructor the handle for the canonical constructor
+   * @param components the components in that constructor to pass as args
+   * @param of a static method to construct a record from a single argument (typical {@code
+   *     of}-method)
+   * @param ofArgType the generic argument type of the {@link #of()}-method
+   */
+  private record NewRecord(
+      MethodHandle constructor, RecordComponent[] components, MethodHandle of, Type ofArgType) {}
+
+  private static final Map<Class<? extends Record>, NewRecord> NEW_RECORD_BY_TYPE =
+      new ConcurrentHashMap<>();
+
   public static Record accessAsRecord(JsonMixed obj, Type as, JsonAccessors accessors) {
     if (obj.isUndefined()) return null;
     Class<? extends Record> type = getRawType(as, Record.class);
 
-    RecordFactory factory =
-        RECORD_FACTORY_BY_TYPE.computeIfAbsent(
+    NewRecord newRecord =
+        NEW_RECORD_BY_TYPE.computeIfAbsent(
             type, t -> createRecordFactory(MethodHandles.lookup(), t));
     if (!obj.isObject() && !obj.isArray()) {
-      boolean wrapper = factory.components.length == 1;
-      MethodHandle c1 = wrapper ? factory.constructor : factory.factory1;
-      if (c1 == null)
+      boolean wrapper = newRecord.components.length == 1;
+      MethodHandle fromSingleArg = wrapper ? newRecord.constructor : newRecord.of;
+      if (fromSingleArg == null)
         throw new JsonAccessException(
             "JSON does not map to Java record %s, object or array expected"
                 .formatted(type.getSimpleName()));
-      Type type1 = wrapper ? factory.components[0].getGenericType() : factory.component1;
-      Object arg = accessors.accessor(getRawType(type1)).access(obj, type1, accessors);
+      Type argType = wrapper ? newRecord.components[0].getGenericType() : newRecord.ofArgType;
+      Object arg = accessors.accessor(getRawType(argType)).access(obj, argType, accessors);
       try {
-        return type.cast(c1.invokeWithArguments(arg));
+        return type.cast(fromSingleArg.invokeWithArguments(arg));
       } catch (Throwable ex) {
         throw new JsonAccessException(
             "JSON does not map to Java record %s, construction from single value failed", ex);
       }
     }
 
-    Object[] args = new Object[factory.components.length];
+    Object[] args = new Object[newRecord.components.length];
 
     if (obj.isObject()) {
       int i = 0;
-      for (RecordComponent c : factory.components) {
+      for (RecordComponent c : newRecord.components) {
         args[i++] =
             accessors
                 .accessor(c.getType())
@@ -336,14 +342,14 @@ public final class JsonAccess implements JsonAccessors {
       }
     } else if (obj.isArray()) {
       int i = 0;
-      for (RecordComponent c : factory.components)
+      for (RecordComponent c : newRecord.components)
         args[i] =
             accessors
                 .accessor(c.getType())
                 .access(obj.get(i++, JsonMixed.class), c.getGenericType(), accessors);
     }
     try {
-      return type.cast(factory.constructor.invokeWithArguments(args));
+      return type.cast(newRecord.constructor.invokeWithArguments(args));
     } catch (Throwable ex) {
       throw new JsonAccessException("JSON does not map to Java record %s, construction failed", ex);
     }
@@ -371,7 +377,7 @@ public final class JsonAccess implements JsonAccessors {
     return Enum.valueOf(type, str);
   }
 
-  private static RecordFactory createRecordFactory(
+  private static NewRecord createRecordFactory(
       MethodHandles.Lookup lookup, Class<? extends Record> type) {
     RecordComponent[] components = type.getRecordComponents();
     Class<?>[] types = Stream.of(components).map(RecordComponent::getType).toArray(Class<?>[]::new);
@@ -381,19 +387,19 @@ public final class JsonAccess implements JsonAccessors {
       throw new JsonAccessException(
           "JSON cannot be mapped to Java record %s, canonical constructor is not accessible"
               .formatted(type.getSimpleName()));
-    MethodHandle c1 = null;
-    Type c1Type = null;
+    MethodHandle ofMethod = null;
+    Type ofMethodArgType = null;
     if (components.length > 1) {
       for (Method m : type.getDeclaredMethods()) {
         if (m.getParameterCount() == 1
             && m.getReturnType() == type
             && Modifier.isStatic(m.getModifiers())) {
-          c1 = ofStatic(lookup, type, m.getName(), m.getParameterTypes()[0]);
-          if (c1 != null) c1Type = m.getGenericParameterTypes()[0];
+          ofMethod = ofStatic(lookup, type, m.getName(), m.getParameterTypes()[0]);
+          if (ofMethod != null) ofMethodArgType = m.getGenericParameterTypes()[0];
         }
       }
     }
-    return new RecordFactory(canonical, components, c1, c1Type);
+    return new NewRecord(canonical, components, ofMethod, ofMethodArgType);
   }
 
   private static MethodHandle constructor(
