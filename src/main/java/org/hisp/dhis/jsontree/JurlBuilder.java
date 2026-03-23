@@ -39,14 +39,15 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   @Override
   public JsonObjectBuilder addMember(CharSequence name, JsonNode value) {
     JsonNodeType type = value.getType();
-    if (type == JsonNodeType.NULL) return addRawMember(name, format.nullsInObjects().value);
     return switch (type) {
       case OBJECT -> addObject(name, obj -> value.members().forEach(obj::addMember));
       case ARRAY -> addArray(name, arr -> value.elements().forEach(arr::addElement));
       case STRING -> addString(name, value.value().toString());
-      case NUMBER -> addNumber(name, (Number) value.value()); //TODO append raw JSON text
-      case BOOLEAN -> addBoolean(name, (Boolean) value.value());
-      case NULL -> addBoolean(name, null);
+      case NUMBER -> addRawMember(name, value.getDeclaration());
+      case NULL -> addRawMember(name, format.nullsInObjects().value);
+      case BOOLEAN -> format.booleanShorthands()
+          ? addBoolean(name, value.booleanValue())
+          : addRawMember(name, value.getDeclaration());
     };
   }
 
@@ -137,14 +138,16 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   @Override
   public JsonArrayBuilder addElement(JsonNode value) {
     JsonNodeType type = value.getType();
-    if (type == JsonNodeType.NULL) return addRawElement(format.nullsInArrays().value);
     return switch (type) {
       case OBJECT -> addObject(obj -> value.members().forEach(obj::addMember));
       case ARRAY -> addArray(arr -> value.elements().forEach(arr::addElement));
       case STRING -> addString(value.value().toString());
-      case NUMBER -> addNumber((Number) value.value());
-      case BOOLEAN -> addBoolean((Boolean) value.value());
-      case NULL -> addBoolean(null);
+      case NUMBER -> addRawElement(value.getDeclaration());
+      case NULL -> addRawElement(format.nullsInArrays().value);
+      case BOOLEAN ->
+          format.booleanShorthands()
+              ? addBoolean(value.booleanValue())
+              : addRawElement(value.getDeclaration());
     };
   }
 

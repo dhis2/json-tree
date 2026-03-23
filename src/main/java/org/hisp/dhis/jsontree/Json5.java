@@ -22,7 +22,7 @@ import static org.hisp.dhis.jsontree.JsonTree.skipWhitespace;
  *   <li>No numbers with trailing decimal point
  *   <li>No number literals NaN, Infinity and -Infinity (unless they are enclosed in space)
  *   <li>No whitespace other than what is permitted by JSON
- *   <li>Double quotes in strings become single quotes
+ *   <li>Double quotes in single quoted strings become single quotes in double quoted string in JSON
  * </ul>
  *
  * @author Jan Bernitt
@@ -41,11 +41,17 @@ public interface Json5 {
 
   static JsonMixed of(String json5, JsonNode.Index auto) {
     char[] chars = json5.toCharArray();
-    toJsonAutodetect(chars, skipWhitespace(chars, 0));
+    int end = toJsonAutodetect(chars, toJsonBlankComments(chars, 0));
+    toJsonBlankComments(chars, end);
     return JsonMixed.of(JsonTree.of(chars, null, auto));
   }
 
   private static int toJsonAutodetect(char[] json5, int offset) {
+    return toJsonBlankComments(json5, toJsonAutodetectExact(json5, offset));
+  }
+
+  private static int toJsonAutodetectExact(char[] json5, int offset) {
+    if (offset >= json5.length) throw expected("<json-node>", json5, offset);
     // validity of true/false/null will be validated by JSON parser later
     return switch (json5[offset]) {
       case '{' -> toJsonObject(json5, offset);
@@ -54,7 +60,7 @@ public interface Json5 {
       case '"' -> JsonTree.skipString(json5, offset);
       case 't', 'n' -> offset + 4;
       case 'f' -> offset + 5;
-      case '/' -> skipComment(json5, offset);
+      case '/' -> toJsonAutodetect(json5, toJsonBlankComment(json5, offset));
       default -> toJsonNumber(json5, offset);
     };
   }
@@ -131,7 +137,15 @@ public interface Json5 {
     return i + 1;
   }
 
-  private static int skipComment(char[] json5, int offset) {
+  private static int toJsonBlankComments(char[] json5, int offset) {
+    offset = skipWhitespace(json5, offset);
+    while (offset < json5.length && json5[offset] == '/') {
+      offset = skipWhitespace(json5, toJsonBlankComment(json5, offset));
+    }
+    return offset;
+  }
+
+  private static int toJsonBlankComment(char[] json5, int offset) {
     int i = offset;
     i = expectChar(json5, i, '/');
     if (i >= json5.length || (json5[i] != '/' && json5[i] != '*'))
@@ -141,10 +155,12 @@ public interface Json5 {
       while (i < json5.length && json5[i] != '\n') json5[i++] = ' ';
       return i;
     }
-    while (i < json5.length - 1 && json5[i] != '*' && json5[i + 1] == '/') json5[i++] = ' ';
-    if (i < json5.length - 1) {
-      json5[i] = ' '; // blank /*
-      json5[i + 1] = ' ';
+    while (i < json5.length - 1) {
+      if (json5[i] == '*' && json5[i + 1] == '/') {
+        json5[i] = ' ';
+        json5[i + 1] = ' ';
+        return i+2;
+      } else json5[i++] = ' ';
     }
     return i;
   }
