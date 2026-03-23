@@ -90,9 +90,9 @@ class JsonNodeTest {
   @Test
   void testGet_Object() {
     JsonNode root = JsonNode.of("{\"a\":{\"b\":{\"c\":42}}}");
-    assertEquals(42, root.get("a.b.c").value());
+    assertEquals(42, root.get("a.b.c").intValue());
     JsonNode b = root.get("a.b");
-    assertEquals(42, b.get("c").value());
+    assertEquals(42, b.get("c").intValue());
   }
 
   @Test
@@ -120,11 +120,11 @@ class JsonNodeTest {
   @Test
   void testGet_Array() {
     JsonNode root = JsonNode.of("[[1,2],[3,4],{\"a\":5}]");
-    assertEquals(1, root.get("[0][0]").value());
+    assertEquals(1, root.get("[0][0]").intValue());
     JsonNode arr1 = root.get("[1]");
-    assertEquals(4, arr1.get("[1]").value());
-    assertEquals(5, root.get("[2].a").value());
-    assertEquals(5, root.get("[2]").get("a").value());
+    assertEquals(4, arr1.get("[1]").intValue());
+    assertEquals(5, root.get("[2].a").intValue());
+    assertEquals(5, root.get("[2]").get("a").intValue());
   }
 
   @Test

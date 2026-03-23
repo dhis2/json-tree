@@ -6,7 +6,7 @@ import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
- * Builder for JUON
+ * Builder for JURL formatted strings.
  *
  * @author Jan Bernitt
  * @since 1.9
@@ -44,7 +44,7 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
       case OBJECT -> addObject(name, obj -> value.members().forEach(obj::addMember));
       case ARRAY -> addArray(name, arr -> value.elements().forEach(arr::addElement));
       case STRING -> addString(name, value.value().toString());
-      case NUMBER -> addNumber(name, (Number) value.value());
+      case NUMBER -> addNumber(name, (Number) value.value()); //TODO append raw JSON text
       case BOOLEAN -> addBoolean(name, (Boolean) value.value());
       case NULL -> addBoolean(name, null);
     };
@@ -89,7 +89,8 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
     if (value == null) return addRawMember(name, format.nullsInObjects().value);
     if (value instanceof Integer) return addNumber(name, value.intValue());
     if (value instanceof Long) return addNumber(name, value.longValue());
-    return addNumber(name, value.doubleValue());
+    if (value instanceof Double || value instanceof Float) addNumber(name, value.doubleValue());
+    return addRawMember(name, value.toString());
   }
 
   @Override
@@ -196,7 +197,8 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
     if (value == null) return addRawElement(format.nullsInArrays().value);
     if (value instanceof Integer) return addNumber(value.intValue());
     if (value instanceof Long) return addNumber(value.longValue());
-    return addNumber(value.doubleValue());
+    if (value instanceof Double || value instanceof Float) addNumber(value.doubleValue());
+    return addRawElement(value.toString());
   }
 
   @Override

@@ -42,21 +42,6 @@ class JsonArrayTest {
   }
 
   @Test
-  void testNumberValues_NoArray() {
-    JsonMixed value = JsonMixed.of("1");
-    assertThrowsExactly(JsonTreeException.class, value::numberValues);
-  }
-
-  @Test
-  void testNumberValues_NotOnlyNumbers() {
-    JsonMixed value = JsonMixed.of("[1, true, \"a\"]");
-    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, value::numberValues);
-    assertEquals(
-        "BOOLEAN node at path .1 is not a NUMBER and does not support #numberValue(): true",
-        ex.getMessage());
-  }
-
-  @Test
   void testBooleanValues_NoArray() {
     JsonMixed value = JsonMixed.of("1");
     assertThrowsExactly(JsonTreeException.class, value::booleanValues);
@@ -81,7 +66,7 @@ class JsonArrayTest {
   void testForEach_NonEmpty() {
     JsonMixed array = JsonMixed.of("[1,2]");
     List<Object> actual = new ArrayList<>();
-    array.forEach(e -> actual.add(e.node().value()));
+    array.forEach(e -> actual.add(e.node().intValue()));
     assertEquals(List.of(1, 2), actual);
   }
 

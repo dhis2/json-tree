@@ -165,7 +165,7 @@ class JsonDiffTest {
   private interface JsonTypeDefaultsObject extends JsonObject {
 
     default Set<Number> numbers() {
-      return Set.copyOf(getArray("numbers").numberValues());
+      return Set.copyOf(getArray("numbers").intValues().boxed().toList());
     }
 
     default Map<String, Number> ages() {

@@ -124,8 +124,8 @@ class JsonApiPerfTest {
     JsonNode e6 = elements.next();
     assertFalse(elements.hasNext());
     assertThrows(NoSuchElementException.class, elements::next);
-    assertEquals(1, e0.value());
-    assertEquals(2, e1.value());
+    assertEquals(1, e0.intValue());
+    assertEquals(2, e1.intValue());
     assertEquals(true, e2.value());
     assertEquals(false, e3.value());
     assertEquals("hello", e4.value().toString());
@@ -152,9 +152,9 @@ class JsonApiPerfTest {
     assertFalse(members.hasNext());
     assertThrows(NoSuchElementException.class, members::next);
     assertEquals("a", m1.getKey().toString());
-    assertEquals(1, m1.value());
+    assertEquals(1, m1.intValue());
     assertEquals("b", m2.getKey().toString());
-    assertEquals(2, m2.value());
+    assertEquals(2, m2.intValue());
     assertEquals("c", m3.getKey().toString());
     assertEquals(true, m3.value());
     assertEquals("d", m4.getKey().toString());

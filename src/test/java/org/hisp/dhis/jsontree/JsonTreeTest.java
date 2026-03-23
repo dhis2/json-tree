@@ -86,7 +86,7 @@ class JsonTreeTest {
     assertEquals("Star \uD83D\uDE80 ship", node0.value().toString());
     JsonNode node1 = JsonNode.of("[\"Star \\uD83D\\uDE80 ship\", 12]").get("[1]");
     assertEquals(JsonNodeType.NUMBER, node1.getType());
-    assertEquals(12, node1.value());
+    assertEquals(12, node1.intValue());
   }
 
   @Test
@@ -132,7 +132,7 @@ class JsonTreeTest {
   void testNumberNode_Integer() {
     JsonNode node = JsonNode.of("123");
     assertEquals(JsonNodeType.NUMBER, node.getType());
-    assertEquals(123, node.value());
+    assertEquals(123, node.intValue());
     assertSame(node, node.getParent());
     assertSame(node, node.getRoot());
   }
@@ -168,7 +168,7 @@ class JsonTreeTest {
   void testNumberNode_Long() {
     JsonNode node = JsonNode.of("2147483648");
     assertEquals(JsonNodeType.NUMBER, node.getType());
-    assertEquals(2147483648L, node.value());
+    assertEquals(2147483648L, node.longValue());
   }
 
   @Test
@@ -251,8 +251,8 @@ class JsonTreeTest {
   void testArray_IndexAccessElements() {
     JsonNode root = JsonNode.of("[ 1,2 , true , false, \"hello\",{},[]]");
 
-    assertEquals(1, root.element(0).value());
-    assertEquals(2, root.element(1).value());
+    assertEquals(1, root.element(0).intValue());
+    assertEquals(2, root.element(1).intValue());
     assertEquals(true, root.element(2).value());
     assertEquals(false, root.element(3).value());
     assertEquals("hello", root.element(4).value().toString());
@@ -269,8 +269,8 @@ class JsonTreeTest {
     assertEquals("hello", root.element(4).value().toString());
     assertEquals(false, root.element(3).value());
     assertEquals(true, root.element(2).value());
-    assertEquals(2, root.element(1).value());
-    assertEquals(1, root.element(0).value());
+    assertEquals(2, root.element(1).intValue());
+    assertEquals(1, root.element(0).intValue());
   }
 
   @Test
@@ -280,10 +280,10 @@ class JsonTreeTest {
     assertEquals("hello", root.element(4).value().toString());
     assertEquals("[]", root.element(6).getDeclaration().toString());
     assertEquals("{}", root.element(5).getDeclaration().toString());
-    assertEquals(2, root.element(1).value());
+    assertEquals(2, root.element(1).intValue());
     assertEquals(false, root.element(3).value());
     assertEquals(true, root.element(2).value());
-    assertEquals(1, root.element(0).value());
+    assertEquals(1, root.element(0).intValue());
   }
 
   @Test
@@ -323,7 +323,7 @@ class JsonTreeTest {
 
     JsonNode ab0 = doc.get("$.a.b[0]");
     assertEquals(JsonNodeType.NUMBER, ab0.getType());
-    assertEquals(12, ab0.value());
+    assertEquals(12, ab0.intValue());
     assertSame(ab, ab0.getParent());
     assertSame(root, ab0.getRoot());
 
@@ -353,11 +353,11 @@ class JsonTreeTest {
 
     JsonNode ab0 = doc.get("$.a.b[0]");
     assertEquals(JsonNodeType.NUMBER, ab0.getType());
-    assertEquals(12, ab0.value());
+    assertEquals(12, ab0.intValue());
 
     JsonNode ab1 = doc.get("$.a.b[1]");
     assertEquals(JsonNodeType.BOOLEAN, ab1.getType());
-    assertEquals(false, ab1.value());
+    assertEquals(false, ab1.booleanValue());
   }
 
   @Test
@@ -384,8 +384,8 @@ class JsonTreeTest {
   void testObject_Member() {
     JsonNode doc = JsonNode.of("{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}");
 
-    assertEquals(1, doc.member(Text.of("a")).value());
-    assertEquals(2, doc.member(Text.of("b")).value());
+    assertEquals(1, doc.member(Text.of("a")).intValue());
+    assertEquals(2, doc.member(Text.of("b")).intValue());
     assertEquals(false, doc.member(Text.of("d")).value());
     assertEquals(true, doc.member(Text.of("c")).value());
   }

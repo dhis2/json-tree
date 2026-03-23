@@ -78,6 +78,10 @@ public interface JsonNumber extends JsonPrimitive {
   @TerminalOp(canBeUndefined = true)
   default <T extends Number> T number(@NotNull T orDefault) {
     if (isUndefined()) return orDefault;
+    if (orDefault instanceof Integer) return (T) Integer.valueOf(intValue());
+    if (orDefault instanceof Long) return (T) Long.valueOf(longValue());
+    if (orDefault instanceof Float) return (T) Float.valueOf(floatValue());
+    if (orDefault instanceof Double) return (T) Double.valueOf(doubleValue());
     return (T) orDefault.getClass().cast(number());
   }
 

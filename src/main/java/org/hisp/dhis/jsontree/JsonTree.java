@@ -36,7 +36,6 @@ import static org.hisp.dhis.jsontree.Chars.expectFalse;
 import static org.hisp.dhis.jsontree.Chars.expectNull;
 import static org.hisp.dhis.jsontree.Chars.expectTrue;
 import static org.hisp.dhis.jsontree.JsonFormatException.expected;
-import static org.hisp.dhis.jsontree.Numbers.parseNumber;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -736,33 +735,27 @@ record JsonTree(
 
     @Override
     public Number numberValue() {
-      return parseNumber(tree.json, start, endIndex() - start);
+      return TextualNumber.of(tree.json, start, endIndex() - start);
     }
 
     @Override
-    public Text textValue() {
+    public @NotNull Text textValue() {
       return getDeclaration();
     }
 
     @Override
     public int intValue() {
-      int length = endIndex() - start;
-      return Numbers.isSignedInteger(tree.json, start, length)
-          ? Numbers.parseInt(tree.json, start, length)
-          : (int) Numbers.parseDouble(tree.json, start, length);
+      return TextualNumber.parseIntCast(tree.json, start, endIndex() - start);
     }
 
     @Override
     public long longValue() {
-      int length = endIndex() - start;
-      return Numbers.isSignedInteger(tree.json, start, length)
-          ? Numbers.parseLong(tree.json, start, length)
-          : (long) Numbers.parseDouble(tree.json, start, length);
+      return TextualNumber.parseLongCast(tree.json, start, endIndex() - start);
     }
 
     @Override
     public double doubleValue() {
-      return Numbers.parseDouble(tree.json, start, endIndex() - start);
+      return TextualNumber.parseDoubleCast(tree.json, start, endIndex() - start);
     }
   }
 
@@ -778,7 +771,7 @@ record JsonTree(
     }
 
     @Override
-    public Text textValue() {
+    public @NotNull Text textValue() {
       return Chars.unescapeJsonString(tree.json, start);
     }
 
@@ -825,7 +818,7 @@ record JsonTree(
     }
 
     @Override
-    public Text textValue() {
+    public @NotNull Text textValue() {
       return getDeclaration();
     }
   }
@@ -839,6 +832,11 @@ record JsonTree(
     @Override
     public @NotNull JsonNodeType getType() {
       return JsonNodeType.NULL;
+    }
+
+    @Override
+    public @NotNull Text textValue() {
+      return getDeclaration();
     }
 
     @Override

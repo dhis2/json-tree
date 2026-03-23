@@ -77,7 +77,7 @@ class JsonVirtualTreeTest {
   void testNumber() {
     JsonObject obj = Json5.of("{'number': 13, 'fraction': 4.2}");
 
-    assertEquals(13, obj.getNumber("number").number());
+    assertEquals(13, obj.getNumber("number").number().intValue());
     assertEquals(4.2f, obj.getNumber("fraction").number().floatValue(), 0.001f);
     assertTrue(obj.getNumber("number").exists());
     assertNull(obj.getNumber("missing").number());
@@ -152,13 +152,6 @@ class JsonVirtualTreeTest {
     JsonObject obj = Json5.of("{'letters': ['a','b','c']}");
 
     assertEquals(asList("a", "b", "c"), obj.getArray("letters").stringValues());
-  }
-
-  @Test
-  void testNumberValues() {
-    JsonObject obj = Json5.of("{'digits': [1,2,3]}");
-
-    assertEquals(asList(1, 2, 3), obj.getArray("digits").numberValues());
   }
 
   @Test
@@ -251,7 +244,7 @@ class JsonVirtualTreeTest {
     JsonObject obj = Json5.of("{'x':{'a':[1], 'b':2, 'c':3}}");
     assertEquals(1, obj.getNumber("x{a}[0]").intValue());
     assertEquals(1, obj.getObject("x").getArray("{a}").getNumber(0).intValue());
-    assertEquals(1, obj.getObject("x").node().get("{a}").get("[0]").value());
+    assertEquals(1, obj.getObject("x").node().get("{a}").get("[0]").intValue());
   }
 
   @Test

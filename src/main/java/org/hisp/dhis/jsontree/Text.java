@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
@@ -209,14 +210,22 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return true, if the text is a (potentially signed) integer value (of any range)
+   * @return true, if this text is a valid (potentially signed) integer value (of any range)
    */
   default boolean isSignedInteger() {
     if (isEmpty()) return false;
     int i = 0;
     if (charAt(0) == '-' || charAt(0) == '+') i++;
-    for (; i < length(); i++) if (charAt(i) < '0' || charAt(i) > '9') return false;
+    int len = length();
+    for (; i < len; i++) if (charAt(i) < '0' || charAt(i) > '9') return false;
     return true;
+  }
+
+  /**
+   * @return true, if this text is a valid (potentially signed) decimal value (of any range)
+   */
+  default boolean isSignedDecimal() {
+    return TextualNumber.isSignedDecimal(toCharArray());
   }
 
   /**
@@ -233,25 +242,25 @@ public interface Text extends CharSequence, Comparable<Text> {
    * @see Integer#parseInt(String)
    */
   default int parseInt() {
-    return Numbers.parseInt(toCharArray());
+    return TextualNumber.parseIntExact(toCharArray(), 0, length());
   }
 
   /**
    * @see Long#parseLong(String)
    */
   default long parseLong() {
-    return Numbers.parseLong(toCharArray());
+    return TextualNumber.parseLongExact(toCharArray(), 0, length());
   }
 
   /**
    * @see Double#parseDouble(String)
    */
   default double parseDouble() {
-    return Numbers.parseDouble(toCharArray());
+    return TextualNumber.parseDoubleCast(toCharArray());
   }
 
   default Number parseNumber() {
-    return Numbers.parseNumber(toCharArray());
+    return TextualNumber.of(toCharArray());
   }
 
   /**
@@ -364,32 +373,37 @@ public interface Text extends CharSequence, Comparable<Text> {
 
       @Override
       public boolean isSignedInteger() {
-        return buffer == Cache._100_TO_999 || Numbers.isSignedInteger(buffer, offset, length);
+        return buffer == Cache._100_TO_999 || TextualNumber.isSignedInteger(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isSignedDecimal() {
+        return buffer == Cache._100_TO_999 || TextualNumber.isSignedDecimal(buffer, offset, length);
       }
 
       @Override
       public boolean parseBoolean() {
-        return Chars.parseBoolean(Slice.this.buffer, offset, length);
+        return Chars.parseBoolean(buffer, offset, length);
       }
 
       @Override
       public int parseInt() {
-        return Numbers.parseInt(buffer, offset, length);
+        return TextualNumber.parseIntExact(buffer, offset, length);
       }
 
       @Override
       public long parseLong() {
-        return Numbers.parseLong(buffer, offset, length);
+        return TextualNumber.parseLongExact(buffer, offset, length);
       }
 
       @Override
       public double parseDouble() {
-        return Numbers.parseDouble(buffer, offset, length);
+        return TextualNumber.parseDoubleCast(buffer, offset, length);
       }
 
       @Override
       public Number parseNumber() {
-        return Numbers.parseNumber(buffer, offset, length);
+        return TextualNumber.of(buffer, offset, length);
       }
 
       @Override

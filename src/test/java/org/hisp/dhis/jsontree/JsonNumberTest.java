@@ -112,12 +112,12 @@ class JsonNumberTest {
 
   @Test
   void testNumber_WithDefaultNoFractionNumber() {
-    assertEquals(42, JsonMixed.of("42").number(55));
+    assertEquals(42, JsonMixed.of("42").number(55).intValue());
   }
 
   @Test
   void testNumber_WithDefaultFractionNumber() {
-    assertEquals(42.5d, JsonMixed.of("42.5").number(55d));
+    assertEquals(42.5d, JsonMixed.of("42.5").number(55d).doubleValue());
   }
 
   @Test

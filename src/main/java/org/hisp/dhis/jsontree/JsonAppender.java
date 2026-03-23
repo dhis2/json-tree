@@ -180,6 +180,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     return switch (type) {
       case OBJECT -> addObject(name, obj -> value.members().forEach(obj::addMember));
       case ARRAY -> addArray(name, arr -> value.elements().forEach(arr::addElement));
+      //TODO append raw from source (for primitives this is the same)
+      //TODO also find other methods accepting JsonNode
       case NUMBER -> addNumber(name, (Number) value.value());
       case STRING -> addString(name, (Text) value.value());
       case BOOLEAN -> addBoolean(name, (Boolean) value.value());
@@ -210,16 +212,17 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, double value) {
-    // TODO avoid String if possible
+    // TODO avoid String if possible by using Appender API (here and other numeric adds)
     return addRawMember(name, String.valueOf(value), JsonBuilder.requiresString(value));
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, Number value) {
-    if (value == null && config.excludeNullMembers()) return this;
-    return value == null
-        ? addRawMember(name, "null")
-        : addRawMember(name, value.toString(), JsonBuilder.requiresString(value));
+    if (value == null) return config.excludeNullMembers() ? this : addRawMember(name, "null");
+    if (value instanceof Integer) return addNumber(name, value.intValue());
+    if (value instanceof Long) return addNumber(name, value.longValue());
+    if (value instanceof Double || value instanceof Float) addNumber(name, value.doubleValue());
+    return addRawMember(name, value.toString());
   }
 
   @Override
@@ -317,9 +320,11 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   @Override
   public JsonArrayBuilder addNumber(Number value) {
-    return value == null
-        ? addRawElement("null")
-        : addRawElement(value.toString(), JsonBuilder.requiresString(value));
+    if (value == null) return addRawElement("null");
+    if (value instanceof Integer) return addNumber(value.intValue());
+    if (value instanceof Long) return addNumber(value.longValue());
+    if (value instanceof Double || value instanceof Float) addNumber(value.doubleValue());
+    return addRawElement(value.toString());
   }
 
   @Override

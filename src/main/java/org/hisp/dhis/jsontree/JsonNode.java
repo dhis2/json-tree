@@ -79,7 +79,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  *
  * @author Jan Bernitt
  */
-public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
+public interface JsonNode extends Serializable, Textual, Map.Entry<Text, JsonNode> {
 
   /**
    * The low level API does offer different behaviour when it comes to
@@ -459,7 +459,12 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
     };
   }
 
-  default Text textValue() {
+  /**
+   * @since 1.9
+   * @return the textual representation of the node, available for primitive nodes
+   */
+  @Override
+  default @NotNull Text textValue() {
     throw notA(STRING, this, "textValue()");
   }
 
@@ -475,8 +480,11 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   }
 
   /**
+   * Comparable to {@link Number#intValue()}
+   *
    * @return this number (or string) node's value as an int (cast from double if needed)
    * @throws JsonTreeException if this node is not a number (or string) node
+   * @throws ArithmeticException if this node is a numeric string node its value is out of int range
    * @throws NumberFormatException if this node is a string node but the number could not be parsed
    *     successfully
    * @since 1.9
@@ -486,8 +494,11 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   }
 
   /**
+   * Comparable to {@link Number#longValue()}
+   *
    * @return this number (or string) node's value as a long (cast from double if needed)
    * @throws JsonTreeException if this node is not a number (or string) node
+   * @throws ArithmeticException if this node is a numeric string node its value is out of long range
    * @throws NumberFormatException if this node is a string node but the number could not be parsed
    *     successfully
    * @since 1.9
@@ -497,6 +508,8 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   }
 
   /**
+   * Comparable to {@link Number#doubleValue()}
+   *
    * @return this number (or string) node's value as a double
    * @throws JsonTreeException if this node is not a number (or string) node
    * @throws NumberFormatException if this node is a string node but the number could not be parsed
@@ -508,7 +521,14 @@ public interface JsonNode extends Serializable, Map.Entry<Text, JsonNode> {
   }
 
   /**
-   * @return {@link Integer}, {@link Long} or {@link Double} (smallest/simplest possible)
+   * @apiNote If the actual numeric exact value is within int range, an {@link Integer} is returned.
+   * If it is within long range, a {@link Long} is returned. Otherwise, the type of {@link Number}
+   * is unspecified. In any case it is recommended to use the {@link Number} API methods, not
+   * unbox (cast) the result to any specific subtype.
+   *
+   * @throws NumberFormatException if this node is a string node but the value is not a valid number
+   * @return This node value as a number (JSON number or string node)
+   * @since 1.9
    */
   default Number numberValue() {
     throw notA(NUMBER, this, "numberValue()");

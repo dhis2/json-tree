@@ -104,17 +104,6 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
   }
 
   /**
-   * @return the array elements as a uniform list of {@link Number}
-   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
-   */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default List<Number> numberValues() {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.elements(JsonNode.Index.SKIP).stream().map(JsonNode::numberValue).toList();
-  }
-
-  /**
    * @return the array elements as a uniform list of {@link Boolean}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */

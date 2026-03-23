@@ -11,13 +11,13 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * While does only test {@link Numbers#parseDouble(char[], int, int)} directly the function uses
- * {@link Numbers#parseInt(char[], int, int)} and {@link Numbers#parseLong(char[], int, int)} internally
+ * While does only test {@link TextualNumber#parseDoubleCast(char[], int, int)} directly the function uses
+ * {@link TextualNumber#parseIntExact(char[], int, int)} and {@link TextualNumber#parseLongExact(char[], int, int)} internally
  * to parse exponents and doubles without decimals. That way these do have coverage.
  *
  * @author Jan Bernitt (with AI suggestions for edge cases)
  */
-class NumbersTest {
+class TextualNumberTest {
 
   private static final int NUM_RANDOM_TESTS = 10_000;
   private final Random rng = new Random(123456789L);
@@ -169,13 +169,18 @@ class NumbersTest {
     assertIntEquals("02147483647"); // max with leading zero
     assertIntEquals("-02147483648"); // min with leading zero
     assertIntEquals("0000000000000000000000000000000000000000000000000000000000");
+  }
+
+  @Test
+  void testParseInt_EdgeCasesThrows() {
     assertIntThrows("02147483647.0"); // max with leading zero + 0 fraction
     assertIntThrows("-02147483648.0"); // min with leading zero + 0 fraction
     assertIntThrows("483647.0"); // 0 fraction
     assertIntThrows("-7483648.0"); // 0 fraction
-    assertIntThrows("2147483648"); // max + 1
-    assertIntThrows("-2147483649"); // min - 1
-    assertIntThrows("4294967296"); // overflows to positive number
+    // in contrast to Number API (parseInt) an overflow always throws ArithmeticException
+    assertIntThrows("2147483648", ArithmeticException.class); // max + 1
+    assertIntThrows("-2147483649", ArithmeticException.class); // min - 1
+    assertIntThrows("4294967296", ArithmeticException.class); // overflows to positive number
   }
 
   @Test
@@ -186,14 +191,19 @@ class NumbersTest {
     assertLongEquals("09223372036854775807"); // max with leading zero
     assertLongEquals("-09223372036854775807"); // min with leading zero
     assertLongEquals("0000000000000000000000000000000000000000000000000000000000");
+  }
+
+  @Test
+  void testParseLong_EdgeCasesThrows() {
     assertLongThrows("09223372036854775807.0"); // max with leading zero + 0 fraction
     assertLongThrows("-09223372036854775807.0"); // min with leading zero + 0 fraction
     assertLongThrows("3372036854775807.0"); // 0 fraction
     assertLongThrows("-36854775807.0"); // 0 fraction
-    assertLongThrows("9223372036854775808"); // max + 1
-    assertLongThrows("-9223372036854775809"); // min - 1
-    assertLongThrows("9300072036854775808"); // a too large number pre-identified
-    assertLongThrows("9223372036854775808"); // a too large number not pre-identified
+    // in contrast to Number API (parseLong) an overflow always throws ArithmeticException
+    assertLongThrows("9223372036854775808", ArithmeticException.class); // max + 1
+    assertLongThrows("-9223372036854775809", ArithmeticException.class); // min - 1
+    assertLongThrows("9300072036854775808", ArithmeticException.class); // a too large number pre-identified
+    assertLongThrows("9223372036854775808", ArithmeticException.class); // a too large number not pre-identified
   }
 
   private static void assertDoubleThrows(String number) {
@@ -203,7 +213,7 @@ class NumbersTest {
         () -> "Number is valid for Double.parseDouble: `" + number + "`");
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> Numbers.parseDouble(number.toCharArray()),
+        () -> TextualNumber.parseDoubleCast(number.toCharArray()),
         "Should throw for: " + number);
   }
 
@@ -217,7 +227,7 @@ class NumbersTest {
   private static void assertDoubleEqualsExact(String number) {
     double expected = Double.parseDouble(number);
     try {
-      double actual = Numbers.parseDouble(number.toCharArray(), 0, number.length());
+      double actual = TextualNumber.parseDoubleCast(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
@@ -227,7 +237,7 @@ class NumbersTest {
   private static void assertLongEquals(String number) {
     long expected = Long.parseLong(number);
     try {
-      long actual = Numbers.parseLong(number.toCharArray(), 0, number.length());
+      long actual = TextualNumber.parseLongExact(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Long.parseLong was rejected: " + number.replace(' ', '_'), ex);
@@ -235,34 +245,41 @@ class NumbersTest {
   }
 
   private static void assertLongThrows(String number) {
+    assertLongThrows(number, NumberFormatException.class);
+  }
+
+  private static void assertLongThrows(String number, Class<? extends RuntimeException> expected) {
     assertThrowsExactly(
         NumberFormatException.class,
         () -> Long.parseLong(number),
         () -> "Number is valid for Long.parseLong: `" + number + "`");
     assertThrowsExactly(
-        NumberFormatException.class,
-        () -> Numbers.parseLong(number.toCharArray()),
+        expected,
+        () -> TextualNumber.parseLongExact(number.toCharArray()),
         "Should throw for: " + number);
   }
 
   private static void assertIntEquals(String number) {
     int expected = Integer.parseInt(number);
     try {
-      int actual = Numbers.parseInt(number.toCharArray(), 0, number.length());
+      int actual = TextualNumber.parseIntExact(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Integer.parseInt was rejected: " + number.replace(' ', '_'), ex);
     }
   }
-
   private static void assertIntThrows(String number) {
+    assertIntThrows(number, NumberFormatException.class);
+  }
+
+  private static void assertIntThrows(String number, Class<? extends RuntimeException> expected) {
     assertThrowsExactly(
         NumberFormatException.class,
         () -> Integer.parseInt(number),
         () -> "Number is valid for Integer.parseInt: `" + number + "`");
     assertThrowsExactly(
-        NumberFormatException.class,
-        () -> Numbers.parseInt(number.toCharArray()),
+        expected,
+        () -> TextualNumber.parseIntExact(number.toCharArray()),
         "Should throw for: " + number);
   }
 

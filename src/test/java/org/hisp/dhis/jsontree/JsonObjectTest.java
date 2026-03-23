@@ -113,7 +113,7 @@ class JsonObjectTest {
     JsonObject obj = value.project(e -> e.as(JsonArray.class).get(0));
     assertSame(JsonObject.class, obj.asType());
     assertEquals(List.of("a", "b"), obj.names());
-    assertEquals(List.of(1, 2), List.of(obj.get("a").node().value(), obj.get("b").node().value()));
+    assertEquals(List.of(1, 2), List.of(obj.get("a").node().intValue(), obj.get("b").node().intValue()));
     assertEquals(1, obj.getNumber("a").intValue());
     assertTrue(obj.has("a"));
     assertTrue(obj.has("a", "b"));

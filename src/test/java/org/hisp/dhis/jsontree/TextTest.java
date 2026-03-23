@@ -261,6 +261,22 @@ class TextTest {
     assertThrows(NumberFormatException.class, () -> Text.of("12.3").parseInt());
   }
 
+  @DisplayName("parseInt()")
+  @Test
+  void testParseLong() {
+    assertEquals(123L, Text.of(123).parseLong());
+    assertEquals(123L, Text.of("123").parseLong());
+    assertEquals(-123L, Text.of(-123).parseLong());
+    assertEquals(-123L, Text.of("-123").parseLong());
+    assertEquals(123L, Text.of("+123").parseLong());
+    assertEquals(0L, Text.of("0").parseLong());
+    assertEquals(0L, Text.of("-0").parseLong());
+    assertEquals(7L, Text.of("007").parseLong());
+    assertThrows(NumberFormatException.class, () -> Text.of("").parseLong());
+    assertThrows(NumberFormatException.class, () -> Text.of("12a").parseLong());
+    assertThrows(NumberFormatException.class, () -> Text.of("12.3").parseLong());
+  }
+
   @DisplayName("compareTo(Text)")
   @Test
   void testCompareTo() {
