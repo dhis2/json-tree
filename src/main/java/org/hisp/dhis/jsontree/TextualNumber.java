@@ -168,6 +168,9 @@ public final class TextualNumber extends Number implements Textual {
    *     overflowing
    */
   static int parseIntCast(char[] buffer, int offset, int length) {
+    int len = lengthInsignificantZeros(buffer, offset, length);
+    offset += len;
+    length -= len;
     if (isSignedInteger(buffer, offset, length))
         return parseInt(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
@@ -185,6 +188,9 @@ public final class TextualNumber extends Number implements Textual {
    * @return the long value of the given number, possibly truncating decimal points, possibly overflowing
    */
   static long parseLongCast(char[] buffer, int offset, int length) {
+    int len = lengthInsignificantZeros(buffer, offset, length);
+    offset += len;
+    length -= len;
     if (isSignedInteger(buffer, offset, length))
       return parseLong(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
@@ -202,6 +208,9 @@ public final class TextualNumber extends Number implements Textual {
    *     or exponential part was present and if the base was in range)
    */
   static double parseDoubleCast(char[] buffer, int offset, int length) {
+    int len = lengthInsignificantZeros(buffer, offset, length);
+    offset += len;
+    length -= len;
     if (isSignedInteger(buffer, offset, length)) {
       if (length <= 9) {
         int val = parseIntExact(buffer, offset, length);
@@ -256,14 +265,12 @@ public final class TextualNumber extends Number implements Textual {
    * @see Double#parseDouble(String)
    */
   private static double parseDouble(char[] buffer, int offset, int length) {
-    int end = offset + length;
     // strip tailing whitespace
     while (length > 0 && buffer[offset + length - 1] <= ' ') length--;
     // strip leading whitespace
-    while (offset < end && buffer[offset] <= ' ') {
-      offset++;
-      length--;
-    }
+    int len = lengthInsignificantZeros(buffer, offset, length);
+    offset += len;
+    length -= len;
     return parseDoubleNoBoundsCheck(buffer, offset, length);
   }
 
@@ -452,6 +459,15 @@ public final class TextualNumber extends Number implements Textual {
     int end = offset+length;
     while (i < end && buffer[i] != '.') i++;
     return i < end ? i : -1;
+  }
+
+  /** moves past leading whitespace and zeros that would not change the numeric value */
+  private static int lengthInsignificantZeros(char[] buffer, int offset, int length) {
+    int i = offset;
+    int end = Math.min(buffer.length, offset + length);
+    while (i < end && buffer[i] == ' ') i++;
+    while (i < end - 1 && buffer[i] == '0' && isDigit(buffer[i + 1])) i++;
+    return i - offset;
   }
 
   private static NumberFormatException nanError(char[] buffer, int offset, int length, String msg) {
