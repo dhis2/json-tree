@@ -218,8 +218,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     if (value == null) return config.excludeNullMembers() ? this : addRawMember(name, "null");
     if (value instanceof Integer) return addNumber(name, value.intValue());
     if (value instanceof Long) return addNumber(name, value.longValue());
-    if (value instanceof Textual t) addRawMember(name, t.textValue());
-    if (value instanceof Double || value instanceof Float) addNumber(name, value.doubleValue());
+    if (value instanceof Textual t) return addRawMember(name, t.textValue());
+    if (value instanceof Double || value instanceof Float) return addNumber(name, value.doubleValue());
     return addRawMember(name, value.toString());
   }
 
@@ -307,8 +307,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     if (value == null) return addRawElement("null");
     if (value instanceof Integer) return addNumber(value.intValue());
     if (value instanceof Long) return addNumber(value.longValue());
-    if (value instanceof Textual t) addRawElement(t.textValue());
-    if (value instanceof Double || value instanceof Float) addNumber(value.doubleValue());
+    if (value instanceof Textual t) return addRawElement(t.textValue());
+    if (value instanceof Double || value instanceof Float) return addNumber(value.doubleValue());
     return addRawElement(value.toString());
   }
 

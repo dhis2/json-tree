@@ -165,4 +165,25 @@ class JsonNumberTest {
     assertThrowsExactly(
         JsonPathException.class, () -> JsonMixed.of("[]").getNumber(0).floatValue());
   }
+
+  @Test
+  void testIrregularNumberPersistence() {
+    JsonMixed big =
+        JsonMixed.of(
+            "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999");
+    assertEquals(
+        "99999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+        big.number().toString(), "number() should maintain original value");
+    JsonNode root = JsonBuilder.createObject(JsonBuilder.PRETTY, obj ->
+        obj.addMember("big-one", big.node())
+            .addNumber("big-two", big.number())
+    );
+    assertEquals(
+        """
+        {
+          "big-one": 99999999999999999999999999999999999999999999999999999999999999999999999999999999999999,
+          "big-two": 99999999999999999999999999999999999999999999999999999999999999999999999999999999999999
+        }""",
+        root.getDeclaration().toString());
+  }
 }

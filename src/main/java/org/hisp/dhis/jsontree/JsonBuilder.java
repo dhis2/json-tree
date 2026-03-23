@@ -107,6 +107,8 @@ public interface JsonBuilder {
     void addToObject(JsonBuilder.JsonObjectBuilder obj);
   }
 
+  PrettyPrint PRETTY = new PrettyPrint(2, 0, true, true, false);
+
   PrettyPrint MINIMIZED = new PrettyPrint(0, 0, false, true, false);
 
   PrettyPrint MINIMIZED_FULL = new PrettyPrint(0, 0, false, false, false);
