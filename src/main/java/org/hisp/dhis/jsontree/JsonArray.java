@@ -49,7 +49,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  * @author Jan Bernitt
  */
 @Validation.Ignore
-public interface JsonArray extends JsonAbstractArray<JsonValue> {
+public interface JsonArray extends JsonAbstractArray<JsonMixed> {
 
   @Override
   default JsonArray getValue() {
@@ -58,7 +58,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
 
   @Override
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<JsonValue> stream() {
+  default Stream<JsonMixed> stream() {
     return stream(AUTO);
   }
 
@@ -70,7 +70,7 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<JsonValue> stream(JsonNode.Index index) {
+  default Stream<JsonMixed> stream(JsonNode.Index index) {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return Stream.empty();
     JsonAccessors accessors = getAccessors();
@@ -182,8 +182,8 @@ public interface JsonArray extends JsonAbstractArray<JsonValue> {
     return streamValues(to).toList();
   }
 
-  default JsonValue get(int index) {
-    return get(index, JsonValue.class);
+  default JsonMixed get(int index) {
+    return get(index, JsonMixed.class);
   }
 
   default JsonNumber getNumber(int index) {

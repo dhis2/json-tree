@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonNode.Index;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -114,7 +115,7 @@ class JsonApiPerfTest {
   void testJsonNode_elements() {
     JsonNode root = JsonNode.of("[ 1,2 , true , false, \"hello\",{},[]]");
 
-    Iterator<JsonNode> elements = root.elements(JsonNode.Index.SKIP).iterator();
+    Iterator<JsonNode> elements = root.elements(Index.SKIP).iterator();
     JsonNode e0 = elements.next();
     JsonNode e1 = elements.next();
     JsonNode e2 = elements.next();
@@ -132,19 +133,30 @@ class JsonApiPerfTest {
     assertEquals("{}", e5.getDeclaration().toString());
     assertEquals("[]", e6.getDeclaration().toString());
 
-    JsonNode e0kept = root.elements(JsonNode.Index.ADD).iterator().next();
+    JsonNode e0kept = root.elements(Index.ADD).iterator().next();
     assertNotSame(e0, e0kept);
-    assertSame(e0kept, root.elements(JsonNode.Index.CHECK).iterator().next());
-    assertNotSame(e0kept, root.elements(JsonNode.Index.SKIP).iterator().next());
+    assertSame(e0kept, root.elements(Index.CHECK).iterator().next());
+    assertNotSame(e0kept, root.elements(Index.SKIP).iterator().next());
+  }
+
+  @Test
+  void testJsonArray_stream() {
+    JsonArray arr = JsonMixed.of("[ 1,2 , true , false, \"hello\",{},[]]");
+    List<JsonNode> nodes = arr.stream(Index.SKIP).map(JsonValue::node).toList();
+    List<JsonNode> nodes2 = arr.stream(Index.SKIP).map(JsonValue::node).toList();
+    for (int i = 0; i < nodes.size(); i++)
+      assertNotSame(nodes.get(i), nodes2.get(i));
+    nodes = arr.stream(Index.ADD).map(JsonValue::node).toList();
+    nodes2 = arr.stream(Index.CHECK).map(JsonValue::node).toList();
+    for (int i = 0; i < nodes.size(); i++)
+      assertSame(nodes.get(i), nodes2.get(i));
   }
 
   @Test
   void testJsonNode_members() {
-    JsonNode doc = JsonNode.of("{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}");
+    JsonNode root = JsonNode.of("{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}");
 
-    JsonNode root = doc.get("$");
-
-    Iterator<JsonNode> members = root.members(JsonNode.Index.SKIP).iterator();
+    Iterator<JsonNode> members = root.members(Index.SKIP).iterator();
     JsonNode m1 = members.next();
     JsonNode m2 = members.next();
     JsonNode m3 = members.next();
@@ -160,9 +172,22 @@ class JsonApiPerfTest {
     assertEquals("d", m4.getKey().toString());
     assertEquals(false, m4.value());
 
-    JsonNode m1kept = root.members(JsonNode.Index.ADD).iterator().next();
+    JsonNode m1kept = root.members(Index.ADD).iterator().next();
     assertNotSame(m1, m1kept);
-    assertSame(m1kept, root.members(JsonNode.Index.CHECK).iterator().next());
-    assertNotSame(m1kept, root.members(JsonNode.Index.SKIP).iterator().next());
+    assertSame(m1kept, root.members(Index.CHECK).iterator().next());
+    assertNotSame(m1kept, root.members(Index.SKIP).iterator().next());
+  }
+
+  @Test
+  void testJsonObject_entries() {
+    JsonObject obj = JsonMixed.of("{\"a\": 1,\"b\":2 ,\"c\": true ,\"d\":false}");
+    List<JsonNode> nodes = obj.entries(Index.SKIP).map(JsonValue::node).toList();
+    List<JsonNode> nodes2 = obj.entries(Index.SKIP).map(JsonValue::node).toList();
+    for (int i = 0; i < nodes.size(); i++)
+      assertNotSame(nodes.get(i), nodes2.get(i));
+    nodes = obj.entries(Index.ADD).map(JsonValue::node).toList();
+    nodes2 = obj.entries(Index.CHECK).map(JsonValue::node).toList();
+    for (int i = 0; i < nodes.size(); i++)
+      assertSame(nodes.get(i), nodes2.get(i));
   }
 }

@@ -52,7 +52,7 @@ import org.hisp.dhis.jsontree.validation.JsonValidator;
  * @author Jan Bernitt
  */
 @Validation.Ignore
-public interface JsonObject extends JsonAbstractObject<JsonValue> {
+public interface JsonObject extends JsonAbstractObject<JsonMixed> {
 
   @Override
   default JsonObject getValue() {
@@ -106,8 +106,8 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
    */
   <T extends JsonValue> T get(Text name, Class<T> as);
 
-  default JsonValue get(Text name) {
-    return get(name, JsonValue.class);
+  default JsonMixed get(Text name) {
+    return get(name, JsonMixed.class);
   }
 
   <T extends JsonValue> T get(JsonPath subPath, Class<T> as);
@@ -121,8 +121,8 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
   }
 
   @Override
-  default JsonValue get(CharSequence name) {
-    return get(name, JsonValue.class);
+  default JsonMixed get(CharSequence name) {
+    return get(name, JsonMixed.class);
   }
 
   default JsonObject getObject(CharSequence name) {
@@ -159,7 +159,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
 
   @Override
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonValue> entries() {
+  default Stream<JsonMixed> entries() {
     return entries(AUTO);
   }
 
@@ -171,7 +171,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonValue> entries(JsonNode.Index index) { // TODO add tests
+  default Stream<JsonMixed> entries(JsonNode.Index index) {
     if (isUndefined() || isEmpty()) return Stream.empty();
     JsonAccessors accessors = getAccessors();
     return node().members(index).stream().map(e -> e.lift(accessors));

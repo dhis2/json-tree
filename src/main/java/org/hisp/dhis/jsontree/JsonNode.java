@@ -251,9 +251,8 @@ public interface JsonNode extends Serializable, Textual, Map.Entry<Text, JsonNod
    * @return this node as {@link JsonValue} as it is contained in its current tree
    * @since 0.11
    */
-  default JsonValue lift(JsonAccessors accessors) {
-    JsonVirtualTree root = new JsonVirtualTree(getRoot(), accessors);
-    return isRoot() ? root : root.get(getPath(), JsonValue.class);
+  default JsonMixed lift(JsonAccessors accessors) {
+    return JsonVirtualTree.lift(this, accessors);
   }
 
   /**

@@ -30,8 +30,6 @@ package org.hisp.dhis.jsontree;
 import static java.lang.Character.isUpperCase;
 import static java.lang.Character.toLowerCase;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
@@ -97,6 +95,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         "Must be a subtype of JsonObject or Record but was: " + of);
   }
 
+  static JsonMixed lift(JsonNode node, JsonAccessors accessors) {
+    return new JsonVirtualTree(node.getRoot(), node.getPath(), node, accessors);
+  }
+
   /**
    * {@link MethodHandle} cache for zero-args default methods as usually used by the properties
    * declared in {@link JsonObject} sub-types. Each subtype has its on map with the method name as
@@ -128,8 +130,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   private final @NotNull JsonNode root;
   private final @NotNull JsonPath path;
-  private JsonNode node; // remember once it was resolved from root
-  private transient @NotNull JsonAccessors accessors;
+  private final transient @NotNull JsonAccessors accessors;
+  private @CheckNull JsonNode node; // remember once it was resolved from root
 
   public JsonVirtualTree(@CheckNull CharSequence json, @NotNull JsonAccessors accessors) {
     this(
@@ -144,9 +146,14 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   private JsonVirtualTree(
       @NotNull JsonNode root, @NotNull JsonPath path, @NotNull JsonAccessors accessors) {
+    this(root, path, path.isEmpty() ? root : null, accessors );
+    }
+
+  private JsonVirtualTree(
+      @NotNull JsonNode root, @NotNull JsonPath path, JsonNode node, @NotNull JsonAccessors accessors) {
     this.root = root;
     this.path = path;
-    if (path.isEmpty()) node = root;
+    this.node = node;
     this.accessors = accessors;
   }
 
