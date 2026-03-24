@@ -702,7 +702,6 @@ public interface JsonNode extends Serializable, Textual, Map.Entry<Text, JsonNod
   /*
   Search API
    */
-  // TODO future: use Stream + Stream.Builder API + JsonPath (RFC 9535)
 
   /**
    * Visit subtree of this node including this node.

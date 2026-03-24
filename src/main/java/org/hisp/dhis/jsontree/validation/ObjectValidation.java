@@ -130,7 +130,7 @@ record ObjectValidation(
     Type type = src.getType();
     if (type instanceof Class<?> simpleType)
       return fromValueTypeDeclaration(simpleType).overlay(fromAnnotations(src));
-    // TODO AnnotatedArrayType...
+    // TODO(future) AnnotatedArrayType...
     if (!(src instanceof AnnotatedParameterizedType pt)) return null;
     Type rt = ((ParameterizedType) pt.getType()).getRawType();
     Class<?> rawType = (Class<?>) rt;
@@ -138,7 +138,7 @@ record ObjectValidation(
     AnnotatedType[] typeArguments = pt.getAnnotatedActualTypeArguments();
     if (typeArguments.length == 1) return base.withItems(fromValueTypeUse(typeArguments[0]));
     if (Map.class.isAssignableFrom(rawType)) {
-      // TODO make use of "propertyNames" for key restrictions
+      // TODO make use of "propertyNames" (schema field) for key restrictions
       return base.withItems(fromValueTypeUse(typeArguments[1]));
     }
     return base;

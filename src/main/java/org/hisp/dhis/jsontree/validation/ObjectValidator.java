@@ -108,7 +108,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   }
 
   /**
-   * TODO support for types like: {@code JsonIntList extends JsonList<JsonInteger>} So a Class type
+   * TODO(future) support for types like: {@code JsonIntList extends JsonList<JsonInteger>} So a Class type
    * where the actual type for the list element needs to be extracted from the superinterfaces.
    * {@code JsonSet<T> extends JsonAbstractArray<T>} or {@code JsonMultiMap<T> extends
    * JsonAbstractObject<JsonList<T>>} So types with parameters where the actual type of the object
