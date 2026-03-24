@@ -8,14 +8,14 @@ import java.util.stream.Stream;
  * <p>
  * Just extracted from main {@link JsonNode} interface to group and organize the code a bit.
  *
- * @since 1.9 (in the source but not public yet)
+ * @since 1.9
  */
-interface JsonNodeSelection {
+public interface JsonSelectable<T> {
 
-  void query(JsonSelector selector, Consumer<JsonNode> match);
+  void query(JsonSelector selector, Consumer<T> matches);
 
-  default Stream<JsonNode> query(JsonSelector selector) {
-    Stream.Builder<JsonNode> b = Stream.builder();
+  default Stream<T> query(JsonSelector selector) {
+    Stream.Builder<T> b = Stream.builder();
     query(selector, b);
     return b.build();
   }

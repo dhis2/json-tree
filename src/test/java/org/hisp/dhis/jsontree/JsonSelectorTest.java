@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import org.junit.jupiter.api.Test;
 
+import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -13,8 +14,8 @@ class JsonSelectorTest {
   void testToString() {
     assertEquals(
         "$.test[*][1,2][3:][?(~)]",
-        JsonSelector.ROOT
-            .property("test")
+        $
+            .key("test")
             .any()
             .indexes(1, 2)
             .slice(3)

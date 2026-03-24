@@ -79,7 +79,8 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  *
  * @author Jan Bernitt
  */
-public interface JsonNode extends Serializable, Textual, Map.Entry<Text, JsonNode> {
+public interface JsonNode
+    extends JsonSelectable<JsonNode>, Serializable, Textual, Map.Entry<Text, JsonNode> {
 
   /**
    * The low level API does offer different behaviour when it comes to
@@ -702,6 +703,11 @@ public interface JsonNode extends Serializable, Textual, Map.Entry<Text, JsonNod
   /*
   Search API
    */
+
+  @Override
+  default void query(JsonSelector selector, Consumer<JsonNode> matches) {
+    selector.match(this, matches);
+  }
 
   /**
    * Visit subtree of this node including this node.

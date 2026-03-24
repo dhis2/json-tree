@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
@@ -86,7 +87,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  * @see JsonMixed
  */
 @Validation.Ignore
-public interface JsonValue extends Map.Entry<Text, JsonValue> {
+public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, JsonValue> {
 
   /**
    * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
@@ -577,6 +578,7 @@ public interface JsonValue extends Map.Entry<Text, JsonValue> {
    * @param <T> type of the object to find
    * @return the first found match or JSON {@code null} object
    */
+  //TODO replace with query when it supports JsonValue subtype predicate filters
   @TerminalOp(canBeUndefined = true)
   default <T extends JsonValue> T find(Class<T> type, Predicate<T> test) {
     if (isUndefined()) return JsonMixed.of("{}").get("notFound", type);
@@ -595,5 +597,12 @@ public interface JsonValue extends Map.Entry<Text, JsonValue> {
     return match.isEmpty()
         ? JsonMixed.of("{}").get("notFound", type)
         : match.get().lift(accessors).as(type);
+  }
+
+  @Override
+  default void query(JsonSelector selector, Consumer<JsonMixed> matches) {
+    if (isUndefined()) return;
+    JsonAccessors accessors = getAccessors();
+    node().query(selector, match -> matches.accept(match.lift(accessors)));
   }
 }

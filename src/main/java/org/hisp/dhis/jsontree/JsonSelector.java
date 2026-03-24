@@ -16,31 +16,36 @@ import java.util.stream.IntStream;
  * expressions.
  *
  * @author Jan Bernitt
- * @since 1.9 (in the source but not public yet)
+ * @since 1.9
  */
-record JsonSelector(Type type, Matcher match, JsonSelector next) {
+public record JsonSelector(Matcher matcher, JsonSelector next) {
 
-  public static final JsonSelector ROOT = new JsonSelector(Type.ROOT, new RootMatcher(), null);
+  public static final JsonSelector $ = new JsonSelector(new RootMatcher(), null);
+  public static final JsonSelector AT = new JsonSelector(new SelfMatcher(), null);
 
   public static JsonSelector of(String expression) {
-    return ROOT.select(expression);
+    return $.select(expression);
+  }
+
+  public static JsonSelector of(JsonNodeType type) {
+    return new JsonSelector(new TypeMatcher(type), null);
   }
 
   public static JsonSelector of(Text name) {
-    return new JsonSelector(Type.NAME, new NameMatcher(name), null);
+    return new JsonSelector(new KeyMatcher(name), null);
   }
 
   public static JsonSelector ofAny() {
-    return new JsonSelector(Type.ANY, new AnyMatcher(), null);
+    return new JsonSelector(new AnyMatcher(), null);
   }
 
   public static JsonSelector of(int index) {
-    return new JsonSelector(Type.INDEX, new IndexMatcher(Text.of(index)), null);
+    return new JsonSelector(new IndexMatcher(Text.of(index)), null);
   }
 
   public static JsonSelector of(int[] indexes) {
     return new JsonSelector(
-        Type.UNION, new UnionMatcher(IntStream.of(indexes).mapToObj(Text::of).toList()), null);
+        new UnionMatcher(IntStream.of(indexes).mapToObj(Text::of).toList()), null);
   }
 
   public static JsonSelector of(int start, int end) {
@@ -48,20 +53,28 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
   }
 
   public static JsonSelector of(int start, int end, int step) {
-    return new JsonSelector(Type.SLICE, new SliceMatcher(start, end, step), null);
+    return new JsonSelector(new SliceMatcher(start, end, step), null);
   }
 
   public static JsonSelector of(Predicate<JsonNode> filter) {
-    return new JsonSelector(Type.FILTER, new FilterMatcher(filter), null);
+    return new JsonSelector(new FilterMatcher(filter), null);
   }
 
   @Override
   public String toString() {
-    if (next == null) return match.toString();
-    return match.toString()+next;
+    if (next == null) return matcher.toString();
+    return matcher.toString()+next;
   }
 
-  public JsonSelector property(CharSequence name) {
+  public boolean startsWithRoot() {
+    return matcher instanceof RootMatcher;
+  }
+
+  public JsonSelector type(JsonNodeType type) {
+    return select(of(type));
+  }
+
+  public JsonSelector key(CharSequence name) {
     return select(of(Text.of(name)));
   }
 
@@ -78,7 +91,7 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
   }
 
   public JsonSelector slice(int start) {
-    return select(new JsonSelector(Type.SLICE, new SliceMatcher(start, null, 1), null));
+    return select(new JsonSelector(new SliceMatcher(start, null, 1), null));
   }
 
   public JsonSelector slice(int start, int end) {
@@ -93,13 +106,19 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     return select(of(filter));
   }
 
+  public JsonSelector filter(JsonSelector selector, Predicate<JsonNode> filter) {
+    // note that just considering the first match of the sub-select
+    // is in line with the RFC-9535 logic of path selectors in filters
+    return filter(node -> node.query(selector).findFirst().filter(filter).isPresent());
+  }
+
   public JsonSelector select(JsonSelector next) {
     // appending requires reconstructing the chain from the start
     // we do this because we need a cheap dropping head as that
     // will happen all the time during evaluation
     // and this is what is super cheap with this data structure
     // just return the next()
-    return new JsonSelector(type, match, this.next == null ? next : this.next.select(next));
+    return new JsonSelector(matcher, this.next == null ? next : this.next.select(next));
   }
 
   public JsonSelector select(CharSequence expression) {
@@ -109,10 +128,15 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     while (offset < expression.length()) {
       char c = expression.charAt(offset++);
       switch (c) {
-        case '$' -> res = ROOT; // drop prior chain
+        case '$' -> res = $; // drop prior chain
+        case ':' -> {
+          int end = skipName(expression, offset);
+          res = res.type(JsonNodeType.valueOf(expression.subSequence(offset, end).toString()));
+          offset=end;
+        }
         case '.' -> {
           int end = skipName(expression, offset);
-          res = res.property(expression.subSequence(offset, end));
+          res = res.key(expression.subSequence(offset, end));
           offset=end;
         }
         case '[' -> {
@@ -123,7 +147,7 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
             }
             case '\'' -> {
               int end = skipName(expression, offset);
-              res = res.property(expression.subSequence(offset, end));
+              res = res.key(expression.subSequence(offset, end));
               offset = end + 2;
             }
             default -> {
@@ -137,7 +161,7 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
                     .formatted(expression.charAt(offset - 1), offset - 1));
       }
     }
-    return res.type == Type.ROOT ? res : select(res);
+    return res.startsWithRoot() ? res : select(res);
   }
 
   private static int skipName(CharSequence expression, int offset) {
@@ -149,53 +173,37 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_';
   }
 
-  enum Type {
-    /**
-     * {@code $} => Navigate to root
-     */
-    ROOT,
-    /**
-     * {@code .key} or {@code ['key']} => direct child by exact name
-     */
-    NAME,
-    /**
-     * {@code [*]} => all direct children
-     */
-    ANY,
-    /**
-     * {@code [0]} => direct child by index number
-     */
-    INDEX,
-    /**
-     * {@code [1,3,5]} => direct children by 2 or more index numbers
-     */
-    UNION,
-    /**
-     * {@code [2:3:4]} => direct children by index range start:end:step (step can be omitted)
-     */
-    SLICE,
-    /**
-     * {@code ..} => recursive decent to match the next selector anywhere in the current subtree
-     */
-    DECENT,
-    /**
-     * {@code [?(@.price < 10)]} => match on a condition, one or both sides can be relative paths.
-     * In theory nesting is allowed, the left and/or right side of the logical expression can be
-     * a constant literal or an arbitrary path expression (even including $ as starting point).
-     */
-    FILTER,
+  /**
+   * This is a special instance that we pass as next if only the last matcher has to match.
+   * If it's {@link #match(JsonNode, Consumer)} is called we have a match.
+   */
+  private static final JsonSelector MATCH = new JsonSelector(null, null);
+
+  public void match(JsonNode node, Consumer<JsonNode> matches) {
+    if (next == null) {
+      if (matcher == null) {
+        matches.accept(node);
+      } else {
+        matcher.match(node, MATCH, matches);
+      }
+    } else {
+      //TODO recursive decent is special here, I think
+      matcher.match(node, next, matches);
+    }
+    //TODO the key insight for recursive decent is that it passes itself to the next level
+    // as well as passing its next to the next level, both lead to matches might match
   }
 
-  sealed interface Matcher {
+  public interface Matcher {
 
-    void match(JsonNode parent, Consumer<JsonNode> match);
+    void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches);
   }
 
-  record RootMatcher() implements Matcher {
+  private record RootMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      match.accept(parent.getRoot());
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      next.match(self.getRoot(), matches);
     }
 
     @Override
@@ -204,11 +212,11 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     }
   }
 
-  record SelfMatcher() implements Matcher {
+  private record SelfMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      match.accept(parent);
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      next.match(self, matches);
     }
 
     @Override
@@ -217,13 +225,26 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     }
   }
 
-  record NameMatcher(Text name) implements Matcher {
+  private record TypeMatcher(JsonNodeType type) implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      if (!parent.getType().isSimple()) {
-        JsonNode e = parent.getIfExists(name);
-        if (e != null) match.accept(e);
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      if (self.getType() == type) next.match(self, matches);
+    }
+
+    @Override
+    public String toString() {
+      return ":"+type.name().toLowerCase(); // note RFC-9535 does not have type matchers
+    }
+  }
+
+  private record KeyMatcher(Text name) implements Matcher {
+
+    @Override
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      if (self.getType() == JsonNodeType.OBJECT) {
+        JsonNode e = self.getIfExists(name);
+        if (e != null) next.match(e, matches);
       }
     }
 
@@ -233,15 +254,15 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     }
   }
 
-  record AnyMatcher() implements Matcher {
+  private record AnyMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      JsonNodeType type = parent.getType();
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      JsonNodeType type = self.getType();
       if (type == JsonNodeType.OBJECT) {
-        parent.members().forEach(match);
+        self.members().forEach(e -> next.match(e, matches));
       } else if (type == JsonNodeType.ARRAY) {
-        parent.elements().forEach(match);
+        self.elements().forEach(e -> next.match(e, matches));
       }
     }
 
@@ -251,13 +272,13 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     }
   }
 
-  record IndexMatcher(Text index) implements Matcher {
+  private record IndexMatcher(Text index) implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      if (parent.getType() == JsonNodeType.ARRAY && !parent.isEmpty()) {
-        JsonNode e = parent.elementIfExists(index);
-        if (e != null) match.accept(e);
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      if (self.getType() == JsonNodeType.ARRAY && !self.isEmpty()) {
+        JsonNode e = self.elementIfExists(index);
+        if (e != null) next.match(e, matches);
       }
     }
 
@@ -267,14 +288,14 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     }
   }
 
-  record UnionMatcher(List<Text> indexes) implements Matcher {
+  private record UnionMatcher(List<Text> indexes) implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      if (parent.getType() == JsonNodeType.ARRAY && !parent.isEmpty()) {
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      if (self.getType() == JsonNodeType.ARRAY && !self.isEmpty()) {
         for (Text i : indexes) {
-          JsonNode e = parent.elementIfExists(i);
-          if (e != null) match.accept(e);
+          JsonNode e = self.elementIfExists(i);
+          if (e != null) next.match(e, matches);
         }
       }
     }
@@ -285,25 +306,22 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     }
   }
 
-  record SliceMatcher(Integer start, Integer end, int step) implements Matcher {
+  private record SliceMatcher(Integer start, Integer end, int step) implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      if (parent.getType() == JsonNodeType.ARRAY && !parent.isEmpty()) {
-        if (start != null && end != null && step > 0) {
-          // basic case: forward iteration with known bounds
-          for (int i = start; i < end; i += step) match.accept(parent.element(i));
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      if (self.getType() == JsonNodeType.ARRAY && !self.isEmpty()) {
+        int size = self.size();
+        int sRel = start != null ? start : step > 0 ? 0 : size;
+        int eRel = end != null ? end : step > 0 ? size : 0;
+        int sAbs = sRel < 0 ? size - sRel : Math.min(sRel, size);
+        int eAbs = eRel < 0 ? size - eRel : Math.min(eRel, size);
+        if (step < 0) {
+          // forward iteration
+          for (int i = sAbs; i >= eAbs; i += step) next.match(self.element(i), matches);
         } else {
-          int size = parent.size();
-          int sRel = start != null ? start : step > 0 ? 0 : size;
-          int eRel = end != null ? end : step > 0 ? size : 0;
-          int sAbs = sRel < 0 ? size - sRel : Math.min(sRel, size);
-          int eAbs = eRel < 0 ? size - eRel : Math.min(eRel, size);
-          if (step < 0) {
-            for (int i = sAbs; i >= eAbs; i += step) match.accept(parent.element(i));
-          } else {
-            for (int i = sAbs; i < eAbs; i += step) match.accept(parent.element(i));
-          }
+          // backward iteration
+          for (int i = sAbs; i < eAbs; i += step) next.match(self.element(i), matches);
         }
       }
     }
@@ -318,11 +336,17 @@ record JsonSelector(Type type, Matcher match, JsonSelector next) {
     }
   }
 
-  record FilterMatcher(Predicate<JsonNode> filter) implements Matcher {
+  private record FilterMatcher(Predicate<JsonNode> filter) implements Matcher {
 
     @Override
-    public void match(JsonNode parent, Consumer<JsonNode> match) {
-      if (filter.test(parent)) match.accept(parent);
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      switch (self.getType()) {
+        case ARRAY -> self.elements().stream().filter(filter).forEach(e -> next.match(e, matches));
+        case OBJECT -> self.members().stream().filter(filter).forEach(e -> next.match(e, matches));
+        default -> {
+          if (filter.test(self)) next.match(self, matches);
+        }
+      }
     }
 
     @Override
