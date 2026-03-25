@@ -8,7 +8,8 @@ import java.util.stream.IntStream;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
 /**
- * A selector expression based search mostly conform with JsonPath (RFC 9535).
+ * A {@link JsonSelector} describes a search pattern to find matching nodes in a {@link JsonNode}
+ * tree.
  *
  * <p>{@link JsonSelector} offers a programmatic fluent API to compose a selector. Segments of an
  * entire selector can also be parsed from a {@link String} using {@link #of(String)}. However,
@@ -16,9 +17,12 @@ import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
  *
  * <h3>RFC-9535 Comparison</h3>
  *
- * The key difference are filter expressions. The {@link JsonSelector} API only supports
- * programmatic composition of filters using Java as expression language in the form of {@link
- * Predicate} expressions.
+ * The building blocks (matchers) and their string-form syntax are strongly inspired by JsonPath
+ * standard (RFC 9535). Most matchers work very similar to the standard but filters and recursive
+ * decent differ slightly. Furthermore, the {@link JsonSelector} API only supports programmatic
+ * composition of filters using Java as expression language in the form of {@link Predicate}
+ * expressions. This keeps the implementation simple while offering the full expressiveness of the
+ * Java language and the {@link JsonNode} API to formulate filters.
  *
  * <h3>Matching Extensions</h3>
  *
@@ -31,6 +35,37 @@ import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
  * @since 1.9
  */
 public record JsonSelector(Matcher matcher, JsonSelector next) {
+
+  /**
+   * A sink for the matches found
+   */
+  @FunctionalInterface
+  public interface Matches<T> extends Consumer<T> {
+    /**
+     * @return ture, when sufficient matches have been found and the matching should not progress
+     *     further.
+     */
+    default boolean satisfied() {
+      return false;
+    }
+  }
+
+  /**
+   * Checks a node against the condition of a selector segment and forwards matches to the next
+   * selector segment.
+   */
+  @FunctionalInterface
+  public interface Matcher {
+
+    /**
+     * @param node the node to test
+     * @param next the next segment to test next level with if the given node matches this matcher
+     * @param matches the consumer for matches found that needs to be forwarded
+     */
+    void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches);
+  }
+
+
 
   public static final JsonSelector $ = new JsonSelector(new RootMatcher(), null);
   public static final JsonSelector AT = new JsonSelector(new SelfMatcher(), null);
@@ -233,11 +268,12 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
   /**
    * This is a special instance that we pass as next if only the last matcher has to match. If it's
-   * {@link #match(JsonNode, Consumer)} is called we have a match.
+   * {@link #match(JsonNode, Matches)} is called we have a match.
    */
   private static final JsonSelector MATCH = new JsonSelector(null, null);
 
-  public void match(JsonNode node, Consumer<JsonNode> matches) {
+  public void match(JsonNode node, Matches<JsonNode> matches) {
+    if (matches.satisfied()) return;
     if (this == MATCH) {
       matches.accept(node);
     } else {
@@ -246,7 +282,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     }
   }
 
-  private void matchChildren(JsonNode node, Consumer<JsonNode> matches) {
+  private void matchChildren(JsonNode node, Matches<JsonNode> matches) {
     switch (node.type()) {
       case ARRAY -> {
         for (JsonNode e : node.elements(SKIP)) match(e, matches);
@@ -257,24 +293,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     }
   }
 
-  /**
-   * Checks a node against the condition of a selector segment and forwards matches to the next
-   * selector segment.
-   */
-  public interface Matcher {
-
-    /**
-     * @param node the node to test
-     * @param next the next segment to test next level with if the given node matches this matcher
-     * @param matches the consumer for matches found that needs to be forwarded
-     */
-    void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches);
-  }
-
   private record RootMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       next.match(node.getRoot(), matches);
     }
 
@@ -287,7 +309,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record SelfMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       next.match(node, matches);
     }
 
@@ -300,7 +322,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record DescendantMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       // this is one part of it
       // where we try to apply the sub-selector to self
       next.match(node, matches);
@@ -315,7 +337,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record TypeMatcher(JsonNodeType type) implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       if (node.type() == type) next.match(node, matches);
     }
 
@@ -328,7 +350,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record KeyMatcher(Text name) implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       if (node.isObject()) {
         JsonNode e = node.getIfExists(name);
         if (e != null) next.match(e, matches);
@@ -344,7 +366,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record AnyMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       JsonNodeType type = node.type();
       if (type == JsonNodeType.OBJECT) {
         for (JsonNode e : node.members(SKIP)) next.match(e, matches);
@@ -362,7 +384,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record IndexMatcher(Text index) implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       if (node.isArray() && !node.isEmpty()) {
         JsonNode e = node.elementIfExists(index);
         if (e != null) next.match(e, matches);
@@ -378,7 +400,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record UnionMatcher(List<Text> indexes) implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       if (node.isArray() && !node.isEmpty()) {
         for (Text i : indexes) {
           JsonNode e = node.elementIfExists(i);
@@ -396,7 +418,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record SliceMatcher(Integer start, Integer end, int step) implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       if (node.isArray() && !node.isEmpty()) {
         int size = node.size();
         int sRel = start != null ? start : step > 0 ? 0 : size;
@@ -424,7 +446,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record FilterMatcher(Predicate<JsonNode> filter) implements Matcher {
 
     @Override
-    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       if (filter.test(node)) next.match(node, matches);
     }
 

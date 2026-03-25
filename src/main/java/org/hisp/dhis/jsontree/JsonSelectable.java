@@ -1,8 +1,10 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonSelector.Matches;
+
 import java.util.Optional;
 import java.util.function.BinaryOperator;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -14,19 +16,58 @@ import java.util.stream.Stream;
  */
 public interface JsonSelectable<T> {
 
-  void query(JsonSelector selector, Consumer<T> matches);
+  /**
+   * The essential method of the query API.
+   *
+   * @implNote while {@link Stream}s might be more convenient to deal with for a caller the {@link
+   *     java.util.function.Consumer} based API as offered by this essential method has the best
+   *     performance as no collection of matches is required. Instead, the aggregation is handled by
+   *     the caller in the most optimal way for the callers use case.
+   * @param selector the path selector (query)
+   * @param matches a callback to collect matches
+   */
+  void query(JsonSelector selector, Matches<T> matches);
 
   default Stream<T> query(JsonSelector selector) {
-    Stream.Builder<T> b = Stream.builder();
-    query(selector, b);
-    return b.build();
+    return query(selector, Integer.MAX_VALUE);
+  }
+
+  default Stream<T> query(JsonSelector selector, int limit) {
+    final class Streamer implements Matches<T> {
+
+      final Stream.Builder<T> stream = Stream.builder();
+      int count;
+
+      @Override
+      public boolean satisfied() {
+        return count >= limit;
+      }
+
+      @Override
+      public void accept(T match) {
+        count++;
+        stream.accept(match);
+      }
+    }
+    Streamer res = new Streamer();
+    query(selector, res);
+    return res.stream.build();
   }
 
   default int queryCount(JsonSelector selector) {
-    final class Counter implements Consumer<T> { int count;
+    return queryCount(selector, Integer.MAX_VALUE);
+  }
+
+  default int queryCount(JsonSelector selector, int limit) {
+    final class Counter implements Matches<T> { int count;
 
       @Override
-      public void accept(T t) {
+      public boolean satisfied() {
+        return count >= limit;
+      }
+
+      @Override
+      public void accept(T match) {
         count++;
       }
     }
@@ -36,28 +77,37 @@ public interface JsonSelectable<T> {
   }
 
   default boolean queryExists(JsonSelector selector) {
-    return queryCount(selector) > 0;
+    return queryCount(selector, 1) > 0;
   }
 
   default Optional<T> queryFirst(JsonSelector selector) {
-    return queryAggregate(selector, (l,r) -> l);
+    return query(selector, 1).findFirst();
   }
 
-  default Optional<T> queryAggregate(JsonSelector selector, BinaryOperator<T> op) {
-    final class Aggregator implements Consumer<T> { T value;
+  default <V> V queryReduce(
+      JsonSelector selector, Function<T, V> extract, V init, BinaryOperator<V> reduce) {
+    return queryReduce(selector, Integer.MAX_VALUE, extract, init, reduce);
+  }
+
+  default <V> V queryReduce(
+      JsonSelector selector, int limit, Function<T, V> extract, V init, BinaryOperator<V> reduce) {
+    final class Reducer implements Matches<T> {
+      V value = init;
+      int count;
+
+      @Override
+      public boolean satisfied() {
+        return count >= limit;
+      }
 
       @Override
       public void accept(T match) {
-        if (value == null) {
-          value = match;
-        } else {
-          value = op.apply(value, match);
-        }
+        count++;
+        value = reduce.apply(value, extract.apply(match));
       }
     }
-    Aggregator res = new Aggregator();
+    Reducer res = new Reducer();
     query(selector, res);
-    return Optional.ofNullable(res.value);
+    return res.value;
   }
-
 }

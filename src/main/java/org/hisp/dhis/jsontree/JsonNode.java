@@ -51,6 +51,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+
+import org.hisp.dhis.jsontree.JsonSelector.Matches;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -80,7 +82,8 @@ public interface JsonNode
     extends JsonProbe, JsonSelectable<JsonNode>, Serializable, Textual, Map.Entry<Text, JsonNode> {
 
   /**
-   * The low level API does offer different behaviour when it comes to
+   * Behaviour requested by the caller of how to utilise the internal node cache
+   * of a {@link JsonTree}.
    *
    * @since 1.9
    */
@@ -178,7 +181,7 @@ public interface JsonNode
     return of(json, onGet, Index.AUTO);
   }
 
-  static JsonNode of(CharSequence json, GetListener onGet, JsonNode.Index auto) {
+  static JsonNode of(CharSequence json, GetListener onGet, Index auto) {
     if (json instanceof String s) return JsonTree.of(s.toCharArray(), onGet, auto);
     return JsonTree.of(Text.of(json).toCharArray(), onGet, auto);
   }
@@ -214,7 +217,7 @@ public interface JsonNode
     return of(file, encoding, onGet, Index.AUTO);
   }
 
-  static JsonNode of(Path file, Charset encoding, GetListener onGet, JsonNode.Index auto) {
+  static JsonNode of(Path file, Charset encoding, GetListener onGet, Index auto) {
     try {
       return of(Files.readAllBytes(file), encoding, onGet, auto);
     } catch (IOException e) {
@@ -223,7 +226,7 @@ public interface JsonNode
   }
 
   static JsonNode of(
-      byte[] bytes, Charset encoding, @CheckNull GetListener onGet, JsonNode.Index auto) {
+      byte[] bytes, Charset encoding, @CheckNull GetListener onGet, Index auto) {
     return JsonTree.of(Chars.decode(bytes, encoding), onGet, auto);
   }
 
@@ -595,7 +598,7 @@ public interface JsonNode
    *     internally will be reused and returned by the iterator.
    * @throws JsonTreeException if this node is not an object node that could have members
    */
-  default Streamable<JsonNode> members(JsonNode.Index index) {
+  default Streamable<JsonNode> members(Index index) {
     throw notA(OBJECT, this, "members(Index)");
   }
 
@@ -665,7 +668,7 @@ public interface JsonNode
    *     already exist internally will be reused and returned by the iterator.
    * @throws JsonTreeException if this node is not an array node that could have elements
    */
-  default Streamable<JsonNode> elements(JsonNode.Index index) {
+  default Streamable<JsonNode> elements(Index index) {
     throw notA(ARRAY, this, "elements(Index)");
   }
 
@@ -687,7 +690,7 @@ public interface JsonNode
    */
 
   @Override
-  default void query(JsonSelector selector, Consumer<JsonNode> matches) {
+  default void query(JsonSelector selector, Matches<JsonNode> matches) {
     selector.match(this, matches);
   }
 

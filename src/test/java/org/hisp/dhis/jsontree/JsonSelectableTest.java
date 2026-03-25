@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.hisp.dhis.jsontree.JsonNodeType.NUMBER;
 import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.hisp.dhis.jsontree.JsonSelector.AT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,6 +71,12 @@ class JsonSelectableTest {
       }
       """);
     assertEquals(11, json.queryCount($.descendant()), "$.descendant() should visit all nodes");
+    assertEquals(
+        6,
+        json.queryCount($.descendant(), 6),
+        "$.descendant() should visit only nodes up to the limit");
+    assertEquals(
+        16, json.queryReduce($.descendant().type(NUMBER), JsonMixed::intValue, 0, Integer::max));
   }
 
   @Test

@@ -29,8 +29,6 @@ package org.hisp.dhis.jsontree;
 
 import java.util.NoSuchElementException;
 
-import static java.lang.String.format;
-
 /**
  * Exception thrown when a given path does not exist in the {@link JsonTree}.
  *

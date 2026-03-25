@@ -38,6 +38,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
+import org.hisp.dhis.jsontree.JsonSelector.Matches;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
@@ -512,9 +513,19 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    */
   @Override
   @TerminalOp(canBeUndefined = true)
-  default void query(JsonSelector selector, Consumer<JsonMixed> matches) {
+  default void query(JsonSelector selector, Matches<JsonMixed> matches) {
     if (isUndefined()) return;
-    JsonAccessors accessors = getAccessors();
-    node().query(selector, match -> matches.accept(match.lift(accessors)));
+    record Lifter(JsonAccessors accessors, Matches<JsonMixed> matches) implements Matches<JsonNode> {
+      @Override
+      public boolean satisfied() {
+        return matches.satisfied();
+      }
+
+      @Override
+      public void accept(JsonNode match) {
+        matches.accept(match.lift(accessors));
+      }
+    }
+    node().query(selector, new Lifter(getAccessors(), matches));
   }
 }
