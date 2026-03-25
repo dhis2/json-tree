@@ -225,24 +225,51 @@ class TextTest {
     assertArrayEquals(new char[] {'h', 'e', 'l', 'l', 'o'}, t.toCharArray());
   }
 
-  @DisplayName("isSignedInteger()")
+  @DisplayName("isTextualInteger()")
   @Test
-  void testIsSignedInteger() {
-    assertTrue(Text.of(123).isSignedInteger());
-    assertTrue(Text.of("123").isSignedInteger());
-    assertTrue(Text.of(-123).isSignedInteger());
-    assertTrue(Text.of("+123").isSignedInteger());
-    assertTrue(Text.of("0").isSignedInteger());
-    assertTrue(Text.of("-0").isSignedInteger());
-    assertTrue(Text.of("+0").isSignedInteger());
-    assertTrue(Text.of("007").isSignedInteger());
-    assertTrue(Text.of("9999999999999999999999999999").isSignedInteger());
+  void testIsTextualInteger() {
+    assertTrue(Text.of(123).isTextualInteger());
+    assertTrue(Text.of("123").isTextualInteger());
+    assertTrue(Text.of(-123).isTextualInteger());
+    assertTrue(Text.of("+123").isTextualInteger());
+    assertTrue(Text.of("0").isTextualInteger());
+    assertTrue(Text.of("-0").isTextualInteger());
+    assertTrue(Text.of("+0").isTextualInteger());
+    assertTrue(Text.of("007").isTextualInteger());
+    assertTrue(Text.of("9999999999999999999999999999").isTextualInteger());
 
-    assertFalse(Text.of("").isSignedInteger());
-    assertFalse(Text.of(".01").isSignedInteger());
-    assertFalse(Text.of("12a").isSignedInteger());
-    assertFalse(Text.of("12.3").isSignedInteger());
-    assertFalse(Text.of("--1").isSignedInteger());
+    assertFalse(Text.of("").isTextualInteger());
+    assertFalse(Text.of(".01").isTextualInteger());
+    assertFalse(Text.of("12a").isTextualInteger());
+    assertFalse(Text.of("12.3").isTextualInteger());
+    assertFalse(Text.of("--1").isTextualInteger());
+  }
+
+  @DisplayName("isNumericInteger()")
+  @Test
+  void testIsNumericInteger() {
+    assertTrue(Text.of(123).isNumericInteger());
+    assertTrue(Text.of("123").isNumericInteger());
+    assertTrue(Text.of(-123).isNumericInteger());
+    assertTrue(Text.of("+123").isNumericInteger());
+    assertTrue(Text.of("0").isNumericInteger());
+    assertTrue(Text.of("-0").isNumericInteger());
+    assertTrue(Text.of("+0").isNumericInteger());
+    assertTrue(Text.of("007").isNumericInteger());
+    assertTrue(Text.of("9999999999999999999999999999").isNumericInteger());
+
+    assertFalse(Text.of("").isNumericInteger());
+    assertFalse(Text.of(".01").isNumericInteger());
+    assertFalse(Text.of("12a").isNumericInteger());
+    assertFalse(Text.of("12.3").isNumericInteger());
+    assertFalse(Text.of("--1").isNumericInteger());
+    assertFalse(Text.of("1.0000001").isNumericInteger());
+
+    assertTrue(Text.of("0.0").isNumericInteger());
+    assertTrue(Text.of("+1.0").isNumericInteger());
+    assertTrue(Text.of("-1.0").isNumericInteger());
+    assertTrue(Text.of("1.0").isNumericInteger());
+    assertTrue(Text.of("12.00").isNumericInteger());
   }
 
   @DisplayName("parseInt()")

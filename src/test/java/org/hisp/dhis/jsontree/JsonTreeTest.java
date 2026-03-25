@@ -39,13 +39,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
-import org.hisp.dhis.jsontree.JsonNode.Index;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -72,7 +69,7 @@ class JsonTreeTest {
   @Test
   void testStringNode() {
     JsonNode node = JsonNode.of("\"hello\"");
-    assertEquals(JsonNodeType.STRING, node.getType());
+    assertEquals(JsonNodeType.STRING, node.type());
     assertEquals("hello", node.value().toString());
     assertEquals(0, node.startIndex());
     assertSame(node, node.getParent());
@@ -83,10 +80,10 @@ class JsonTreeTest {
   void testStringNode_Unicode() {
     // use an array to see that unicode skipping works as well
     JsonNode node0 = JsonNode.of("[\"Star \\uD83D\\uDE80 ship\", 12]").get("[0]");
-    assertEquals(JsonNodeType.STRING, node0.getType());
+    assertEquals(JsonNodeType.STRING, node0.type());
     assertEquals("Star \uD83D\uDE80 ship", node0.value().toString());
     JsonNode node1 = JsonNode.of("[\"Star \\uD83D\\uDE80 ship\", 12]").get("[1]");
-    assertEquals(JsonNodeType.NUMBER, node1.getType());
+    assertEquals(JsonNodeType.NUMBER, node1.type());
     assertEquals(12, node1.intValue());
   }
 
@@ -132,7 +129,7 @@ class JsonTreeTest {
   @Test
   void testNumberNode_Integer() {
     JsonNode node = JsonNode.of("123");
-    assertEquals(JsonNodeType.NUMBER, node.getType());
+    assertEquals(JsonNodeType.NUMBER, node.type());
     assertEquals(123, node.intValue());
     assertSame(node, node.getParent());
     assertSame(node, node.getRoot());
@@ -168,14 +165,14 @@ class JsonTreeTest {
   @Test
   void testNumberNode_Long() {
     JsonNode node = JsonNode.of("2147483648");
-    assertEquals(JsonNodeType.NUMBER, node.getType());
+    assertEquals(JsonNodeType.NUMBER, node.type());
     assertEquals(2147483648L, node.longValue());
   }
 
   @Test
   void testBooleanNode_True() {
     JsonNode node = JsonNode.of("true");
-    assertEquals(JsonNodeType.BOOLEAN, node.getType());
+    assertEquals(JsonNodeType.BOOLEAN, node.type());
     assertEquals(true, node.value());
     assertSame(node, node.getParent());
     assertSame(node, node.getRoot());
@@ -197,14 +194,14 @@ class JsonTreeTest {
   @Test
   void testBooleanNode_False() {
     JsonNode node = JsonNode.of("false");
-    assertEquals(JsonNodeType.BOOLEAN, node.getType());
+    assertEquals(JsonNodeType.BOOLEAN, node.type());
     assertEquals(false, node.value());
   }
 
   @Test
   void testNullNode() {
     JsonNode node = JsonNode.of("null");
-    assertEquals(JsonNodeType.NULL, node.getType());
+    assertEquals(JsonNodeType.NULL, node.type());
     assertNull(node.value());
     assertSame(node, node.getParent());
     assertSame(node, node.getRoot());
@@ -232,7 +229,7 @@ class JsonTreeTest {
   @Test
   void testArray_Numbers() {
     JsonNode node = JsonNode.of("[1, 2 ,3]");
-    assertEquals(JsonNodeType.ARRAY, node.getType());
+    assertEquals(JsonNodeType.ARRAY, node.type());
     assertFalse(node.isEmpty());
     assertEquals(3, node.size());
     assertSame(node, node.getParent());
@@ -290,7 +287,7 @@ class JsonTreeTest {
   @Test
   void testObject_Flat() {
     JsonNode root = JsonNode.of("{\"a\":1, \"bb\":true , \"ccc\":null }");
-    assertEquals(JsonNodeType.OBJECT, root.getType());
+    assertEquals(JsonNodeType.OBJECT, root.type());
     assertFalse(root.isEmpty());
     assertEquals(3, root.size());
     assertEquals(List.of("a", "bb", "ccc"), JsonValue.of(root).asObject().names());
@@ -305,17 +302,17 @@ class JsonTreeTest {
     JsonNode doc = JsonNode.of("{\"a\": { \"b\" : [12, false] } }");
 
     JsonNode root = doc.get("$");
-    assertEquals(JsonNodeType.OBJECT, root.getType());
+    assertEquals(JsonNodeType.OBJECT, root.type());
     assertFalse(root.isEmpty());
     assertEquals(1, root.size());
 
     JsonNode a = doc.get("$.a");
-    assertEquals(JsonNodeType.OBJECT, a.getType());
+    assertEquals(JsonNodeType.OBJECT, a.type());
     assertFalse(a.isEmpty());
     assertEquals(1, a.size());
 
     JsonNode ab = doc.get("$.a.b");
-    assertEquals(JsonNodeType.ARRAY, ab.getType());
+    assertEquals(JsonNodeType.ARRAY, ab.type());
     assertFalse(ab.isEmpty());
     assertEquals(2, ab.size());
     assertEquals("[12, false]", ab.getDeclaration().toString());
@@ -323,13 +320,13 @@ class JsonTreeTest {
     assertSame(root, ab.getRoot());
 
     JsonNode ab0 = doc.get("$.a.b[0]");
-    assertEquals(JsonNodeType.NUMBER, ab0.getType());
+    assertEquals(JsonNodeType.NUMBER, ab0.type());
     assertEquals(12, ab0.intValue());
     assertSame(ab, ab0.getParent());
     assertSame(root, ab0.getRoot());
 
     JsonNode ab1 = doc.get("$.a.b[1]");
-    assertEquals(JsonNodeType.BOOLEAN, ab1.getType());
+    assertEquals(JsonNodeType.BOOLEAN, ab1.type());
     assertEquals(false, ab1.value());
   }
 
@@ -344,20 +341,20 @@ class JsonTreeTest {
     JsonNode doc = JsonNode.of("{\"a\": { \"b\" : [12, false] } }");
 
     JsonNode root = doc.get("$");
-    assertEquals(JsonNodeType.OBJECT, root.getType());
+    assertEquals(JsonNodeType.OBJECT, root.type());
 
     JsonNode a = doc.get("$.a");
-    assertEquals(JsonNodeType.OBJECT, a.getType());
+    assertEquals(JsonNodeType.OBJECT, a.type());
 
     JsonNode ab = doc.get("$.a.b");
-    assertEquals(JsonNodeType.ARRAY, ab.getType());
+    assertEquals(JsonNodeType.ARRAY, ab.type());
 
     JsonNode ab0 = doc.get("$.a.b[0]");
-    assertEquals(JsonNodeType.NUMBER, ab0.getType());
+    assertEquals(JsonNodeType.NUMBER, ab0.type());
     assertEquals(12, ab0.intValue());
 
     JsonNode ab1 = doc.get("$.a.b[1]");
-    assertEquals(JsonNodeType.BOOLEAN, ab1.getType());
+    assertEquals(JsonNodeType.BOOLEAN, ab1.type());
     assertEquals(false, ab1.booleanValue());
   }
 
@@ -489,7 +486,7 @@ class JsonTreeTest {
   @Test
   void testNull() {
     JsonNode node = JsonNode.of("null");
-    assertEquals(JsonNodeType.NULL, node.getType());
+    assertEquals(JsonNodeType.NULL, node.type());
     assertNull(node.value());
   }
 

@@ -38,7 +38,7 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonObjectBuilder addMember(CharSequence name, JsonNode value) {
-    JsonNodeType type = value.getType();
+    JsonNodeType type = value.type();
     return switch (type) {
       case OBJECT -> addObject(name, obj -> value.members().forEach(obj::addMember));
       case ARRAY -> addArray(name, arr -> value.elements().forEach(arr::addElement));
@@ -137,7 +137,7 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
 
   @Override
   public JsonArrayBuilder addElement(JsonNode value) {
-    JsonNodeType type = value.getType();
+    JsonNodeType type = value.type();
     return switch (type) {
       case OBJECT -> addObject(obj -> value.members().forEach(obj::addMember));
       case ARRAY -> addArray(arr -> value.elements().forEach(arr::addElement));

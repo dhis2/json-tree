@@ -96,7 +96,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   static JsonMixed lift(JsonNode node, JsonAccessors accessors) {
-    return new JsonVirtualTree(node.getRoot(), node.getPath(), node, accessors);
+    return new JsonVirtualTree(node.getRoot(), node.path(), node, accessors);
   }
 
   /**

@@ -19,8 +19,8 @@ public final class JsonTreeException extends UnsupportedOperationException {
     return new JsonTreeException(
         "%s node at path %s is not a %s and does not support #%s: %s"
             .formatted(
-                node.getType(),
-                node.getPath().toDisplayString(),
+                node.type(),
+                node.path().toDisplayString(),
                 required,
                 operation,
                 excerpt(node)));
@@ -29,22 +29,22 @@ public final class JsonTreeException extends UnsupportedOperationException {
   public static JsonTreeException notAContainer(JsonNode node, String operation) {
     return new JsonTreeException(
         "%s node at path %s is not a container and does not support #%s: %s"
-            .formatted(node.getType(), node.getPath().toDisplayString(), operation, excerpt(node)));
+            .formatted(node.type(), node.path().toDisplayString(), operation, excerpt(node)));
   }
 
   public static JsonTreeException notAnObject(JsonPath subPath, JsonNode node, String operation) {
     return new JsonTreeException(
         "%s node at path %s is not a OBJECT and does not support #%s:\"%s\"): %s"
             .formatted(
-                node.getType(),
-                node.getPath().toDisplayString(),
+                node.type(),
+                node.path().toDisplayString(),
                 operation.substring(0, operation.length()-1),
                 subPath.toDisplayString(),
                 excerpt(node)));
   }
 
   private static CharSequence excerpt(JsonNode node) {
-    return switch (node.getType()) {
+    return switch (node.type()) {
       case NULL, BOOLEAN, STRING, NUMBER -> node.getDeclaration();
       case OBJECT, ARRAY -> {
         Text json = node.getDeclaration();

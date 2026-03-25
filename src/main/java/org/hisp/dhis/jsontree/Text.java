@@ -210,9 +210,11 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return true, if this text is a valid (potentially signed) integer value (of any range)
+   * @return true, if this text is a valid integer value (of any range), or in other words if the
+   *     sequence only consists of digits except for the first character which may be a plus or
+   *     minus sign.
    */
-  default boolean isSignedInteger() {
+  default boolean isTextualInteger() {
     if (isEmpty()) return false;
     int i = 0;
     if (charAt(0) == '-' || charAt(0) == '+') i++;
@@ -222,10 +224,20 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return true, if this text is a valid (potentially signed) decimal value (of any range)
+   * @return true, if this is either a {@link #isTextualInteger()} or a floating point number in
+   *     decimal notation with all decimals being zero.
    */
-  default boolean isSignedDecimal() {
-    return TextualNumber.isSignedDecimal(toCharArray());
+  default boolean isNumericInteger() {
+    return TextualNumber.isNumericInteger(toCharArray());
+  }
+
+  /**
+   * @return true, if this text is a valid decimal value (of any range), in other words if it is
+   *     either a {@link #isTextualInteger()} or a floating point number in decimal or exponential
+   *     notation.
+   */
+  default boolean isTextualDecimal() {
+    return TextualNumber.isTextualDecimal(toCharArray());
   }
 
   /**
@@ -371,14 +383,25 @@ public interface Text extends CharSequence, Comparable<Text> {
         return new Slice(buffer, offset + start, end - start);
       }
 
-      @Override
-      public boolean isSignedInteger() {
-        return buffer == Cache._100_TO_999 || TextualNumber.isSignedInteger(buffer, offset, length);
+      private boolean isInteger() {
+        // if this buffer is the number cache
+        // we do know the contents to be an integer number
+        return buffer == Cache._100_TO_999;
       }
 
       @Override
-      public boolean isSignedDecimal() {
-        return buffer == Cache._100_TO_999 || TextualNumber.isSignedDecimal(buffer, offset, length);
+      public boolean isTextualInteger() {
+        return isInteger() || TextualNumber.isTextualInteger(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isNumericInteger() {
+        return isInteger() || TextualNumber.isNumericInteger(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isTextualDecimal() {
+        return isInteger() || TextualNumber.isTextualDecimal(buffer, offset, length);
       }
 
       @Override

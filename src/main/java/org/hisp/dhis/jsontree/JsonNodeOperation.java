@@ -38,7 +38,7 @@ public sealed interface JsonNodeOperation {
    * @return true when this operation targets an array index
    */
   default boolean isArrayOp() {
-    return path().segment().isSignedInteger(); // just a guess, could be numeric object member
+    return path().segment().isTextualInteger(); // just a guess, could be numeric object member
   }
 
   /**
@@ -151,7 +151,7 @@ public sealed interface JsonNodeOperation {
     Set<JsonPath> parents = new HashSet<>();
     for (JsonNodeOperation op : ops) {
       JsonPath path = op.path();
-      if (op instanceof Insert insert && insert.merge && insert.value.getType() == OBJECT) {
+      if (op instanceof Insert insert && insert.merge && insert.value.isObject()) {
         insert
             .value
             .keys()

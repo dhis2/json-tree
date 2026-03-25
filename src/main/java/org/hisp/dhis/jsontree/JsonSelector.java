@@ -223,7 +223,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   private void matchChildren(JsonNode node, Consumer<JsonNode> matches) {
-    switch (node.getType()) {
+    switch (node.type()) {
       case ARRAY -> {
         for (JsonNode e : node.elements(SKIP)) match(e, matches);
       }
@@ -240,18 +240,18 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   public interface Matcher {
 
     /**
-     * @param self the node to test
-     * @param next the next segment to test next level with if the given node matches this matcher
+     * @param node    the node to test
+     * @param next    the next segment to test next level with if the given node matches this matcher
      * @param matches the consumer for matches found that needs to be forwarded
      */
-    void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches);
+    void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches);
   }
 
   private record RootMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      next.match(self.getRoot(), matches);
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      next.match(node.getRoot(), matches);
     }
 
     @Override
@@ -263,8 +263,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record SelfMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      next.match(self, matches);
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      next.match(node, matches);
     }
 
     @Override
@@ -276,10 +276,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record DescendantMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
       // this is one part of it
       // where we try to apply the sub-selector to self
-      next.match(self, matches);
+      next.match(node, matches);
     }
 
     @Override
@@ -291,8 +291,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record TypeMatcher(JsonNodeType type) implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      if (self.getType() == type) next.match(self, matches);
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      if (node.type() == type) next.match(node, matches);
     }
 
     @Override
@@ -304,9 +304,9 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record KeyMatcher(Text name) implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      if (self.getType() == JsonNodeType.OBJECT) {
-        JsonNode e = self.getIfExists(name);
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      if (node.isObject()) {
+        JsonNode e = node.getIfExists(name);
         if (e != null) next.match(e, matches);
       }
     }
@@ -320,12 +320,12 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record AnyMatcher() implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      JsonNodeType type = self.getType();
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      JsonNodeType type = node.type();
       if (type == JsonNodeType.OBJECT) {
-        for (JsonNode e : self.members(SKIP)) next.match(e, matches);
+        for (JsonNode e : node.members(SKIP)) next.match(e, matches);
       } else if (type == JsonNodeType.ARRAY) {
-        for (JsonNode e : self.elements(SKIP)) next.match(e, matches);
+        for (JsonNode e : node.elements(SKIP)) next.match(e, matches);
       }
     }
 
@@ -338,9 +338,9 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record IndexMatcher(Text index) implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      if (self.getType() == JsonNodeType.ARRAY && !self.isEmpty()) {
-        JsonNode e = self.elementIfExists(index);
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      if (node.isArray() && !node.isEmpty()) {
+        JsonNode e = node.elementIfExists(index);
         if (e != null) next.match(e, matches);
       }
     }
@@ -354,10 +354,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record UnionMatcher(List<Text> indexes) implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      if (self.getType() == JsonNodeType.ARRAY && !self.isEmpty()) {
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      if (node.isArray() && !node.isEmpty()) {
         for (Text i : indexes) {
-          JsonNode e = self.elementIfExists(i);
+          JsonNode e = node.elementIfExists(i);
           if (e != null) next.match(e, matches);
         }
       }
@@ -372,19 +372,19 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record SliceMatcher(Integer start, Integer end, int step) implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      if (self.getType() == JsonNodeType.ARRAY && !self.isEmpty()) {
-        int size = self.size();
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      if (node.isArray() && !node.isEmpty()) {
+        int size = node.size();
         int sRel = start != null ? start : step > 0 ? 0 : size;
         int eRel = end != null ? end : step > 0 ? size : 0;
         int sAbs = sRel < 0 ? size - sRel : Math.min(sRel, size);
         int eAbs = eRel < 0 ? size - eRel : Math.min(eRel, size);
         if (step < 0) {
           // forward iteration
-          for (int i = sAbs; i >= eAbs; i += step) next.match(self.element(i), matches);
+          for (int i = sAbs; i >= eAbs; i += step) next.match(node.element(i), matches);
         } else {
           // backward iteration
-          for (int i = sAbs; i < eAbs; i += step) next.match(self.element(i), matches);
+          for (int i = sAbs; i < eAbs; i += step) next.match(node.element(i), matches);
         }
       }
     }
@@ -402,8 +402,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private record FilterMatcher(Predicate<JsonNode> filter) implements Matcher {
 
     @Override
-    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      if (filter.test(self)) next.match(self, matches);
+    public void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches) {
+      if (filter.test(node)) next.match(node, matches);
     }
 
     @Override

@@ -152,8 +152,8 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
   public static String format(Difference d) {
     JsonValue a = d.inExpected;
     JsonValue b = d.inActual;
-    JsonPath aPath = a.exists() ? a.node().getPath() : b.node().getPath();
-    JsonPath bPath = b.exists() ? b.node().getPath() : a.node().getPath();
+    JsonPath aPath = a.exists() ? a.node().path() : b.node().path();
+    JsonPath bPath = b.exists() ? b.node().path() : a.node().path();
     Text aJson = a.exists() ? a.node().getDeclaration() : Text.of("?");
     Text bJson = b.exists() ? b.node().getDeclaration() : Text.of("?");
     String type =

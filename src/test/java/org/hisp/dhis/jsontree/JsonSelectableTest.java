@@ -52,7 +52,7 @@ class JsonSelectableTest {
       }
       """);
 
-    List<JsonMixed> matches = json.query($.descendant().filter(node -> node.getType().isSimple())).toList();
+    List<JsonMixed> matches = json.query($.descendant().filter(JsonProbe::isSimple)).toList();
     assertEquals("[\"A\", 8, \"C\", 10, true, \"B\", 12]", matches.toString());
   }
 

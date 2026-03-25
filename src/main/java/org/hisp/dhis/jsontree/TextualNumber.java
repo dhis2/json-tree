@@ -32,7 +32,7 @@ public final class TextualNumber extends Number implements Textual {
     if (length < 0) throw nanError(buffer, offset, length, "length must be >= 0");
     if (offset + length > buffer.length)
       throw new NumberFormatException("offset + length must be <= buffer.length");
-    if (isSignedInteger(buffer, offset, length)) {
+    if (isTextualInteger(buffer, offset, length)) {
       // up to 9 digits is always in int range
       if (length <= 9) return parseIntExact(buffer, offset, length);
       // will overflow for sure
@@ -46,7 +46,7 @@ public final class TextualNumber extends Number implements Textual {
         return new TextualNumber(buffer, offset, length);
       }
     }
-    if (!isSignedDecimal(buffer, offset, length))
+    if (!isTextualDecimal(buffer, offset, length))
       throw nanError(buffer, offset, length, "Is neither a integer or decimal number");
     return new TextualNumber(buffer, offset, length);
   }
@@ -107,20 +107,20 @@ public final class TextualNumber extends Number implements Textual {
     return parseDouble(buffer, offset, length);
   }
 
-  static boolean isSignedDecimal(char[] buffer) {
-    return isSignedDecimal(buffer, 0, buffer.length);
+  static boolean isTextualDecimal(char[] buffer) {
+    return isTextualDecimal(buffer, 0, buffer.length);
   }
 
-  static boolean isSignedDecimal(char[] buffer, int offset, int length) {
+  static boolean isTextualDecimal(char[] buffer, int offset, int length) {
     if (length == 0) return false;
     int eOffset = offsetExponent(buffer, offset, length);
-    if (eOffset < 0) return isSignedDecimalBase(buffer, offset, length);
+    if (eOffset < 0) return isTextualDecimalBase(buffer, offset, length);
     int baseLength = eOffset - offset;
-    return isSignedDecimalBase(buffer, offset, baseLength)
-        && isSignedInteger(buffer, eOffset + 1, length - 1 - baseLength);
+    return isTextualDecimalBase(buffer, offset, baseLength)
+        && isTextualInteger(buffer, eOffset + 1, length - 1 - baseLength);
   }
 
-  static boolean isSignedDecimalBase(char[] buffer, int offset, int length) {
+  static boolean isTextualDecimalBase(char[] buffer, int offset, int length) {
     int i = offset;
     if (buffer[i] == '-' || buffer[i] == '+') i++; // sign
     int end = offset+length;
@@ -137,7 +137,7 @@ public final class TextualNumber extends Number implements Textual {
     return i == end;
   }
 
-  static boolean isSignedInteger(char[] buffer, int offset, int length) {
+  static boolean isTextualInteger(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
     char sign = buffer[offset];
     int i = 0;
@@ -145,6 +145,26 @@ public final class TextualNumber extends Number implements Textual {
     if (i > 0 && length == 1) return false;
     for (; i < length; i++) if (!isDigit(buffer[offset + i])) return false;
     return true;
+  }
+
+  static boolean isNumericInteger(char[] buffer) {
+    return isNumericInteger(buffer, 0, buffer.length);
+  }
+
+  static boolean isNumericInteger(char[] buffer, int offset, int length) {
+    if (length <= 0) return false;
+    char sign = buffer[offset];
+    int i = offset;
+    if (sign == '-' || sign == '+') i++;
+    if (i > offset && length == 1) return false;
+    int end = offset + length;
+    int d0 = i;
+    while (i < end && isDigit(buffer[i])) i++;
+    if (i == d0) return false;
+    if (i == end) return true;
+    if (buffer[i++] != '.') return false;
+    while (i < end && buffer[i] == '0') i++;
+    return i == end;
   }
 
   private static boolean allDigits(char[] buffer, int offset, int length) {
@@ -171,7 +191,7 @@ public final class TextualNumber extends Number implements Textual {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isSignedInteger(buffer, offset, length))
+    if (isTextualInteger(buffer, offset, length))
         return parseInt(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
@@ -191,7 +211,7 @@ public final class TextualNumber extends Number implements Textual {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isSignedInteger(buffer, offset, length))
+    if (isTextualInteger(buffer, offset, length))
       return parseLong(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
@@ -211,7 +231,7 @@ public final class TextualNumber extends Number implements Textual {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isSignedInteger(buffer, offset, length)) {
+    if (isTextualInteger(buffer, offset, length)) {
       if (length <= 9) {
         int val = parseIntExact(buffer, offset, length);
         if (val != 0) return val;

@@ -1,11 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.CheckNull;
-
 import java.util.Optional;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**

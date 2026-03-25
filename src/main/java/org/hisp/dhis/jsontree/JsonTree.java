@@ -135,7 +135,7 @@ record JsonTree(
     }
 
     @Override
-    public final JsonPath getPath() {
+    public final JsonPath path() {
       return path;
     }
 
@@ -194,7 +194,7 @@ record JsonTree(
       if (this == obj) return true;
       if (!(obj instanceof LazyJsonNode other)) return false;
       if (tree.json == other.tree.json && start == other.start) return true;
-      return getPath().equals(other.getPath())
+      return path().equals(other.path())
           && getDeclaration().contentEquals(other.getDeclaration());
     }
 
@@ -254,7 +254,7 @@ record JsonTree(
     }
 
     @Override
-    public @NotNull JsonNodeType getType() {
+    public @NotNull JsonNodeType type() {
       return JsonNodeType.OBJECT;
     }
 
@@ -465,7 +465,7 @@ record JsonTree(
     }
 
     @Override
-    public @NotNull JsonNodeType getType() {
+    public @NotNull JsonNodeType type() {
       return JsonNodeType.ARRAY;
     }
 
@@ -476,13 +476,13 @@ record JsonTree(
 
     @Override
     public JsonNode get(Text name) throws JsonPathException, JsonTreeException {
-      if (name.isSignedInteger()) return element(name.parseInt(), name, false);
+      if (name.isTextualInteger()) return element(name.parseInt(), name, false);
       return super.get(name);
     }
 
     @Override
     public JsonNode getIfExists(Text name) throws JsonTreeException {
-      if (name.isSignedInteger()) return element(name.parseInt(), name, true);
+      if (name.isTextualInteger()) return element(name.parseInt(), name, true);
       return super.getIfExists(name);
     }
 
@@ -522,7 +522,7 @@ record JsonTree(
     @NotNull
     @Override
     public JsonNode element(Text index) {
-      if (!index.isSignedInteger()) return super.get(index);
+      if (!index.isTextualInteger()) return super.get(index);
       return element(index.parseInt(), index, false);
     }
 
@@ -533,7 +533,7 @@ record JsonTree(
 
     @Override
     public JsonNode elementIfExists(Text index) {
-      if (!index.isSignedInteger()) return super.get(index);
+      if (!index.isTextualInteger()) return super.get(index);
       return element(index.parseInt(), index, true);
     }
 
@@ -671,7 +671,7 @@ record JsonTree(
     }
 
     @Override
-    public @NotNull JsonNodeType getType() {
+    public @NotNull JsonNodeType type() {
       return JsonNodeType.NUMBER;
     }
 
@@ -708,7 +708,7 @@ record JsonTree(
     }
 
     @Override
-    public @NotNull JsonNodeType getType() {
+    public @NotNull JsonNodeType type() {
       return JsonNodeType.STRING;
     }
 
@@ -750,7 +750,7 @@ record JsonTree(
     }
 
     @Override
-    public @NotNull JsonNodeType getType() {
+    public @NotNull JsonNodeType type() {
       return JsonNodeType.BOOLEAN;
     }
 
@@ -772,7 +772,7 @@ record JsonTree(
     }
 
     @Override
-    public @NotNull JsonNodeType getType() {
+    public @NotNull JsonNodeType type() {
       return JsonNodeType.NULL;
     }
 
@@ -799,11 +799,11 @@ record JsonTree(
     // find by finding the closest already indexed parent and navigate down from there...
     JsonNode parent = getClosestIndexedParent(path, nodesByPath);
     int segMax = path.length();
-    int segCur = parent.getPath().length();
+    int segCur = parent.path().length();
     while (parent != null && segCur < segMax) { // meaning: are we at the target node? (self)
       checkNodeIsParent(parent, path);
       Text segment = path.segments().get(segCur);
-      JsonNodeType type = parent.getType();
+      JsonNodeType type = parent.type();
       if (type == JsonNodeType.ARRAY) {
         parent = orNull ? parent.elementIfExists(segment) : parent.element(segment);
       } else if (type == JsonNodeType.OBJECT) {
@@ -820,9 +820,9 @@ record JsonTree(
     if (nodesByPath.containsKey(path)) return true;
     JsonNode node = getClosestIndexedParent(path, nodesByPath);
     int segMax = path.length();
-    int segCur = node.getPath().length();
+    int segCur = node.path().length();
     while (node != null && segCur < segMax) {
-      JsonNodeType type = node.getType();
+      JsonNodeType type = node.type();
       if (type.isSimple()) return false;
       Text segment = path.segments().get(segCur);
       if (type == JsonNodeType.ARRAY) {
@@ -869,13 +869,12 @@ record JsonTree(
   }
 
   private static void checkNodeIsParent(JsonNode parent, JsonPath path) {
-    JsonNodeType type = parent.getType();
-    if (type.isSimple()) {
+    if (parent.isSimple()) {
       throw new JsonPathException(
           path,
           format(
               "Path `%s` does not exist, parent `%s` is already a simple node of type %s.",
-              path, parent.getPath(), type));
+              path, parent.path(), parent.type()));
     }
   }
 

@@ -48,11 +48,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -80,7 +77,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @author Jan Bernitt
  */
 public interface JsonNode
-    extends JsonSelectable<JsonNode>, Serializable, Textual, Map.Entry<Text, JsonNode> {
+    extends JsonProbe, JsonSelectable<JsonNode>, Serializable, Textual, Map.Entry<Text, JsonNode> {
 
   /**
    * The low level API does offer different behaviour when it comes to
@@ -234,7 +231,7 @@ public interface JsonNode
    * @return the type of the node as derived from the node beginning
    */
   @NotNull
-  JsonNodeType getType();
+  JsonNodeType type();
 
   /**
    * @return The root of this JSON document independent of which node in the tree it is called on
@@ -262,7 +259,7 @@ public interface JsonNode
    */
   @NotNull
   default JsonNode getParent() {
-    return isRoot() ? this : getRoot().get(getPath().parentPath());
+    return isRoot() ? this : getRoot().get(path().parentPath());
   }
 
   /**
@@ -327,7 +324,7 @@ public interface JsonNode
   }
 
   /**
-   * @param subPath a path understood relative to this node's {@link #getPath()}
+   * @param subPath a path understood relative to this node's {@link #path()}
    * @return the node at the given path
    * @throws JsonPathException when no such node exists in the subtree of this node
    * @throws JsonTreeException when the operation is called on a non-object node
@@ -340,7 +337,7 @@ public interface JsonNode
   }
 
   /**
-   * @param subPath a path understood relative to this node's {@link #getPath()}
+   * @param subPath a path understood relative to this node's {@link #path()}
    * @return the node at the given path or {@code null} if no such node exists
    * @throws JsonTreeException when the operation is called on a non-object node
    * @since 1.5
@@ -386,22 +383,6 @@ public interface JsonNode
   }
 
   /**
-   * @return true if this node is the root of the tree, false otherwise
-   * @since 0.6
-   */
-  default boolean isRoot() {
-    return getPath().isEmpty();
-  }
-
-  /**
-   * @return true, if this node represents a JSON {@code null} value
-   */
-  default boolean isNull() {
-    return getType() == JsonNodeType.NULL;
-  }
-  //TODO remove once type based utility is inherited
-
-  /**
    * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).
    *
    * <p>Check for member existence.
@@ -436,7 +417,7 @@ public interface JsonNode
   }
 
   /**
-   * The value depends on the {@link #getType()}:
+   * The value depends on the {@link #type()}:
    *
    * <ul>
    *   <li>{@link JsonNodeType#NULL} returns {@code null}
@@ -450,7 +431,7 @@ public interface JsonNode
    * @return the nodes value as described in the above table
    */
   default Object value() {
-    return switch (getType()) {
+    return switch (type()) {
       case NULL -> null;
       case ARRAY -> elements();
       case OBJECT -> members();
@@ -717,8 +698,9 @@ public interface JsonNode
   /**
    * @return path within the overall content this node represents
    * @since 1.1 (with {@link JsonPath} type)
+   * @since 1.9 (name changed to {@code path()})
    */
-  JsonPath getPath();
+  JsonPath path();
 
   /**
    * @return the plain JSON of this node as defined in the overall content
@@ -835,8 +817,8 @@ public interface JsonNode
    * @since 0.6
    */
   default JsonNode addMembers(JsonNode obj) {
-    checkType(JsonNodeType.OBJECT, getType(), "addMembers");
-    checkType(JsonNodeType.OBJECT, obj.getType(), "addMembers");
+    checkType(JsonNodeType.OBJECT, type(), "addMembers");
+    checkType(JsonNodeType.OBJECT, obj.type(), "addMembers");
     if (obj.isEmpty()) return getRoot();
     if (isEmpty() && isRoot()) return obj;
     return replaceWith(
@@ -867,7 +849,7 @@ public interface JsonNode
    * @throws JsonTreeException if this node is not an object node
    */
   default JsonNode removeMembers(Set<? extends CharSequence> names) {
-    checkType(JsonNodeType.OBJECT, getType(), "removeMembers");
+    checkType(JsonNodeType.OBJECT, type(), "removeMembers");
     if (isEmpty() || names.isEmpty()) return getRoot();
     return replaceWith(
         JsonBuilder.createObject(
@@ -912,8 +894,8 @@ public interface JsonNode
    * @since 0.6
    */
   default JsonNode addElements(JsonNode array) {
-    checkType(JsonNodeType.ARRAY, getType(), "addElements");
-    checkType(JsonNodeType.ARRAY, array.getType(), "addElements");
+    checkType(JsonNodeType.ARRAY, type(), "addElements");
+    checkType(JsonNodeType.ARRAY, array.type(), "addElements");
     if (array.isEmpty()) return getRoot();
     if (isEmpty() && isRoot()) return array;
     return replaceWith(
@@ -942,8 +924,8 @@ public interface JsonNode
    * @throws JsonTreeException if either this or the provided node aren't array nodes
    */
   default JsonNode putElements(int index, JsonNode array) {
-    checkType(JsonNodeType.ARRAY, getType(), "putElements");
-    checkType(JsonNodeType.ARRAY, array.getType(), "putElements");
+    checkType(JsonNodeType.ARRAY, type(), "putElements");
+    checkType(JsonNodeType.ARRAY, array.type(), "putElements");
     if (array.isEmpty()) return getRoot();
     return replaceWith(
         JsonBuilder.createArray(
@@ -962,7 +944,7 @@ public interface JsonNode
   }
 
   default JsonNode removeElements(int from, int to) {
-    checkType(JsonNodeType.ARRAY, getType(), "removeElements");
+    checkType(JsonNodeType.ARRAY, type(), "removeElements");
     if (isEmpty()) return getRoot();
     int size = size();
     if (from >= size) return getRoot();

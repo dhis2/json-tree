@@ -32,12 +32,11 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
+
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -87,7 +86,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  * @see JsonMixed
  */
 @Validation.Ignore
-public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, JsonValue> {
+public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Entry<Text, JsonValue> {
 
   /**
    * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
@@ -145,7 +144,8 @@ public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, Js
   Class<? extends JsonValue> asType();
 
   /**
-   * @return this node path
+   * @return this node path (does not imply existence, it is merely the path navigated to in the
+   *     virtual tree)
    * @since 0.11
    */
   @NotNull
@@ -192,12 +192,11 @@ public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, Js
    * @since 0.11
    */
   @CheckNull
+  @Override
   @TerminalOp(canBeUndefined = true)
   default JsonNodeType type() {
-    return !exists() ? null : node().getType();
+    return !exists() ? null : node().type();
   }
-
-  //TODO try moving all type based into an interface both JsonNode and JsonValue can extend
 
   /**
    * A property exists when it is part of the JSON response. This means it can be declared JSON
@@ -209,15 +208,6 @@ public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, Js
   boolean exists();
 
   /**
-   * @return true if the value exists and is defined JSON {@code null}
-   * @throws JsonPathException in case this value does not exist in the JSON document
-   */
-  @TerminalOp(canBeNull = true)
-  default boolean isNull() {
-    return type() == JsonNodeType.NULL;
-  }
-
-  /**
    * @return true if this JSON node either does not exist at all or is defined as JSON {@code null},
    *     otherwise false
    */
@@ -227,40 +217,13 @@ public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, Js
   }
 
   /**
-   * @return true if the value exists and is a JSON array node (empty or not) but not JSON {@code
-   *     null}
-   */
-  @TerminalOp(canBeUndefined = true)
-  default boolean isArray() {
-    return type() == JsonNodeType.ARRAY;
-  }
-
-  /**
-   * @return true if the value exists and is an JSON object node (empty or not) but not JSON {@code
-   *     null}
-   */
-  @TerminalOp(canBeUndefined = true)
-  default boolean isObject() {
-    return type() == JsonNodeType.OBJECT;
-  }
-
-  /**
-   * @return true if the value exists and is an JSON number node (not JSON {@code null})
-   * @since 0.10
-   */
-  @TerminalOp(canBeUndefined = true)
-  default boolean isNumber() {
-    return type() == JsonNodeType.NUMBER;
-  }
-
-  /**
    * @return true if the value exists and is an JSON number node and has no fraction part or a
    *     fraction of zero
    * @since 0.10
    */
   @TerminalOp(canBeUndefined = true)
   default boolean isInteger() {
-    return isNumber() && ((Number) node().value()).doubleValue() % 1d == 0d;
+    return isNumber() && node().textValue().isNumericInteger();
   }
 
   /**
@@ -283,24 +246,6 @@ public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, Js
     return isString()
         && (node().textValue().contentEquals("Infinity")
             || node().textValue().contentEquals("-Infinity"));
-  }
-
-  /**
-   * @return true if the value exists and is an JSON string node (not JSON {@code null})
-   * @since 0.10
-   */
-  @TerminalOp(canBeUndefined = true)
-  default boolean isString() {
-    return type() == JsonNodeType.STRING;
-  }
-
-  /**
-   * @return true if the value exists and is an JSON boolean node (not JSON {@code null})
-   * @since 0.10
-   */
-  @TerminalOp(canBeUndefined = true)
-  default boolean isBoolean() {
-    return type() == JsonNodeType.BOOLEAN;
   }
 
   /**

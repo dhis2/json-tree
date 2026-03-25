@@ -167,7 +167,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   @Override
   public JsonObjectBuilder addMember(CharSequence name, JsonNode value) {
-    JsonNodeType type = value.getType();
+    JsonNodeType type = value.type();
     if (config.excludeNullMembers() && type == JsonNodeType.NULL) return this;
     if (config.retainOriginalDeclaration() || type.isSimple())
       return addRawMember(name, value.getDeclaration());
@@ -258,7 +258,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   @Override
   public JsonArrayBuilder addElement(JsonNode value) {
-    JsonNodeType type = value.getType();
+    JsonNodeType type = value.type();
     if (config.retainOriginalDeclaration() || type.isSimple())
       return addRawElement(value.getDeclaration());
     return switch (type) {
