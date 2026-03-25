@@ -359,7 +359,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    */
   @TerminalOp(canBeUndefined = true)
   default boolean equivalentTo(JsonValue other) {
-    return equivalentTo(this, other, JsonValue::equivalentTo);
+    return equivalentTo(as(JsonMixed.class), other.as(JsonMixed.class), JsonValue::equivalentTo);
   }
 
   /**
@@ -375,7 +375,8 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    */
   @TerminalOp(canBeUndefined = true)
   default boolean identicalTo(JsonValue other) {
-    if (!equivalentTo(this, other, JsonValue::identicalTo)) return false;
+    if (!equivalentTo(as(JsonMixed.class), other.as(JsonMixed.class), JsonValue::identicalTo))
+      return false;
     if (isNumber()) return node().getDeclaration().equals(other.node().getDeclaration());
     if (!isObject()) return true;
     // names must be in same order
@@ -386,25 +387,15 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
   }
 
   private static boolean equivalentTo(
-      JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> eqItems) {
+      JsonMixed a, JsonMixed b, BiPredicate<JsonMixed, JsonMixed> eqItems) {
     if (a.type() != b.type()) return false;
     if (a.isUndefined()) return true; // types are same, must be either both null or both undefined
-    if (a.isString())
-      return a.as(JsonString.class).text().contentEquals(b.as(JsonString.class).text());
-    if (a.isBoolean())
-      return a.as(JsonBoolean.class).booleanValue() == b.as(JsonBoolean.class).booleanValue();
-    if (a.isNumber())
-      return a.as(JsonNumber.class).doubleValue() == b.as(JsonNumber.class).doubleValue();
-    if (a.isArray()) {
-      JsonArray ar = a.as(JsonArray.class);
-      JsonArray br = b.as(JsonArray.class);
-      return ar.size() == br.size()
-          && ar.indexes().allMatch(i -> eqItems.test(ar.get(i), br.get(i)));
-    }
-    JsonObject ao = a.asObject();
-    JsonObject bo = b.asObject();
-    return ao.size() == bo.size()
-        && ao.keys().allMatch(key -> eqItems.test(ao.get(key), bo.get(key)));
+    if (a.isString()) return a.text().contentEquals(b.text());
+    if (a.isBoolean()) return a.booleanValue() == b.booleanValue();
+    if (a.isNumber()) return a.doubleValue() == b.doubleValue();
+    if (a.isArray())
+      return a.size() == b.size() && a.indexes().allMatch(i -> eqItems.test(a.get(i), b.get(i)));
+    return a.size() == b.size() && a.keys().allMatch(key -> eqItems.test(a.get(key), b.get(key)));
   }
 
   /**

@@ -151,6 +151,13 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     return parent == null ? SELF : parent;
   }
 
+  public JsonPath drop(int n) {
+    if (n <= 0) return this;
+    JsonPath res = this;
+    for (int i = 0; i < n; i++) res = res.parentPath();
+    return res;
+  }
+
   public boolean startsWith(JsonPath prefix) {
     if (prefix.isEmpty()) return true;
     if (isEmpty()) return false;
@@ -246,6 +253,10 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
       p = p.parent;
     }
     return List.of(res);
+  }
+
+  public String[] toArray() {
+    return segments().stream().map(Text::toString).toArray(String[]::new);
   }
 
   /**

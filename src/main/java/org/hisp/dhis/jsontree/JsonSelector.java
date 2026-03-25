@@ -9,16 +9,23 @@ import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
 /**
  * A selector expression based search mostly conform with JsonPath (RFC 9535).
- * <p>
- * {@link JsonSelector} offers a programmatic API to compose a selector.
- * Segments of an entire selector can also be parsed from a {@link String} using {@link #of(String)}.
- * However, textual expressions are limited and do not allow the full extent of the
- * programmatic API.
- * <p>
- * The key difference are filter expressions. They can only be used programmatically
- * as they work on the Java language level to form expressions using {@link Predicate}s.
- * Semantically filters also always apply to currently matched node itself, independent of its
- * type (which is in contrast to RFC 9535 where filters apply to object and array items).
+ *
+ * <p>{@link JsonSelector} offers a programmatic fluent API to compose a selector. Segments of an
+ * entire selector can also be parsed from a {@link String} using {@link #of(String)}. However,
+ * textual expressions are limited and do not support the full extent of the fluent API.
+ *
+ * <h3>RFC-9535 Comparison</h3>
+ *
+ * The key difference are filter expressions. The {@link JsonSelector} API only supports
+ * programmatic composition of filters using Java as expression language in the form of {@link
+ * Predicate} expressions.
+ *
+ * <h3>Matching Extensions</h3>
+ *
+ * {@link JsonSelector} is the data model of a selector path as wel as the matching implementation.
+ * The matching is implemented entirely on top of the {@link JsonNode} API and thus can easily be
+ * extended with further matching logic by implementing a custom {@link Matcher} which can be
+ * inserted into a selector path using {@link #select(Matcher)}.
  *
  * @author Jan Bernitt
  * @since 1.9
@@ -73,7 +80,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   public String toString() {
     if (next == null && matcher == null) return "+";
     if (next == null) return matcher.toString();
-    return matcher.toString()+next;
+    return matcher.toString() + next;
   }
 
   /**
@@ -84,15 +91,16 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   /**
-   * @return true, when this selector starts with {@code ..} (recursive decent or descendant) matcher
+   * @return true, when this selector starts with {@code ..} (recursive decent or descendant)
+   *     matcher
    */
   public boolean isDescendant() {
     return matcher instanceof DescendantMatcher;
   }
 
-  public JsonSelector type(JsonNodeType type) {
-    return select(of(type));
-  }
+  /*
+  Selection (navigate to a selective set of children)
+   */
 
   public JsonSelector key(CharSequence name) {
     return select(of(Text.of(name)));
@@ -126,6 +134,14 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return select(of(start, end, step));
   }
 
+  /*
+  Filtering (remove from paths matching so far, no navigation)
+   */
+
+  public JsonSelector type(JsonNodeType type) {
+    return select(of(type));
+  }
+
   public JsonSelector filter(Predicate<JsonNode> filter) {
     return select(of(filter));
   }
@@ -136,12 +152,20 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return filter(node -> node.query(selector).findFirst().filter(filter).isPresent());
   }
 
+  /*
+  Combined or generic
+   */
+
   public JsonSelector find(Predicate<JsonMixed> filter) {
     return descendant().filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
   }
 
   public JsonSelector find(JsonNodeType type, Predicate<JsonMixed> filter) {
     return descendant().type(type).filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
+  }
+
+  public JsonSelector select(Matcher next) {
+    return select(new JsonSelector(next, null));
   }
 
   public JsonSelector select(JsonSelector next) {
@@ -166,12 +190,12 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
         case ':' -> {
           int end = skipName(expression, offset);
           res = res.type(JsonNodeType.valueOf(expression.subSequence(offset, end).toString()));
-          offset=end;
+          offset = end;
         }
         case '.' -> {
           int end = skipName(expression, offset);
           res = res.key(expression.subSequence(offset, end));
-          offset=end;
+          offset = end;
         }
         case '[' -> {
           switch (expression.charAt(offset++)) {
@@ -185,7 +209,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
               offset = end + 2;
             }
             default -> {
-              //TODO index, union or slice
+              // TODO index, union or slice
             }
           }
         }
@@ -208,14 +232,14 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   /**
-   * This is a special instance that we pass as next if only the last matcher has to match.
-   * If it's {@link #match(JsonNode, Consumer)} is called we have a match.
+   * This is a special instance that we pass as next if only the last matcher has to match. If it's
+   * {@link #match(JsonNode, Consumer)} is called we have a match.
    */
   private static final JsonSelector MATCH = new JsonSelector(null, null);
 
   public void match(JsonNode node, Consumer<JsonNode> matches) {
     if (this == MATCH) {
-        matches.accept(node);
+      matches.accept(node);
     } else {
       matcher.match(node, next == null ? MATCH : next, matches);
       if (isDescendant()) matchChildren(node, matches);
@@ -234,14 +258,14 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   /**
-   * Checks a node against the condition of a selector segment and forwards matches
-   * to the next selector segment.
+   * Checks a node against the condition of a selector segment and forwards matches to the next
+   * selector segment.
    */
   public interface Matcher {
 
     /**
-     * @param node    the node to test
-     * @param next    the next segment to test next level with if the given node matches this matcher
+     * @param node the node to test
+     * @param next the next segment to test next level with if the given node matches this matcher
      * @param matches the consumer for matches found that needs to be forwarded
      */
     void match(JsonNode node, JsonSelector next, Consumer<JsonNode> matches);
@@ -297,7 +321,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      return ":"+type.name().toLowerCase(); // note RFC-9535 does not have type matchers
+      return ":" + type.name().toLowerCase(); // note RFC-9535 does not have type matchers
     }
   }
 
@@ -313,7 +337,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      return "."+name;
+      return "." + name;
     }
   }
 
@@ -347,7 +371,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      return "["+index+"]";
+      return "[" + index + "]";
     }
   }
 
@@ -393,9 +417,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     public String toString() {
       Object s = start == null ? "" : start;
       Object e = end == null ? "" : end;
-      return step == 1
-          ? "[%s:%s]".formatted(s, e)
-          : "[%s:%s:%d]".formatted(s, e, step);
+      return step == 1 ? "[%s:%s]".formatted(s, e) : "[%s:%s:%d]".formatted(s, e, step);
     }
   }
 

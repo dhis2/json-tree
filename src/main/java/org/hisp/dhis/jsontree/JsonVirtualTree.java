@@ -560,8 +560,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   @Serial
   public Object writeReplace() {
-    return new SerializedJsonValue(
-        node().getRoot(), path.segments().stream().map(Text::toString).toArray(String[]::new));
+    return new SerializedJsonValue(node().getRoot(), path.toArray());
   }
 
   private record SerializedJsonValue(JsonNode root, String[] path) implements Serializable {

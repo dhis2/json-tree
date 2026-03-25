@@ -29,6 +29,8 @@ package org.hisp.dhis.jsontree;
 
 import java.util.NoSuchElementException;
 
+import static java.lang.String.format;
+
 /**
  * Exception thrown when a given path does not exist in the {@link JsonTree}.
  *
@@ -49,5 +51,39 @@ public final class JsonPathException extends NoSuchElementException {
 
   public JsonPath getPath() {
     return path;
+  }
+
+  /**
+   * When the given path is resolved but the closest parent that does exist
+   * was the given simple value.
+   */
+  static JsonPathException noSuchNode(JsonPath path, JsonNode closest) {
+    return new JsonPathException(
+        path,
+        "Path `%s` does not exist, parent `%s` is already a simple node of type %s."
+            .formatted(path, closest.path(), closest.type()));
+  }
+
+  /**
+   * When an array element is accessed by index but the array index is out of bounds
+   */
+  static JsonPathException noSuchElement(JsonPath array, int index, int size) {
+    JsonPath elementPath = array.chain(index);
+    throw new JsonPathException(
+        elementPath,
+        "Path `%s` does not exist, array `%s` has only `%d` elements."
+            .formatted(elementPath, array, size));
+  }
+
+  /**
+   * When an object member is accessed by key but the object does not have a member with the given
+   * name
+   */
+  static JsonPathException noSuchMember(JsonPath object, Text key) {
+    JsonPath memberPath = object.chain(key);
+    return new JsonPathException(
+        memberPath,
+        "Path `%s` does not exist, object `%s` does not have a property `%s`"
+            .formatted(memberPath, object, key));
   }
 }

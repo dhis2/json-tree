@@ -27,7 +27,6 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static java.lang.String.format;
 import static java.util.Collections.emptyIterator;
 import static java.util.Objects.requireNonNull;
 import static org.hisp.dhis.jsontree.Chars.expectChar;
@@ -36,6 +35,9 @@ import static org.hisp.dhis.jsontree.Chars.expectFalse;
 import static org.hisp.dhis.jsontree.Chars.expectNull;
 import static org.hisp.dhis.jsontree.Chars.expectTrue;
 import static org.hisp.dhis.jsontree.JsonFormatException.expected;
+import static org.hisp.dhis.jsontree.JsonPathException.noSuchElement;
+import static org.hisp.dhis.jsontree.JsonPathException.noSuchMember;
+import static org.hisp.dhis.jsontree.JsonPathException.noSuchNode;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -80,7 +82,8 @@ record JsonTree(
     @NotNull HashMap<JsonPath, JsonNode> nodesByPath,
     @CheckNull JsonNode.GetListener onGet) {
 
-  static JsonNode of(char @NotNull [] json, @CheckNull JsonNode.GetListener onGet, @NotNull JsonNode.Index auto) {
+  static JsonNode of(
+      char @NotNull [] json, @CheckNull JsonNode.GetListener onGet, @NotNull JsonNode.Index auto) {
     JsonTree res = new JsonTree(json, auto, new HashMap<>(), onGet);
     JsonNode root = res.autoDetect(JsonPath.SELF, skipWhitespace(res.json, 0));
     res.nodesByPath.put(JsonPath.SELF, root);
@@ -194,8 +197,7 @@ record JsonTree(
       if (this == obj) return true;
       if (!(obj instanceof LazyJsonNode other)) return false;
       if (tree.json == other.tree.json && start == other.start) return true;
-      return path().equals(other.path())
-          && getDeclaration().contentEquals(other.getDeclaration());
+      return path().equals(other.path()) && getDeclaration().contentEquals(other.getDeclaration());
     }
 
     /**
@@ -214,8 +216,7 @@ record JsonTree(
 
     @Serial
     public Object writeReplace() {
-      return new SerializedJsonNode(
-          tree.json, path.segments().stream().map(Text::toString).toArray(String[]::new));
+      return new SerializedJsonNode(tree.json, path.toArray());
     }
 
     record SerializedJsonNode(char[] json, String[] path) implements Serializable {
@@ -223,13 +224,12 @@ record JsonTree(
 
       @Serial
       private Object readResolve() {
-        return JsonTree.of(json,null, Index.AUTO).get(JsonPath.of(path));
+        return JsonTree.of(json, null, Index.AUTO).get(JsonPath.of(path));
       }
     }
   }
 
-  private static final class LazyJsonObject extends LazyJsonNode
-      implements Streamable<JsonNode> {
+  private static final class LazyJsonObject extends LazyJsonNode implements Streamable<JsonNode> {
 
     private int size = -1;
 
@@ -315,15 +315,6 @@ record JsonTree(
       return member(name, true);
     }
 
-    private JsonPathException noSuchElement(Text name) {
-      JsonPath memberPath = path.chain(name);
-      return new JsonPathException(
-          memberPath,
-          format(
-              "Path `%s` does not exist, object `%s` does not have a property `%s`",
-              memberPath, path, name));
-    }
-
     private JsonNode member(Text name, boolean orNull) throws JsonPathException {
       JsonPath memberPath = path.chain(name);
       if (tree.onGet != null) tree.onGet.accept(memberPath);
@@ -332,18 +323,18 @@ record JsonTree(
       char[] json = tree.json;
       int index = skipWhitespace(json, expectChar(json, start, '{'));
       while (index < json.length && json[index] != '}') {
-        Text property = Chars.unescapeJsonString(json, index);
+        Text key = Chars.unescapeJsonString(json, index);
         index = expectColon(json, skipString(json, index));
-        if (name.equals(property)) {
+        if (name.equals(key)) {
           int mStart = index;
-          return tree.nodesByPath.computeIfAbsent(memberPath, key -> tree.autoDetect(key, mStart));
+          return tree.nodesByPath.computeIfAbsent(memberPath, k -> tree.autoDetect(k, mStart));
         } else {
           index = skipNodeAutodetect(json, index);
           index = expectCommaOrEnd(json, index, '}');
         }
       }
       if (orNull) return null;
-      throw noSuchElement(name);
+      throw noSuchMember(path, name);
     }
 
     @Override
@@ -369,9 +360,9 @@ record JsonTree(
         public JsonNode next() {
           if (!hasNext())
             throw new NoSuchElementException("next() called without checking hasNext()");
-          Text name = Chars.unescapeJsonString(json, offset);
+          Text key = Chars.unescapeJsonString(json, offset);
           offset = expectColon(json, skipString(json, offset));
-          JsonNode member = tree.autoDetect(path.chain(name), offset, index);
+          JsonNode member = tree.autoDetect(path.chain(key), offset, index);
           int end = member.endIndex();
           if (end < offset) {
             // duplicate keys case: skip the duplicate
@@ -393,8 +384,8 @@ record JsonTree(
       char[] json = tree.json;
       int offset = skipWhitespace(json, expectChar(json, start, '{'));
       while (offset < json.length && json[offset] != '}') {
-        Text m = Chars.unescapeJsonString(json, offset);
-        if (m.equals(name)) return true;
+        Text key = Chars.unescapeJsonString(json, offset);
+        if (key.equals(name)) return true;
         offset = expectColon(json, skipString(json, offset)); // move after :
         offset = expectCommaOrEnd(json, skipNodeAutodetect(json, offset), '}');
       }
@@ -412,31 +403,34 @@ record JsonTree(
     }
 
     private <E> Streamable<E> keys(Function<Text, E> toKey) {
-      return new StreamableAdapter<>(() ->
-          new Iterator<>() {
-            private final char[] json = tree.json;
-            private int offset = skipWhitespace(json, expectChar(json, start, '{'));
+      return new StreamableAdapter<>(
+          () ->
+              new Iterator<>() {
+                private final char[] json = tree.json;
+                private int offset = skipWhitespace(json, expectChar(json, start, '{'));
 
-            @Override
-            public boolean hasNext() {
-              return offset < json.length && json[offset] != '}';
-            }
+                @Override
+                public boolean hasNext() {
+                  return offset < json.length && json[offset] != '}';
+                }
 
-            @Override
-            public E next() {
-              if (!hasNext())
-                throw new NoSuchElementException("next() called without checking hasNext()");
-              Text name = Chars.unescapeJsonString(json, offset);
-              offset = expectColon(json, skipString(json, offset)); // move after :
-              JsonNode member = tree.autoDetect(path.chain(name), offset, Index.ADD);
-              // move after value
-              offset =
-                  member == null || member.endIndex() < offset // (duplicates)
-                      ? expectCommaOrEnd(json, skipNodeAutodetect(json, offset), '}')
-                      : expectCommaOrEnd(json, member.endIndex(), '}');
-              return toKey.apply(name);
-            }
-          }, this::size, this::isEmpty);
+                @Override
+                public E next() {
+                  if (!hasNext())
+                    throw new NoSuchElementException("next() called without checking hasNext()");
+                  Text name = Chars.unescapeJsonString(json, offset);
+                  offset = expectColon(json, skipString(json, offset)); // move after :
+                  JsonNode member = tree.autoDetect(path.chain(name), offset, Index.ADD);
+                  // move after value
+                  offset =
+                      member == null || member.endIndex() < offset // (duplicates)
+                          ? expectCommaOrEnd(json, skipNodeAutodetect(json, offset), '}')
+                          : expectCommaOrEnd(json, member.endIndex(), '}');
+                  return toKey.apply(name);
+                }
+              },
+          this::size,
+          this::isEmpty);
     }
   }
 
@@ -538,11 +532,7 @@ record JsonTree(
     }
 
     private JsonPathException outOfBounds(int index, int size) {
-      JsonPath elementPath = path.chain(index);
-      throw new JsonPathException(
-          elementPath,
-          "Path `%s` does not exist, array `%s` has only `%d` elements."
-              .formatted(elementPath, path, size));
+      return noSuchElement(path, index, size);
     }
 
     private JsonNode element(int index, Text segment, boolean orNull) throws JsonPathException {
@@ -798,20 +788,18 @@ record JsonTree(
     if (node != null) return node;
     // find by finding the closest already indexed parent and navigate down from there...
     JsonNode parent = getClosestIndexedParent(path, nodesByPath);
-    int segMax = path.length();
-    int segCur = parent.path().length();
-    while (parent != null && segCur < segMax) { // meaning: are we at the target node? (self)
-      checkNodeIsParent(parent, path);
-      Text segment = path.segments().get(segCur);
+    int drop = path.length() - parent.path().length()-1;
+    while (parent != null && drop >= 0) { // meaning: are we at the target node? (self)
+      Text segment = path.drop(drop).segment();
       JsonNodeType type = parent.type();
       if (type == JsonNodeType.ARRAY) {
         parent = orNull ? parent.elementIfExists(segment) : parent.element(segment);
       } else if (type == JsonNodeType.OBJECT) {
         parent = orNull ? parent.memberIfExists(segment) : parent.member(segment);
       } else {
-        throw new JsonPathException(path, format("Malformed path %s at %s.", path, segment));
+        throw noSuchNode(path, parent);
       }
-      segCur++;
+      drop--;
     }
     return parent;
   }
@@ -819,20 +807,27 @@ record JsonTree(
   private boolean exists(JsonPath path) {
     if (nodesByPath.containsKey(path)) return true;
     JsonNode node = getClosestIndexedParent(path, nodesByPath);
-    int segMax = path.length();
-    int segCur = node.path().length();
-    while (node != null && segCur < segMax) {
+    int drop = path.length() - node.path().length()-1;
+    while (node != null && drop >= 0) {
       JsonNodeType type = node.type();
       if (type.isSimple()) return false;
-      Text segment = path.segments().get(segCur);
+      Text segment = path.drop(drop).segment();
       if (type == JsonNodeType.ARRAY) {
         node = node.elementIfExists(segment);
       } else if (type == JsonNodeType.OBJECT) {
         node = node.memberIfExists(segment);
       }
-      segCur++;
+      drop--;
     }
     return node != null;
+  }
+
+  private static JsonNode getClosestIndexedParent(
+      JsonPath path, Map<JsonPath, JsonNode> nodesByPath) {
+    JsonPath parentPath = path.parentPath();
+    JsonNode parent = nodesByPath.get(parentPath);
+    if (parent != null) return parent;
+    return getClosestIndexedParent(parentPath, nodesByPath);
   }
 
   private JsonNode autoDetect(JsonPath path, int offset, JsonNode.Index index) {
@@ -853,8 +848,7 @@ record JsonTree(
   }
 
   private JsonNode autoDetectNoIndexLookup(JsonPath path, int offset) {
-    if (offset >= json.length)
-      throw expected("<json-node>", json, offset);
+    if (offset >= json.length) throw expected("<json-node>", json, offset);
     char c = json[offset];
     return switch (c) {
       case '{' -> new LazyJsonObject(this, path, offset);
@@ -866,24 +860,6 @@ record JsonTree(
           new LazyJsonNumber(this, path, offset);
       default -> throw expected("<json-node>", json, offset);
     };
-  }
-
-  private static void checkNodeIsParent(JsonNode parent, JsonPath path) {
-    if (parent.isSimple()) {
-      throw new JsonPathException(
-          path,
-          format(
-              "Path `%s` does not exist, parent `%s` is already a simple node of type %s.",
-              path, parent.path(), parent.type()));
-    }
-  }
-
-  private static JsonNode getClosestIndexedParent(
-      JsonPath path, Map<JsonPath, JsonNode> nodesByPath) {
-    JsonPath parentPath = path.parentPath();
-    JsonNode parent = nodesByPath.get(parentPath);
-    if (parent != null) return parent;
-    return getClosestIndexedParent(parentPath, nodesByPath);
   }
 
   /*--------------------------------------------------------------------------
@@ -968,7 +944,8 @@ record JsonTree(
   static int expectCommaOrEnd(char[] json, int offset, char end) {
     offset = skipWhitespace(json, offset);
     if (offset < json.length && json[offset] == ',') return skipWhitespace(json, offset + 1);
-    if (offset >= json.length || json[offset] != end) return expectChar(json, offset, end); // causes fail
+    if (offset >= json.length || json[offset] != end)
+      return expectChar(json, offset, end); // causes fail
     return offset; // found end, return index pointing to it
   }
 
@@ -992,8 +969,7 @@ record JsonTree(
         Chars.expectEscapableCharacter(json, index);
         // hop over escaped char or unicode
         if (json[index] == 'u') {
-          if (index + 4 >= json.length)
-            throw expected("[0-9a-f-A-F]", json, offset);
+          if (index + 4 >= json.length) throw expected("[0-9a-f-A-F]", json, offset);
           for (int i = 1; i < 5; i++)
             if (!isHexDigit(json[index + i])) throw expected("[0-9a-f-A-F]", json, index + i);
         }
@@ -1062,7 +1038,8 @@ record JsonTree(
   }
 
   private record StreamableAdapter<T>(
-      Supplier<Iterator<T>> newIterator, IntSupplier size, BooleanSupplier isEmpty) implements Streamable<T> {
+      Supplier<Iterator<T>> newIterator, IntSupplier size, BooleanSupplier isEmpty)
+      implements Streamable<T> {
     @Override
     public @NotNull Iterator<T> iterator() {
       return isEmpty.getAsBoolean() ? Collections.emptyIterator() : newIterator.get();
