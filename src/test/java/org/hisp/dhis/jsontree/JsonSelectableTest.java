@@ -24,7 +24,7 @@ class JsonSelectableTest {
       """);
     List<JsonNode> matches =
         json.node()
-            .query($.key("books").filter(book -> book.get("price").intValue() < 10).key("title"))
+            .query($.key("books").any().filter(book -> book.get("price").intValue() < 10).key("title"))
             .toList();
     assertEquals(1, matches.size());
     assertEquals("A", matches.get(0).textValue().toString());
@@ -32,7 +32,7 @@ class JsonSelectableTest {
     // in another way: using JsonValue API and a filter with sub-selector
     List<JsonMixed> matches2 =
         json.query(
-                $.key("books").filter(AT.key("price"), price -> price.intValue() < 10).key("title"))
+                $.key("books").any().filter(AT.key("price"), price -> price.intValue() < 10).key("title"))
             .toList();
     assertEquals(1, matches.size());
     assertEquals("A", matches2.get(0).string());

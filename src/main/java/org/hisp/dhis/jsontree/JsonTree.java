@@ -43,15 +43,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NoSuchElementException;
-import java.util.Optional;
 import java.util.Spliterator;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -183,31 +180,6 @@ record JsonTree(
     }
 
     @Override
-    public final void visit(JsonNodeType type, Consumer<JsonNode> visitor) {
-      if (type == null || type == getType()) {
-        visitor.accept(this);
-      }
-      visitChildren(type, visitor);
-    }
-
-    void visitChildren(JsonNodeType type, Consumer<JsonNode> visitor) {
-      // by default node has no children
-    }
-
-    @Override
-    public final Optional<JsonNode> find(@CheckNull JsonNodeType type, Predicate<JsonNode> test) {
-      if ((type == null || type == getType()) && test.test(this)) {
-        return Optional.of(this);
-      }
-      return findChildren(type, test);
-    }
-
-    Optional<JsonNode> findChildren(JsonNodeType type, Predicate<JsonNode> test) {
-      // by default node has no children, no match
-      return Optional.empty();
-    }
-
-    @Override
     public final String toString() {
       return getDeclaration().toString();
     }
@@ -330,22 +302,6 @@ record JsonTree(
       if (size >= 0) return size;
       size = isEmpty() ? 0 : skipCountObject(tree.json, start);
       return size;
-    }
-
-    @Override
-    void visitChildren(JsonNodeType type, Consumer<JsonNode> visitor) {
-      members().forEach(e -> e.getValue().visit(type, visitor));
-    }
-
-    @Override
-    Optional<JsonNode> findChildren(JsonNodeType type, Predicate<JsonNode> test) {
-      for (Entry<Text, JsonNode> e : members()) {
-        Optional<JsonNode> res = e.getValue().find(type, test);
-        if (res.isPresent()) {
-          return res;
-        }
-      }
-      return Optional.empty();
     }
 
     @NotNull
@@ -555,20 +511,6 @@ record JsonTree(
       if (size >= 0) return size;
       size = isEmpty() ? 0 : skipCountArray(tree.json, start);
       return size;
-    }
-
-    @Override
-    void visitChildren(JsonNodeType type, Consumer<JsonNode> visitor) {
-      elements().forEach(node -> node.visit(type, visitor));
-    }
-
-    @Override
-    Optional<JsonNode> findChildren(JsonNodeType type, Predicate<JsonNode> test) {
-      for (JsonNode e : elements()) {
-        Optional<JsonNode> res = e.find(type, test);
-        if (res.isPresent()) return res;
-      }
-      return Optional.empty();
     }
 
     @NotNull

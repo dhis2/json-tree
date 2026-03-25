@@ -13,7 +13,7 @@ class JsonSelectorTest {
   @Test
   void testToString() {
     assertEquals(
-        "$.test[*][1,2][3:][?(~)]",
+        "$.test[*][1,2][3:][?(<condition>)]",
         $
             .key("test")
             .any()

@@ -27,6 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonNodeType.NUMBER;
+import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
+import static org.hisp.dhis.jsontree.JsonNodeType.STRING;
+import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -222,43 +226,43 @@ class JsonValueTest {
         """
             { "x":{ "foo": 1 }}""";
     JsonMixed root = JsonMixed.of(json);
-    JsonObject foo = root.find(JsonObject.class, obj -> obj.has("foo"));
+    JsonObject foo = root.query($.find(OBJECT, obj -> obj.has("foo"))).findFirst().orElseThrow();
     assertTrue(foo.isObject());
     assertEquals(".x", foo.path().toString());
-    assertFalse(root.find(JsonObject.class, obj -> obj.has("bar")).exists());
+    assertFalse(root.queryExists($.find(OBJECT, obj -> obj.has("bar"))));
   }
 
   @Test
   void testFind_Array() {
     assertEquals(
-        42, JsonValue.of("[1,42,99]").find(JsonNumber.class, n -> n.intValue() > 20).intValue());
+        42, JsonValue.of("[1,42,99]").queryFirst($.find(NUMBER, n -> n.intValue() > 20)).orElseThrow().intValue());
   }
 
   @Test
   void testFind_String() {
     assertFalse(
-        JsonValue.of("\"hello\"").find(JsonString.class, n -> n.string().length() > 30).exists());
+        JsonValue.of("\"hello\"").queryExists($.find(STRING, n -> n.string().length() > 30)));
     assertEquals(
         "hello",
-        JsonValue.of("\"hello\"").find(JsonString.class, n -> n.string().length() > 3).string());
+        JsonValue.of("\"hello\"").queryFirst($.find(STRING, n -> n.string().length() > 3)).orElseThrow().string());
   }
 
   @Test
   void testFind_Number() {
-    assertFalse(JsonMixed.of("1").find(JsonObject.class, obj -> obj.containsKey("x")).exists());
-    assertEquals(42, JsonMixed.of("42").find(JsonNumber.class, JsonValue::isInteger).intValue());
+    assertFalse(JsonMixed.of("1").queryExists($.find(OBJECT, obj -> obj.containsKey("x"))));
+    assertEquals(42, JsonMixed.of("42").queryFirst($.find(NUMBER, JsonValue::isInteger)).orElseThrow().intValue());
   }
 
   @Test
   void testFind_Null() {
-    assertFalse(JsonMixed.of("null").find(JsonObject.class, obj -> obj.containsKey("x")).exists());
+    assertFalse(JsonMixed.of("null").queryExists($.find(OBJECT, obj -> obj.containsKey("x"))));
   }
 
   @Test
   void testFind_Undefined() {
     JsonObject undefined = JsonMixed.of("{}").getObject("x");
-    assertFalse(undefined.find(JsonObject.class, obj -> obj.containsKey("y")).exists());
-    assertFalse(undefined.find(JsonValue.class, JsonValue::exists).exists());
+    assertFalse(undefined.queryExists($.find(OBJECT, obj -> obj.containsKey("y"))));
+    assertFalse(undefined.queryExists($.find(JsonValue::exists)));
   }
 
   @Test

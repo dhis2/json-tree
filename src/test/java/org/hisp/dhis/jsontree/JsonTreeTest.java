@@ -28,6 +28,7 @@
 package org.hisp.dhis.jsontree;
 
 import static java.util.Spliterators.iterator;
+import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -685,12 +686,12 @@ class JsonTreeTest {
   void testVisit() {
     JsonNode doc = JsonNode.of("{\"a\": { \"b\" : [12, false, \"hello\"] } }");
     JsonNode root = doc.get("$");
-    assertEquals(2, root.count(JsonNodeType.OBJECT));
-    assertEquals(1, root.count(JsonNodeType.NUMBER));
-    assertEquals(1, root.count(JsonNodeType.BOOLEAN));
-    assertEquals(1, root.count(JsonNodeType.STRING));
-    assertEquals(1, root.count(JsonNodeType.ARRAY));
-    assertEquals(0, root.count(JsonNodeType.NULL));
+    assertEquals(2, root.queryCount($.descendant().type(JsonNodeType.OBJECT)));
+    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.NUMBER)));
+    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.BOOLEAN)));
+    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.STRING)));
+    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.ARRAY)));
+    assertEquals(0, root.queryCount($.descendant().type(JsonNodeType.NULL)));
   }
 
 

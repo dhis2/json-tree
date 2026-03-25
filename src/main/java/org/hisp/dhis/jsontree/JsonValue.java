@@ -571,37 +571,11 @@ public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, Js
   JsonAccessors getAccessors();
 
   /**
-   * Finds the first value that satisfies the given test.
-   *
-   * <p>OBS! When no match is found a value that does not exist is returned.
-   *
-   * @param type API to test the node with
-   * @param test test to perform on all objects that satisfy the type filter
-   * @param <T> type of the object to find
-   * @return the first found match or JSON {@code null} object
+   * Essential method for the query API
+   * @since 1.9
    */
-  //TODO replace with query when it supports JsonValue subtype predicate filters
-  @TerminalOp(canBeUndefined = true)
-  default <T extends JsonValue> T find(Class<T> type, Predicate<T> test) {
-    if (isUndefined()) return JsonMixed.of("{}").get("notFound", type);
-    JsonAccessors accessors = getAccessors();
-    Optional<JsonNode> match =
-        node()
-            .find(
-                node -> {
-                  try {
-                    return test.test(node.lift(accessors).as(type));
-                  } catch (JsonTreeException | JsonPathException ex) {
-                    // the test called a method that was not supported by the tested node
-                    return false;
-                  }
-                });
-    return match.isEmpty()
-        ? JsonMixed.of("{}").get("notFound", type)
-        : match.get().lift(accessors).as(type);
-  }
-
   @Override
+  @TerminalOp(canBeUndefined = true)
   default void query(JsonSelector selector, Consumer<JsonMixed> matches) {
     if (isUndefined()) return;
     JsonAccessors accessors = getAccessors();

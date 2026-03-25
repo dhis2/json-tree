@@ -8,14 +8,17 @@ import java.util.stream.IntStream;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
 /**
- * A model for JsonPath (RFC 9535) (called {@link JsonSelector} due to name clash with existing
- * {@link JsonPath}).
- *
- * <p>ATM this is just a POC for the API and how to deal with complexities. The key insight here is
- * that filter expression are difficult to implement when parsing them from a string, so instead we
- * just use {@link Predicate} and offer a fluent API to compose {@link JsonSelector}s which is much
- * easier and more powerful als the full extent of Java and the {@link JsonNode} API can be used in
- * expressions.
+ * A selector expression based search mostly conform with JsonPath (RFC 9535).
+ * <p>
+ * {@link JsonSelector} offers a programmatic API to compose a selector.
+ * Segments of an entire selector can also be parsed from a {@link String} using {@link #of(String)}.
+ * However, textual expressions are limited and do not allow the full extent of the
+ * programmatic API.
+ * <p>
+ * The key difference are filter expressions. They can only be used programmatically
+ * as they work on the Java language level to form expressions using {@link Predicate}s.
+ * Semantically filters also always apply to currently matched node itself, independent of its
+ * type (which is in contrast to RFC 9535 where filters apply to object and array items).
  *
  * @author Jan Bernitt
  * @since 1.9
@@ -137,8 +140,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return descendant().filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
   }
 
-  public <T extends JsonValue> JsonSelector find(Class<T> as, Predicate<T> filter) {
-    return descendant().filter(node -> filter.test(node.lift(JsonAccess.GLOBAL).as(as)));
+  public JsonSelector find(JsonNodeType type, Predicate<JsonMixed> filter) {
+    return descendant().type(type).filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
   }
 
   public JsonSelector select(JsonSelector next) {
@@ -222,12 +225,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private void matchChildren(JsonNode node, Consumer<JsonNode> matches) {
     switch (node.getType()) {
       case ARRAY -> {
-        for (JsonNode e : node.elements(SKIP))
-          if (next == null || !e.getType().isSimple()) match(e, matches);
+        for (JsonNode e : node.elements(SKIP)) match(e, matches);
       }
       case OBJECT -> {
-        for (JsonNode e : node.members(SKIP))
-          if (next == null || !e.getType().isSimple()) match(e, matches);
+        for (JsonNode e : node.members(SKIP)) match(e, matches);
       }
     }
   }
@@ -402,18 +403,12 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
-      switch (self.getType()) {
-        case ARRAY -> self.elements(SKIP).stream().filter(filter).forEach(e -> next.match(e, matches));
-        case OBJECT -> self.members(SKIP).stream().filter(filter).forEach(e -> next.match(e, matches));
-        default -> {
-          if (filter.test(self)) next.match(self, matches);
-        }
-      }
+      if (filter.test(self)) next.match(self, matches);
     }
 
     @Override
     public String toString() {
-      return "[?(~)]";
+      return "[?(<condition>)]";
     }
   }
 }
