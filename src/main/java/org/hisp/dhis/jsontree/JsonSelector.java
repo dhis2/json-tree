@@ -5,6 +5,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
+import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
+
 /**
  * A model for JsonPath (RFC 9535) (called {@link JsonSelector} due to name clash with existing
  * {@link JsonPath}).
@@ -39,6 +41,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return new JsonSelector(new AnyMatcher(), null);
   }
 
+  public static JsonSelector ofDescendant() {
+    return new JsonSelector(new DescendantMatcher(), null);
+  }
+
   public static JsonSelector of(int index) {
     return new JsonSelector(new IndexMatcher(Text.of(index)), null);
   }
@@ -62,12 +68,23 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
   @Override
   public String toString() {
+    if (next == null && matcher == null) return "+";
     if (next == null) return matcher.toString();
     return matcher.toString()+next;
   }
 
-  public boolean startsWithRoot() {
+  /**
+   * @return true, when this selector starts with root {@link #$}, false otherwise
+   */
+  public boolean isAbsolute() {
     return matcher instanceof RootMatcher;
+  }
+
+  /**
+   * @return true, when this selector starts with {@code ..} (recursive decent or descendant) matcher
+   */
+  public boolean isDescendant() {
+    return matcher instanceof DescendantMatcher;
   }
 
   public JsonSelector type(JsonNodeType type) {
@@ -80,6 +97,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
   public JsonSelector any() {
     return select(ofAny());
+  }
+
+  public JsonSelector descendant() {
+    return select(ofDescendant());
   }
 
   public JsonSelector index(int index) {
@@ -112,7 +133,17 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return filter(node -> node.query(selector).findFirst().filter(filter).isPresent());
   }
 
+  public JsonSelector find(Predicate<JsonMixed> filter) {
+    return descendant().filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
+  }
+
+  public <T extends JsonValue> JsonSelector find(Class<T> as, Predicate<T> filter) {
+    return descendant().filter(node -> filter.test(node.lift(JsonAccess.GLOBAL).as(as)));
+  }
+
   public JsonSelector select(JsonSelector next) {
+    // avoid 2 descendants in a row
+    if (this.next == null && next.isDescendant() && isDescendant()) return this;
     // appending requires reconstructing the chain from the start
     // we do this because we need a cheap dropping head as that
     // will happen all the time during evaluation
@@ -161,7 +192,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
                     .formatted(expression.charAt(offset - 1), offset - 1));
       }
     }
-    return res.startsWithRoot() ? res : select(res);
+    return res.isAbsolute() ? res : select(res);
   }
 
   private static int skipName(CharSequence expression, int offset) {
@@ -180,22 +211,38 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private static final JsonSelector MATCH = new JsonSelector(null, null);
 
   public void match(JsonNode node, Consumer<JsonNode> matches) {
-    if (next == null) {
-      if (matcher == null) {
+    if (this == MATCH) {
         matches.accept(node);
-      } else {
-        matcher.match(node, MATCH, matches);
-      }
     } else {
-      //TODO recursive decent is special here, I think
-      matcher.match(node, next, matches);
+      matcher.match(node, next == null ? MATCH : next, matches);
+      if (isDescendant()) matchChildren(node, matches);
     }
-    //TODO the key insight for recursive decent is that it passes itself to the next level
-    // as well as passing its next to the next level, both lead to matches might match
   }
 
+  private void matchChildren(JsonNode node, Consumer<JsonNode> matches) {
+    switch (node.getType()) {
+      case ARRAY -> {
+        for (JsonNode e : node.elements(SKIP))
+          if (next == null || !e.getType().isSimple()) match(e, matches);
+      }
+      case OBJECT -> {
+        for (JsonNode e : node.members(SKIP))
+          if (next == null || !e.getType().isSimple()) match(e, matches);
+      }
+    }
+  }
+
+  /**
+   * Checks a node against the condition of a selector segment and forwards matches
+   * to the next selector segment.
+   */
   public interface Matcher {
 
+    /**
+     * @param self the node to test
+     * @param next the next segment to test next level with if the given node matches this matcher
+     * @param matches the consumer for matches found that needs to be forwarded
+     */
     void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches);
   }
 
@@ -222,6 +269,21 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     @Override
     public String toString() {
       return "@";
+    }
+  }
+
+  private record DescendantMatcher() implements Matcher {
+
+    @Override
+    public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
+      // this is one part of it
+      // where we try to apply the sub-selector to self
+      next.match(self, matches);
+    }
+
+    @Override
+    public String toString() {
+      return "..";
     }
   }
 
@@ -260,9 +322,9 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
       JsonNodeType type = self.getType();
       if (type == JsonNodeType.OBJECT) {
-        self.members().forEach(e -> next.match(e, matches));
+        for (JsonNode e : self.members(SKIP)) next.match(e, matches);
       } else if (type == JsonNodeType.ARRAY) {
-        self.elements().forEach(e -> next.match(e, matches));
+        for (JsonNode e : self.elements(SKIP)) next.match(e, matches);
       }
     }
 
@@ -341,8 +403,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     @Override
     public void match(JsonNode self, JsonSelector next, Consumer<JsonNode> matches) {
       switch (self.getType()) {
-        case ARRAY -> self.elements().stream().filter(filter).forEach(e -> next.match(e, matches));
-        case OBJECT -> self.members().stream().filter(filter).forEach(e -> next.match(e, matches));
+        case ARRAY -> self.elements(SKIP).stream().filter(filter).forEach(e -> next.match(e, matches));
+        case OBJECT -> self.members(SKIP).stream().filter(filter).forEach(e -> next.match(e, matches));
         default -> {
           if (filter.test(self)) next.match(self, matches);
         }

@@ -197,6 +197,8 @@ public interface JsonValue extends JsonSelectable<JsonMixed>, Map.Entry<Text, Js
     return !exists() ? null : node().getType();
   }
 
+  //TODO try moving all type based into an interface both JsonNode and JsonValue can extend
+
   /**
    * A property exists when it is part of the JSON response. This means it can be declared JSON
    * {@code null}. Only a path that does not exist returns false.

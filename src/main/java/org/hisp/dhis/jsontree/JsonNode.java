@@ -399,6 +399,7 @@ public interface JsonNode
   default boolean isNull() {
     return getType() == JsonNodeType.NULL;
   }
+  //TODO remove once type based utility is inherited
 
   /**
    * OBS! Only defined when this node is of type {@link JsonNodeType#OBJECT}).

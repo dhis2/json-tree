@@ -27,4 +27,10 @@ class JsonSelectorTest {
   void testOf_Expression() {
     assertEquals("$[*].foo.bar.baz", JsonSelector.of("$[*].foo.bar['baz']").toString());
   }
+
+  @Test
+  void testDescendant() {
+    assertEquals("$..", $.descendant().descendant().toString());
+    assertEquals("$...x..", $.descendant().key("x").descendant().toString());
+  }
 }
