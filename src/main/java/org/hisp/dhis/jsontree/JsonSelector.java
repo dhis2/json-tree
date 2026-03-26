@@ -1,10 +1,13 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+import static java.lang.Integer.parseInt;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
 /**
@@ -65,13 +68,17 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches);
   }
 
-
-
+  /**
+   * The root selector
+   */
   public static final JsonSelector $ = new JsonSelector(new RootMatcher(), null);
+  /**
+   * The {@code @} selector used as a starting point in relative selectors like they are used in filters.
+   */
   public static final JsonSelector AT = new JsonSelector(new SelfMatcher(), null);
 
   public static JsonSelector of(String expression) {
-    return $.select(expression);
+    return $.parseExpression(expression);
   }
 
   public static JsonSelector of(JsonNodeType type) {
@@ -86,8 +93,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return new JsonSelector(new AnyMatcher(), null);
   }
 
-  public static JsonSelector ofDescendant() {
-    return new JsonSelector(new DescendantMatcher(), null);
+  public static JsonSelector ofDescendants() {
+    return new JsonSelector(new DescendantsMatcher(), null);
   }
 
   public static JsonSelector of(int index) {
@@ -119,18 +126,19 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   /**
-   * @return true, when this selector starts with root {@link #$}, false otherwise
+   * @return true, when this selector not is the root {@link #$} of self {@link #AT} selector, in
+   *     other words it represents a segment or tail of a selector
    */
-  public boolean isAbsolute() {
-    return matcher instanceof RootMatcher;
+  public boolean isSubSelector() {
+    return !(matcher instanceof RootMatcher || matcher instanceof SelfMatcher);
   }
 
   /**
-   * @return true, when this selector starts with {@code ..} (recursive decent or descendant)
+   * @return true, when this selector starts with the {@code ..} (recursive decent or descendants)
    *     matcher
    */
-  public boolean isDescendant() {
-    return matcher instanceof DescendantMatcher;
+  public boolean isDescendants() {
+    return matcher instanceof DescendantsMatcher;
   }
 
   /*
@@ -145,8 +153,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return select(ofAny());
   }
 
-  public JsonSelector descendant() {
-    return select(ofDescendant());
+  public JsonSelector descendants() {
+    return select(ofDescendants());
   }
 
   public JsonSelector index(int index) {
@@ -181,10 +189,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return select(of(filter));
   }
 
-  public JsonSelector filter(JsonSelector selector, Predicate<JsonNode> filter) {
+  public JsonSelector filter(JsonSelector selector) {
     // note that just considering the first match of the sub-select
     // is in line with the RFC-9535 logic of path selectors in filters
-    return filter(node -> node.query(selector).findFirst().filter(filter).isPresent());
+    return filter(node -> node.queryFirst(selector).isPresent());
   }
 
   /*
@@ -192,11 +200,11 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
    */
 
   public JsonSelector find(Predicate<JsonMixed> filter) {
-    return descendant().filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
+    return descendants().filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
   }
 
   public JsonSelector find(JsonNodeType type, Predicate<JsonMixed> filter) {
-    return descendant().type(type).filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
+    return descendants().type(type).filter(node -> filter.test(node.lift(JsonAccess.GLOBAL)));
   }
 
   public JsonSelector select(Matcher next) {
@@ -205,7 +213,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
   public JsonSelector select(JsonSelector next) {
     // avoid 2 descendants in a row
-    if (this.next == null && next.isDescendant() && isDescendant()) return this;
+    if (this.next == null && next.isDescendants() && isDescendants()) return this;
     // appending requires reconstructing the chain from the start
     // we do this because we need a cheap dropping head as that
     // will happen all the time during evaluation
@@ -216,54 +224,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
   public JsonSelector select(CharSequence expression) {
     if (expression.isEmpty()) return this;
-    JsonSelector res = this;
-    int offset = 0;
-    while (offset < expression.length()) {
-      char c = expression.charAt(offset++);
-      switch (c) {
-        case '$' -> res = $; // drop prior chain
-        case ':' -> {
-          int end = skipName(expression, offset);
-          res = res.type(JsonNodeType.valueOf(expression.subSequence(offset, end).toString()));
-          offset = end;
-        }
-        case '.' -> {
-          int end = skipName(expression, offset);
-          res = res.key(expression.subSequence(offset, end));
-          offset = end;
-        }
-        case '[' -> {
-          switch (expression.charAt(offset++)) {
-            case '*' -> {
-              res = res.any();
-              offset += 1;
-            }
-            case '\'' -> {
-              int end = skipName(expression, offset);
-              res = res.key(expression.subSequence(offset, end));
-              offset = end + 2;
-            }
-            default -> {
-              // TODO index, union or slice
-            }
-          }
-        }
-        default ->
-            throw new IllegalArgumentException(
-                "Illegal character %s at offset %d"
-                    .formatted(expression.charAt(offset - 1), offset - 1));
-      }
-    }
-    return res.isAbsolute() ? res : select(res);
-  }
-
-  private static int skipName(CharSequence expression, int offset) {
-    while (offset < expression.length() && isLetter(expression.charAt(offset))) offset++;
-    return offset;
-  }
-
-  private static boolean isLetter(char c) {
-    return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_';
+    JsonSelector res = parseExpression(expression);
+    return !res.isSubSelector() ? res : select(res);
   }
 
   /**
@@ -278,7 +240,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
       matches.accept(node);
     } else {
       matcher.match(node, next == null ? MATCH : next, matches);
-      if (isDescendant()) matchChildren(node, matches);
+      if (isDescendants()) matchChildren(node, matches);
     }
   }
 
@@ -319,7 +281,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     }
   }
 
-  private record DescendantMatcher() implements Matcher {
+  private record DescendantsMatcher() implements Matcher {
 
     @Override
     public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
@@ -343,7 +305,8 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      return ":" + type.name().toLowerCase(); // note RFC-9535 does not have type matchers
+      // note RFC-9535 does not have type matchers
+      return "?(:" + type.name().toLowerCase() + ")";
     }
   }
 
@@ -452,7 +415,125 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      return "[?(<condition>)]";
+      return "?(<condition>)";
     }
+  }
+
+  /*
+  Parsing
+   */
+
+  /**
+   * This is a very naive parsing that works for correct input and
+   * fails for most incorrect with some exception, but there are a
+   * few special cases where illegal input in certain places is just
+   * ignored. This is to strike a balance between amount of code
+   * and how important this feature is overall.
+   */
+  private JsonSelector parseExpression(CharSequence expression) {
+    JsonSelector res = this;
+    int offset = 0;
+    while (offset < expression.length()) {
+      char c = expression.charAt(offset++);
+      switch (c) {
+        case '$' -> res = $; // drop prior chain
+        case '@' -> res = AT; // drop prior chain
+        case '.' -> {
+          if (expression.charAt(offset) == '.') {
+            res = res.descendants();
+            offset++;
+          } else {
+            int end = skipAlphanumeric(expression, offset);
+            res = res.key(expression.subSequence(offset, end));
+            offset = end;
+          }
+        }
+        case '?' -> {
+          offset++; // (
+          int end = skipUntil(')', expression, offset);
+          res = parseCondition(res, expression, offset, end - offset);
+          offset = end + 1; // )
+        }
+        case '[' -> {
+          int end = skipUntil(']', expression, offset);
+          res = parseSelection(res, expression, offset, end - offset);
+          offset = end + 1; // ]
+        }
+        default -> throw illegalCharacter(expression, offset - 1);
+      }
+    }
+    return res;
+  }
+
+  private static JsonSelector parseCondition(
+      JsonSelector parent, CharSequence expression, int offset, int length) {
+    if (expression.charAt(offset) == ':') {
+      return parent.type(
+          JsonNodeType.valueOf(expression.subSequence(offset + 1, offset + 1 + length).toString()));
+    }
+    throw illegalCharacter(expression, offset - 1);
+  }
+
+  private static JsonSelector parseSelection(
+      JsonSelector parent, CharSequence expression, int offset, int length) {
+    char c = expression.charAt(offset);
+    if (c == '*') return parent.any();
+    if (c == '\'')
+      return parent.key(expression.subSequence(offset + 1, skipUntil('\'', expression, offset+1)));
+    if (c == '-') return parseSlice(parent, expression, offset, length);
+    int end = skipDigits(expression, offset);
+    c = expression.charAt(end);
+    if (c == ']') return parent.index(parseInt(expression.subSequence(offset, offset+length).toString()));
+    if (c == ',') return parseUnion(parent, expression, offset, length);
+    if (c == ':') return parseSlice(parent, expression, offset, length);
+    throw illegalCharacter(expression, offset);
+  }
+
+  private static JsonSelector parseUnion(JsonSelector parent, CharSequence expression, int offset, int length) {
+    return parent.indexes(
+        Stream.of(expression.subSequence(offset, offset + length).toString().split(","))
+            .mapToInt(Integer::parseInt)
+            .toArray());
+  }
+
+  private static JsonSelector parseSlice(JsonSelector parent, CharSequence expression, int offset, int length) {
+    String[] parts = expression.subSequence(offset, offset + length).toString().split(":");
+    if (parts.length == 0) return parent.select(new SliceMatcher(null, null, 1));
+    if (parts.length == 1) return parent.select(new SliceMatcher(parseInt(parts[0]), null, 1));
+    if (parts.length == 2) return parent.select(new SliceMatcher(sliceIndex(parts[0]), sliceIndex(parts[1]), 1));
+    return parent.select(new SliceMatcher(sliceIndex(parts[0]), sliceIndex(parts[1]), parseInt(parts[2])));
+  }
+
+  private static Integer sliceIndex(String value) {
+    if (value.isEmpty()) return null;
+    return parseInt(value);
+  }
+
+  private static IllegalArgumentException illegalCharacter(CharSequence expression, int offset) {
+    return new IllegalArgumentException(
+        "Illegal character %s at offset %d".formatted(expression.charAt(offset), offset));
+  }
+
+  private static int skipAlphanumeric(CharSequence expression, int offset) {
+    while (offset < expression.length() && isAlphanumeric(expression.charAt(offset))) offset++;
+    return offset;
+  }
+
+  private static int skipDigits(CharSequence expression, int offset) {
+    while (offset < expression.length() && isDigit(expression.charAt(offset))) offset++;
+    return offset;
+  }
+
+  private static int skipUntil(char ch, CharSequence expression, int offset) {
+    while (offset < expression.length() && expression.charAt(offset) != ch) offset++;
+    return offset;
+  }
+
+  private static boolean isAlphanumeric(char c) {
+    return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || isDigit(c) || c == '_';
+  }
+
+  private static boolean isDigit(char c) {
+    return c >= '0' && c <= '9';
   }
 }

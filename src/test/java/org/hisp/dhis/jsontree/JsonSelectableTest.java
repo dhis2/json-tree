@@ -33,7 +33,10 @@ class JsonSelectableTest {
     // in another way: using JsonValue API and a filter with sub-selector
     List<JsonMixed> matches2 =
         json.query(
-                $.key("books").any().filter(AT.key("price"), price -> price.intValue() < 10).key("title"))
+                $.key("books")
+                    .any()
+                    .filter(AT.key("price").filter(price -> price.intValue() < 10))
+                    .key("title"))
             .toList();
     assertEquals(1, matches.size());
     assertEquals("A", matches2.get(0).string());
@@ -53,7 +56,7 @@ class JsonSelectableTest {
       }
       """);
 
-    List<JsonMixed> matches = json.query($.descendant().filter(JsonProbe::isSimple)).toList();
+    List<JsonMixed> matches = json.query($.descendants().filter(JsonProbe::isSimple)).toList();
     assertEquals("[\"A\", 8, \"C\", 10, true, \"B\", 12]", matches.toString());
   }
 
@@ -70,13 +73,13 @@ class JsonSelectableTest {
         ]
       }
       """);
-    assertEquals(11, json.queryCount($.descendant()), "$.descendant() should visit all nodes");
+    assertEquals(11, json.queryCount($.descendants()), "$.descendant() should visit all nodes");
     assertEquals(
         6,
-        json.queryCount($.descendant(), 6),
+        json.queryCount($.descendants(), 6),
         "$.descendant() should visit only nodes up to the limit");
     assertEquals(
-        16, json.queryReduce($.descendant().type(NUMBER), JsonMixed::intValue, 0, Integer::max));
+        16, json.queryReduce($.descendants().type(NUMBER), JsonMixed::intValue, 0, Integer::max));
   }
 
   @Test
@@ -97,9 +100,65 @@ class JsonSelectableTest {
         json.query(
                 $.find(node -> node.isObject() && node.has("title"))
                     .key("author")
-                    .descendant()
+                    .descendants()
                     .key("street"))
             .toList()
             .toString());
+  }
+
+  record IsEmptyMatcher() implements JsonSelector.Matcher {
+
+    @Override
+    public void match(JsonNode node, JsonSelector next, JsonSelector.Matches<JsonNode> matches) {
+        if (!node.isSimple() && node.isEmpty()) next.match(node, matches);
+    }
+
+    @Override
+    public String toString() {
+      return "[]";
+    }
+  }
+
+  @Test
+  void testCustomMatcher() {
+    JsonObject json =
+        JsonMixed.of(
+            """
+      {
+        "books": [
+          { "title": "A", "price": 8 },
+          { "title": "C", "price": 10, "releases": [] },
+          { "title": "B", "price": 12 }
+        ]
+      }
+      """);
+
+    List<JsonPath> matches =
+        json.node().query($.descendants().select(new IsEmptyMatcher())).map(JsonNode::path).toList();
+    assertEquals("[.books.1.releases]", matches.toString());
+  }
+
+  @Test
+  void testQueryTop() {
+    JsonObject json =
+        JsonMixed.of(
+            """
+      {
+        "books": [
+          { "title": "A", "price": 8 },
+          { "title": "B", "price": 12 },
+          { "title": "C", "price": 6 },
+          { "title": "E", "price": 11 },
+          { "title": "F", "price": 5 },
+          { "title": "G", "price": 9 },
+          { "title": "D", "price": 16 },
+          { "title": "H", "price": 4 }
+        ]
+      }
+      """);
+    assertEquals(
+        "[16, 12, 11]",
+        json.queryTop(3, $.descendants().key("price"), JsonMixed::intValue)
+            .toList().toString());
   }
 }

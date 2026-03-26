@@ -13,7 +13,7 @@ class JsonSelectorTest {
   @Test
   void testToString() {
     assertEquals(
-        "$.test[*][1,2][3:][?(<condition>)]",
+        "$.test[*][1,2][3:]?(<condition>)",
         $
             .key("test")
             .any()
@@ -26,11 +26,19 @@ class JsonSelectorTest {
   @Test
   void testOf_Expression() {
     assertEquals("$[*].foo.bar.baz", JsonSelector.of("$[*].foo.bar['baz']").toString());
+    assertEquals("@[*].foo.bar.baz", JsonSelector.of("@[*].foo.bar['baz']").toString());
+    assertEquals("$..", JsonSelector.of("$..").toString());
+    assertEquals("$[1]", JsonSelector.of("$[1]").toString());
+    assertEquals("$[1,2,3]", JsonSelector.of("$[1,2,3]").toString());
+    assertEquals("$[1:2]", JsonSelector.of("$[1:2]").toString());
+    assertEquals("$[1:2:3]", JsonSelector.of("$[1:2:3]").toString());
+    assertEquals("$[-1:]", JsonSelector.of("$[-1::]").toString());
+    assertEquals("$[1:]", JsonSelector.of("$[1:]").toString());
   }
 
   @Test
   void testDescendant() {
-    assertEquals("$..", $.descendant().descendant().toString());
-    assertEquals("$...x..", $.descendant().key("x").descendant().toString());
+    assertEquals("$..", $.descendants().descendants().toString());
+    assertEquals("$...x..", $.descendants().key("x").descendants().toString());
   }
 }

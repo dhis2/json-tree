@@ -2,10 +2,17 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.JsonSelector.Matches;
 
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 import java.util.stream.Stream;
+
+import static java.util.Comparator.comparingInt;
 
 /**
  * The API in {@link JsonNode} that is about selecting {@link JsonNode}s based on {@link JsonSelector}s.
@@ -109,5 +116,17 @@ public interface JsonSelectable<T> {
     Reducer res = new Reducer();
     query(selector, res);
     return res.value;
+  }
+
+  default Stream<T> queryTop(int n, JsonSelector selector, ToIntFunction<T> score) {
+    record Score<R>(R value, int score) {}
+    final PriorityQueue<Score<T>> heap = new PriorityQueue<>(n+1, comparingInt(Score::score));
+    query(
+        selector,
+        match -> {
+          heap.offer(new Score<>(match, score.applyAsInt(match)));
+          if (heap.size() > n) heap.poll();
+        });
+    return heap.stream().sorted((a, b) -> Integer.compare(b.score, a.score)).map(Score::value);
   }
 }

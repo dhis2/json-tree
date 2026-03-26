@@ -127,7 +127,7 @@ class JsonTestSuiteTest {
   }
 
   private void assert_y(JsonValue value) {
-    value.node().queryCount($.descendant());
+    value.node().queryCount($.descendants());
   }
 
   private void assert_n(String json) {

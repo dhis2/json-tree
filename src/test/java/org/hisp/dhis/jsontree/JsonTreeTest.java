@@ -683,12 +683,12 @@ class JsonTreeTest {
   void testVisit() {
     JsonNode doc = JsonNode.of("{\"a\": { \"b\" : [12, false, \"hello\"] } }");
     JsonNode root = doc.get("$");
-    assertEquals(2, root.queryCount($.descendant().type(JsonNodeType.OBJECT)));
-    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.NUMBER)));
-    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.BOOLEAN)));
-    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.STRING)));
-    assertEquals(1, root.queryCount($.descendant().type(JsonNodeType.ARRAY)));
-    assertEquals(0, root.queryCount($.descendant().type(JsonNodeType.NULL)));
+    assertEquals(2, root.queryCount($.descendants().type(JsonNodeType.OBJECT)));
+    assertEquals(1, root.queryCount($.descendants().type(JsonNodeType.NUMBER)));
+    assertEquals(1, root.queryCount($.descendants().type(JsonNodeType.BOOLEAN)));
+    assertEquals(1, root.queryCount($.descendants().type(JsonNodeType.STRING)));
+    assertEquals(1, root.queryCount($.descendants().type(JsonNodeType.ARRAY)));
+    assertEquals(0, root.queryCount($.descendants().type(JsonNodeType.NULL)));
   }
 
 
