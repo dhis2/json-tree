@@ -27,32 +27,68 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonTreeException.notA;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.util.function.Function;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
  * Represents a string JSON node.
  *
  * @author Jan Bernitt
  */
+// TODO adjust for value duality and allow number +  bool
+// maybe add a JsonStrictString type (as example)
+// maybe add strict to @Validation to opt-in
 @Validation(type = STRING)
 @Validation.Ignore
 public interface JsonString extends JsonPrimitive {
 
+  @Override
+  default JsonString getValue() {
+    return this; // return type override
+  }
+
   /**
    * @return the text of the string node, {@code null} when this property is undefined or defined as
    *     JSON {@code null}.
+   * @throws JsonTreeException in case this node exists but is not a string node (or null)
    * @since 1.9
    */
-  Text text();
+  @TerminalOp(canBeUndefined = true)
+  default Text text() {
+    JsonNode node = nodeIfExists();
+    return node == null || node.isNull() ? null : node.textValue();
+  }
+
+  /**
+   * @return the first character of the text or null if it is empty or undefined
+   * @throws JsonTreeException in case this node exists but is not a string node (or null)
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true)
+  default Character character() {
+    Text str = text();
+    return str == null || str.isEmpty() ? null : str.charAt(0);
+  }
+
+  @TerminalOp
+  default char charValue() {
+    JsonNode node = node();
+    Text str = node.textValue();
+    if (str.isEmpty()) throw notA(JsonNodeType.STRING, node, "charValue()");
+    return str.charAt(0);
+  }
 
   /**
    * @return string value of the property or {@code null} when this property is undefined or defined
    *     as JSON {@code null}.
+   * @throws JsonTreeException in case this node exists but is not a string node (or null)
    */
+  @TerminalOp(canBeUndefined = true)
   default String string() {
     return string(null);
   }
@@ -62,6 +98,7 @@ public interface JsonString extends JsonPrimitive {
    * @return this string node string value or the default if undefined or defined null
    * @throws JsonTreeException in case this node exists but is not a string node (or null)
    */
+  @TerminalOp(canBeUndefined = true)
   default String string(String orDefault) {
     return isUndefined() ? orDefault : text().toString();
   }
@@ -73,6 +110,7 @@ public interface JsonString extends JsonPrimitive {
    *     calling provided parser with result of {@link #string()}.
    */
   @CheckNull
+  @TerminalOp(canBeUndefined = true)
   default <T> T parsed(@NotNull Function<String, T> parser) {
     String value = string();
     return value == null ? null : parser.apply(value);
@@ -83,6 +121,7 @@ public interface JsonString extends JsonPrimitive {
     B apply(A a) throws Exception;
   }
 
+  @TerminalOp(canBeNull = true)
   default <T> T parsedChecked(CheckedFunction<String, T> converter) {
     String value = string();
     if (value == null) return null;
@@ -93,6 +132,7 @@ public interface JsonString extends JsonPrimitive {
     }
   }
 
+  @TerminalOp(canBeNull = true)
   default Class<?> parsedClass() {
     return parsedChecked(Class::forName);
   }

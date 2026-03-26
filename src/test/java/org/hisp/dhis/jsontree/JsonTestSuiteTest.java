@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
@@ -126,7 +127,7 @@ class JsonTestSuiteTest {
   }
 
   private void assert_y(JsonValue value) {
-    value.node().visit(n -> {});
+    value.node().queryCount($.descendants());
   }
 
   private void assert_n(String json) {
@@ -138,6 +139,6 @@ class JsonTestSuiteTest {
   }
 
   private void assert_n(JsonNode node) {
-    assertThrowsExactly(JsonFormatException.class, () -> node.visit(JsonNode::value));
+    assertThrowsExactly(JsonFormatException.class, node::endIndex);
   }
 }

@@ -29,6 +29,8 @@ package org.hisp.dhis.jsontree;
 
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 
+import org.hisp.dhis.jsontree.internal.TerminalOp;
+
 /**
  * Represents a boolean JSON node.
  *
@@ -38,17 +40,28 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 @Validation.Ignore
 public interface JsonBoolean extends JsonPrimitive {
 
+  @Override
+  default JsonBoolean getValue() {
+    return this; // return type override
+  }
+
   /**
    * @return boolean value of the property or {@code null} when this property is undefined or
    *     defined as JSON {@code null}.
+   * @throws JsonTreeException in case this node exist but is not a boolean node (or null)
    */
-  Boolean bool();
+  @TerminalOp(canBeUndefined = true)
+  default Boolean bool() {
+    JsonNode node = nodeIfExists();
+    return node == null || node.isNull() ? null : booleanValue();
+  }
 
   /**
    * @param orDefault to use if this node is undefined or defined null
    * @return the boolean value of this node or the default if it is undefined or null
    * @throws JsonTreeException in case this node exist but is not a boolean node (or null)
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean booleanValue(boolean orDefault) {
     return isUndefined() ? orDefault : booleanValue();
   }
@@ -61,10 +74,8 @@ public interface JsonBoolean extends JsonPrimitive {
    * @throws JsonPathException when this value is not defined in the JSON content or defined JSON
    *     {@code null}.
    */
+  @TerminalOp
   default boolean booleanValue() {
-    Boolean res = bool();
-    if (res != null) return res;
-    JsonPath path = node().getPath();
-    throw new JsonPathException(path, "Path `%s` is defined as null".formatted(path));
+    return node().booleanValue();
   }
 }

@@ -2,7 +2,6 @@ package org.hisp.dhis.jsontree;
 
 import java.util.List;
 import java.util.Objects;
-
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -46,7 +45,8 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  *     path)
  * @param segment null in case of this being the root (empty path)
  */
-public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment) implements Comparable<JsonPath> {
+public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
+    implements Comparable<JsonPath> {
 
   /** The empty path pointing to itself */
   public static final JsonPath SELF = new JsonPath(null, null);
@@ -151,6 +151,13 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment) impl
     return parent == null ? SELF : parent;
   }
 
+  public JsonPath drop(int n) {
+    if (n <= 0) return this;
+    JsonPath res = this;
+    for (int i = 0; i < n; i++) res = res.parentPath();
+    return res;
+  }
+
   public boolean startsWith(JsonPath prefix) {
     if (prefix.isEmpty()) return true;
     if (isEmpty()) return false;
@@ -231,6 +238,10 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment) impl
     return parent + escape(segment, this);
   }
 
+  public String toDisplayString() {
+    return isEmpty() ? "(root)" : toString();
+  }
+
   public List<Text> segments() {
     if (isEmpty()) return List.of();
     if (parent == null) return List.of(segment);
@@ -242,6 +253,10 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment) impl
       p = p.parent;
     }
     return List.of(res);
+  }
+
+  public String[] toArray() {
+    return segments().stream().map(Text::toString).toArray(String[]::new);
   }
 
   /**

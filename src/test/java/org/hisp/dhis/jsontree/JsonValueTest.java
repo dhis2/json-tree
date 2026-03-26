@@ -27,6 +27,10 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonNodeType.NUMBER;
+import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
+import static org.hisp.dhis.jsontree.JsonNodeType.STRING;
+import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -36,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -129,6 +134,44 @@ class JsonValueTest {
   }
 
   @Test
+  void testIsNaN() {
+    assertTrue(Json.of("NaN").isNaN());
+    assertTrue(Json.of(Double.NaN).isNaN());
+    assertTrue(Json5.of(" NaN ").isNaN());
+    assertFalse(Json.of("N").isNaN());
+    assertFalse(Json.of("Nan").isNaN());
+    assertFalse(Json.of("nan").isNaN());
+    assertFalse(Json.ofNull().isNaN());
+    assertFalse(Json.of(true).isNaN());
+    assertFalse(Json.of(false).isNaN());
+    assertFalse(JsonMixed.of("[]").isNaN());
+    assertFalse(JsonMixed.of("{}").isNaN());
+    assertFalse(Json.of(1.3d).isNaN());
+    assertFalse(Json.of(0.0d).isNaN());
+  }
+
+  @Test
+  void testIsInfinity() {
+    assertTrue(Json.of("Infinity").isInfinity());
+    assertTrue(Json.of(Double.POSITIVE_INFINITY).isInfinity());
+    assertTrue(Json5.of(" Infinity ").isInfinity());
+    assertFalse(Json.of("I").isInfinity());
+    assertFalse(Json.of("infinity").isInfinity());
+    assertTrue(Json.of("-Infinity").isInfinity());
+    assertTrue(Json.of(Double.NEGATIVE_INFINITY).isInfinity());
+    assertTrue(Json5.of(" -Infinity ").isInfinity());
+    assertFalse(Json.of("-I").isInfinity());
+    assertFalse(Json.of("-infinity").isInfinity());
+    assertFalse(Json.ofNull().isInfinity());
+    assertFalse(Json.of(true).isInfinity());
+    assertFalse(Json.of(false).isInfinity());
+    assertFalse(JsonMixed.of("[]").isInfinity());
+    assertFalse(JsonMixed.of("{}").isInfinity());
+    assertFalse(Json.of(1.3d).isInfinity());
+    assertFalse(Json.of(0.0d).isInfinity());
+  }
+
+  @Test
   void testToListFromVarargs_Undefined() {
     assertEquals(
         List.of(),
@@ -182,43 +225,43 @@ class JsonValueTest {
         """
             { "x":{ "foo": 1 }}""";
     JsonMixed root = JsonMixed.of(json);
-    JsonObject foo = root.find(JsonObject.class, obj -> obj.has("foo"));
+    JsonObject foo = root.query($.find(OBJECT, obj -> obj.has("foo"))).findFirst().orElseThrow();
     assertTrue(foo.isObject());
     assertEquals(".x", foo.path().toString());
-    assertFalse(root.find(JsonObject.class, obj -> obj.has("bar")).exists());
+    assertFalse(root.queryExists($.find(OBJECT, obj -> obj.has("bar"))));
   }
 
   @Test
   void testFind_Array() {
     assertEquals(
-        42, JsonValue.of("[1,42,99]").find(JsonNumber.class, n -> n.intValue() > 20).intValue());
+        42, JsonValue.of("[1,42,99]").queryFirst($.find(NUMBER, n -> n.intValue() > 20)).orElseThrow().intValue());
   }
 
   @Test
   void testFind_String() {
     assertFalse(
-        JsonValue.of("\"hello\"").find(JsonString.class, n -> n.string().length() > 30).exists());
+        JsonValue.of("\"hello\"").queryExists($.find(STRING, n -> n.string().length() > 30)));
     assertEquals(
         "hello",
-        JsonValue.of("\"hello\"").find(JsonString.class, n -> n.string().length() > 3).string());
+        JsonValue.of("\"hello\"").queryFirst($.find(STRING, n -> n.string().length() > 3)).orElseThrow().string());
   }
 
   @Test
   void testFind_Number() {
-    assertFalse(JsonMixed.of("1").find(JsonObject.class, obj -> obj.containsKey("x")).exists());
-    assertEquals(42, JsonMixed.of("42").find(JsonNumber.class, JsonValue::isInteger).intValue());
+    assertFalse(JsonMixed.of("1").queryExists($.find(OBJECT, obj -> obj.containsKey("x"))));
+    assertEquals(42, JsonMixed.of("42").queryFirst($.find(NUMBER, JsonValue::isInteger)).orElseThrow().intValue());
   }
 
   @Test
   void testFind_Null() {
-    assertFalse(JsonMixed.of("null").find(JsonObject.class, obj -> obj.containsKey("x")).exists());
+    assertFalse(JsonMixed.of("null").queryExists($.find(OBJECT, obj -> obj.containsKey("x"))));
   }
 
   @Test
   void testFind_Undefined() {
     JsonObject undefined = JsonMixed.of("{}").getObject("x");
-    assertFalse(undefined.find(JsonObject.class, obj -> obj.containsKey("y")).exists());
-    assertFalse(undefined.find(JsonValue.class, JsonValue::exists).exists());
+    assertFalse(undefined.queryExists($.find(OBJECT, obj -> obj.containsKey("y"))));
+    assertFalse(undefined.queryExists($.find(JsonValue::exists)));
   }
 
   @Test
@@ -226,6 +269,28 @@ class JsonValueTest {
     assertEquals(1, JsonMixed.of("1").to(Integer.class));
     assertArrayEquals(new Integer[] {1}, JsonMixed.of("1").to(Integer[].class));
     assertEquals(99, JsonMixed.of("[1,42,99]").get(2).to(int.class));
+  }
+
+  @DisplayName("JsonValue API implements Map.Entry")
+  @Test
+  void testMapEntry() {
+    // this is more a compile time test
+    // to see that the getValue() method's
+    // return type is overridden to be compatible
+    JsonMixed node = JsonMixed.of("1");
+    assertSame( node, node.getValue());
+    JsonNumber number = node.getValue();
+    assertSame( number, number.getValue());
+    JsonString string = node.getValue();
+    assertSame( string, string.getValue());
+    JsonBoolean bool = node.getValue();
+    assertSame( bool, bool.getValue());
+    JsonArray array = node.getValue();
+    assertSame( array, array.getValue());
+    JsonObject object = node.getValue();
+    assertSame( object, object.getValue());
+    JsonValue value = node.getValue();
+    assertSame( value, value.getValue());
   }
 
   record Address(String street, int zip, String city) {
@@ -311,4 +376,15 @@ class JsonValueTest {
     assertEquals("Backyard 44", actual.street());
     assertEquals(4444, actual.zip());
   }
+
+  @Test
+  void testToJurl() {
+    assertEquals("(1,2,false,null,null)", JsonMixed.of("[1,2,false,null,{}]").toJurl());
+  }
+
+  @Test
+  void testToJurl_Format() {
+    assertEquals("(1,2,f,n,n)", JsonMixed.of("[1,2,false,null,{}]").toJurl(Jurl.MINIMAL));
+  }
+
 }

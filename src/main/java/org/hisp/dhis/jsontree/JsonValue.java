@@ -31,14 +31,15 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
+import org.hisp.dhis.jsontree.JsonSelector.Matches;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which is representing an
@@ -84,7 +85,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @see JsonMixed
  */
 @Validation.Ignore
-public interface JsonValue {
+public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Entry<Text, JsonValue> {
 
   /**
    * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
@@ -142,11 +143,27 @@ public interface JsonValue {
   Class<? extends JsonValue> asType();
 
   /**
-   * @return this node path
+   * @return this node path (does not imply existence, it is merely the path navigated to in the
+   *     virtual tree)
    * @since 0.11
    */
   @NotNull
   JsonPath path();
+
+  @Override
+  default Text getKey() {
+    return path().segment();
+  }
+
+  @Override
+  default JsonValue getValue() {
+    return this;
+  }
+
+  @Override
+  default JsonValue setValue(JsonValue value) {
+    throw new UnsupportedOperationException("A JSON value is an immutable view");
+  }
 
   /**
    * The "mapping" uses the node's {@link #getAccessors()} to map the JSON to the given Java target
@@ -166,6 +183,7 @@ public interface JsonValue {
    *     or the conversion is not possible from the actual JSON value
    * @since 1.9
    */
+  @TerminalOp
   <T> T to(Class<T> type) throws JsonAccessException;
 
   /**
@@ -173,8 +191,10 @@ public interface JsonValue {
    * @since 0.11
    */
   @CheckNull
+  @Override
+  @TerminalOp(canBeUndefined = true)
   default JsonNodeType type() {
-    return !exists() ? null : node().getType();
+    return !exists() ? null : node().type();
   }
 
   /**
@@ -183,46 +203,16 @@ public interface JsonValue {
    *
    * @return true, if the value exists, else false
    */
+  @TerminalOp(canBeUndefined = true)
   boolean exists();
-
-  /**
-   * @return true if the value exists and is defined JSON {@code null}
-   * @throws JsonPathException in case this value does not exist in the JSON document
-   */
-  default boolean isNull() {
-    return type() == JsonNodeType.NULL;
-  }
 
   /**
    * @return true if this JSON node either does not exist at all or is defined as JSON {@code null},
    *     otherwise false
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isUndefined() {
     return !exists() || isNull();
-  }
-
-  /**
-   * @return true if the value exists and is a JSON array node (empty or not) but not JSON {@code
-   *     null}
-   */
-  default boolean isArray() {
-    return type() == JsonNodeType.ARRAY;
-  }
-
-  /**
-   * @return true if the value exists and is an JSON object node (empty or not) but not JSON {@code
-   *     null}
-   */
-  default boolean isObject() {
-    return type() == JsonNodeType.OBJECT;
-  }
-
-  /**
-   * @return true if the value exists and is an JSON number node (not JSON {@code null})
-   * @since 0.10
-   */
-  default boolean isNumber() {
-    return type() == JsonNodeType.NUMBER;
   }
 
   /**
@@ -230,24 +220,31 @@ public interface JsonValue {
    *     fraction of zero
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean isInteger() {
-    return isNumber() && ((Number) node().value()).doubleValue() % 1d == 0d;
+    return isNumber() && node().textValue().isNumericInteger();
   }
 
   /**
-   * @return true if the value exists and is an JSON string node (not JSON {@code null})
-   * @since 0.10
+   * @return true, if this node is a string of exactly "NaN" as specified for the special value for
+   *     Java doubles
+   * @since 1.9
    */
-  default boolean isString() {
-    return type() == JsonNodeType.STRING;
+  @TerminalOp(canBeUndefined = true)
+  default boolean isNaN() {
+    return isString() && node().textValue().contentEquals("NaN");
   }
 
   /**
-   * @return true if the value exists and is an JSON boolean node (not JSON {@code null})
-   * @since 0.10
+   * @return true, if this node is a string of exactly "Infinity" or "-Infinity" as specified for the
+   *     special value for Java doubles
+   * @since 1.9
    */
-  default boolean isBoolean() {
-    return type() == JsonNodeType.BOOLEAN;
+  @TerminalOp(canBeUndefined = true)
+  default boolean isInfinity() {
+    return isString()
+        && (node().textValue().contentEquals("Infinity")
+            || node().textValue().contentEquals("-Infinity"));
   }
 
   /**
@@ -337,6 +334,7 @@ public interface JsonValue {
    *     with the element type
    * @since 0.10
    */
+  @TerminalOp(canBeUndefined = true)
   default <T, V extends JsonValue> List<T> toListFromVarargs(
       Class<V> elementType, Function<V, T> toElement) {
     return isUndefined()
@@ -358,8 +356,9 @@ public interface JsonValue {
    * @return true, if this value represents the same information, else false
    * @since 1.1
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean equivalentTo(JsonValue other) {
-    return equivalentTo(this, other, JsonValue::equivalentTo);
+    return equivalentTo(as(JsonMixed.class), other.as(JsonMixed.class), JsonValue::equivalentTo);
   }
 
   /**
@@ -373,8 +372,10 @@ public interface JsonValue {
    * @return true, if this value only differs in formatting from the other value, otherwise false
    * @since 1.1
    */
+  @TerminalOp(canBeUndefined = true)
   default boolean identicalTo(JsonValue other) {
-    if (!equivalentTo(this, other, JsonValue::identicalTo)) return false;
+    if (!equivalentTo(as(JsonMixed.class), other.as(JsonMixed.class), JsonValue::identicalTo))
+      return false;
     if (isNumber()) return node().getDeclaration().equals(other.node().getDeclaration());
     if (!isObject()) return true;
     // names must be in same order
@@ -385,25 +386,15 @@ public interface JsonValue {
   }
 
   private static boolean equivalentTo(
-      JsonValue a, JsonValue b, BiPredicate<JsonValue, JsonValue> compare) {
+      JsonMixed a, JsonMixed b, BiPredicate<JsonMixed, JsonMixed> eqItems) {
     if (a.type() != b.type()) return false;
-    if (a.isUndefined()) return true; // includes null
-    if (a.isString())
-      return a.as(JsonString.class).text().contentEquals(b.as(JsonString.class).text());
-    if (a.isBoolean())
-      return a.as(JsonBoolean.class).booleanValue() == b.as(JsonBoolean.class).booleanValue();
-    if (a.isNumber())
-      return a.as(JsonNumber.class).doubleValue() == b.as(JsonNumber.class).doubleValue();
-    if (a.isArray()) {
-      JsonArray ar = a.as(JsonArray.class);
-      JsonArray br = b.as(JsonArray.class);
-      return ar.size() == br.size()
-          && ar.indexes().allMatch(i -> compare.test(ar.get(i), br.get(i)));
-    }
-    JsonObject ao = a.asObject();
-    JsonObject bo = b.asObject();
-    return ao.size() == bo.size()
-        && ao.keys().allMatch(key -> compare.test(ao.get(key), bo.get(key)));
+    if (a.isUndefined()) return true; // types are same, must be either both null or both undefined
+    if (a.isString()) return a.text().contentEquals(b.text());
+    if (a.isBoolean()) return a.booleanValue() == b.booleanValue();
+    if (a.isNumber()) return a.doubleValue() == b.doubleValue();
+    if (a.isArray())
+      return a.size() == b.size() && a.indexes().allMatch(i -> eqItems.test(a.get(i), b.get(i)));
+    return a.size() == b.size() && a.keys().allMatch(key -> eqItems.test(a.get(key), b.get(key)));
   }
 
   /**
@@ -414,7 +405,9 @@ public interface JsonValue {
    *     handling the value must be "cast" to the root object type using {@link #as(Class)} prior to
    *     calling this method
    * @return the differences
+   * @throws JsonPathException in case either of the two values compared is undefined
    */
+  @TerminalOp(canBeNull = true)
   default JsonDiff diff(JsonValue with) {
     return diff(with, Mode.DEFAULT);
   }
@@ -428,7 +421,9 @@ public interface JsonValue {
    *     calling this method
    * @param mode of how strict to make the comparison
    * @return the differences
+   * @throws JsonPathException in case either of the two values compared is undefined
    */
+  @TerminalOp(canBeNull = true)
   default JsonDiff diff(JsonValue with, Mode mode) {
     return JsonDiff.of(this, with, mode);
   }
@@ -440,18 +435,45 @@ public interface JsonValue {
    * <p>This might be useful in test to access the {@link JsonNode#getDeclaration()} to modify and
    * reuse it.
    *
-   * @return the underlying {@link JsonNode} in the overall JSON document if it exists
+   * @return the underlying {@link JsonNode} if it exists
    * @throws JsonPathException in case this value does not exist in the JSON document
    */
+  @NotNull
+  @TerminalOp(canBeNull = true)
   JsonNode node();
+
+  /**
+   * @since 1.9
+   */
+  @CheckNull
+  @TerminalOp(canBeNull = true)
+  JsonNode nodeIfExists();
 
   /**
    * @return JSON declaration for this value (as originally given)
    * @throws JsonPathException if this node does not exist
    * @since 0.11
    */
+  @TerminalOp(canBeNull = true)
   default String toJson() {
     return node().getDeclaration().toString();
+  }
+
+  /**
+   * @return This node in standard JURL notation
+   * @since 1.9
+   */
+  @TerminalOp(canBeNull = true)
+  default String toJurl() {
+      return toJurl(Jurl.STANDARD);
+  }
+
+  /**
+   * @return This node in JURL notation with given format rules
+   * @since 1.9
+   */
+  default String toJurl(Jurl.Format format) {
+    return JurlBuilder.toJurl(format, node());
   }
 
   /**
@@ -459,6 +481,7 @@ public interface JsonValue {
    * @throws JsonPathException if this node does not exist
    * @since 0.11
    */
+  @TerminalOp(canBeNull = true)
   default String toMinimizedJson() {
     if (!isObject() && !isArray()) return toJson();
     if (isObject())
@@ -483,31 +506,24 @@ public interface JsonValue {
   JsonAccessors getAccessors();
 
   /**
-   * Finds the first value that satisfies the given test.
-   *
-   * <p>OBS! When no match is found a value that does not exist is returned.
-   *
-   * @param type API to test the node with
-   * @param test test to perform on all objects that satisfy the type filter
-   * @param <T> type of the object to find
-   * @return the first found match or JSON {@code null} object
+   * Essential method for the query API
+   * @since 1.9
    */
-  default <T extends JsonValue> T find(Class<T> type, Predicate<T> test) {
-    if (isUndefined()) return JsonMixed.of("{}").get("notFound", type);
-    JsonAccessors accessors = getAccessors();
-    Optional<JsonNode> match =
-        node()
-            .find(
-                node -> {
-                  try {
-                    return test.test(node.lift(accessors).as(type));
-                  } catch (JsonTreeException | JsonPathException ex) {
-                    // the test called a method that was not supported by the tested node
-                    return false;
-                  }
-                });
-    return match.isEmpty()
-        ? JsonMixed.of("{}").get("notFound", type)
-        : match.get().lift(accessors).as(type);
+  @Override
+  @TerminalOp(canBeUndefined = true)
+  default void query(JsonSelector selector, Matches<JsonMixed> matches) {
+    if (isUndefined()) return;
+    record Lifter(JsonAccessors accessors, Matches<JsonMixed> matches) implements Matches<JsonNode> {
+      @Override
+      public boolean satisfied() {
+        return matches.satisfied();
+      }
+
+      @Override
+      public void accept(JsonNode match) {
+        matches.accept(match.lift(accessors));
+      }
+    }
+    node().query(selector, new Lifter(getAccessors(), matches));
   }
 }

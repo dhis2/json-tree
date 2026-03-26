@@ -18,53 +18,42 @@ class JsonObjectTest {
 
   @Test
   void testSize() {
-    assertEquals(0, JsonMixed.of("{}").size());
-    assertEquals(1, JsonMixed.of("{\"a\": 1}").size());
-    assertEquals(2, JsonMixed.of("{\"a\": 1, \"b\": 2}").size());
-    assertEquals(3, JsonMixed.of("{\"a\": 1, \"b\": 2, \"c\": null}").size());
+    assertEquals(0, Json5.of("{}").size());
+    assertEquals(1, Json5.of("{\"a\": 1}").size());
+    assertEquals(2, Json5.of("{\"a\": 1, \"b\": 2}").size());
+    assertEquals(3, Json5.of("{\"a\": 1, \"b\": 2, \"c\": null}").size());
   }
 
   @Test
   void testHas_NoObject() {
-    JsonMixed value = JsonMixed.of("1");
-    assertThrowsExactly(JsonTreeException.class, () -> value.has("x"));
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("1").has("x"));
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("true").has("x"));
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("'a'").has("x"));
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("'[1]'").has("0"));
   }
 
   @Test
   void testNames_Undefined() {
-    JsonObject value = JsonMixed.of("{}").getObject("x");
-    assertEquals(List.of(), value.names());
+    assertEquals(List.of(), JsonMixed.of("{}").getObject("x").names());
   }
 
   @Test
   void testNames_NoObject() {
-    JsonMixed value = JsonMixed.of("1");
-    assertThrowsExactly(JsonTreeException.class, value::names);
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("1").names());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("true").names());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("'a'").names());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("[1]").names());
   }
 
   @Test
   void testNames_Empty() {
-    JsonMixed value = JsonMixed.of("{}");
-    assertEquals(List.of(), value.names());
-  }
-
-  @Test
-  void testNames_NonEmpty() {
-    // language=json
-    String json =
-        """
-            {"a":1,"b":2}""";
-    JsonMixed value = JsonMixed.of(json);
-    assertEquals(List.of("a", "b"), value.names());
+    assertEquals(List.of(), JsonMixed.of("{}").names());
+    assertEquals(List.of("a", "b"), Json5.of("{'a':1,'b':2}").names());
   }
 
   @Test
   void testNames_Special() {
-    // language=json
-    String json =
-        """
-            {".":1,"{uid}":2,"[0]": 3, "": 4}""";
-    JsonMixed value = JsonMixed.of(json);
+    JsonMixed value = Json5.of("{'.':1,'{uid}':2,'[0]': 3, '': 4}");
     assertEquals(List.of(".", "{uid}", "[0]", ""), value.names());
     assertEquals(4, value.getNumber(Text.of("")).intValue());
   }
@@ -99,6 +88,22 @@ class JsonObjectTest {
   }
 
   @Test
+  void testPaths_NoObject() {
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("1").paths());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("true").paths());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("'a'").paths());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("[1]").paths());
+  }
+
+  @Test
+  void testEntries_NoObject() {
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("1").entries());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("true").entries());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("'a'").entries());
+    assertThrowsExactly(JsonTreeException.class, () -> Json5.of("[1]").entries());
+  }
+
+  @Test
   void testProject() {
     // language=json
     String json =
@@ -108,7 +113,9 @@ class JsonObjectTest {
     JsonObject obj = value.project(e -> e.as(JsonArray.class).get(0));
     assertSame(JsonObject.class, obj.asType());
     assertEquals(List.of("a", "b"), obj.names());
-    assertEquals(List.of(1, 2), List.of(obj.get("a").node().value(), obj.get("b").node().value()));
+    assertEquals(List.of(1, 2), List.of(obj.get("a").node().intValue(), obj.get("b").node().intValue()));
+    assertEquals(1, obj.getNumber("a").intValue());
+    assertTrue(obj.has("a"));
     assertTrue(obj.has("a", "b"));
     assertFalse(obj.has("a", "b", "c"));
   }

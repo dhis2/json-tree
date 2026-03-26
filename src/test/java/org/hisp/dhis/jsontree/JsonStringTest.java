@@ -2,7 +2,6 @@ package org.hisp.dhis.jsontree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,9 +24,7 @@ class JsonStringTest {
 
   @Test
   void testStringWithDefault_NoString() {
-    JsonMixed str = JsonMixed.of("1");
-    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> str.string("hello"));
-    assertEquals("Path `` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage());
+    assertEquals("1", JsonMixed.of("1").string("hello"));
   }
 
   @Test
@@ -52,10 +49,7 @@ class JsonStringTest {
 
   @Test
   void testParsed_NoString() {
-    JsonMixed str = JsonMixed.of("1");
-    JsonTreeException ex =
-        assertThrowsExactly(JsonTreeException.class, () -> str.parsed(String::length));
-    assertEquals("Path `` does not contain an STRING but a(n) NUMBER: 1", ex.getMessage());
+    assertEquals(2, JsonMixed.of("41").parsed(String::length));
   }
 
   @Test

@@ -33,38 +33,36 @@ import static java.lang.Math.min;
 import java.util.Arrays;
 
 /**
- * Thrown when the JSON content turns out to be invalid JSON.
+ * Thrown when a JSON input is found to be invalid JSON.
  *
  * @author Jan Bernitt
  */
 public final class JsonFormatException extends IllegalArgumentException {
 
-  public JsonFormatException(String message) {
+  private JsonFormatException(String message) {
     super(message);
   }
 
-  public JsonFormatException(char[] json, int index, char expected) {
-    this(createParseErrorMessage(json, index, expected));
+  public static JsonFormatException expected(char expected, char[] json, int offset) {
+    return new JsonFormatException(createParseErrorMessage(json,offset, ""+expected));
   }
 
-  public JsonFormatException(char[] json, int index, String expected) {
-    this(createParseErrorMessage(json, index, expected));
+  public static JsonFormatException expected(String pattern, char[] json, int offset) {
+    return new JsonFormatException(createParseErrorMessage(json,offset, pattern));
   }
 
-  private static String createParseErrorMessage(char[] json, int index, char expected) {
-    return createParseErrorMessage(
-        json, index, expected == '~' ? "start of value" : "`" + expected + "`");
-  }
-
-  private static String createParseErrorMessage(char[] json, int index, String expected) {
-    int start = max(0, index - 20);
+  private static String createParseErrorMessage(char[] json, int offset, String expected) {
+    int start = max(0, offset - 20);
     int length = min(json.length - start, 40);
-    String section = new String(json, start, length);
-    char[] pointer = new char[index - start + 1];
+    Text section = Text.of(json, start, length);
+    char[] pointer = new char[offset - start + 1];
     Arrays.fill(pointer, ' ');
     pointer[pointer.length - 1] = '^';
+    String template = "Unexpected character at position %d,%n%s%n%s expected %s";
+    if (offset >= json.length)
+      template = template.replace("character", "EOI");
     return String.format(
-        "Unexpected character at position %d,%n%s%n%s expected %s",
-        index, section, new String(pointer), expected);
+        template,
+        offset, section, Text.of(pointer, 0, pointer.length), expected);
   }
 }

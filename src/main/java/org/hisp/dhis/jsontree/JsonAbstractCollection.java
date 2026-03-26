@@ -32,7 +32,9 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
+import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
  * Common base class for JSON nodes that have children.
@@ -62,6 +64,7 @@ public interface JsonAbstractCollection extends JsonValue {
    * @throws JsonPathException in case this value does not exist
    * @throws JsonTreeException in case the value does exist but is not a collection
    */
+  @TerminalOp(mustBeArray = true, mustBeObject = true)
   boolean isEmpty();
 
   /**
@@ -69,6 +72,7 @@ public interface JsonAbstractCollection extends JsonValue {
    * @throws JsonPathException in case this value does not exist
    * @throws JsonTreeException in case the value does exist but is not a collection
    */
+  @TerminalOp(mustBeArray = true, mustBeObject = true)
   int size();
 
   static <E extends JsonValue> JsonList<E> asList(JsonArray array, Class<E> as) {
@@ -152,8 +156,13 @@ public interface JsonAbstractCollection extends JsonValue {
     }
 
     @Override
-    public final JsonNode node() {
+    public final @NotNull JsonNode node() {
       return viewed.node();
+    }
+
+    @Override
+    public @CheckNull JsonNode nodeIfExists() {
+      return viewed.nodeIfExists();
     }
 
     @Override

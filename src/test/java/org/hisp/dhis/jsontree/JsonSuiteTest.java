@@ -1,11 +1,13 @@
 package org.hisp.dhis.jsontree;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static java.nio.charset.StandardCharsets.ISO_8859_1;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -119,7 +121,7 @@ class JsonSuiteTest {
         "y_structure_lonely_false.json"
       })
   void testValid(String file) {
-    assertTrue(isValidJSON(file), file);
+    assertJsonDoesNotThrow(file);
   }
 
   @ParameterizedTest
@@ -306,7 +308,7 @@ class JsonSuiteTest {
         "n_object_trailing_comment.json"
       })
   void testInvalid(String file) {
-    assertFalse(isValidJSON(file), file);
+    assertJsonThrows(file);
   }
 
   /**
@@ -325,7 +327,7 @@ class JsonSuiteTest {
         "n_number_neg_int_starting_with_zero.json"
       })
   void testInvalidIntentionallyValid(String file) {
-    assertTrue(isValidJSON(file), file);
+    assertJsonDoesNotThrow(file);
   }
 
   @ParameterizedTest
@@ -333,7 +335,6 @@ class JsonSuiteTest {
       strings = {
         "i_number_huge_exp.json",
         "i_string_not_in_unicode_range.json",
-        "i_string_truncated-utf-8.json",
         "i_string_overlong_sequence_6_bytes.json",
         "i_number_real_neg_overflow.json",
         "i_number_pos_double_huge_exp.json",
@@ -361,22 +362,23 @@ class JsonSuiteTest {
         "i_string_invalid_utf-8.json",
         "i_number_real_underflow.json",
         "i_string_incomplete_surrogate_and_escape_valid.json",
-        "i_number_neg_int_huge_exp.json"
+        "i_number_neg_int_huge_exp.json",
+        "i_structure_UTF-8_BOM_empty_object.json",
       })
   void testUndefinedValid(String file) {
-    assertTrue(isValidJSON(file), file);
+    assertJsonDoesNotThrow(file);
   }
 
   @ParameterizedTest
   @ValueSource(
       strings = {
+        "i_string_truncated-utf-8.json",
         "i_string_utf16LE_no_BOM.json",
         "i_string_utf16BE_no_BOM.json",
-        "i_structure_UTF-8_BOM_empty_object.json",
         "i_string_UTF-16LE_with_BOM.json"
       })
   void testUndefinedInvalid(String file) {
-    assertFalse(isValidJSON(file), file);
+    assertJsonThrows(file);
   }
 
   /**
@@ -388,19 +390,33 @@ class JsonSuiteTest {
   @ValueSource(
       strings = {"n_structure_open_array_object.json", "n_structure_100000_opening_arrays.json"})
   void testInvalidStackOverflow(String file) {
-    assertThrows(StackOverflowError.class, () -> isValidJSON(file));
+    assertThrowsExactly(StackOverflowError.class, () -> runTest(file));
   }
 
-  public static boolean isValidJSON(String filename) {
+  private static void assertJsonDoesNotThrow(String filename) {
+    assertDoesNotThrow(
+        () -> runTest(filename),
+        () -> filename + " did throw for input: " + readContents(filename));
+  }
+
+  private static void assertJsonThrows(String filename) {
+    assertThrowsExactly(
+        JsonFormatException.class,
+        () -> runTest(filename),
+        () -> filename + " did not throw JsonFormatException for input: " + readContents(filename));
+  }
+
+  private static String readContents(String filename) {
     try {
-      byte[] bytes = Files.readAllBytes(Paths.get("./src/test/resources/suite", filename));
-      String json = new String(bytes);
-      JsonNode.of(json).visit(JsonNode::value);
-      return true;
-    } catch (RuntimeException e) {
-      return false;
-    } catch (IOException ex) {
-      throw new UncheckedIOException(ex);
+      return new String(Files.readAllBytes(Paths.get("./src/test/resources/suite", filename)));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
+  }
+
+  private static void runTest(String filename) {
+    Charset encoding = filename.contains("latin") ? ISO_8859_1 : UTF_8;
+    JsonNode root = JsonNode.of(Paths.get("./src/test/resources/suite", filename), encoding, null);
+    root.endIndex(); // causes validation to occur
   }
 }

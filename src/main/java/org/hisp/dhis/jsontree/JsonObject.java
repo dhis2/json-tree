@@ -27,15 +27,17 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
+
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import org.hisp.dhis.jsontree.JsonNode.Index;
 import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.internal.TerminalOp;
 import org.hisp.dhis.jsontree.validation.JsonValidator;
 
 /**
@@ -50,46 +52,11 @@ import org.hisp.dhis.jsontree.validation.JsonValidator;
  * @author Jan Bernitt
  */
 @Validation.Ignore
-public interface JsonObject extends JsonAbstractObject<JsonValue> {
+public interface JsonObject extends JsonAbstractObject<JsonMixed> {
 
   @Override
-  default Stream<JsonValue> values() {
-    return values(true);
-  }
-
-  /**
-   * @implNote This utilizes {@link JsonNode#members(boolean)} avoiding map lookups for each
-   *     element. On {@link JsonAbstractArray} level this cannot be done as the node cannot be
-   *     {@link JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
-   * @param remember true, to internally "remember" the elements iterated over so far, false to only
-   *     iterate without keeping references to them further on so GC can pick em up
-   * @since 1.9
-   */
-  default Stream<JsonValue> values(boolean remember) {
-    if (isUndefined() || isEmpty()) return Stream.empty();
-    JsonAccessors accessors = getAccessors();
-    return StreamSupport.stream(node().members(remember), false)
-        .map(e -> e.getValue().lift(accessors));
-  }
-
-  @Override
-  default Stream<Map.Entry<Text, JsonValue>> entries() {
-    return entries(true);
-  }
-
-  /**
-   * @implNote This utilizes {@link JsonNode#members(boolean)} avoiding map lookups for each
-   *     element. On {@link JsonAbstractArray} level this cannot be done as the node cannot be
-   *     {@link JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
-   * @param remember true, to internally "remember" the elements iterated over so far, false to only
-   *     iterate without keeping references to them further on so GC can pick em up
-   * @since 1.9
-   */
-  default Stream<Map.Entry<Text, JsonValue>> entries(boolean remember) {
-    if (isUndefined() || isEmpty()) return Stream.empty();
-    JsonAccessors accessors = getAccessors();
-    return StreamSupport.stream(node().members(remember), false)
-        .map(e -> Map.entry(e.getKey(), e.getValue().lift(accessors)));
+  default JsonObject getValue() {
+    return this; // return type override
   }
 
   /**
@@ -139,8 +106,8 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
    */
   <T extends JsonValue> T get(Text name, Class<T> as);
 
-  default JsonValue get(Text name) {
-    return get(name, JsonValue.class);
+  default JsonMixed get(Text name) {
+    return get(name, JsonMixed.class);
   }
 
   <T extends JsonValue> T get(JsonPath subPath, Class<T> as);
@@ -154,8 +121,8 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
   }
 
   @Override
-  default JsonValue get(CharSequence name) {
-    return get(name, JsonValue.class);
+  default JsonMixed get(CharSequence name) {
+    return get(name, JsonMixed.class);
   }
 
   default JsonObject getObject(CharSequence name) {
@@ -190,6 +157,26 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
     return JsonAbstractCollection.asMultiMap(getObject(name), as);
   }
 
+  @Override
+  @TerminalOp(canBeUndefined = true, mustBeObject = true)
+  default Stream<JsonMixed> entries() {
+    return entries(AUTO);
+  }
+
+  /**
+   * @implNote This utilizes {@link JsonNode#members(Index)} avoiding map lookups for each element.
+   *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+   *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+   * @param index the strategy to apply when it comes to node lookup and indexing
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeObject = true)
+  default Stream<JsonMixed> entries(JsonNode.Index index) {
+    if (isUndefined() || isEmpty()) return Stream.empty();
+    JsonAccessors accessors = getAccessors();
+    return node().members(index).stream().map(e -> e.lift(accessors));
+  }
+
   /**
    * Uses the JSON schema validation to check whether this object conforms to the provided type
    *
@@ -198,6 +185,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
    * @return true if this is an object is valid against the provided schema
    * @since 0.11 (in this form with rules parameter)
    */
+  @TerminalOp
   default boolean isA(Class<?> schema, Rule... rules) {
     try {
       JsonValidator.validate(this, schema, rules);
@@ -220,6 +208,7 @@ public interface JsonObject extends JsonAbstractObject<JsonValue> {
    *     present
    * @since 0.11 (in this form with rules parameter)
    */
+  @TerminalOp(mustBeObject = true)
   default <T extends JsonObject> T asA(Class<T> schema, Rule... rules)
       throws JsonPathException, JsonTreeException, JsonSchemaException {
     T obj = as(schema);

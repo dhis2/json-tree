@@ -1,12 +1,19 @@
 package org.hisp.dhis.jsontree;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A {@link String}-like API without requiring to manifest a {@link String} instance.
  *
+ * @apiNote A {@link Text} must always be observed as if it is an immutable value. It is highly
+ *     recommended to not extend the interface but instead use {@link Text#of(char[], int, int)} or
+ *     on of the other {@code of}-methods to create instances.
  * @implNote The {@link Text} abstraction exists to enable views without defensive copying to allow
  *     for a very small memory overhead of sub-sequences found within a JSON document. Most
  *     prominent the JSON string node values and the names of object properties. This takes
@@ -16,6 +23,8 @@ import java.util.Arrays;
  * @since 1.9
  */
 public interface Text extends CharSequence, Comparable<Text> {
+
+  Text EMPTY = Text.of(new char[0], 0, 0);
 
   /**
    * @see String#indexOf(int)
@@ -180,7 +189,7 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   @Override
-  default Text subSequence(int start, int end) {
+  default @NotNull Text subSequence(int start, int end) {
     checkSubSequence(start, end, length());
     if (start == 0 && end == length()) return this;
     int len = end - start;
@@ -200,32 +209,69 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
-   * @return true, if the text is a signed or unsigned integer value
+   * @return true, if this text is a valid integer value (of any range), or in other words if the
+   *     sequence only consists of digits except for the first character which may be a plus or
+   *     minus sign.
    */
-  default boolean isInt() {
+  default boolean isTextualInteger() {
     if (isEmpty()) return false;
     int i = 0;
     if (charAt(0) == '-' || charAt(0) == '+') i++;
-    for (; i < length(); i++) if (charAt(i) < '0' || charAt(i) > '9') return false;
+    int len = length();
+    for (; i < len; i++) if (charAt(i) < '0' || charAt(i) > '9') return false;
     return true;
   }
 
   /**
-   * @return this text parsed to an integer
-   * @throws NumberFormatException in case the text is not a valid integer
+   * @return true, if this is either a {@link #isTextualInteger()} or a floating point number in
+   *     decimal notation with all decimals being zero.
+   */
+  default boolean isNumericInteger() {
+    return TextualNumber.isNumericInteger(toCharArray());
+  }
+
+  /**
+   * @return true, if this text is a valid decimal value (of any range), in other words if it is
+   *     either a {@link #isTextualInteger()} or a floating point number in decimal or exponential
+   *     notation.
+   */
+  default boolean isTextualDecimal() {
+    return TextualNumber.isTextualDecimal(toCharArray());
+  }
+
+  /**
+   * In contrast to the JDK method this only accepts valid inputs.
+   *
+   * @throws IllegalArgumentException when text is neither "true" nor "false" (case-insensitive)
+   * @see Boolean#parseBoolean(String)
+   */
+  default boolean parseBoolean() {
+    return Chars.parseBoolean(toCharArray());
+  }
+
+  /**
+   * @see Integer#parseInt(String)
    */
   default int parseInt() {
-    if (!isInt()) throw new NumberFormatException("Not a number: " + this);
-    boolean neg = charAt(0) == '-';
-    int i = 0;
-    if (neg || charAt(0) == '+') i++;
-    int n = 0;
-    int end = length();
-    for (; i < end; i++) {
-      n *= 10;
-      n += charAt(i) - '0';
-    }
-    return neg ? -n : n;
+    return TextualNumber.parseIntExact(toCharArray(), 0, length());
+  }
+
+  /**
+   * @see Long#parseLong(String)
+   */
+  default long parseLong() {
+    return TextualNumber.parseLongExact(toCharArray(), 0, length());
+  }
+
+  /**
+   * @see Double#parseDouble(String)
+   */
+  default double parseDouble() {
+    return TextualNumber.parseDoubleCast(toCharArray());
+  }
+
+  default Number parseNumber() {
+    return TextualNumber.of(toCharArray());
   }
 
   /**
@@ -254,7 +300,19 @@ public interface Text extends CharSequence, Comparable<Text> {
    */
   int hashCode();
 
-  static Text copyOf(Text text) {
+  /**
+   * @param other another instance to compare to
+   * @return true, if the characters of this and the given text are both backed by what the JVM
+   *     considers the same "object" instance. This does not imply that the characters exposed by
+   *     the two {@link Text} instances are observed as being equal. They only both prevent the GC
+   *     of the same underlying storage instance. Or in other words, they share memory without being
+   *     necessarily observed as equal.
+   */
+  default boolean contentMemoryEquals(@NotNull Text other) {
+    return false;
+  }
+
+  static Text copyOf(@NotNull Text text) {
     return of(text.toCharArray(), 0, text.length());
   }
 
@@ -264,13 +322,18 @@ public interface Text extends CharSequence, Comparable<Text> {
    * @see #copyOf(Text) to force a copy
    * @since 1.9
    */
-  static Text of(CharSequence text) {
+  static Text of(@NotNull CharSequence text) {
     if (text instanceof Text t) return t;
     if (text instanceof String s) return of(s);
     int len = text.length();
+    if (len == 0) return EMPTY;
+    Text cached = Cache.get(text.charAt(0), len);
+    if (cached != null && cached.contentEquals(text)) return cached;
     char[] buffer = new char[len];
     for (int i = 0; i < len; i++) buffer[i] = text.charAt(i);
-    return of(buffer, 0, len);
+    Text res = of(buffer, 0, len);
+    Cache.set(res);
+    return res;
   }
 
   /**
@@ -279,8 +342,13 @@ public interface Text extends CharSequence, Comparable<Text> {
    *     the {@link JsonNode} API instead.
    */
   static Text of(String text) {
+    if (text.isEmpty()) return EMPTY;
+    Text cached = Cache.get(text.charAt(0), text.length());
+    if (cached != null && cached.contentEquals(text)) return cached;
     char[] buffer = text.toCharArray();
-    return of(buffer, 0, buffer.length);
+    Text res = of(buffer, 0, buffer.length);
+    Cache.set(res);
+    return res;
   }
 
   /**
@@ -296,28 +364,68 @@ public interface Text extends CharSequence, Comparable<Text> {
   static Text of(char[] buffer, int offset, int length) {
     record Slice(char[] buffer, int offset, int length) implements Text {
 
+      Slice {
+        if (length < 0) throw new IllegalArgumentException("length must be >= 0");
+        if (offset + length > buffer.length)
+          throw new IllegalArgumentException("offset + length must be <= buffer.length");
+      }
+
       @Override
       public char charAt(int index) {
         return buffer[offset + index];
       }
 
       @Override
-      public Slice subSequence(int start, int end) {
+      public @NotNull Slice subSequence(int start, int end) {
         checkSubSequence(start, end, length);
         if (start == 0 && end == length) return this;
         return new Slice(buffer, offset + start, end - start);
       }
 
+      private boolean isInteger() {
+        // if this buffer is the number cache
+        // we do know the contents to be an integer number
+        return buffer == Cache._100_TO_999;
+      }
+
       @Override
-      public boolean isInt() {
-        if (buffer == Cache._100_TO_999) return true;
-        return Text.super.isInt();
+      public boolean isTextualInteger() {
+        return isInteger() || TextualNumber.isTextualInteger(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isNumericInteger() {
+        return isInteger() || TextualNumber.isNumericInteger(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isTextualDecimal() {
+        return isInteger() || TextualNumber.isTextualDecimal(buffer, offset, length);
+      }
+
+      @Override
+      public boolean parseBoolean() {
+        return Chars.parseBoolean(buffer, offset, length);
       }
 
       @Override
       public int parseInt() {
-        if (!isInt()) throw new NumberFormatException("Not a number: " + this);
-        return Chars.parseInt(buffer, offset, length);
+        return TextualNumber.parseIntExact(buffer, offset, length);
+      }
+
+      @Override
+      public long parseLong() {
+        return TextualNumber.parseLongExact(buffer, offset, length);
+      }
+
+      @Override
+      public double parseDouble() {
+        return TextualNumber.parseDoubleCast(buffer, offset, length);
+      }
+
+      @Override
+      public Number parseNumber() {
+        return TextualNumber.of(buffer, offset, length);
       }
 
       @Override
@@ -346,12 +454,17 @@ public interface Text extends CharSequence, Comparable<Text> {
       }
 
       @Override
+      public boolean contentMemoryEquals(@NotNull Text other) {
+        return other instanceof Slice s && s.buffer == buffer;
+      }
+
+      @Override
       public char[] toCharArray() {
         return Arrays.copyOfRange(buffer, offset, offset + length);
       }
 
       @Override
-      public String toString() {
+      public @NotNull String toString() {
         return length == 1 ? String.valueOf(buffer[offset]) : new String(buffer, offset, length);
       }
     }
@@ -360,11 +473,13 @@ public interface Text extends CharSequence, Comparable<Text> {
 
   /**
    * @apiNote should be considered private
-   * @implNote A private cache for digits of 0-999. It saves on allocation of a character buffer and
-   *     increases the chance of the characters already being in CPU cache as we reuse the same
-   *     memory region for small-ish indexes.
    */
   record Cache() {
+    /**
+     * @implNote A private cache for digits of 0-999. It saves on allocation of a character buffer
+     *     and increases the chance of the characters already being in CPU cache as we reuse the
+     *     same memory region for small-ish indexes.
+     */
     private static final char[] _100_TO_999 = new char[900 * 3];
 
     static {
@@ -375,37 +490,49 @@ public interface Text extends CharSequence, Comparable<Text> {
         _100_TO_999[j++] = (char) ('0' + i % 10);
       }
     }
+
+    /**
+     * A cache for short texts starting with a lower case letter like often used in path segment
+     * names. This avoids allocation in a loop where certain object members are accessed using
+     * {@link String}s. This is a typical use case of a JSON object API.
+     */
+    private static final Text[][] STARTING_A_Z_LENGTH_1_TO_16 = new Text[26][16];
+
+    static Text get(char c, int length) {
+      if (length < 1 || length > 16 || c < 'a' || c > 'z') return null;
+      return STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1];
+    }
+
+    static void set(Text text) {
+      char c = text.charAt(0);
+      int length = text.length();
+      if (length < 1 || length > 16 || c < 'a' || c > 'z') return;
+      STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1] = text;
+    }
   }
 
   /**
-   * @return An array index as {@link Text} (like used in a {@link JsonPath} segment)
+   * @return {@link Text} for of any int number
    */
-  static Text of(int index) {
-    if (index >= 0) {
-      if (index < 10) return of(Cache._100_TO_999, index * 3 + 2, 1);
-      if (index < 100) return of(Cache._100_TO_999, index * 3 + 1, 2);
-      if (index < 1000) return of(Cache._100_TO_999, (index - 100) * 3, 3);
+  static Text of(int value) {
+    if (value >= 0) {
+      if (value < 10) return of(Cache._100_TO_999, value * 3 + 2, 1);
+      if (value < 100) return of(Cache._100_TO_999, value * 3 + 1, 2);
+      if (value < 1000) return of(Cache._100_TO_999, (value - 100) * 3, 3);
     }
-    boolean neg = index < 0;
-    int rest = Math.abs(index);
-    int n0 = neg ? 1 : 0;
-    int n = n0;
-    while (rest > 0) {
-      n++;
-      rest /= 10;
-    }
-    char[] digits = new char[n];
-    if (neg) digits[0] = '-';
-    rest = Math.abs(index);
-    for (int i = n - 1; i >= n0; i--) {
-      digits[i] = (char) ('0' + (rest % 10));
-      rest /= 10;
-    }
+    int len = TextBuilder.characterCount(value);
+    char[] digits = new char[len];
+    TextBuilder.appendInt(value, digits, 0, len);
     return of(digits, 0, digits.length);
   }
 
   static Text of(Path file, Charset encoding) {
-    return Chars.from(file, encoding, (arr, length) -> of(arr, 0, length));
+    try {
+      byte[] bytes = Files.readAllBytes(file);
+      return Chars.decode(bytes, encoding, (arr, length) -> of(arr, 0, length));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   private static void checkSubSequence(int start, int end, int length) {

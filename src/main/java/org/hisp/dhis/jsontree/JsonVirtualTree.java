@@ -30,8 +30,6 @@ package org.hisp.dhis.jsontree;
 import static java.lang.Character.isUpperCase;
 import static java.lang.Character.toLowerCase;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.invoke.MethodHandle;
@@ -47,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonAccessors.JsonAccessor;
 import org.hisp.dhis.jsontree.internal.CheckNull;
@@ -98,6 +95,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         "Must be a subtype of JsonObject or Record but was: " + of);
   }
 
+  static JsonMixed lift(JsonNode node, JsonAccessors accessors) {
+    return new JsonVirtualTree(node.getRoot(), node.path(), node, accessors);
+  }
+
   /**
    * {@link MethodHandle} cache for zero-args default methods as usually used by the properties
    * declared in {@link JsonObject} sub-types. Each subtype has its on map with the method name as
@@ -121,10 +122,16 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
    */
   private static final Map<Method, MethodHandle> OTHER_MH_CACHE = new ConcurrentHashMap<>();
 
+  /**
+   * A special instance we use to remember that a lookup found the node does not exist, so we don't
+   * have to look it up again later but also don't spend another field for that.
+   */
+  private static final JsonNode DOES_NOT_EXIST = JsonNode.of("\"<?>\"");
+
   private final @NotNull JsonNode root;
   private final @NotNull JsonPath path;
-  private JsonNode node; // remember once it was resolved from root
-  private transient @NotNull JsonAccessors accessors;
+  private final transient @NotNull JsonAccessors accessors;
+  private @CheckNull JsonNode node; // remember once it was resolved from root
 
   public JsonVirtualTree(@CheckNull CharSequence json, @NotNull JsonAccessors accessors) {
     this(
@@ -139,16 +146,15 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   private JsonVirtualTree(
       @NotNull JsonNode root, @NotNull JsonPath path, @NotNull JsonAccessors accessors) {
+    this(root, path, path.isEmpty() ? root : null, accessors );
+    }
+
+  private JsonVirtualTree(
+      @NotNull JsonNode root, @NotNull JsonPath path, JsonNode node, @NotNull JsonAccessors accessors) {
     this.root = root;
     this.path = path;
-    if (path.isEmpty()) node = root;
+    this.node = node;
     this.accessors = accessors;
-  }
-
-  @Serial
-  private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-    in.defaultReadObject(); // restore non‑transient fields
-    accessors = JsonAccess.GLOBAL; // set transient field
   }
 
   @NotNull
@@ -182,23 +188,13 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     return JsonMixed.class;
   }
 
-  private JsonNode node(JsonNodeType expected) {
-    JsonNode res = node;
+  @Override
+  public @CheckNull JsonNode nodeIfExists() {
     if (node == null) {
-      if (!root.exists(path)) return null;
-      node = root.get(path);
-      res = node;
+      node = root.getIfExists(path);
+      if (node == null) node = DOES_NOT_EXIST;
     }
-    JsonNodeType actualType = res.getType();
-    if (actualType == JsonNodeType.NULL) {
-      return null;
-    }
-    if (actualType != expected) {
-      throw new JsonTreeException(
-          String.format(
-              "Path `%s` does not contain an %s but a(n) %s: %s", path, expected, actualType, res));
-    }
-    return res;
+    return node == DOES_NOT_EXIST ? null : node;
   }
 
   @Override
@@ -241,8 +237,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   @Override
-  public JsonNode node() {
-    if (node != null) return node;
+  public @NotNull JsonNode node() {
+    if (node != null) {
+      // root.get(path) => throws
+      return node == DOES_NOT_EXIST ? root.get(path) : node;
+    }
     node = root.get(path);
     return node;
   }
@@ -253,62 +252,17 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   @Override
-  public List<String> stringValues() {
-    return arrayList(Text.class, Text::toString);
-  }
-
-  @Override
-  public List<Number> numberValues() {
-    return arrayList(Number.class, Function.identity());
-  }
-
-  @Override
-  public List<Boolean> boolValues() {
-    return arrayList(Boolean.class, Function.identity());
-  }
-
-  private <T, E> List<T> arrayList(Class<E> elementType, Function<E, T> map) {
-    JsonNode array = node(JsonNodeType.ARRAY);
-    if (array == null || array.isEmpty()) return List.of();
-    List<T> res = new ArrayList<>(array.size());
-    for (JsonNode e : array.elements()) {
-      @SuppressWarnings("unchecked")
-      E value = (E) e.value();
-      if (!elementType.isInstance(value)) {
-        throw new JsonTreeException(
-            "Array element is not a " + elementType.getName() + ": " + e.getDeclaration());
-      }
-      res.add(map.apply(value));
-    }
-    return res;
-  }
-
-  @Override
   public int size() {
     return node().size();
   }
 
   @Override
-  public Boolean bool() {
-    JsonNode node = node(JsonNodeType.BOOLEAN);
-    return node == null ? null : (Boolean) node.value();
-  }
-
-  @Override
-  public Number number() {
-    JsonNode node = node(JsonNodeType.NUMBER);
-    return node == null ? null : (Number) node.value();
-  }
-
-  @Override
-  public Text text() {
-    JsonNode node = node(JsonNodeType.STRING);
-    return node == null ? null : (Text) node.value();
-  }
-
-  @Override
   public boolean exists() {
-    return path.isEmpty() || root.exists(path);
+    if (path.isEmpty()) return true; // root always exists
+    if (node == DOES_NOT_EXIST) return false;
+    boolean exists = root.exists(path);
+    if (!exists) node = DOES_NOT_EXIST;
+    return exists;
   }
 
   @Override
@@ -505,8 +459,8 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   }
 
   private void toSignature(Type type, StringBuilder str) {
-    if (type instanceof Class<?>) {
-      str.append(((Class<?>) type).getCanonicalName());
+    if (type instanceof Class<?> ct) {
+      str.append(ct.getCanonicalName());
       return;
     }
     if (type instanceof ParameterizedType pt) {
@@ -539,25 +493,32 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     List<Property> res = new ArrayList<>();
     propertyMethods(of)
         .forEach(
-            m -> {
+            method -> {
               @SuppressWarnings("unchecked")
-              Class<? extends JsonObject> in = (Class<? extends JsonObject>) m.getDeclaringClass();
+              Class<? extends JsonObject> in =
+                  (Class<? extends JsonObject>) method.getDeclaringClass();
               JsonObject obj =
                   JsonMixed.of("{}")
                       .as(
                           of,
-                          (method, args) -> {
-                            if (isJsonObjectGetAs(method)) {
+                          (methodViaProxy, args) -> {
+                            if (isJsonObjectGetAs(methodViaProxy)) {
                               Text name = (Text) args[0];
                               @SuppressWarnings("unchecked")
                               Class<? extends JsonValue> type =
                                   (Class<? extends JsonValue>) args[1];
                               res.add(
                                   new Property(
-                                      in, name, type, m.getName(), m.getAnnotatedReturnType(), m));
+                                      in,
+                                      name,
+                                      type,
+                                      method.getName(),
+                                      method.getAnnotatedReturnType(),
+                                      method));
                             }
                           });
-              invokePropertyMethod(obj, m); // may add zero, one or more properties via the callback
+              invokePropertyMethod(
+                  obj, method); // may add zero, one or more properties via the callback
             });
     return List.copyOf(res);
   }
@@ -572,7 +533,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   private static void invokePropertyMethod(JsonObject obj, Method property) {
     try {
-      MethodHandles.lookup().unreflect(property).invokeWithArguments(obj);
+      MethodHandles.lookup().unreflect(property).asFixedArity().invokeWithArguments(obj);
     } catch (Throwable e) {
       // ignore
     }
@@ -587,11 +548,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
    *     methods are excluded.
    */
   private static boolean isJsonObjectSubTypeProperty(Method m) {
-    return m.isDefault()
-        || Modifier.isAbstract(m.getModifiers())
-            && m.getParameterCount() == 0
-            && isJsonMixedSubType(m.getDeclaringClass())
-            && m.getReturnType() != void.class;
+    return (m.isDefault() || Modifier.isAbstract(m.getModifiers()))
+        && m.getParameterCount() == 0
+        && isJsonMixedSubType(m.getDeclaringClass())
+        && m.getReturnType() != void.class;
   }
 
   /*
@@ -600,8 +560,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   @Serial
   public Object writeReplace() {
-    return new SerializedJsonValue(
-        node().getRoot(), path.segments().stream().map(Text::toString).toArray(String[]::new));
+    return new SerializedJsonValue(node().getRoot(), path.toArray());
   }
 
   private record SerializedJsonValue(JsonNode root, String[] path) implements Serializable {

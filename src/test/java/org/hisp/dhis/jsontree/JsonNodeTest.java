@@ -27,6 +27,7 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -52,40 +53,46 @@ class JsonNodeTest {
   @Test
   void testGet_String() {
     assertGetThrowsJsonTreeException(
-        "\"hello\"", "STRING node is not an object, no member at path: .foo");
+        "\"hello\"",
+        "STRING node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): \"hello\"");
   }
 
   @Test
   void testGetOrNull() {
-    assertNull(JsonNode.of("{}").getOrNull("foo"));
-    assertNull(JsonNode.of("[]").getOrNull("[1]"));
-    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("true").getOrNull("foo"));
-    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("1").getOrNull("foo"));
-    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("\"x\"").getOrNull("foo"));
+    assertNull(JsonNode.of("{}").getIfExists("foo"));
+    assertNull(JsonNode.of("[]").getIfExists("[1]"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("true").getIfExists("foo"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("1").getIfExists("foo"));
+    assertThrowsExactly(JsonTreeException.class, () -> JsonNode.of("\"x\"").getIfExists("foo"));
   }
 
   @Test
   void testGet_Number() {
-    assertGetThrowsJsonTreeException("42", "NUMBER node is not an object, no member at path: .foo");
+    assertGetThrowsJsonTreeException(
+        "42",
+        "NUMBER node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): 42");
   }
 
   @Test
   void testGet_Boolean() {
     assertGetThrowsJsonTreeException(
-        "true", "BOOLEAN node is not an object, no member at path: .foo");
+        "true",
+        "BOOLEAN node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): true");
   }
 
   @Test
   void testGet_Null() {
-    assertGetThrowsJsonTreeException("null", "NULL node is not an object, no member at path: .foo");
+    assertGetThrowsJsonTreeException(
+        "null",
+        "NULL node at path (root) is not a OBJECT and does not support #get(JsonPath:\".foo\"): null");
   }
 
   @Test
   void testGet_Object() {
     JsonNode root = JsonNode.of("{\"a\":{\"b\":{\"c\":42}}}");
-    assertEquals(42, root.get("a.b.c").value());
+    assertEquals(42, root.get("a.b.c").intValue());
     JsonNode b = root.get("a.b");
-    assertEquals(42, b.get("c").value());
+    assertEquals(42, b.get("c").intValue());
   }
 
   @Test
@@ -113,23 +120,29 @@ class JsonNodeTest {
   @Test
   void testGet_Array() {
     JsonNode root = JsonNode.of("[[1,2],[3,4],{\"a\":5}]");
-    assertEquals(1, root.get("[0][0]").value());
+    assertEquals(1, root.get("[0][0]").intValue());
     JsonNode arr1 = root.get("[1]");
-    assertEquals(4, arr1.get("[1]").value());
-    assertEquals(5, root.get("[2].a").value());
-    assertEquals(5, root.get("[2]").get("a").value());
+    assertEquals(4, arr1.get("[1]").intValue());
+    assertEquals(5, root.get("[2].a").intValue());
+    assertEquals(5, root.get("[2]").get("a").intValue());
   }
 
   @Test
   void testGet_Array_NoValueAtPath() {
     assertGetThrowsJsonTreeException(
-        "[1,2]", "a", "ARRAY node at path `` is not an object, no member at path: .a");
+        "[1,2]",
+        "a",
+        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text:\".a\"): [1,2]");
     assertGetThrowsJsonTreeException(
-        "[1,2]", ".a", "ARRAY node at path `` is not an object, no member at path: .a");
+        "[1,2]",
+        ".a",
+        "ARRAY node at path (root) is not a OBJECT and does not support #get(Text:\".a\"): [1,2]");
     assertGetThrowsJsonPathException(
         "[[1,2],[]]", "[1][0]", "Path `.1.0` does not exist, array `.1` has only `0` elements.");
     assertGetThrowsJsonTreeException(
-        "[[1,2],[]]", "[0].a", "ARRAY node at path `.0` is not an object, no member at path: .0.a");
+        "[[1,2],[]]",
+        "[0].a",
+        "ARRAY node at path .0 is not a OBJECT and does not support #get(Text:\".a\"): [1,2]");
   }
 
   @Test
@@ -137,21 +150,21 @@ class JsonNodeTest {
     JsonNode val = JsonNode.of("1");
     JsonTreeException ex =
         assertThrowsExactly(JsonTreeException.class, () -> val.member(Text.of("a")));
-    assertEquals("NUMBER node has no member property: a", ex.getMessage());
+    assertEquals("NUMBER node at path (root) is not a OBJECT and does not support #member(Text): 1", ex.getMessage());
   }
 
   @Test
   void testMembers_NoObject() {
     JsonNode val = JsonNode.of("1");
-    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> val.members(true));
-    assertEquals("NUMBER node has no members property.", ex.getMessage());
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> val.members(AUTO));
+    assertEquals("NUMBER node at path (root) is not a OBJECT and does not support #members(Index): 1", ex.getMessage());
   }
 
   @Test
   void testElements_NoArray() {
     JsonNode val = JsonNode.of("1");
-    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> val.elements(true));
-    assertEquals("NUMBER node has no elements property.", ex.getMessage());
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> val.elements(AUTO));
+    assertEquals("NUMBER node at path (root) is not a ARRAY and does not support #elements(Index): 1", ex.getMessage());
   }
 
   @Test

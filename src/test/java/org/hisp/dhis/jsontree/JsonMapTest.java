@@ -84,8 +84,8 @@ class JsonMapTest {
 
     Map<String, Object> actual = new HashMap<>();
     Map<String, Object> actual2 = new HashMap<>();
-    obj.forEach((k, v) -> actual.put(k.toString(), v.node().value()));
-    obj2.forEach((k, v) -> actual2.put(k.toString(), v.node().value()));
+    obj.forEach((k, v) -> actual.put(k.toString(), v.node().intValue()));
+    obj2.forEach((k, v) -> actual2.put(k.toString(), v.node().intValue()));
     assertEquals(Map.of("b", 1, "c", 2), actual);
     assertEquals(Map.of("b", 1, "c", 2), actual2);
   }

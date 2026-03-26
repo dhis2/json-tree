@@ -8,5 +8,11 @@ import java.lang.annotation.Target;
  *
  * @see NotNull
  */
-@Target({ ElementType.RECORD_COMPONENT, ElementType.PARAMETER, ElementType.FIELD, ElementType.METHOD, ElementType.TYPE_USE})
+@Target({
+  ElementType.RECORD_COMPONENT,
+  ElementType.PARAMETER,
+  ElementType.FIELD,
+  ElementType.METHOD,
+  ElementType.TYPE_USE
+})
 public @interface CheckNull {}

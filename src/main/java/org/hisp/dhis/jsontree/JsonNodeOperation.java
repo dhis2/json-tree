@@ -2,7 +2,6 @@ package org.hisp.dhis.jsontree;
 
 import static java.util.stream.Collectors.toMap;
 import static org.hisp.dhis.jsontree.JsonBuilder.createArray;
-import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
 import static org.hisp.dhis.jsontree.JsonPatchException.clash;
 
 import java.util.HashMap;
@@ -38,7 +37,7 @@ public sealed interface JsonNodeOperation {
    * @return true when this operation targets an array index
    */
   default boolean isArrayOp() {
-    return path().segment().isInt(); // just a guess, could be numeric object member
+    return path().segment().isTextualInteger(); // just a guess, could be numeric object member
   }
 
   /**
@@ -151,7 +150,7 @@ public sealed interface JsonNodeOperation {
     Set<JsonPath> parents = new HashSet<>();
     for (JsonNodeOperation op : ops) {
       JsonPath path = op.path();
-      if (op instanceof Insert insert && insert.merge && insert.value.getType() == OBJECT) {
+      if (op instanceof Insert insert && insert.merge && insert.value.isObject()) {
         insert
             .value
             .keys()

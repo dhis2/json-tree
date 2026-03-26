@@ -27,10 +27,13 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.StreamSupport.stream;
 
+import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.OutputStreamWriter;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -102,6 +105,8 @@ public interface JsonBuilder {
     void addToObject(JsonBuilder.JsonObjectBuilder obj);
   }
 
+  PrettyPrint PRETTY = new PrettyPrint(2, 0, true, true, false);
+
   PrettyPrint MINIMIZED = new PrettyPrint(0, 0, false, true, false);
 
   PrettyPrint MINIMIZED_FULL = new PrettyPrint(0, 0, false, false, false);
@@ -135,36 +140,34 @@ public interface JsonBuilder {
    * @return JSON string node of the provided Java string value
    * @since 0.11
    */
-  static JsonNode createString(String value) {
+  static JsonNode createString(CharSequence value) {
     if (value == null) return JsonNode.NULL;
-    StringBuilder json = new StringBuilder();
+    TextBuilder json = new TextBuilder(value.length() + 2);
     new JsonAppender(MINIMIZED, json).appendEscaped(value);
-    return JsonNode.of(json.toString());
+    return JsonNode.of(json);
   }
 
   /**
-   * Check if a double can be represented in JSON
+   * Check if a double can be represented in JSON number or must become a JSON string
    *
    * @param value a double value
-   * @throws JsonFormatException if the double is NaN or Infinity
-   * @since 0.11
+   * @return true, if the double given needs to be quoted (made a JSON string)
+   * @since 1.9
    */
-  static void checkValid(double value) {
-    if (Double.isNaN(value)) throw new JsonFormatException("NaN is not a valid JSON value");
-    if (Double.isInfinite(value))
-      throw new JsonFormatException("Infinite is not a valid JSON value");
+  static boolean requiresString(double value) {
+    return Double.isNaN(value) || Double.isInfinite(value);
   }
 
   /**
-   * Check if a number can be represented in JSON
+   * Check if a Number can be represented in JSON number or must become a JSON string
    *
    * @param value any number value, may be null
-   * @throws JsonFormatException if the double is NaN or Infinity
-   * @since 0.11
+   * @return true, if the double given needs to be quoted (made a JSON string)
+   * @since 1.9
    */
-  static void checkValid(Number value) {
-    if (value instanceof Double d) checkValid(d.doubleValue());
-    if (value instanceof Float f) checkValid(f.doubleValue());
+  static boolean requiresString(Number value) {
+    return value instanceof Double d && requiresString(d.doubleValue())
+        || value instanceof Float f && requiresString(f.doubleValue());
   }
 
   /**
@@ -183,7 +186,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static JsonNode createObject(PrettyPrint config, Consumer<JsonObjectBuilder> obj) {
-    return new JsonAppender(config, new StringBuilder()).toObject(obj);
+    return new JsonAppender(config, new TextBuilder()).toObject(obj);
   }
 
   /**
@@ -202,7 +205,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static JsonNode createArray(PrettyPrint config, Consumer<JsonArrayBuilder> arr) {
-    return new JsonAppender(config, new StringBuilder()).toArray(arr);
+    return new JsonAppender(config, new TextBuilder()).toArray(arr);
   }
 
   /**
@@ -220,8 +223,10 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamObject(PrettyPrint config, OutputStream out, Consumer<JsonObjectBuilder> obj) {
-    try (PrintStream jsonStream = new PrintStream(out)) {
-      new JsonAppender(config, jsonStream).toObject(obj);
+    try (OutputStreamWriter jsonStream = new OutputStreamWriter(out, UTF_8)) {
+      new JsonAppender(config, Appender.of(jsonStream)).visitObject(obj);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
@@ -240,8 +245,10 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamArray(PrettyPrint config, OutputStream out, Consumer<JsonArrayBuilder> arr) {
-    try (PrintStream jsonStream = new PrintStream(out)) {
-      new JsonAppender(config, jsonStream).toArray(arr);
+    try (OutputStreamWriter jsonStream = new OutputStreamWriter(out, UTF_8)) {
+      new JsonAppender(config, Appender.of(jsonStream)).visitArray(arr);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
@@ -450,7 +457,7 @@ public interface JsonBuilder {
       return addElements(Stream.of(values), JsonArrayBuilder::addNumber);
     }
 
-    default JsonArrayBuilder addStrings(String... values) {
+    default JsonArrayBuilder addStrings(CharSequence... values) {
       return addElements(Stream.of(values), JsonArrayBuilder::addString);
     }
 

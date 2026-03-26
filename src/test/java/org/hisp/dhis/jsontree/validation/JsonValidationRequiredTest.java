@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
+import org.hisp.dhis.jsontree.Json5;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonPathException;
@@ -65,12 +66,12 @@ class JsonValidationRequiredTest {
   public interface JsonEntry extends JsonObject {
 
     @Required
-    default String getKey() {
+    default String key() {
       return getString("key").string();
     }
 
     @Required
-    default Number getValue() {
+    default Number value() {
       return getNumber("value").number();
     }
   }
@@ -99,31 +100,31 @@ class JsonValidationRequiredTest {
 
   @Test
   void testIsA() {
-    assertTrue(JsonMixed.ofNonStandard("{'bar':'x'}").isA(JsonFoo.class));
-    JsonMixed val = JsonMixed.ofNonStandard("{'key':'x', 'value': 1}");
+    assertTrue(Json5.of("{'bar':'x'}").isA(JsonFoo.class));
+    JsonMixed val = Json5.of("{'key':'x', 'value': 1}");
     JsonEntry e = val.as(JsonEntry.class);
     assertTrue(val.isA(JsonEntry.class));
-    JsonMixed both = JsonMixed.ofNonStandard("{'key':'x', 'value': 1, 'bar':'y'}");
+    JsonMixed both = Json5.of("{'key':'x', 'value': 1, 'bar':'y'}");
     assertTrue(both.isA(JsonFoo.class));
     assertTrue(both.isA(JsonEntry.class));
   }
 
   @Test
   void testIsA_MissingMember() {
-    assertFalse(JsonMixed.ofNonStandard("{'bar':'x'}").isA(JsonEntry.class));
-    assertFalse(JsonMixed.ofNonStandard("{'key':'x', 'value': 1}").isA(JsonFoo.class));
+    assertFalse(Json5.of("{'bar':'x'}").isA(JsonEntry.class));
+    assertFalse(Json5.of("{'key':'x', 'value': 1}").isA(JsonFoo.class));
   }
 
   @Test
   void testIsA_WrongNodeType() {
-    assertFalse(JsonMixed.ofNonStandard("{'bar':true}").isA(JsonFoo.class));
-    assertFalse(JsonMixed.ofNonStandard("{'key':'x', 'value': '1'}").isA(JsonEntry.class));
+    assertFalse(Json5.of("{'bar':true}").isA(JsonFoo.class));
+    assertFalse(Json5.of("{'key':'x', 'value': '1'}").isA(JsonEntry.class));
   }
 
   @Test
   void testIsA_NotAnObject() {
     assertFalse(JsonMixed.of("[]").isA(JsonEntry.class));
-    assertFalse(JsonMixed.ofNonStandard("'test'").isA(JsonEntry.class));
+    assertFalse(Json5.of("'test'").isA(JsonEntry.class));
     assertFalse(JsonMixed.of("12").isA(JsonEntry.class));
     assertFalse(JsonMixed.of("false").isA(JsonEntry.class));
     assertFalse(JsonMixed.of("null").isA(JsonEntry.class));
@@ -239,7 +240,7 @@ class JsonValidationRequiredTest {
   }
 
   private static void assertAsObject(Class<? extends JsonObject> of, String actualJson) {
-    JsonObject obj = JsonMixed.ofNonStandard(actualJson).asA(of);
+    JsonObject obj = Json5.of(actualJson).asA(of);
     assertNotNull(obj);
     assertTrue(of.isInstance(obj));
   }

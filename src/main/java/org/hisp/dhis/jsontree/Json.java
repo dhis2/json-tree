@@ -1,7 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import static org.hisp.dhis.jsontree.JsonBuilder.checkValid;
-
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -30,7 +28,7 @@ public interface Json {
     return JsonMixed.of(JsonNode.NULL);
   }
 
-  static JsonString of(String value) {
+  static JsonString of(CharSequence value) {
     return JsonMixed.of(JsonBuilder.createString(value));
   }
 
@@ -59,18 +57,22 @@ public interface Json {
   }
 
   static JsonNumber of(float value) {
-    checkValid(value);
-    return JsonMixed.of(String.valueOf(value));
+    return JsonBuilder.requiresString(value)
+        ? JsonMixed.of('"' + String.valueOf(value) + '"')
+        : JsonMixed.of(String.valueOf(value));
   }
 
   static JsonNumber of(double value) {
-    checkValid(value);
-    return JsonMixed.of(String.valueOf(value));
+    return JsonBuilder.requiresString(value)
+        ? JsonMixed.of('"' + String.valueOf(value) + '"')
+        : JsonMixed.of(String.valueOf(value));
   }
 
   static JsonNumber of(Number value) {
-    checkValid(value);
-    return value == null ? ofNull() : JsonMixed.of(value.toString());
+    if (value == null) return ofNull();
+    return JsonBuilder.requiresString(value)
+            ? JsonMixed.of('"' + String.valueOf(value) + '"')
+            : JsonMixed.of(value.toString());
   }
 
   @SafeVarargs
