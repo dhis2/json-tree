@@ -46,6 +46,7 @@ import org.hisp.dhis.jsontree.Required;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.internal.Language;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -102,7 +103,7 @@ class JsonValidationRequiredTest {
   void testIsA() {
     assertTrue(Json5.of("{'bar':'x'}").isA(JsonFoo.class));
     JsonMixed val = Json5.of("{'key':'x', 'value': 1}");
-    JsonEntry e = val.as(JsonEntry.class);
+    assertDoesNotThrow(() -> val.as(JsonEntry.class));
     assertTrue(val.isA(JsonEntry.class));
     JsonMixed both = Json5.of("{'key':'x', 'value': 1, 'bar':'y'}");
     assertTrue(both.isA(JsonFoo.class));
@@ -211,7 +212,6 @@ class JsonValidationRequiredTest {
     String json =
         """
             {"a": [], "b":{"bar":""}}""";
-    JsonMixed obj = JsonMixed.of(json);
     assertValidationError(json, JsonRoot.class, Rule.TYPE, Set.of(NodeType.OBJECT), NodeType.ARRAY);
   }
 

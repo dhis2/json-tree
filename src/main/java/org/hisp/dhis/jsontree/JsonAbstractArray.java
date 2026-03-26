@@ -128,13 +128,22 @@ public interface JsonAbstractArray<E extends JsonValue>
 
   /**
    * @param schema the schema to validate all elements of this array against
+   * @param mode check, fail fast or give a breakdown of all issues?
    * @param rules optional set of {@link Rule}s to check, empty includes all
+   * @return A stream with errors for each element of this array if {@link Validation.Mode} is
+   *     probing
    * @throws JsonSchemaException in case this value does not match the given schema
    * @throws UnsupportedOperationException in case the given schema is not an interface
    * @since 1.0
    */
   @TerminalOp(mustBeArray = true)
-  default void validateEach(Class<?> schema, Rule... rules) {
-    forEach(e -> JsonValidator.validate(e, schema, rules));
+  default Stream<Validation.Result> validateEach(
+      Class<?> schema, Validation.Mode mode, Rule... rules) {
+    if (mode == Validation.Mode.PROBE) {
+      return stream().map(e -> JsonValidator.validate(e, schema, mode, rules));
+    } else {
+      forEach(e -> JsonValidator.validate(e, schema, mode, rules));
+      return Stream.empty();
+    }
   }
 }
