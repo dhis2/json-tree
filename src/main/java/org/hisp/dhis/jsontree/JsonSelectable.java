@@ -1,18 +1,14 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonSelector.Matches;
+import static java.util.Comparator.comparingInt;
 
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import java.util.stream.Stream;
-
-import static java.util.Comparator.comparingInt;
+import org.hisp.dhis.jsontree.JsonSelector.Matches;
 
 /**
  * The API in {@link JsonNode} that is about selecting {@link JsonNode}s based on {@link JsonSelector}s.

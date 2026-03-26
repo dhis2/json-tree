@@ -1,13 +1,12 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static org.hisp.dhis.jsontree.JsonNodeType.NUMBER;
 import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.hisp.dhis.jsontree.JsonSelector.AT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class JsonSelectableTest {
 

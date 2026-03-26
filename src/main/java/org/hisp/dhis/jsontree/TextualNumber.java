@@ -1,8 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.NotNull;
-
 import static java.lang.Math.abs;
+
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A number represented by its text form.

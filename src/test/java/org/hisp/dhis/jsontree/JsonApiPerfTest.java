@@ -1,19 +1,18 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.JsonNode.Index;
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import org.hisp.dhis.jsontree.JsonNode.Index;
+import org.junit.jupiter.api.Test;
 
 /**
  * This test is not testing any performance metrics, but it verifies that the mechanisms that get us

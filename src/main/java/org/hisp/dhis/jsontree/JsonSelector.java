@@ -1,14 +1,13 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.ArrayList;
+import static java.lang.Integer.parseInt;
+import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
+
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-
-import static java.lang.Integer.parseInt;
-import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
 /**
  * A {@link JsonSelector} describes a search pattern to find matching nodes in a {@link JsonNode}

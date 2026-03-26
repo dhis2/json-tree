@@ -2,7 +2,6 @@ package org.hisp.dhis.jsontree;
 
 import static java.util.stream.Collectors.toMap;
 import static org.hisp.dhis.jsontree.JsonBuilder.createArray;
-import static org.hisp.dhis.jsontree.JsonNodeType.OBJECT;
 import static org.hisp.dhis.jsontree.JsonPatchException.clash;
 
 import java.util.HashMap;

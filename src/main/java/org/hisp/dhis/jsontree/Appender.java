@@ -1,15 +1,14 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.NotNull;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.stream.IntStream;
-
 import static java.lang.Character.highSurrogate;
 import static java.lang.Character.isBmpCodePoint;
 import static java.lang.Character.lowSurrogate;
 import static java.util.Objects.requireNonNull;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.stream.IntStream;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * A more user-friendly version of an {@link Appendable} append-only sink.

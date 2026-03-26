@@ -1,12 +1,11 @@
 package org.hisp.dhis.jsontree;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.stream.DoubleStream;
-
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+
+import java.util.stream.DoubleStream;
+import org.junit.jupiter.api.Test;
 
 /** Tests the {@link Json5} re-writing. */
 class Json5Test {

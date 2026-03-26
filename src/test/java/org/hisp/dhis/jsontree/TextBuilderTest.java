@@ -1,9 +1,8 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.function.Consumer;
 
 /**
  * Unit tests for the {@link TextBuilder}.

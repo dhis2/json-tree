@@ -1,11 +1,10 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.NotNull;
-
-import java.util.Arrays;
-
 import static java.lang.Math.abs;
 import static java.util.Objects.requireNonNull;
+
+import java.util.Arrays;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Similar to a {@link StringBuilder} except that it is an append-only API to build {@link Text}s.

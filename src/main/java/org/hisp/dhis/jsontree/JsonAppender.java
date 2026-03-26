@@ -29,7 +29,6 @@ package org.hisp.dhis.jsontree;
 
 import java.io.PrintStream;
 import java.util.function.Consumer;
-
 import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 

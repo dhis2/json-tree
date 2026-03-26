@@ -3,8 +3,6 @@ package org.hisp.dhis.jsontree;
 import static java.lang.Character.highSurrogate;
 import static java.lang.Character.isBmpCodePoint;
 import static java.lang.Character.lowSurrogate;
-import static java.lang.Math.max;
-import static java.lang.Math.min;
 import static java.lang.System.Logger.Level.WARNING;
 import static org.hisp.dhis.jsontree.JsonFormatException.expected;
 

@@ -1,9 +1,9 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.function.Consumer;
-
 import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.JsonFormatException.expected;
+
+import java.util.function.Consumer;
 
 /**
  * <b>JURL</b> is JSON for the URL.
