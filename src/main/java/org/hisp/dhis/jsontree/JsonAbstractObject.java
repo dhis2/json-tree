@@ -198,14 +198,25 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
   }
 
   /**
+   * @see #validate(Class, Validation.Mode, Rule...)
+   * @since 0.11
+   **/
+  default void validate(Class<?> schema, Rule... rules) {
+    validate(schema, Validation.Mode.FAIL_ALL, rules);
+  }
+
+  /**
    * @param schema the schema to validate against
+   * @param mode check, fail fast or give a breakdown of all issues?
    * @param rules optional set of {@link Rule}s to check, empty includes all
+   * @return Validation result if {@link Validation.Mode} is probing (or if
+   *     there were no errors)
    * @throws JsonSchemaException in case this value does not match the given schema
    * @throws IllegalArgumentException in case the given schema is not an interface
-   * @since 0.11
+   * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default void validate(Class<?> schema, Rule... rules) {
-    JsonValidator.validate(this, schema, rules);
+  default Validation.Result validate(Class<?> schema, Validation.Mode mode, Rule... rules) {
+    return JsonValidator.validate(this, schema, mode, rules);
   }
 }

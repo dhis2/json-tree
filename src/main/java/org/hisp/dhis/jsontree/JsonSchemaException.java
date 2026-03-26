@@ -7,17 +7,15 @@ import java.util.List;
 /** Thrown when an JSON input does not match its JSON schema description. */
 public final class JsonSchemaException extends IllegalArgumentException {
 
-  private final transient Info info;
+  private final transient Validation.Result result;
 
-  public record Info(JsonValue value, Class<?> schema, List<Validation.Error> errors) {}
-
-  public JsonSchemaException(String message, Info info) {
-    super(message + toString(info.errors()));
-    this.info = info;
+  public JsonSchemaException(String message, Validation.Result result) {
+    super(message + toString(result.errors()));
+    this.result = result;
   }
 
-  public Info getInfo() {
-    return info;
+  public Validation.Result getResult() {
+    return result;
   }
 
   private static String toString(List<Validation.Error> errors) {

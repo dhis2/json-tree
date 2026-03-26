@@ -180,19 +180,18 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   /**
    * Uses the JSON schema validation to check whether this object conforms to the provided type
    *
-   * @param schema a subtype of {@link JsonObject} or {@link Record} to check agsinst
+   * @param schema a subtype of {@link JsonObject} or {@link Record} to check against
    * @param rules optional set of {@link Rule}s to check, empty includes all
    * @return true if this is an object is valid against the provided schema
    * @since 0.11 (in this form with rules parameter)
    */
   @TerminalOp
   default boolean isA(Class<?> schema, Rule... rules) {
-    try {
-      JsonValidator.validate(this, schema, rules);
-      return true;
-    } catch (JsonPathException | JsonTreeException | JsonSchemaException ex) {
-      return false;
-    }
+    if (!exists() || !isObject()) return false;
+    // Note that this uses PROBE_ALL as that avoid throwing exceptions entirely
+    Validation.Result result =
+        JsonValidator.validate(this, schema, Validation.Mode.PROBE_ALL, rules);
+    return result.errors().isEmpty();
   }
 
   /**
@@ -212,7 +211,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   default <T extends JsonObject> T asA(Class<T> schema, Rule... rules)
       throws JsonPathException, JsonTreeException, JsonSchemaException {
     T obj = as(schema);
-    JsonValidator.validate(obj, schema, rules);
+    JsonValidator.validate(obj, schema, Validation.Mode.FAIL, rules);
     return obj;
   }
 

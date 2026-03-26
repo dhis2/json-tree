@@ -22,7 +22,7 @@ public class Assertions {
             JsonSchemaException.class,
             () -> actual.validate(schema),
             "expected an error of type " + expected);
-    List<Validation.Error> errors = ex.getInfo().errors();
+    List<Validation.Error> errors = ex.getResult().errors();
     assertEquals(
         1,
         errors.size(),

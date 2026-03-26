@@ -1,11 +1,11 @@
 package org.hisp.dhis.jsontree;
 
-import java.io.Serializable;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -56,6 +56,30 @@ import org.hisp.dhis.jsontree.internal.NotNull;
 @Target({ElementType.ANNOTATION_TYPE, ElementType.TYPE, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Validation {
+
+  /**
+   * @since 1.9
+   */
+  enum Mode {
+    /**
+     * Return the {@link Result} (fail fast) but don't throw
+     */
+    PROBE,
+
+    PROBE_ALL,
+    /**
+     * Throw on first error found
+     */
+    FAIL,
+    /**
+     * Find all errors and then throw
+     */
+    FAIL_ALL;
+
+    public boolean isFailFast() {
+      return this == PROBE || this == FAIL;
+    }
+  }
 
   enum YesNo {
     NO,
@@ -145,8 +169,16 @@ public @interface Validation {
     void validate(JsonMixed value, Consumer<Error> addError);
   }
 
-  record Error(Rule rule, JsonPath path, JsonValue value, String template, List<Object> args)
-      implements Serializable {
+  /**
+   * @param value the value that was validated
+   * @param schema the schema validated against
+   * @param rules the rules included in the validation
+   * @param errors list of errors (if any were found)
+   * @since 1.9
+   */
+  record Result(JsonValue value, Class<?> schema, Set<Rule> rules, List<Error> errors) {}
+
+  record Error(Rule rule, JsonPath path, JsonValue value, String template, List<Object> args) {
 
     public static Error of(Rule rule, JsonValue value, String template, Object... args) {
       return new Error(rule, value.path(), value, template, List.of(args));
@@ -423,4 +455,5 @@ public @interface Validation {
    * @since 1.1
    */
   YesNo acceptNull() default YesNo.AUTO;
+
 }
