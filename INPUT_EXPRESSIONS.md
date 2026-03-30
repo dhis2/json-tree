@@ -8,7 +8,7 @@ The language is **linear‑time**, strict left ro right matching
 and straight forward to implement **allocation‑free**.
 It focuses on readability, simplicity, predictability and safety.
 
-An Input Expression always look for "what you want" (whitelist-y), and so it has
+An Input Expression always looks for "what you want" (whitelist-y), and so it has
 
 - no OR
 - no "not in" character sets
@@ -35,9 +35,9 @@ as these tend to occur in the type of values this wants to match.
 > [!NOTE]
 > Note that the lack of an OR construct is mitigated in the implementation `InputExpression`
 > by considering a list of multiple `Pattern`s to be alternative formats for the value.
-> For example, a floating point number where digits most only be present before 
-> or after the decimal point is given by 1 pattern for a number having digits before 
-> and 1 pattern having digits after the decimal point.
+> For example, a floating point number where digits must only be present before 
+> or after the decimal point is given by 1 pattern for a number enforcing digits before 
+> and 1 pattern enforcing digits after the decimal point.
 
 ---
 ## Syntax
@@ -84,6 +84,10 @@ Interpretation occurs in 3 modes:
 - `2?@` matches at most two identifier characters.
 - `~#` skips to the first digit and consumes it.  
 - `~~(foo)(bar)` matches zero or more `ab` until `xy` is found (e.g., `foofoobar`).
+
+> [!TIP]
+> Repetitions in Input Expressions are written in the order we describe a pattern in natural language; 
+> for example, "two digits followed by 3 upper case letters" is `2#3[u]` (`2` digits `#`, `3` upper case letters `[u]`).
 
 ---
 
@@ -160,14 +164,36 @@ being in bounds. For example, `|234|` is not 0-2 followed by 0-3 followed by 0-4
 > Any numeric sequence given exceeding this range will simply overflow and behave accordingly
 > with a compromised numerical comparison. 
 
+### Numeric Bounds `{…}`
+Any unit can be preceded by a numeric bounds check. The check applies to the input section that was matched by
+subsequent unit. Numeric bounds don't themselves consume input, they just add a constraint to the matched input.
+
+`{n}` adds an upper bound of `n` (n being any integer number). 
+`{n-m}` adds a range bound for the input to be between n and m (n and m being any integer number).
+The upper bound can be open `{n-}`. This also allows to combine the bound with a `|…|` which might
+already enforce an upper bound.
+
+**Examples**
+
+An IPv4 address can be `|255.255.255.255|`. This works giving each part 0-255 range, but mandates each part to have
+3 digits. To match `0.0.0.0` as valid, the pattern can be adjusted to `{255}(#2?#).{255}(#2?#).{255}(#2?#).{255}(#2?#)`.
+
+A simple date pattern may be `|2099-12-31|` which is fine except it does allow 0 for month and day, 
+and the year can be any 4-digit number until year 2099. 
+A refined pattern could be `{1900-}|2099|-{1-}|12|-{1-}|31|`. 
+Now year is within 1900-2099, month between 1 and 12 and day between 1 and 31.
+If in addition single digit days and month should be permitted the pattern could be refined to
+`{1900-}|2099|-{1-12}(#?#)-{1-31}(#?#)`. If in addition a 2 digit year is accepted the pattern becomes
+`{1900-2099}(2#2?#)-{1-12}(#?#)-{1-31}(#?#)`.
 ---
 
 ## Performance and Safety
 
 Input Expressions are designed to be **safe** and **fast**:
 
-- Matching runs in **linear time** relative to the pattern length and input length.
-- No recursion or backtracking that could cause exponential blow‑up.
+- Matching runs in **linear time** relative to the pattern length and/or input length.
+- No backtracking that could cause exponential blow‑up.
+- No recursion could cause stack overflow
 - No dynamic heap memory allocation during matching
 - The implementation guards against infinite loops when a repeat would match zero characters repeatedly.
 
