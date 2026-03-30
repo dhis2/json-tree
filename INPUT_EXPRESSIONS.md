@@ -32,7 +32,7 @@ Which characters are literal and which are codes is detailed below for each mode
 Most notably literal characters include (almost) all punctuation marks which is handy, 
 as these tend to occur in the type of values this wants to match.
 
-> [Note]
+> [!NOTE]
 > Note that the lack of an OR construct is mitigated in the implementation `InputExpression`
 > by considering a list of multiple `Pattern`s to be alternative formats for the value.
 > For example, a floating point number where digits most only be present before 
@@ -48,7 +48,7 @@ Interpretation occurs in 3 modes:
 - character set mode: inside `[…]`
 - sequence mode: inside `|…|`
 
-> [Note]
+> [!NOTE]
 > Note that apart from having modes the language does not allow nesting. 
 > This means within any of `(…)`, `[…]` and `|…|` these no further grouping is possible. 
 > This is a limitation chosen for simplicity of implementation. Implementation can and may choose to
@@ -155,7 +155,7 @@ being in bounds. For example, `|234|` is not 0-2 followed by 0-3 followed by 0-4
 - `|123|` matches a three‑digit number ≤ 123.
 - `|1||2|` matches a digit ≤ 1 followed by a digit ≤ 2.
 
-> [Note] 
+> [!NOTE] 
 > **Implementation note:** Numeric comparison is restricted to Java `long` range (not including the largest negative number).
 > Any numeric sequence given exceeding this range will simply overflow and behave accordingly
 > with a compromised numerical comparison. 
