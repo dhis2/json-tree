@@ -188,6 +188,14 @@ public interface Text extends CharSequence, Comparable<Text> {
     return true;
   }
 
+  default boolean matches(CharSequence input) {
+    return matches(input, 0, input.length());
+  }
+
+  default boolean matches(CharSequence input, int offset, int len) {
+    return InputExpression.match(toCharArray(), 0, length(), input, offset) == offset + len;
+  }
+
   @Override
   default @NotNull Text subSequence(int start, int end) {
     checkSubSequence(start, end, length());
@@ -426,6 +434,11 @@ public interface Text extends CharSequence, Comparable<Text> {
       @Override
       public Number parseNumber() {
         return TextualNumber.of(buffer, offset, length);
+      }
+
+      @Override
+      public boolean matches(CharSequence input, int offset, int len) {
+        return InputExpression.match(buffer, offset, length, input, offset) == offset+len;
       }
 
       @Override

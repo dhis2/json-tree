@@ -266,7 +266,7 @@ public final class JsonAccess implements JsonAccessors {
     JsonAccessor<?> elements = accessors.accessor(getRawType(elementType));
     // auto-box simple values in a 1 element sequence
     if (!stream.isArray()) return Stream.of(elements.access(stream, as, accessors));
-    return stream.stream(Index.SKIP)
+    return stream.stream(Index.AUTO_SKIP)
         .map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors));
   }
 

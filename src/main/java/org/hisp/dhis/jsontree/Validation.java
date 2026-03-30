@@ -220,6 +220,10 @@ public @interface Validation {
    */
   NodeType[] type() default {};
 
+  //TODO implement => NO => rather have a in Validation
+  // NodeType[] typeFrom() default {};
+  // which sets all the JSON inputs we allow as long as they convert
+
   /**
    * A property marked as varargs will allow {@link NodeType#ARRAY} to occur, each element then is
    * validated against the present simple value validations.
@@ -290,6 +294,8 @@ public @interface Validation {
    * @return string value must match the given regex pattern
    */
   String pattern() default "";
+  //TODO change to String[] pattern() default {};
+  // which always are Input expressions, to use RegEx a @Validator can be used (included in lib; move code to that for RegEx)
 
   // formats are mostly like named patterns,
   // instead of repeating the pattern the name is given

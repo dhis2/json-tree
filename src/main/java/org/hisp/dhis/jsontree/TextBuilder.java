@@ -249,25 +249,56 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
 
   static int characterCount(int value) {
     if (value == 0) return 1;
-    boolean overflow = value == Integer.MIN_VALUE;
-    int rest = overflow ? value - 1 : abs(value);
-    int n = 0;
-    while (rest > 0) {
-      n++;
-      rest /= 10;
-    }
-    return value < 0 ? n+1 : n;
+    int n = digitCount(value);
+    return value < 0 ? n + 1 : n;
   }
 
   static int characterCount(long value) {
     if (value == 0L) return 1;
-    boolean overflow = value == Long.MIN_VALUE;
-    long rest = overflow ? value - 1L : abs(value);
-    int n = 0;
-    while (rest > 0) {
-      n++;
-      rest /= 10;
-    }
+    int n = digitCount(value);
     return value < 0 ? n+1 : n;
+  }
+
+  private static int digitCount(int n) {
+    if (n < 0) {
+      if (n == Integer.MIN_VALUE) return 10;
+      n = -n;
+    }
+    if (n < 10) return 1;
+    if (n < 100) return 2;
+    if (n < 1000) return 3;
+    if (n < 10000) return 4;
+    if (n < 100000) return 5;
+    if (n < 1000000) return 6;
+    if (n < 10000000) return 7;
+    if (n < 100000000) return 8;
+    if (n < 1000000000) return 9;
+    return 10;
+  }
+
+  private static int digitCount(long n) {
+    if (n < 0) {
+      if (n == Long.MIN_VALUE) return 19;
+      n = -n;
+    }
+    if (n < 10L) return 1;
+    if (n < 100L) return 2;
+    if (n < 1000L) return 3;
+    if (n < 10000L) return 4;
+    if (n < 100000L) return 5;
+    if (n < 1000000L) return 6;
+    if (n < 10000000L) return 7;
+    if (n < 100000000L) return 8;
+    if (n < 1000000000L) return 9;
+    if (n < 10000000000L) return 10;
+    if (n < 100000000000L) return 11;
+    if (n < 1000000000000L) return 12;
+    if (n < 10000000000000L) return 13;
+    if (n < 100000000000000L) return 14;
+    if (n < 1000000000000000L) return 15;
+    if (n < 10000000000000000L) return 16;
+    if (n < 100000000000000000L) return 17;
+    if (n < 1000000000000000000L) return 18;
+    return 19;
   }
 }

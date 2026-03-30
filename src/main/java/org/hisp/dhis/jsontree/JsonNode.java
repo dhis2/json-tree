@@ -115,7 +115,29 @@ public interface JsonNode
      *     multiple methods on a {@link JsonValue} representing the {@link JsonNode} will have the
      *     node remembered internally after the first lookup.
      */
-    AUTO
+    AUTO,
+
+    /**
+     * When the fallback set when constructing the root, for example via {@link
+     * JsonNode#of(CharSequence, GetListener, Index)} is set to {@link #AUTO} and an operation uses
+     * {@code AUTO_SKIP} this will {@link #SKIP}, otherwise it will use the fallback set.
+     *
+     * <p>This is a good default in tooling build on top of the {@link JsonNode} API. For example in
+     * pre-processing access like validation, diffing and such. This allows the author creating the
+     * root note to be control while giving the preference to {@link #SKIP}.
+     */
+    AUTO_SKIP;
+
+    /**
+     * Called on the {@link Index} on the operation level.
+     *
+     * @param treeLevel the {@link Index} setting at the tree level
+     * @return the effective {@link Index} strategy to use
+     */
+    public Index resolve(Index treeLevel) {
+      if (this == AUTO_SKIP) return treeLevel == AUTO ? SKIP : treeLevel;
+      return this == AUTO ? treeLevel : this;
+    }
   }
 
   /**

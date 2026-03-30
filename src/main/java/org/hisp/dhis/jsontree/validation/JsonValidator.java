@@ -58,7 +58,6 @@ public final class JsonValidator {
           }
         };
 
-    // TODO strict types vs convertable types mode
     if (mode == Validation.Mode.PROBE) {
       try {
         validate(value, validator, addError);
