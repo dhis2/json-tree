@@ -351,7 +351,7 @@ public record InputExpression(List<Pattern> patterns) {
   }
 
   /*
-  Format (find length bounds)
+  Pattern (find length bounds)
    */
 
   /**

@@ -9,6 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Tests for the {@link InputExpression} pattern matching implementation.
+ *
+ * @author Jan Bernitt
+ */
 class InputExpressionTest {
 
   @Test
@@ -100,7 +105,7 @@ class InputExpressionTest {
   }
 
   @Test
-  void testPattern_DHIS2() {
+  void testPattern_DHIS2Periods() {
     InputExpression expr = InputExpression.of(
         "{1900-}|2050|",
         "{1900-}|2050|{1-}|12|",

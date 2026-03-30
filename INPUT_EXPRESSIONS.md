@@ -1,4 +1,4 @@
-# Input Expressions (InpEx)
+# Input Expressions
 
 An Input Expression is a pattern matching expression language 
 designed for checking short, "simple" values such as 
@@ -8,7 +8,7 @@ The language is **linear‑time**, strict left ro right matching
 and straight forward to implement **allocation‑free**.
 It focuses on readability, simplicity, predictability and safety.
 
-Input expression always look for "what you want" (whitelist-y), and so it has
+An Input Expression always look for "what you want" (whitelist-y), and so it has
 
 - no OR
 - no "not in" character sets
@@ -18,80 +18,81 @@ Input expression always look for "what you want" (whitelist-y), and so it has
 
 ## Overview
 
-A pattern is a sequence of *units*. Each unit is either:
+A pattern is given using the following building blocks:
 
-- a **literal character** (except special characters `# @ [ ] | ? * + ~ ( )`),
-- a **character set** (mnemonic like `#` for digit, `@` for name‑character, etc.),
-- a **set of character sets** `[...]` (to match 1 input character),
-- a **sequence of sets** `|...|` (to match 1 input character for each set in the sequence),
-- a **repeat** applied to a unit (e.g., `?{unit}`, `+{unit}`, `3{unit}`),
-- a **scan** (non‑greedy skip) `~{unit}` or `~~{unit1}{unit2}`,
+- a **character set** `[...]` (match 1 input character against a set of possible characters),
+- a **sequence of sets** `|...|` (match a sequence of input characters against a sequence of sets of characters),
+- a **repeat** `?`(0-1), `*`(0-*), `+`(1-*) greedy repeat the subsequence unit, 
+- a **scan** `~` (skip-until) or `~~` (skip-match-until) non‑greedy skip until match for terminal unit,
 - a **group** `(...)` used to create a compound unit.
 
-Everything else is a literal character.
+Everything else is a literal character. 
+Which characters are literal and which are codes is detailed below for each mode.
 
-Most notably this includes (almost) all punctuation marks which is handy, 
+Most notably literal characters include (almost) all punctuation marks which is handy, 
 as these tend to occur in the type of values this wants to match.
 
-Note that the lack of an OR construct is mitigated in the implementation `Pattern`
-by considering a list of multiple patterns to be alternative formats for the value.
-For example, a floating point number can be difficult with optional digits before 
-and after decimal point. This simply becomes 2 patterns for each case.
+> [Note]
+> Note that the lack of an OR construct is mitigated in the implementation `InputExpression`
+> by considering a list of multiple `Pattern`s to be alternative formats for the value.
+> For example, a floating point number where digits most only be present before 
+> or after the decimal point is given by 1 pattern for a number having digits before 
+> and 1 pattern having digits after the decimal point.
+
+---
+## Syntax
+
+Interpretation occurs in 3 modes:
+
+- main mode: Initial mode, or in other words mode outside of character sets `[…]` and sequences `|…|`
+- character set mode: inside `[…]`
+- sequence mode: inside `|…|`
+
+> [Note]
+> Note that apart from having modes the language does not allow nesting. 
+> This means within any of `(…)`, `[…]` and `|…|` these no further grouping is possible. 
+> This is a limitation chosen for simplicity of implementation. Implementation can and may choose to
+> allow nesting of groups to increase expressiveness. Such an extension would not change the semantics
+> of the language, just make it harder to skip a unit/block as nesting must be considered.
+
+### Main-Mode
+
+| Code    | Description                                                                                           | Characters                      |
+|---------|-------------------------------------------------------------------------------------------------------|---------------------------------|
+| `#`     | digit (shorthand for `[d]` or `[#]`                                                                   | `0`‑`9`                         |
+| `@`     | identifier (letter, digit, underscore, hyphen; = `[i]`)                                               | `A`‑`Z` `a`‑`z` `0`‑`9` `_` `-` |
+| `[…]`   | matches a single character that belongs to any of the listed sets                                     |                                 | 
+| `\|…\|` | matches a sequence where each character belongs to the corresponding set                              |                                 |
+| `?…`    | subsequent unit occurs 0 or 1 time (optional)                                                         |                                 |
+| `*…`    | subsequent unit occurs 0 or more times (**greedy**)                                                   |                                 |
+| `+…`    | subsequent unit occurs 1 or more times (**greedy**)                                                   |                                 |
+| 1-`9…`  | subsequent unit occurs exactly 9 times (digit is max repetition)                                      |                                 |
+| 1-`9?…` | subsequent unit occurs 0 to 9 times (digit is max repetition)                                         |                                 |
+| `~…`    | skip forward (**non‑greedy**) until a match for subsequent unit is found                              |                                 |
+| `~~……`  | repeat directly subsequent unit zero or more times (**non‑greedy**), to find unit directly after that |                                 |
+| `(…)`   | groups a sequence of codes so that repeat and scan apply to the whole group                           |                                 |
+| `{…}…`  | adds a numeric bound to the unit following the bound `{…}`                                            |                                 | 
+| ...     | any other character is matched literally                                                              | + => `+`, é => `é`, ...         |
+
+- **Escaping:** There is no escaping notation or code; to match op-code characters literally use a `|…|` or `[…]`
+- **Unit:** Repeats and scans apply to a "unit", which is a `(…)`, `[…]` or `|…|` block or any other character individually (be it an op-code or literal match)  
+- Parentheses group a sequence of codes into a single unit. Its sole function is to apply repeats or scans to a composite pattern.
+
+**Examples:**  
+- `3#` matches exactly three digits.  
+- `*|ab|` matches zero or more repetitions of the two‑character sequence `ab`.  
+- `2?@` matches at most two identifier characters.
+- `~#` skips to the first digit and consumes it.  
+- `~~(foo)(bar)` matches zero or more `ab` until `xy` is found (e.g., `foofoobar`).
 
 ---
 
-## Syntax Summary
 
-| Syntax              | Type           | Description                                                                                  |
-|---------------------|----------------|----------------------------------------------------------------------------------------------|
-| `d`                 | _set_          | any digit (`0`‑`9`) (alias)                                                                  |
-| `u`                 | _set_          | any uppercase letter (`A`‑`Z`)                                                               |
-| `l`                 | _set_          | any lowercase letter (`a`‑`z`)                                                               |
-| `c`                 | _set_          | any letter (`A`‑`Z`, `a`‑`z`)                                                                |
-| `x`                 | _set_          | any hexadecimal digit (`A`‑`F`, `a`‑`f`, `0`‑`9`)                                            |
-| `a`                 | _set_          | any alphanumeric (`A`‑`Z`, `a`‑`z`, `0`‑`9`)                                                 |
-| `s`                 | _set_          | sign (`+` or `-`)                                                                            |
-| `#`                 | _set_*, _unit_ | any digit (`0`‑`9`)                                                                          |
-| `@`                 | _set_*, _unit_ | any *name* character (`A`‑`Z`, `a`‑`z`, `0`‑`9`, `_`, `-`)                                   |
-| `[{set1}{set2}…]`   | _unit_         | matches a single character that belongs to any of the listed sets                            |
-| `\|{set1}{set2}…\|` | _unit_         | matches a sequence where each character belongs to the corresponding set (length must match) |
-| `?{unit}`           | _unit_         | _unit_ occurs 0 or 1 time (optional)                                                         |
-| `*{unit}`           | _unit_         | _unit_ occurs 0 or more times (greedy)                                                       |
-| `+{unit}`           | _unit_         | _unit_ occurs 1 or more times (greedy)                                                       |
-| `9{unit}`           | _unit_         | _unit_ occurs exactly n times (n = 1‑9, 9 in this example)                                   |
-| `9?{unit}`          | _unit_         | _unit_ occurs 0‑n times (n = 1‑9, 9 in this example)                                                            |
-| `~{unit}`           | _unit_         | skip forward (non‑greedy) until the _unit_ matches (the _unit_ is consumed)                  |
-| `~~{unit1}{unit2}`  | _unit_         | repeat _unit1_ zero or more times, then _unit2_ (non‑greedy) – “repeat until”                |
-| `(…)`               | _unit_         | groups a sequence of units so that repeats/scans apply to the whole group                    |
-| `<literal>`         | _unit_         | any other character matches itself literally                                                 |
+### Character Sets: `[…]`-Mode
 
-`#` and `@` have their set semantics in `|…|` but are literally in `[…]`.
+`[{code1}{code2}…]` matches a **single** character that belongs to **any** of the listed sets.
 
----
-
-## Building Blocks
-
-### Literals
-Any character that is **not** a special symbol matches itself exactly.  
-Special symbols are: `# @ [ ] | ? * + ~ ( )` and digits when they appear as repeat counts.
-
-**"Escaping"**
-
-There is no escaping syntax, but most of the special characters can be matched literally, 
-by placing them inside a `|…|` or `[…]`.
-
-Naturally `|` must be "escaped" in `[|]` and `[` and `]` in `|[|`/ `|]|`.
-`#` and `@` are only _sets_ in `|…|` so they must be "escaped" in `[#]` / `[@]` 
-
----
-
-### Character Sets 
-
-//TODO for each environment make a table for character (ranges) and what they mean instead
-
-Input expressions build on pre-defined named character sets.
-
-| Code | Set Description                                            | Characters                       |
+| Code | Description                                                | Characters                       |
 |------|------------------------------------------------------------|----------------------------------|
 | `s`  | sign                                                       | `+` `-`                          |
 | `b`  | binary digit                                               | `0`,`1`                          |
@@ -102,138 +103,62 @@ Input expressions build on pre-defined named character sets.
 | `a`  | alphanumeric (letter or digit)                             | `A`‑`Z` `a`‑`z` `0`‑`9`          |
 | `x`  | hexadecimal digit                                          | `0`‑`9` `A`‑`F` `a`‑`f`          |
 | `i`  | identifier (letter, digit, underscore, hyphen)             | `A`‑`Z` `a`‑`z` `0`‑`9` `_` `-`  |
-| `#`  | digit (alias for `d`; in `\|…\|` and outside `[…]`)        | `0`‑`9`                          |
-| `@`  | identifier (alias for `i`; in `\|…\|` and outside `[…]`)   | `A`‑`Z` `a`‑`z` `0`‑`9` `_` `-`  |
 | a-z* | lower letters not listed above are reserved for future use | -                                | 
 | A-Z  | matches the given character case-insensitive               | A => `A`,`a`; B => `B`, `b`, ... |
+| 0-9  | literally 0-9 (just to clarify)                            | `0`..`9`                         | 
 | ...  | any other character is matched literally                   | + => `+`, é => `é`, ...          |
 
-Larger sets can be composed using `[…]`; for example, `[ud]` are upper case letters and digits,
-`[d.]` are digits and decimal points.
-
-In `[…]` to match `]` literally it must be the first character.
-In `|…|` `|` is always the end of the sequence. 
-To match it literally the sequence is interrupted and `[|]` is used to match the bar. 
+- Listing multiple sets composes a larger set; for example, `[u&]` => upper case letters and `&`
+- To match `]` literally it must be the first character in the set, e.g. `[]uld]`
+- The semantics of all **letter** codes are shared with `|…|` sequences
 
 ---
 
-### Set‑of‑Sets: `[…]`
+### Sequence of Sets: `|…|`-Mode
 
-`[ set1 set2 … ]` matches a **single** character that belongs to **any** of the listed sets.
+`|{code1}{code2}…|` matches a **sequence** of characters where the **first** character must belong to 
+the character set given by `{code1}`, the second belong to set given by `{code2}`, etc. 
 
-**Example:**  
-`[#u]` matches a digit **or** an uppercase letter.
+Note that a sequence always has a 1:1 length relation to the input it matches.
 
-Sets can be given as mnemonics (`#`, `@`, `u`, …) or as literal characters (which match exactly that character).  
-If you need to match a literal `]`, put it inside the brackets: `[]]` matches `]`.
+| Code | Description                                                | Characters                       |
+|------|------------------------------------------------------------|----------------------------------|
+| `s`  | sign                                                       | `+` `-`                          |
+| `b`  | binary digit                                               | `0`,`1`                          |
+| `d`  | digit                                                      | `0`‑`9`                          |
+| `u`  | uppercase letter                                           | `A`‑`Z`                          |
+| `l`  | lowercase letter                                           | `a`‑`z`                          |
+| `c`  | letter (upper or lower)                                    | `A`‑`Z` `a`‑`z`                  |
+| `a`  | alphanumeric (letter or digit)                             | `A`‑`Z` `a`‑`z` `0`‑`9`          |
+| `x`  | hexadecimal digit                                          | `0`‑`9` `A`‑`F` `a`‑`f`          |
+| `i`  | identifier (letter, digit, underscore, hyphen)             | `A`‑`Z` `a`‑`z` `0`‑`9` `_` `-`  |
+| a-z* | lower letters not listed above are reserved for future use | -                                | 
+| `?`  | any character (unicode BMP range)                          | U+0000 to U+FFFF                 |
+| `#`  | digit (alias for `d`)                                      | `0`‑`9`                          |
+| `@`  | literally @ (just to clarify)                              | `@`                              |
+| A-Z  | matches the given character case-insensitive               | A => `A`,`a`; B => `B`, `b`, ... |
+| `0`  | literally 0 (just to clarify)                              | `0`                              |
+| 1-9* | the digit is the numerically largest digit                 | e.g. `3` => `0`-`3`              |
+| ...  | any other character is matched literally                   | + => `+`, é => `é`, ...          |
 
----
+- A `|…|` sequence must not be empty. 
+- The semantics of all **letter** codes are shared with `[…]` sets
+- To match `|` literally the sequence is interrupted and `[|]` is used to match the bar.
+- Multiple **digits** (`0`‑`9`) in a row, match not each digit being in bounds but the entire sequence of digits
+being in bounds. For example, `|234|` is not 0-2 followed by 0-3 followed by 0-4 but a 3-digit number 0-234.   
+- **Digit sequences:** consecutive digits represent a **numeric upper bound** rather than individual digit bound.
+- To match digits with individual upper bounds, separate the digits in multiple `|…|`. 
 
-### Sequence of Sets: `|…|`
+**Examples**
+- `|dd|` matches exactly two digits (e.g., `12`).
+- `|ua|` matches an uppercase letter followed by an alphanumeric character.
+- `|123|` matches a three‑digit number ≤ 123.
+- `|1||2|` matches a digit ≤ 1 followed by a digit ≤ 2.
 
-`|{set1}{set2}…|` matches a **sequence** of characters where the **first** character must belong to `{set1}`, 
-the second to `{set2}`, etc. The length of the sequence is fixed to the number of sets inside the bars.
-Note that this also implies that a set of length n always matches input of length n.
-
-**Example:**  
-`|dd|` matches exactly two digits (e.g., `12`).  
-`|ua|` matches an uppercase letter followed by an alphanumeric character.
-
-If a set is given as a **digit** (`0`‑`9`), it behaves as a *numeric limit* when placed consecutively with other digits. 
-See **Numeric Sequences** below.
-
-Literal characters inside `|…|` match themselves exactly.  
-If you need to match a literal `|`, place it inside a set: `[|]`.
-
----
-
-### Repeats
-
-A repeat applies to the *immediately following unit*. 
-
-The unit can be:
-
-* a single mnemonic set `#` or `@`, 
-* a set‑of‑sets `[…]`, 
-* a sequence `|…|`, 
-* a group `(…)`, 
-* or a literal character.
-
-| Repeat syntax | Meaning                               |
-|---------------|---------------------------------------|
-| `?{unit}`     | 0 or 1 times (optional)               |
-| `*{unit}`     | 0 or more times (greedy)              |
-| `+{unit}`     | 1 or more times (greedy)              |
-| `n{unit}`     | exactly n times (n = 1‑9)             |
-| `n?{unit}`    | 0 to n times (n = 1‑9)                |
-
-**Examples:**  
-`3#` matches exactly three digits.  
-`*|ab|` matches zero or more repetitions of the two‑character sequence `ab`.  
-`2?@` matches at most two name characters (zero, one, or two).  
-`+?` is not allowed – the `?` after a repeat changes the meaning to “0‑n”; 
-the repeat itself does not have a separate non‑greedy modifier.
-
-**Greediness:** Repeats are *greedy*: they match as many repetitions as possible (up to the given max) 
-until the input no longer matches. Unlike RegEx there is no connection to what follows the repeated unit.
-
-**Zero‑length units:** A unit should never be of zero length, but if a repeat makes zero progress
-(but is considered a match nonetheless) the repetition will end as if no further occurrence was found.
-
-Repeating something up to n-times where n is > 9 must be done by repeating the repeated pattern,
-for example `5#5#` to do 10 repetitions of `#`.
-
----
-
-### Scans (Non‑greedy Skip)
-
-Scans let you skip forward in the input until a certain unit matches.
-
-- `~{unit}` – skip any number of characters (including none) until `{unit}` matches. The `{unit}` itself is consumed.
-- `~~{unit1}{unit2}` – match `{unit1}` zero or more times (non‑greedy), then match `{unit2}`. 
-  This is the non-greedy equivalent of `(*{unit1}){unit2}`, it ensures that `{unit1}` is repeated only as needed to find `{unit2}`. It is useful for “repeat until” patterns.
-
-Both forms are **non‑greedy**: the minimal number of characters are skipped / repeated to satisfy the match.
-
-**Examples:**  
-`~#` skips to the first digit and consumes it.  
-`~~(ab)(xy)` matches zero or more `ab` until `xy` is found (e.g., `ababxy`).
-
----
-
-### Groups: `(…)`
-
-Parentheses group a sequence of units into a single unit. This allows you to apply repeats or scans to a composite pattern.
-
-**Example:**  
-`+(ab)` matches one or more repetitions of the literal two‑character sequence `ab`.  
-`~(##)` skips until two digits appear consecutively.
-
-Groups **do not nest**. The notation is intentionally flat to keep implementation simple. 
-If you need nested grouping, you can often restructure the pattern using separate units.
-
----
-
-## Numeric Sequences
-
-Inside a sequence `|…|`, consecutive digits represent a **numeric limit** rather than individual digit sets.
-
-For example:  
-`|12|` does **not** mean “digit 1 followed by digit 2”. Instead, it means “a two‑digit number whose numeric value is ≤ 12”.  
-`|123|` means “a three‑digit number ≤ 123”.
-
-This works only when digits appear consecutively with no other sets between them. 
-The length of the digit sequence determines how many digits the input must have, 
-and the numeric comparison is performed after parsing the input digits.
-
-If you want individual digit limits, separate the digits:  
-`|1||2|` means a digit ≤ 1 followed by a digit ≤ 2.
-
-**Implementation note:** Numeric comparison is performed using the entire sequence of digits; 
-leading zeros are allowed and count toward the number length.
-Numeric comparison is restricted to Java `long` range (not including the largest negative number).
-Any numeric sequence given exceeding this range will simply overflow and behave accordingly
-with a compromised numerical comparison. 
+> [Note] 
+> **Implementation note:** Numeric comparison is restricted to Java `long` range (not including the largest negative number).
+> Any numeric sequence given exceeding this range will simply overflow and behave accordingly
+> with a compromised numerical comparison. 
 
 ---
 
@@ -243,7 +168,7 @@ Input Expressions are designed to be **safe** and **fast**:
 
 - Matching runs in **linear time** relative to the pattern length and input length.
 - No recursion or backtracking that could cause exponential blow‑up.
-- No dynamic memory allocation during matching (the pattern is processed as a `char[]` and input as a `CharSequence`).
+- No dynamic heap memory allocation during matching
 - The implementation guards against infinite loops when a repeat would match zero characters repeatedly.
 
 These properties make it suitable for validating user input in contexts where resource usage must be predictable.
@@ -284,7 +209,3 @@ Common simple value inputs and their patterns:
 
 Note in the example of a decimal numbers that allow decimal point without digits before or after
 this is solved using 2 patterns (+) and matching that either of them matches.
-
----
-
-This specification describes the pattern language as implemented in the `Pattern` class of the [DHIS2 JSON Tree library](https://github.com/dhis2/json-tree).
