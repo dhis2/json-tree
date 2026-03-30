@@ -7,6 +7,8 @@ import java.lang.annotation.Target;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
+
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -291,11 +293,11 @@ public @interface Validation {
   /**
    * If multiple annotations are present all given patterns must match.
    *
-   * @return string value must match the given regex pattern
+   * @see RegEx
+   *
+   * @return string value must match the given {@link InputExpression} pattern
    */
-  String pattern() default "";
-  //TODO change to String[] pattern() default {};
-  // which always are Input expressions, to use RegEx a @Validator can be used (included in lib; move code to that for RegEx)
+  String[] pattern() default {};
 
   // formats are mostly like named patterns,
   // instead of repeating the pattern the name is given
@@ -462,4 +464,25 @@ public @interface Validation {
    */
   YesNo acceptNull() default YesNo.AUTO;
 
+  /**
+   * A {@link Validator} that uses RegEx patterns.
+   * Use via @{@link org.hisp.dhis.jsontree.Validator}.
+   */
+  record RegEx(java.util.regex.Pattern regex) implements Validator {
+
+    public RegEx(Validation params) {
+      // avoid exception during bootstrapping fail => simply is ineffective
+      this(params.pattern().length == 0 ? null : Pattern.compile(params.pattern()[0]));
+    }
+
+    @Override
+    public void validate(JsonMixed value, Consumer<Error> addError) {
+      if (regex == null) return; // params had no pattern
+      if (!value.isSimple() || value.isUndefined()) return;
+      CharSequence actual = value.text();
+      if (!regex.matcher(actual).matches())
+        addError.accept(
+            Error.of(Rule.PATTERN, value, "must match %s but was: %s", regex.pattern(), actual));
+    }
+  }
 }

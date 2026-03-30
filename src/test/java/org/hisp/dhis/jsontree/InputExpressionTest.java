@@ -133,7 +133,7 @@ class InputExpressionTest {
     assertMatches(expr,"2025W51", "1989W3", "2044Q1", "2033BiW22");
     // pattern issue
     assertDoesNotMatch(expr, "20221", "2022-1", "1980113", "1980-1-13");
-    // numeric out of bounds
+    // numerically out of bounds
     assertDoesNotMatch(expr, "2051", "1899", "1980100", "198013", "1980-14", "1977-00-28");
   }
 

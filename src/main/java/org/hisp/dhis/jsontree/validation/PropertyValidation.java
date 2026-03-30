@@ -8,6 +8,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import org.hisp.dhis.jsontree.InputExpression;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Validator;
 import org.hisp.dhis.jsontree.Validation.YesNo;
@@ -133,14 +135,14 @@ record PropertyValidation(
    * @param caseInsensitive test {@link #anyOfStrings} with {@link String#equalsIgnoreCase(String)}
    * @param minLength minimum length for the JSON string, negative is off
    * @param maxLength maximum length for the JSON string, negative is off
-   * @param pattern JSON string must match the provided pattern, empty string is off
+   * @param pattern JSON string must match the provided pattern, null is off
    */
   record StringValidation(
       @NotNull Set<String> anyOfStrings,
       YesNo caseInsensitive,
       int minLength,
       int maxLength,
-      @NotNull String pattern) {
+      @CheckNull InputExpression pattern) {
     StringValidation overlay(@CheckNull StringValidation with) {
       return with == null
           ? this
@@ -149,7 +151,7 @@ record PropertyValidation(
               overlayY(caseInsensitive, with.caseInsensitive),
               overlayI(minLength, with.minLength),
               overlayI(maxLength, with.maxLength),
-              overlayS(pattern, with.pattern));
+              overlayO(pattern, with.pattern));
     }
   }
 
@@ -231,9 +233,9 @@ record PropertyValidation(
     return b;
   }
 
-  private static String overlayS(String a, String b) {
-    if (!b.isEmpty()) return b;
-    if (!a.isEmpty()) return a;
+  private static <T> T overlayO(T a, T b) {
+    if (b != null) return b;
+    if (a != null) return a;
     return b;
   }
 

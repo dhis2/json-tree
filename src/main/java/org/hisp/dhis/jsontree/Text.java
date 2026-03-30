@@ -188,10 +188,23 @@ public interface Text extends CharSequence, Comparable<Text> {
     return true;
   }
 
+  /**
+   * @param input an input string
+   * @return if this text as pattern matches the entirety of the given input
+   */
   default boolean matches(CharSequence input) {
     return matches(input, 0, input.length());
   }
 
+  /**
+   * Match an input sub-sequence against this text as pattern.
+   * @see InputExpression
+   *
+   * @param input an input string
+   * @param offset the first character to match
+   * @param len length from the first character to match
+   * @return if this text as pattern matches the subsequence of the given input
+   */
   default boolean matches(CharSequence input, int offset, int len) {
     return InputExpression.match(toCharArray(), 0, length(), input, offset) == offset + len;
   }

@@ -9,6 +9,7 @@ import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.Validator;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -16,11 +17,11 @@ import org.junit.jupiter.api.Test;
  *
  * @author Jan Bernitt
  */
-class JsonValidationPatternTest {
+class JsonValidationRegExPatternTest {
 
   public interface JsonPatternExampleA extends JsonObject {
 
-    @Validation(pattern = "[0-9]{1,4}[A-Z]?")
+    @Validator(value = Validation.RegEx.class, params = @Validation(pattern = "[0-9]{1,4}[A-Z]?"))
     default String no() {
       return getString("no").string();
     }

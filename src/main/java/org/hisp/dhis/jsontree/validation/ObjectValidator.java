@@ -28,6 +28,8 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import org.hisp.dhis.jsontree.InputExpression;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
 import org.hisp.dhis.jsontree.JsonMixed;
@@ -196,9 +198,9 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
             : new EnumAnyString(strings.anyOfStrings(), strings.caseInsensitive().isYes()),
         strings.minLength() <= 0 ? null : new MinLength(strings.minLength()),
         strings.maxLength() <= 1 ? null : new MaxLength(strings.maxLength()),
-        strings.pattern().isEmpty()
+        strings.pattern() == null
             ? null
-            : new Pattern(java.util.regex.Pattern.compile(strings.pattern())));
+            : new Pattern(strings.pattern(), strings.pattern().toRegExEquivalent()));
   }
 
   @CheckNull
@@ -488,15 +490,15 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     }
   }
 
-  private record Pattern(java.util.regex.Pattern regex) implements Validator {
+  private record Pattern(InputExpression expr, String regExEquivalent) implements Validator {
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
-      if (!value.isString()) return;
-      String actual = value.string();
-      if (!regex.matcher(actual).matches())
+      if (!value.isSimple() || value.isUndefined()) return;
+      Text actual = value.text();
+      if (expr.match(actual) == null)
         addError.accept(
-            Error.of(Rule.PATTERN, value, "must match %s but was: %s", regex.pattern(), actual));
+            Error.of(Rule.PATTERN, value, "must match %s but was: %s", regExEquivalent, actual));
     }
   }
 

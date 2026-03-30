@@ -6,6 +6,7 @@ import java.util.List;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.Validator;
 import org.junit.jupiter.api.Test;
 
 class JsonValidationMiscTypeUseTest {
@@ -13,7 +14,11 @@ class JsonValidationMiscTypeUseTest {
   public interface JsonTypeUseExampleA extends JsonObject {
 
     @Validation(minItems = 1)
-    default List<@Validation(maxItems = 2) List<@Validation(pattern = ".es.*") String>> getData() {
+    default List<
+            @Validation(maxItems = 2) List<
+                @Validator(value = Validation.RegEx.class, params = @Validation(pattern = ".es.*"))
+                String>>
+        getData() {
       return getArray("data").values(e -> List.of());
     }
   }

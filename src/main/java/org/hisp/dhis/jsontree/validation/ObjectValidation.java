@@ -33,6 +33,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
+
+import org.hisp.dhis.jsontree.InputExpression;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Text;
@@ -217,7 +219,7 @@ record ObjectValidation(
     ValueValidation values =
         !type.isPrimitive() ? null : new ValueValidation(YES, Set.of(), AUTO, Set.of(), List.of());
     StringValidation strings =
-        !type.isEnum() ? null : new StringValidation(anyOfStrings(type), AUTO, -1, -1, "");
+        !type.isEnum() ? null : new StringValidation(anyOfStrings(type), AUTO, -1, -1, null);
     return new PropertyValidation(anyOfTypes(type), values, strings, null, null, null, null);
   }
 
@@ -270,14 +272,15 @@ record ObjectValidation(
     if (src.enumeration() == Enum.class
         && src.minLength() < 0
         && src.maxLength() < 0
-        && src.pattern().isEmpty()
+        && src.pattern().length == 0
         && src.caseInsensitive().isAuto()
         && !isAutoUnquotedJsonStrings(src.oneOfValues())) return null;
     Set<String> anyOfStrings = anyOfStrings(src.enumeration());
     if (anyOfStrings.isEmpty() && isAutoUnquotedJsonStrings(src.oneOfValues()))
       anyOfStrings = Set.of(src.oneOfValues());
+    InputExpression pattern = src.pattern().length == 0 ? null : InputExpression.of(src.pattern());
     return new StringValidation(
-        anyOfStrings, src.caseInsensitive(), src.minLength(), src.maxLength(), src.pattern());
+        anyOfStrings, src.caseInsensitive(), src.minLength(), src.maxLength(), pattern);
   }
 
   private static Set<String> anyOfStrings(@NotNull Class<?> type) {

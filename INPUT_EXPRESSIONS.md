@@ -142,7 +142,7 @@ Note that a sequence always has a 1:1 length relation to the input it matches.
 | `@`  | literally @ (just to clarify)                              | `@`                              |
 | A-Z  | matches the given character case-insensitive               | A => `A`,`a`; B => `B`, `b`, ... |
 | `0`  | literally 0 (just to clarify)                              | `0`                              |
-| 1-9* | the digit is the numerically largest digit                 | e.g. `3` => `0`-`3`              |
+| 1-9* | the digit is the numerically largest permitted digit       | e.g. `3` => `0`-`3`              |
 | ...  | any other character is matched literally                   | + => `+`, é => `é`, ...          |
 
 - A `|…|` sequence must not be empty. 
@@ -185,19 +185,6 @@ Now year is within 1900-2099, month between 1 and 12 and day between 1 and 31.
 If in addition single digit days and month should be permitted the pattern could be refined to
 `{1900-}|2099|-{1-12}(#?#)-{1-31}(#?#)`. If in addition a 2 digit year is accepted the pattern becomes
 `{1900-2099}(2#2?#)-{1-12}(#?#)-{1-31}(#?#)`.
----
-
-## Performance and Safety
-
-Input Expressions are designed to be **safe** and **fast**:
-
-- Matching runs in **linear time** relative to the pattern length and/or input length.
-- No backtracking that could cause exponential blow‑up.
-- No recursion could cause stack overflow
-- No dynamic heap memory allocation during matching
-- The implementation guards against infinite loops when a repeat would match zero characters repeatedly.
-
-These properties make it suitable for validating user input in contexts where resource usage must be predictable.
 
 ---
 
@@ -221,7 +208,7 @@ Common simple value inputs and their patterns:
 
 | Value                | Input Expression Pattern                                                      | Examples                                    | Description                                                                                                 |
 |----------------------|-------------------------------------------------------------------------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| Integer              | `?\|s\|+#` or `?[+-]+#` or `?[s]+#`                                           | `42`, `-7`, `+123`, `0`                     | Optional sign, one or more digits.                                                                          |
+| Integer              | `?\|s\|+#` or `?[+-]+#` or `?[s]+#` (better for Java `int`: `?[+-]9?##`)      | `42`, `-7`, `+123`, `0`                     | Optional sign, one or more digits.                                                                          |
 | Decimal              | `?[+-]+#?(.*#)` + `?[+-]*#.+#`                                                | `0.5`, `-3.`, `+.7`, `123.456`, `.5`        | At least one digit before or after the decimal point; includes integers.                                    |
 | +Scientific Notation | add `?([E]?[+-]+#)`                                                           | `1.23e-4`, `-0.5E+2`, `3.0e0`               | Mantissa with at least one digit after decimal, followed by `e` or `E`, optional sign, and exponent digits. |
 | ISO Date             | `\|2099-12-31\|`                                                              | `2023-12-25`, `1900-01-01`                  | Four‑digit year (0‑2099), two‑digit month (0‑12), two‑digit day (0‑31). No calendar validation.             |
@@ -235,3 +222,19 @@ Common simple value inputs and their patterns:
 
 Note in the example of a decimal numbers that allow decimal point without digits before or after
 this is solved using 2 patterns (+) and matching that either of them matches.
+
+---
+
+## Performance and Safety
+
+Input Expressions are designed to be **safe** and **fast**:
+
+- Matching runs in **linear time** relative to the pattern length and/or input length. 
+- Maliciously large inputs most often can be rejected in constant time O(1) purely based on length.   
+- No backtracking that could cause exponential blow‑up.
+- No recursion could cause stack overflow.
+- No dynamic heap memory allocation during matching.
+- No infinite loops due to repeating zero character matches.
+
+These properties make it suitable for validating user input in contexts where resource usage must be predictable.
+

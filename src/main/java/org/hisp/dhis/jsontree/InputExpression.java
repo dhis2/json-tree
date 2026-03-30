@@ -447,4 +447,11 @@ public record InputExpression(List<Pattern> patterns) {
     }
   }
 
+  /*
+  To RegEx equivalent
+   */
+
+  public String toRegExEquivalent() {
+    return ""; //TODO
+  }
 }
