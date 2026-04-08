@@ -17,7 +17,8 @@ import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
- * A declarative model or description of what validation rules to check.
+ * A declarative model or description of what validation rules to check for a single property within
+ * an object.
  *
  * @param anyOfTypes the node types allowed/expected
  * @param values general validations that apply to any node type
@@ -27,14 +28,14 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @param objects validations that apply to object nodes
  * @param items validations that apply to array elements or object member values (map use)
  */
-record PropertyValidation(
+record PropertyValidations(
     @NotNull Set<NodeType> anyOfTypes,
     @CheckNull ValueValidation values,
-    @CheckNull StringValidation strings,
+    @CheckNull StringValidation strings, // TODO should these run for non-strings?
     @CheckNull NumberValidation numbers,
     @CheckNull ArrayValidation arrays,
     @CheckNull ObjectValidation objects,
-    @CheckNull PropertyValidation items) {
+    @CheckNull PropertyValidations items) {
 
   /**
    * Layers the provided validations on top of this. This means they take precedence unless they are
@@ -45,9 +46,9 @@ record PropertyValidation(
    *     parameter and this node validations acting as fallback when a validation is defined off
    */
   @NotNull
-  PropertyValidation overlay(@CheckNull PropertyValidation with) {
+  PropertyValidations overlay(@CheckNull PropertyValidations with) {
     if (with == null) return this;
-    return new PropertyValidation(
+    return new PropertyValidations(
         overlayC(anyOfTypes, with.anyOfTypes),
         values == null ? with.values : values.overlay(with.values),
         strings == null ? with.strings : strings.overlay(with.strings),
@@ -58,13 +59,13 @@ record PropertyValidation(
   }
 
   @NotNull
-  PropertyValidation withItems(@CheckNull PropertyValidation items) {
+  PropertyValidations withItems(@CheckNull PropertyValidations items) {
     if (items == null && this.items == null) return this;
-    return new PropertyValidation(anyOfTypes, values, strings, numbers, arrays, objects, items);
+    return new PropertyValidations(anyOfTypes, values, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
-  PropertyValidation withCustoms(@NotNull List<Validator> validators) {
+  PropertyValidations withCustoms(@NotNull List<Validator> validators) {
     if (validators.isEmpty() && (values == null || values.customs.isEmpty())) return this;
     ValueValidation newValues =
         values == null
@@ -75,11 +76,11 @@ record PropertyValidation(
                 values.allowNull,
                 values.anyOfJsons,
                 validators);
-    return new PropertyValidation(anyOfTypes, newValues, strings, numbers, arrays, objects, items);
+    return new PropertyValidations(anyOfTypes, newValues, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
-  public PropertyValidation varargs() {
+  public PropertyValidations varargs() {
     Set<NodeType> anyOfTypes = new HashSet<>(anyOfTypes());
     anyOfTypes.add(NodeType.ARRAY);
     ArrayValidation arrays = this.arrays;
@@ -87,14 +88,14 @@ record PropertyValidation(
       arrays =
           this.arrays == null ? new ArrayValidation(1, -1, YesNo.AUTO) : this.arrays.required();
     }
-    return new PropertyValidation(
+    return new PropertyValidations(
         Set.copyOf(anyOfTypes),
         values,
         strings,
         numbers,
         arrays,
         objects,
-        new PropertyValidation(anyOfTypes(), values, strings, numbers, null, objects, items));
+        new PropertyValidations(anyOfTypes(), values, strings, numbers, null, objects, items));
   }
 
   /**

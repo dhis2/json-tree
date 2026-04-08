@@ -6,17 +6,19 @@ import java.util.stream.Stream;
 import static java.lang.Integer.MAX_VALUE;
 
 /**
- * Input patterns are specifically designed to match short sequences where the relevant features
- * to match are in the ASCII range. Typical examples are numbers, like dates or telephone numbers
- * as well as alphanumeric values, like UUIDs, codes and other identifiers.
+ * Input patterns are specifically designed to match short sequences where the relevant features to
+ * match are in the ASCII range. Typical examples are numbers, like dates or telephone numbers as
+ * well as alphanumeric values, like UUIDs, codes and other identifiers.
  *
  * <h3>Performance and Safety</h3>
+ *
  * A key aspect of the design is that matching is allocation-free and guaranteed to be linear time.
- * Mostly that is linear to the pattern length. In case of open-ended repeats and scans this is
- * linear to the input length. This makes it fairly safe to run against user input without risking
- * that matching causes excessive resource usage.
+ * Mostly that is linear to the pattern length. In case of open-ended repeats and scans this can be
+ * linear to the input length as a worse case scenario. This makes it fairly safe to run against
+ * user input without risking that matching causes excessive resource usage.
  *
  * <h3>Syntax</h3>
+ *
  * See {@code INPUT_EXPRESSIONS.md} in the repository root for details
  *
  * @author Jan Bernitt
@@ -48,21 +50,27 @@ public record InputExpression(List<Pattern> patterns) {
   public static int match(char[] pattern, int offset, int end, CharSequence input, int pos) {
     int i = offset;
     int len = input.length();
+    // note that pos < len cannot be tested in the while condition
+    // as there might be pattern left that can match nothing with nothing left
     while (i < end && pos >= 0) {
       int iCode = i;
       char opcode = pattern[i++];
       switch (opcode) {
-        case '#': if (!isDigit(input.charAt(pos++))) return -1; break;
-        case '@': if (!isIdentifier(input.charAt(pos++))) return -1; break;
+        case '#': if (pos >= len || !isDigit(input.charAt(pos++))) return -1; break;
+        case '@': if (pos >= len || !isIdentifier(input.charAt(pos++))) return -1; break;
         case '[': {
-          if (!matchSet(pattern, i, input.charAt(pos++))) return -1;
+          if (pos >= len || !matchSet(pattern, i, input.charAt(pos++))) return -1;
+          // optimisation: jumped here as unit, return directly
+          if (iCode == offset && offset > 0) return pos;
           i = skipTo(']', pattern, i) + 1;
         }
         break;
         case '|': {
-          if (!matchSequence(pattern, i, input, pos)) return -1;
+          pos = matchSequence(pattern, i, input, pos);
+          if (pos < 0) return -1;
+          // optimisation: jumped here as unit, return directly
+          if (iCode == offset && offset > 0) return pos;
           i = skipTo('|', pattern, i) + 1;
-          pos += i - iCode - 2; // 1:1 length relation: set char => 1 input char
         }
         break;
         case '?', '*', '+', '1','2','3','4','5','6','7','8','9': {
@@ -197,41 +205,41 @@ public record InputExpression(List<Pattern> patterns) {
    *   |...|
    * </pre>
    */
-  private static boolean matchSequence(char[] pattern, int offset, CharSequence input, int pos) {
+  private static int matchSequence(char[] pattern, int offset, CharSequence input, int pos) {
     int i = offset;
     int len = input.length();
     while (i < pattern.length && pos < len && (i == offset || pattern[i] != '|')) {
       char in = input.charAt(pos++);
       char opcode = pattern[i++];
       switch (opcode) {
-        case 'b': if (!isBinary(in)) return false; break;
-        case 'd', '#': if (!isDigit(in)) return false; break;
-        case 'i': if (!isIdentifier(in)) return false; break;
-        case 'u': if (!isUpperLetter(in)) return false; break;
-        case 'l': if (!isLowerLetter(in)) return false; break;
-        case 'c': if (!isLetter(in)) return false; break;
-        case 'a': if (!isAlphanumeric(in)) return false; break;
-        case 'x': if (!isHexadecimal(in)) return false; break;
-        case 's': if (!isSign(in)) return false; break;
+        case 'b': if (!isBinary(in)) return -1; break;
+        case 'd', '#': if (!isDigit(in)) return -1; break;
+        case 'i': if (!isIdentifier(in)) return -1; break;
+        case 'u': if (!isUpperLetter(in)) return -1; break;
+        case 'l': if (!isLowerLetter(in)) return -1; break;
+        case 'c': if (!isLetter(in)) return -1; break;
+        case 'a': if (!isAlphanumeric(in)) return -1; break;
+        case 'x': if (!isHexadecimal(in)) return -1; break;
+        case 's': if (!isSign(in)) return -1; break;
         case '?': break; // any character, always fine
         default:
           if (isUpperLetter(opcode)) {
-            if (opcode != (in & ~0b10_0000)) return false; break;
+            if (opcode != (in & ~0b10_0000)) return -1; break;
           } else if (isDigit(opcode)) {
-            if (!isDigit(in)) return false; // easy case
+            if (!isDigit(in)) return -1; // easy case
             int pos0 = pos-1;
             pos = matchNumericSequence(pattern, i-1, input, pos0);
-            if (pos < 0) return false;
+            if (pos < 0) return -1;
             i += pos - pos0 - 1;
           } else if (isLowerLetter(opcode)) {
             throw reserved(opcode);
           } else {
             // everything else is taken literally
-            if (opcode != in) return false; break;
+            if (opcode != in) return -1; break;
           }
       }
     }
-    return true;
+    return pos;
   }
 
   private static int matchNumericSequence(char[] pattern, int offset, CharSequence input, int pos) {

@@ -373,19 +373,6 @@ public interface JsonNode
   }
 
   /**
-   * Size of an array or number of object members.
-   *
-   * <p>This is preferable to calling {@link #value()} or {@link #members()} or {@link #elements()}
-   * when size is only property of interest as it might have better performance.
-   *
-   * @return number of elements in an array or number of fields in an object, otherwise undefined
-   * @throws JsonTreeException when this node in neither an array nor an object
-   */
-  default int size() {
-    throw notAContainer(this, "size()");
-  }
-
-  /**
    * @param subPath relative path to check
    * @return true, only if a node exists that the given path relative to this node (this includes a
    *     defined JSON {@code null})
@@ -404,6 +391,19 @@ public interface JsonNode
    */
   default boolean isEmpty() {
     throw notAContainer(this, "isEmpty()");
+  }
+
+  /**
+   * Size of an array or number of object members.
+   *
+   * <p>This is preferable to calling {@link #value()} or {@link #members()} or {@link #elements()}
+   * when size is only property of interest as it might have better performance.
+   *
+   * @return number of elements in an array or number of fields in an object, otherwise undefined
+   * @throws JsonTreeException when this node in neither an array nor an object
+   */
+  default int size() {
+    throw notAContainer(this, "size()");
   }
 
   /**

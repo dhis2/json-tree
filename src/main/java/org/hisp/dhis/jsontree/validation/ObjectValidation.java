@@ -43,13 +43,13 @@ import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validator;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.ArrayValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.NumberValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.StringValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidation.ValueValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidations.ArrayValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidations.NumberValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidations.StringValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidations.ValueValidation;
 
 /**
- * Analysis types and annotations to extract a {@link PropertyValidation} model description.
+ * Analysis types and annotations to extract a {@link PropertyValidations} model description.
  *
  * @author Jan Bernitt
  * @since 0.11
@@ -60,7 +60,7 @@ import org.hisp.dhis.jsontree.validation.PropertyValidation.ValueValidation;
 record ObjectValidation(
     @NotNull Class<?> schema,
     @NotNull Map<Text, Type> types,
-    @NotNull Map<Text, PropertyValidation> properties) {
+    @NotNull Map<Text, PropertyValidations> properties) {
 
   /** Cache for all validation applied to a particular object schema. */
   private static final Map<Class<?>, ObjectValidation> INSTANCES = new ConcurrentHashMap<>();
@@ -69,7 +69,7 @@ record ObjectValidation(
    * A cache for the validations set for any use (mapping target) of a particular Java type from an
    * annotation put on the type declaration itself.
    */
-  private static final Map<Class<?>, PropertyValidation> TYPE_DECLARATION_VALIDATIONS =
+  private static final Map<Class<?>, PropertyValidations> TYPE_DECLARATION_VALIDATIONS =
       new ConcurrentSkipListMap<>(comparing(Class::getName));
 
   /**
@@ -77,7 +77,7 @@ record ObjectValidation(
    * meta-annotations which they aggregate. The map caches the validation set for a particular
    * meta-annotation type.
    */
-  private static final Map<Class<? extends Annotation>, PropertyValidation>
+  private static final Map<Class<? extends Annotation>, PropertyValidations>
       META_TYPE_BY_VALIDATIONS = new ConcurrentHashMap<>();
 
   /**
@@ -97,7 +97,7 @@ record ObjectValidation(
 
   private static ObjectValidation createInstance(
       Class<?> schema, List<JsonObject.Property> properties) {
-    Map<Text, PropertyValidation> validations = new HashMap<>();
+    Map<Text, PropertyValidations> validations = new HashMap<>();
     Map<Text, Type> types = new HashMap<>();
     properties.stream()
         .filter(ObjectValidation::isNotIgnored)
@@ -115,9 +115,9 @@ record ObjectValidation(
   }
 
   @CheckNull
-  private static PropertyValidation fromProperty(JsonObject.Property p) {
-    PropertyValidation onMethod = fromAnnotations(p.source());
-    PropertyValidation onReturnType = fromValueTypeUse(p.javaType());
+  private static PropertyValidations fromProperty(JsonObject.Property p) {
+    PropertyValidations onMethod = fromAnnotations(p.source());
+    PropertyValidations onReturnType = fromValueTypeUse(p.javaType());
     if (onMethod == null) return onReturnType;
     if (onReturnType == null) return onMethod;
     return onMethod.overlay(onReturnType);
@@ -128,7 +128,7 @@ record ObjectValidation(
    * @return validation based on the Java value type (this includes annotations on the class type)
    */
   @CheckNull
-  private static PropertyValidation fromValueTypeUse(AnnotatedType src) {
+  private static PropertyValidations fromValueTypeUse(AnnotatedType src) {
     Type type = src.getType();
     if (type instanceof Class<?> simpleType)
       return fromValueTypeDeclaration(simpleType).overlay(fromAnnotations(src));
@@ -136,7 +136,7 @@ record ObjectValidation(
     if (!(src instanceof AnnotatedParameterizedType pt)) return null;
     Type rt = ((ParameterizedType) pt.getType()).getRawType();
     Class<?> rawType = (Class<?>) rt;
-    PropertyValidation base = fromValueTypeDeclaration(rawType).overlay(fromAnnotations(src));
+    PropertyValidations base = fromValueTypeDeclaration(rawType).overlay(fromAnnotations(src));
     AnnotatedType[] typeArguments = pt.getAnnotatedActualTypeArguments();
     if (typeArguments.length == 1) return base.withItems(fromValueTypeUse(typeArguments[0]));
     if (Map.class.isAssignableFrom(rawType)) {
@@ -147,12 +147,12 @@ record ObjectValidation(
   }
 
   @NotNull
-  private static PropertyValidation fromValueTypeDeclaration(@NotNull Class<?> type) {
+  private static PropertyValidations fromValueTypeDeclaration(@NotNull Class<?> type) {
     return TYPE_DECLARATION_VALIDATIONS.computeIfAbsent(
         type,
         t -> {
-          PropertyValidation declared = fromAnnotations(t);
-          PropertyValidation inferred = declared != null ? declared : toPropertyValidation(t);
+          PropertyValidations declared = fromAnnotations(t);
+          PropertyValidations inferred = declared != null ? declared : toPropertyValidation(t);
           if (Object[].class.isAssignableFrom(t))
             return inferred.withItems(fromValueTypeDeclaration(t.getComponentType()));
           return inferred;
@@ -160,15 +160,15 @@ record ObjectValidation(
   }
 
   @CheckNull
-  private static PropertyValidation fromAnnotations(AnnotatedElement src) {
-    PropertyValidation meta = fromMetaAnnotations(src);
+  private static PropertyValidations fromAnnotations(AnnotatedElement src) {
+    PropertyValidations meta = fromMetaAnnotations(src);
     Validation validation = getValidationAnnotation(src);
-    PropertyValidation main = validation == null ? null : toPropertyValidation(validation);
+    PropertyValidations main = validation == null ? null : toPropertyValidation(validation);
     List<Validation.Validator> validators = toValidators(src);
-    PropertyValidation items = fromItems(src);
-    PropertyValidation base = meta == null ? main : meta.overlay(main);
+    PropertyValidations items = fromItems(src);
+    PropertyValidations base = meta == null ? main : meta.overlay(main);
     if (base == null && items == null && validators.isEmpty()) return null;
-    if (base == null) base = new PropertyValidation(Set.of(), null, null, null, null, null, null);
+    if (base == null) base = new PropertyValidations(Set.of(), null, null, null, null, null, null);
     return base.withCustoms(validators).withItems(items);
   }
 
@@ -185,19 +185,19 @@ record ObjectValidation(
   }
 
   @CheckNull
-  private static PropertyValidation fromMetaAnnotations(AnnotatedElement src) {
+  private static PropertyValidations fromMetaAnnotations(AnnotatedElement src) {
     Annotation[] candidates = src.getAnnotations();
     if (candidates.length == 0) return null;
     return Stream.of(candidates)
         .sorted(comparing(a -> a.annotationType().getSimpleName()))
         .map(ObjectValidation::fromMetaAnnotation)
         .filter(Objects::nonNull)
-        .reduce(PropertyValidation::overlay)
+        .reduce(PropertyValidations::overlay)
         .orElse(null);
   }
 
   @CheckNull
-  private static PropertyValidation fromMetaAnnotation(Annotation a) {
+  private static PropertyValidations fromMetaAnnotation(Annotation a) {
     Class<? extends Annotation> type = a.annotationType();
     if (!type.isAnnotationPresent(Validation.class)) return null;
     return META_TYPE_BY_VALIDATIONS.computeIfAbsent(
@@ -209,24 +209,24 @@ record ObjectValidation(
   }
 
   @CheckNull
-  private static PropertyValidation fromItems(AnnotatedElement src) {
+  private static PropertyValidations fromItems(AnnotatedElement src) {
     if (!src.isAnnotationPresent(Validation.Items.class)) return null;
     return toPropertyValidation(src.getAnnotation(Validation.Items.class).value());
   }
 
   @NotNull
-  private static PropertyValidation toPropertyValidation(Class<?> type) {
+  private static PropertyValidations toPropertyValidation(Class<?> type) {
     ValueValidation values =
         !type.isPrimitive() ? null : new ValueValidation(YES, Set.of(), AUTO, Set.of(), List.of());
     StringValidation strings =
         !type.isEnum() ? null : new StringValidation(anyOfStrings(type), AUTO, -1, -1, null);
-    return new PropertyValidation(anyOfTypes(type), values, strings, null, null, null, null);
+    return new PropertyValidations(anyOfTypes(type), values, strings, null, null, null, null);
   }
 
   @NotNull
-  private static PropertyValidation toPropertyValidation(@NotNull Validation src) {
-    PropertyValidation res =
-        new PropertyValidation(
+  private static PropertyValidations toPropertyValidation(@NotNull Validation src) {
+    PropertyValidations res =
+        new PropertyValidations(
             anyOfTypes(src),
             toValueValidation(src),
             toStringValidation(src),
@@ -311,9 +311,9 @@ record ObjectValidation(
   }
 
   @CheckNull
-  private static PropertyValidation.ObjectValidation toObjectValidation(@NotNull Validation src) {
+  private static PropertyValidations.ObjectValidation toObjectValidation(@NotNull Validation src) {
     if (src.minProperties() < 0 && src.maxProperties() < 0) return null;
-    return new PropertyValidation.ObjectValidation(src.minProperties(), src.maxProperties());
+    return new PropertyValidations.ObjectValidation(src.minProperties(), src.maxProperties());
   }
 
   @NotNull

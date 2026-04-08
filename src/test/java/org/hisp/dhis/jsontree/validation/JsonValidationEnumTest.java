@@ -5,6 +5,7 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.lang.annotation.ElementType;
+import java.util.List;
 import java.util.Set;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;

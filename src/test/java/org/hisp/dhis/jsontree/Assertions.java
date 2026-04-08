@@ -41,6 +41,7 @@ public class Assertions {
   }
 
   private static Object textToString(Object arg) {
+    if (arg instanceof JsonValue v) return v.toJson();
     if (arg instanceof Text t) return t.toString();
     if (arg instanceof Set<?> s)
       return s.stream().map(Assertions::textToString).collect(Collectors.toSet());

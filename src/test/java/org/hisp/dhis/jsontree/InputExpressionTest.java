@@ -3,6 +3,8 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.InputExpression.Pattern;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -103,6 +105,26 @@ class InputExpressionTest {
     assertDoesNotMatch("|9223372036854775807|", "9223372036854775808");
     assertMatches("|-9223372036854775807|", "-9223372036854775807");
   }
+
+  @Test
+  void testPattern_ExamplesDecimal() {
+    InputExpression expr =
+        InputExpression.of("?[+-]+#?(.*#)?([E]?[+-]+#)", "?[+-]*#.+#?([E]?[+-]+#)");
+    assertMatches(expr, ".5", "4.", "1.1", "+345.234", "-23.56e-12", "+.5e1");
+  }
+
+  @Test
+  void testPattern_ExamplesInteger() {
+    // different variants of how to match for an integer
+    List<String> patterns =
+        List.of("?|s|+#", "?[+-]+#", "?[s]+#", "?[+-]#9?#", "?[+-]{2147483647}(#9?#)");
+    for (String pattern : patterns)
+      assertMatches(pattern, "1", "0", "-2", "00001", "+999", "-2147483647");
+  }
+
+  //TODO confirm that groups can be nested as long as the inner group appear last in the outer group
+  // for example: ~(foo+(bar))
+  // because if the ) are mistaken it has the same effect
 
   @Test
   void testPattern_DHIS2Periods() {
