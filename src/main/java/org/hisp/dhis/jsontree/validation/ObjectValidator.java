@@ -3,6 +3,7 @@ package org.hisp.dhis.jsontree.validation;
 import static java.lang.Double.isNaN;
 import static java.util.stream.Collectors.toMap;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
+import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
 import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
@@ -13,6 +14,7 @@ import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,7 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -100,7 +101,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
                 Validator propValidator = of(property, validations);
                 Validator propTypeValidator =
                     ofJavaType(objectValidation.types().get(property), currentlyResolved);
-                Validator validator = If.of(propValidator, propTypeValidator);
+                Validator validator = Chain.of(propValidator, propTypeValidator);
                 if (validator != null) res.put(JsonPath.of(property), validator);
               });
           Validator dependentRequired = ofDependentRequired(properties);
@@ -137,41 +138,71 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
 
   @CheckNull
   private static Validator of(Text property, PropertyValidations validations) {
-    Set<NodeType> anyOf = validations.anyOfTypes();
-
     Map<JsonNodeType, Validator> byType = new EnumMap<>(JsonNodeType.class);
     BiConsumer<JsonNodeType, Validator> add =
         (type, validator) -> {
           if (validator != null) byType.put(type, validator);
         };
-    Predicate<NodeType> has = type -> anyOf.isEmpty() || anyOf.contains(type);
-    if (has.test(STRING)) add.accept(JsonNodeType.STRING, ofString(validations.strings()));
-    if (has.test(NUMBER) || has.test(INTEGER)) add.accept(JsonNodeType.NUMBER, ofNumber(validations.numbers()));
-    if (has.test(ARRAY)) add.accept(JsonNodeType.ARRAY, ofArray(validations.arrays()));
-    if (has.test(OBJECT)) add.accept(JsonNodeType.OBJECT, ofObject(validations.objects()));
 
-    Validator type = anyOf.isEmpty() ? null : new Type(anyOf);
+    Set<NodeType> types = validations.types();
+    if (types.isEmpty()) types = EnumSet.allOf(NodeType.class);
+    boolean acceptBooleans = types.contains(BOOLEAN);
+    boolean acceptStrings = types.contains(STRING);
+    boolean acceptNumbers = types.contains(NUMBER) || types.contains(INTEGER);
+
+    Validator strings = ofString(validations.strings());
+    Validator numbers = ofNumber(validations.numbers());
+    if (acceptStrings) add.accept(JsonNodeType.STRING, strings);
+    if (acceptNumbers) add.accept(JsonNodeType.NUMBER, numbers);
+    if (types.contains(ARRAY)) add.accept(JsonNodeType.ARRAY, ofArray(validations.arrays()));
+    if (types.contains(OBJECT)) add.accept(JsonNodeType.OBJECT, ofObject(validations.objects()));
+
+    // AUTO type conversions
+    PropertyValidations.Strict strictness = validations.strictness();
+    boolean strictStrings = strictness.strings().isYes();
+    boolean strictBooleans = strictness.booleans().isYes();
+    boolean strictNumbers = strictness.numbers().isYes();
+    if (!strictStrings && acceptStrings && strings != null) {
+      // accept string given as number => string constraints apply to number
+      if (!acceptNumbers) add.accept(JsonNodeType.NUMBER, strings);
+      // accept string given as boolean => string constraints apply to boolean
+      if (!acceptBooleans) add.accept(JsonNodeType.BOOLEAN, strings);
+    }
+    if (!strictNumbers && acceptNumbers && numbers != null && !acceptStrings) {
+      // accept number given as string => number constraints apply to string
+      add.accept(JsonNodeType.STRING, numbers);
+    }
+
+    Validator type = null;
+    if (!validations.types().isEmpty()) {
+      type =
+          new Type(
+              EnumSet.copyOf(validations.types()), strictBooleans, strictStrings, strictNumbers);
+    }
     Validator anyType = ofGeneric(validations.values());
     Validator typeDependent = byType.isEmpty() ? null : new TypeDependent(byType);
     Validator items = validations.items() == null ? null : Items.of(of(property, validations.items()));
-    Validator whenDefined = If.of(type, If.of(anyType, If.of(typeDependent, items)));
+    Validator whenDefined = Chain.of(type, anyType, typeDependent, items);
 
+    Validator required = ofRequired(property, validations);
+    return Chain.of(required, whenDefined);
+  }
+
+  private static Validator ofRequired(Text property, PropertyValidations validations) {
     PropertyValidations.ValueValidation values = validations.values();
     boolean isRequiredYes = values != null && values.required().isYes();
     boolean isRequiredAuto =
-        (values == null || values.required().isAuto()) && isRequiredImplicitly(validations, anyOf);
+        (values == null || values.required().isAuto()) && isRequiredImplicitly(validations);
     boolean isAllowNull = values != null && values.allowNull().isYes();
-    Validator required =
-        !isRequiredYes && !isRequiredAuto ? null : new Required(property, isAllowNull);
-    return If.of(required, whenDefined);
+    return !isRequiredYes && !isRequiredAuto ? null : new Required(property, isAllowNull);
   }
 
   /**
    * minItems, minLength, minProperties implicitly means this is required if there is only one type
    * possible and if required is AUTO
    */
-  private static boolean isRequiredImplicitly(PropertyValidations validations, Set<NodeType> types) {
-    return types.stream().allMatch(type -> isRequiredImplicitly(validations, type));
+  private static boolean isRequiredImplicitly(PropertyValidations validations) {
+    return validations.types().stream().allMatch(type -> isRequiredImplicitly(validations, type));
   }
 
   private static boolean isRequiredImplicitly(PropertyValidations validations, NodeType type) {
@@ -260,11 +291,11 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     if (properties.values().stream()
         .allMatch(p -> p.values() == null || p.values().dependentRequired().isEmpty())) return null;
     Map<String, Map<Text, String>> groupPropertyRole = new HashMap<>();
-    Map<Text, BiPredicate<JsonMixed, Text>> isMissing = new HashMap<>();
+    Map<Text, BiPredicate<JsonMixed, Text>> notExists = new HashMap<>();
     properties.forEach(
         (name, validation) -> {
           PropertyValidations.ValueValidation values = validation.values();
-          isMissing.put(name, isMissing(values));
+          notExists.put(name, notExists(values));
           if (values != null && !values.dependentRequired().isEmpty()) {
             values
                 .dependentRequired()
@@ -285,7 +316,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           if (members.values().stream().noneMatch(ObjectValidator::isDependentRequiredRole)) {
             all.add(
                 new DependentRequiredCodependent(
-                    Map.copyOf(isMissing), Set.copyOf(members.keySet())));
+                    Map.copyOf(notExists), Set.copyOf(members.keySet())));
           } else {
             Set<Map.Entry<Text, String>> memberEntries = members.entrySet();
             List<Text> present =
@@ -308,16 +339,16 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
                     .filter(e -> e.getValue().endsWith("^"))
                     .map(Map.Entry::getKey)
                     .toList();
-            Map<Text, String> equals =
+            Map<Text, Text> equals =
                 memberEntries.stream()
                     .filter(e -> e.getValue().contains("="))
                     .collect(
                         toMap(
                             Map.Entry::getKey,
-                            e -> e.getValue().substring(e.getValue().indexOf('=') + 1)));
+                            e -> Text.of(e.getValue().substring(e.getValue().indexOf('=') + 1))));
             all.add(
                 new DependentRequired(
-                    Map.copyOf(isMissing),
+                    Map.copyOf(notExists),
                     Set.copyOf(present),
                     Set.copyOf(absent),
                     Map.copyOf(equals),
@@ -329,7 +360,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   }
 
   @NotNull
-  private static BiPredicate<JsonMixed, Text> isMissing(PropertyValidations.ValueValidation values) {
+  private static BiPredicate<JsonMixed, Text> notExists(PropertyValidations.ValueValidation values) {
     if (values == null || !values.allowNull().isYes()) return JsonMixed::isUndefined;
     BiPredicate<JsonMixed, Text> test = JsonMixed::exists;
     return test.negate();
@@ -369,13 +400,21 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   }
 
   /** Runs the {@link #dependent()} only if the {@link #independent()} is successful */
-  private record If(Validator independent, Validator dependent) implements Validator {
+  private record Chain(Validator independent, Validator dependent) implements Validator {
 
     @CheckNull
     static Validator of(@CheckNull Validator independent, @CheckNull Validator dependent) {
       if (dependent == null) return independent;
       if (independent == null) return dependent;
-      return new If(independent, dependent);
+      return new Chain(independent, dependent);
+    }
+
+    static Validator of(Validator... validators) {
+      if (validators.length == 0) return null;
+      Validator chain = validators[0];
+      for (int i = 1; i < validators.length; i++)
+        chain = of(chain, validators[i]);
+      return chain;
     }
 
     @Override
@@ -391,15 +430,44 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     }
   }
 
-  private record Type(Set<NodeType> anyOf) implements Validator {
+  private record Type(
+      EnumSet<NodeType> accepted,
+      boolean strictBooleans,
+      boolean strictStrings,
+      boolean strictNumbers)
+      implements Validator {
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
       NodeType actual = NodeType.of(value.type());
-      if (actual == NULL || anyOf.contains(actual)) return;
-      if (actual == NUMBER && anyOf.contains(INTEGER) && value.isInteger()) return;
+      if (actual == NULL || accepted.contains(actual)) return;
+      boolean acceptIntegers = accepted.contains(INTEGER);
+      if (actual == NUMBER && acceptIntegers && value.isInteger()) return;
+      // non-strict cases:
+      // easy: accept string given as number or boolean
+      if ((actual == BOOLEAN || actual == NUMBER) && !strictStrings && accepted.contains(STRING))
+        return;
+      // harder: numbers or booleans given as string
+      if (actual == STRING) {
+        boolean acceptBooleansAsString = !strictBooleans && accepted.contains(BOOLEAN);
+        boolean acceptNumbers = accepted.contains(NUMBER);
+        boolean acceptNumbersAsString = !strictNumbers && (acceptNumbers || acceptIntegers);
+        // avoid accessing text() if both booleans and numbers are strict
+        if (acceptBooleansAsString || acceptNumbersAsString) {
+          Text text = value.text();
+          // accept boolean given as string
+          if (acceptBooleansAsString && (text.contentEquals("true") || text.contentEquals("false")))
+            return;
+          // accept number given as string
+          if (!strictNumbers
+              && acceptNumbers
+              && (text.isTextualDecimal() || text.isSpecialDecimal())) return;
+          if (!strictNumbers && acceptIntegers && text.isTextualInteger()) return;
+        }
+      }
+
       addError.accept(
-          Error.of(Rule.TYPE, value, "must have any of %s type but was: %s", anyOf, actual));
+          Error.of(Rule.TYPE, value, "must have any of %s type but was: %s", accepted, actual));
     }
   }
 
@@ -707,6 +775,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   /**
    * The dependent required validator.
    *
+   * @param notExists a predicate for each dependent property on how to check of they do not exist
    * @param present a set of properties that all need to be present to trigger
    * @param absent a set of properties that all need to be absent to trigger
    * @param equals a map from property to value that all need to match the current value to trigger
@@ -715,35 +784,35 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
    *     mutual exclusive
    */
   private record DependentRequired(
-      Map<Text, BiPredicate<JsonMixed, Text>> isMissing,
+      Map<Text, BiPredicate<JsonMixed, Text>> notExists,
       Set<Text> present,
       Set<Text> absent,
-      Map<Text, String> equals,
+      Map<Text, Text> equals,
       Set<Text> dependents,
       Set<Text> exclusiveDependent)
       implements Validator {
 
     @Override
-    public void validate(JsonMixed value, Consumer<Error> addError) {
-      if (!value.isObject()) return;
+    public void validate(JsonMixed obj, Consumer<Error> addError) {
+      if (!obj.isObject()) return;
       boolean presentNotMet =
-          !present.isEmpty() && present.stream().anyMatch(p -> isMissing.get(p).test(value, p));
+          !present.isEmpty() && present.stream().anyMatch(p -> notExists.get(p).test(obj, p));
       boolean absentNotMet =
-          !absent.isEmpty() && absent.stream().anyMatch(p -> !isMissing.get(p).test(value, p));
+          !absent.isEmpty() && absent.stream().anyMatch(p -> !notExists.get(p).test(obj, p));
       boolean equalsNotMet =
           !equals.isEmpty()
               && equals.entrySet().stream()
-              .anyMatch(e -> !e.getValue().equals(value.getString(e.getKey()).string()));
+              .anyMatch(e -> !e.getValue().contentEquals(obj.getString(e.getKey()).text()));
       if (presentNotMet || absentNotMet || equalsNotMet) return;
       if (!dependents.isEmpty()
-          && dependents.stream().anyMatch(p -> isMissing.get(p).test(value, p))) {
+          && dependents.stream().anyMatch(p -> notExists.get(p).test(obj, p))) {
         Set<Text> missing =
-            Set.copyOf(dependents.stream().filter(p -> isMissing.get(p).test(value, p)).toList());
+            Set.copyOf(dependents.stream().filter(p -> notExists.get(p).test(obj, p)).toList());
         if (!equals.isEmpty()) {
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object with %s requires all of %s, missing: %s",
                   equals,
                   dependents,
@@ -752,7 +821,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object without any of %s requires all of %s, missing: %s",
                   absent,
                   dependents,
@@ -761,7 +830,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object with any of %s requires all of %s, missing: %s",
                   present,
                   dependents,
@@ -770,7 +839,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object with any of %s or without any of %s requires all of %s, missing: %s",
                   present,
                   absent,
@@ -781,13 +850,13 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
       if (!exclusiveDependent.isEmpty()) {
         Set<Text> defined =
             Set.copyOf(
-                exclusiveDependent.stream().filter(p -> !isMissing.get(p).test(value, p)).toList());
+                exclusiveDependent.stream().filter(p -> !notExists.get(p).test(obj, p)).toList());
         if (defined.size() == 1) return; // it is exclusively defined => OK
         if (!equals.isEmpty()) {
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object with %s requires one but only one of %s, but has: %s",
                   equals,
                   exclusiveDependent,
@@ -796,7 +865,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object requires one but only one of %s, but has: %s",
                   exclusiveDependent,
                   defined));
@@ -804,7 +873,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object without any of %s requires one but only one of %s, but has: %s",
                   absent,
                   exclusiveDependent,
@@ -813,7 +882,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object with any of %s requires one but only one of %s, but has: %s",
                   present,
                   exclusiveDependent,
@@ -822,7 +891,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           addError.accept(
               Error.of(
                   Rule.DEPENDENT_REQUIRED,
-                  value,
+                  obj,
                   "object with any of %s or without any of %s requires one but only one of %s, but has: %s",
                   present,
                   absent,
@@ -833,15 +902,19 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     }
   }
 
+  /**
+   * @param notExists a predicate for each codependent property on how to check of they do not exist
+   * @param codependent the set of codependent properties (names)
+   */
   private record DependentRequiredCodependent(
-      Map<Text, BiPredicate<JsonMixed, Text>> isMissing, Set<Text> codependent)
+      Map<Text, BiPredicate<JsonMixed, Text>> notExists, Set<Text> codependent)
       implements Validator {
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
       if (!value.isObject()) return;
-      if (codependent.stream().anyMatch(p -> isMissing.get(p).test(value, p))
-          && codependent.stream().anyMatch(p -> !isMissing.get(p).test(value, p)))
+      if (codependent.stream().anyMatch(p -> notExists.get(p).test(value, p))
+          && codependent.stream().anyMatch(p -> !notExists.get(p).test(value, p)))
         addError.accept(
             Error.of(
                 Rule.DEPENDENT_REQUIRED,
@@ -849,7 +922,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
                 "object with any of %1$s all of %1$s are required, missing: %s",
                 codependent,
                 Set.copyOf(
-                    codependent.stream().filter(p -> isMissing.get(p).test(value, p)).toList())));
+                    codependent.stream().filter(p -> notExists.get(p).test(value, p)).toList())));
     }
   }
 

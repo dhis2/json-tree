@@ -20,7 +20,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * A declarative model or description of what validation rules to check for a single property within
  * an object.
  *
- * @param anyOfTypes the node types allowed/expected
+ * @param types the node types accepted/expected
  * @param values general validations that apply to any node type
  * @param strings validations that apply to string nodes
  * @param numbers validations that apply to number nodes
@@ -29,13 +29,25 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @param items validations that apply to array elements or object member values (map use)
  */
 record PropertyValidations(
-    @NotNull Set<NodeType> anyOfTypes,
+    @NotNull Set<NodeType> types,
+    @NotNull Strict strictness,
     @CheckNull ValueValidation values,
-    @CheckNull StringValidation strings, // TODO should these run for non-strings?
+    @CheckNull StringValidation strings,
     @CheckNull NumberValidation numbers,
     @CheckNull ArrayValidation arrays,
     @CheckNull ObjectValidation objects,
     @CheckNull PropertyValidations items) {
+
+  record Strict(YesNo booleans, YesNo strings, YesNo numbers) {
+    public static final Strict DEFAULT = new Strict(YesNo.AUTO, YesNo.AUTO, YesNo.AUTO);
+
+    Strict overlay(Strict with) {
+      return new Strict(
+          overlayY(booleans, with.booleans),
+          overlayY(strings, with.strings),
+          overlayY(numbers, with.numbers));
+    }
+  }
 
   /**
    * Layers the provided validations on top of this. This means they take precedence unless they are
@@ -49,7 +61,8 @@ record PropertyValidations(
   PropertyValidations overlay(@CheckNull PropertyValidations with) {
     if (with == null) return this;
     return new PropertyValidations(
-        overlayC(anyOfTypes, with.anyOfTypes),
+        overlayC(types, with.types),
+        strictness.overlay(with.strictness),
         values == null ? with.values : values.overlay(with.values),
         strings == null ? with.strings : strings.overlay(with.strings),
         numbers == null ? with.numbers : numbers.overlay(with.numbers),
@@ -61,7 +74,7 @@ record PropertyValidations(
   @NotNull
   PropertyValidations withItems(@CheckNull PropertyValidations items) {
     if (items == null && this.items == null) return this;
-    return new PropertyValidations(anyOfTypes, values, strings, numbers, arrays, objects, items);
+    return new PropertyValidations(types, strictness, values, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
@@ -76,26 +89,27 @@ record PropertyValidations(
                 values.allowNull,
                 values.anyOfJsons,
                 validators);
-    return new PropertyValidations(anyOfTypes, newValues, strings, numbers, arrays, objects, items);
+    return new PropertyValidations(types, strictness, newValues, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
   public PropertyValidations varargs() {
-    Set<NodeType> anyOfTypes = new HashSet<>(anyOfTypes());
-    anyOfTypes.add(NodeType.ARRAY);
+    Set<NodeType> newTypes = new HashSet<>(types());
+    newTypes.add(NodeType.ARRAY);
     ArrayValidation arrays = this.arrays;
     if (values != null && values.required.isYes()) {
       arrays =
           this.arrays == null ? new ArrayValidation(1, -1, YesNo.AUTO) : this.arrays.required();
     }
     return new PropertyValidations(
-        Set.copyOf(anyOfTypes),
+        Set.copyOf(newTypes),
+        strictness,
         values,
         strings,
         numbers,
         arrays,
         objects,
-        new PropertyValidations(anyOfTypes(), values, strings, numbers, null, objects, items));
+        new PropertyValidations(types(), strictness, values, strings, numbers, null, objects, items));
   }
 
   /**

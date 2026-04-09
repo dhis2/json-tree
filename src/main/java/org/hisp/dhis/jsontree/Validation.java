@@ -222,9 +222,41 @@ public @interface Validation {
    */
   NodeType[] type() default {};
 
-  //TODO implement => NO => rather have a in Validation
-  // NodeType[] typeFrom() default {};
-  // which sets all the JSON inputs we allow as long as they convert
+  /**
+   * @return The strictness used when checking {@link #type()}s. By default, conversion is non-strict for best interoperability
+   */
+  Strict strictness() default @Strict();
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @interface Strict {
+
+    /**
+     * @return true, to set all AUTO to YES
+     */
+    boolean value() default false;
+
+    /**
+     * Non-strict JSON strings of "true"/"false" are accepted as JSON booleans
+     *
+     * @return When YES, do not accept boolean given as JSON string
+     */
+    YesNo booleans() default YesNo.AUTO;
+
+    /**
+     * Non-strict JSON number and boolean are accepted as JSON string (of a corresponding value)
+     *
+     * @return When YES, do not accept JSON number or boolean
+     */
+    YesNo strings() default YesNo.AUTO;
+
+    /**
+     * Non-strict JSON string that are numerical are accepted as numbers. Where numbers map to Java
+     * doubles the number literals of NaN, Infinite and -Infinite are accepted as well.
+     *
+     * @return When YES, do not accept JSON string as number
+     */
+    YesNo numbers() default YesNo.AUTO;
+  }
 
   /**
    * A property marked as varargs will allow {@link NodeType#ARRAY} to occur, each element then is
@@ -432,12 +464,12 @@ public @interface Validation {
   YesNo required() default YesNo.AUTO;
 
   /**
-   * To describe which properties are in a dependency relation with each other properties can be
-   * assigned group names. One or more members of a group have the role of a trigger while the
+   * To describe which properties are in a dependency relation with each other properties are
+   * assigned to group names. One or more members of a group have the role of a trigger while the
    * others are the ones that are required depending on the trigger. This property defines the
    * groups for the annotated property and its role using suffixes as described below.
    *
-   * <p>A trigger uses the suffix {@code !} to trigger when present, {@code ?} to trigger when
+   * <p>A property marked with the suffix {@code !} triggers when present, a property marked with {@code ?} triggers when
    * absent.
    *
    * <p>Multiple triggers in a group always combine with AND logic (all need to present/absent). For
@@ -446,7 +478,7 @@ public @interface Validation {
    * {@code ?} triggers both conditions must be met to trigger.
    *
    * <p>If none of the properties in a group is marked any of the properties makes all others in the
-   * group required.
+   * group required (all group properties are co-dependent).
    *
    * <p>In addition, a property that is dependent required (not a trigger) can use the {@code ^}
    * suffix if it is mutual exclusive to all other required properties that are marked equally.

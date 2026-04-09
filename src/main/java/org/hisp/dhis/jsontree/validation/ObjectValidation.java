@@ -40,6 +40,7 @@ import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Text;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.YesNo;
 import org.hisp.dhis.jsontree.Validator;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -168,7 +169,17 @@ record ObjectValidation(
     PropertyValidations items = fromItems(src);
     PropertyValidations base = meta == null ? main : meta.overlay(main);
     if (base == null && items == null && validators.isEmpty()) return null;
-    if (base == null) base = new PropertyValidations(Set.of(), null, null, null, null, null, null);
+    if (base == null)
+      base =
+          new PropertyValidations(
+              Set.of(),
+              PropertyValidations.Strict.DEFAULT,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null);
     return base.withCustoms(validators).withItems(items);
   }
 
@@ -217,10 +228,11 @@ record ObjectValidation(
   @NotNull
   private static PropertyValidations toPropertyValidation(Class<?> type) {
     ValueValidation values =
-        !type.isPrimitive() ? null : new ValueValidation(YES, Set.of(), AUTO, Set.of(), List.of());
+        !type.isPrimitive() ? null : new ValueValidation(YES, Set.of(), YesNo.AUTO, Set.of(), List.of());
     StringValidation strings =
-        !type.isEnum() ? null : new StringValidation(anyOfStrings(type), AUTO, -1, -1, null);
-    return new PropertyValidations(anyOfTypes(type), values, strings, null, null, null, null);
+        !type.isEnum() ? null : new StringValidation(anyOfStrings(type), YesNo.AUTO, -1, -1, null);
+    return new PropertyValidations(
+        anyOfTypes(type), PropertyValidations.Strict.DEFAULT, values, strings, null, null, null, null);
   }
 
   @NotNull
@@ -228,6 +240,7 @@ record ObjectValidation(
     PropertyValidations res =
         new PropertyValidations(
             anyOfTypes(src),
+            toStrict(src.strictness()),
             toValueValidation(src),
             toStringValidation(src),
             toNumberValidation(src),
@@ -235,6 +248,18 @@ record ObjectValidation(
             toObjectValidation(src),
             null);
     return src.varargs().isYes() ? res.varargs() : res;
+  }
+
+  private static PropertyValidations.Strict toStrict(Validation.Strict src) {
+    YesNo booleans = src.booleans();
+    YesNo strings = src.strings();
+    YesNo numbers = src.numbers();
+    if (src.value()) {
+      if (booleans == AUTO) booleans = YES;
+      if (strings == AUTO) strings = YES;
+      if (numbers == AUTO) numbers = YES;
+    }
+    return new PropertyValidations.Strict(booleans, strings, numbers);
   }
 
   @CheckNull
