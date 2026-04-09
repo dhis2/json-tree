@@ -21,7 +21,9 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * an object.
  *
  * @param types the node types accepted/expected
- * @param values general validations that apply to any node type
+ * @param customs a validator defined by class is used (custom or user defined validators), empty
+ *     list is off
+ * @param requiredness validations about the property being required or not (presence)
  * @param strings validations that apply to string nodes
  * @param numbers validations that apply to number nodes
  * @param arrays validations that apply to array nodes
@@ -31,7 +33,8 @@ import org.hisp.dhis.jsontree.internal.NotNull;
 record PropertyValidations(
     @NotNull Set<NodeType> types,
     @NotNull Strict strictness,
-    @CheckNull ValueValidation values,
+    @NotNull List<Validator> customs,
+    @CheckNull RequiredValidation requiredness,
     @CheckNull StringValidation strings,
     @CheckNull NumberValidation numbers,
     @CheckNull ArrayValidation arrays,
@@ -63,7 +66,8 @@ record PropertyValidations(
     return new PropertyValidations(
         overlayC(types, with.types),
         strictness.overlay(with.strictness),
-        values == null ? with.values : values.overlay(with.values),
+        overlayEachClassAtMostOnce(customs, with.customs),
+        requiredness == null ? with.requiredness : requiredness.overlay(with.requiredness),
         strings == null ? with.strings : strings.overlay(with.strings),
         numbers == null ? with.numbers : numbers.overlay(with.numbers),
         arrays == null ? with.arrays : arrays.overlay(with.arrays),
@@ -74,22 +78,15 @@ record PropertyValidations(
   @NotNull
   PropertyValidations withItems(@CheckNull PropertyValidations items) {
     if (items == null && this.items == null) return this;
-    return new PropertyValidations(types, strictness, values, strings, numbers, arrays, objects, items);
+    return new PropertyValidations(
+        types, strictness, customs, requiredness, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
   PropertyValidations withCustoms(@NotNull List<Validator> validators) {
-    if (validators.isEmpty() && (values == null || values.customs.isEmpty())) return this;
-    ValueValidation newValues =
-        values == null
-            ? new ValueValidation(YesNo.AUTO, Set.of(), YesNo.AUTO, Set.of(), validators)
-            : new ValueValidation(
-                values.required,
-                values.dependentRequired,
-                values.allowNull,
-                values.anyOfJsons,
-                validators);
-    return new PropertyValidations(types, strictness, newValues, strings, numbers, arrays, objects, items);
+    List<Validator> merged = overlayEachClassAtMostOnce(customs, validators);
+    return new PropertyValidations(
+        types, strictness, merged, requiredness, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
@@ -97,19 +94,21 @@ record PropertyValidations(
     Set<NodeType> newTypes = new HashSet<>(types());
     newTypes.add(NodeType.ARRAY);
     ArrayValidation arrays = this.arrays;
-    if (values != null && values.required.isYes()) {
+    if (requiredness != null && requiredness.required.isYes()) {
       arrays =
           this.arrays == null ? new ArrayValidation(1, -1, YesNo.AUTO) : this.arrays.required();
     }
     return new PropertyValidations(
         Set.copyOf(newTypes),
         strictness,
-        values,
+        customs,
+        requiredness,
         strings,
         numbers,
         arrays,
         objects,
-        new PropertyValidations(types(), strictness, values, strings, numbers, null, objects, items));
+        new PropertyValidations(
+            types(), strictness, customs, requiredness, strings, numbers, null, objects, items));
   }
 
   /**
@@ -120,26 +119,17 @@ record PropertyValidations(
    * @param dependentRequired the groups this property is a member of for dependent requires
    * @param allowNull when {@link YesNo#YES} a JSON {@code null} value satisfies being {@link
    *     #required()} or {@link #dependentRequired()}
-   * @param anyOfJsons the JSON value must be one of the provided JSON values, empty set is off
-   * @param customs a validator defined by class is used (custom or user defined validators), empty
-   *     list is off
    */
-  record ValueValidation(
-      @NotNull YesNo required,
-      @NotNull Set<String> dependentRequired,
-      @NotNull YesNo allowNull,
-      @NotNull Set<String> anyOfJsons,
-      @NotNull List<Validator> customs) {
+  record RequiredValidation(
+      @NotNull YesNo required, @NotNull Set<String> dependentRequired, @NotNull YesNo allowNull) {
 
-    ValueValidation overlay(@CheckNull ValueValidation with) {
+    RequiredValidation overlay(@CheckNull PropertyValidations.RequiredValidation with) {
       return with == null
           ? this
-          : new ValueValidation(
+          : new RequiredValidation(
               overlayY(required, with.required),
               overlayC(dependentRequired, with.dependentRequired),
-              overlayY(allowNull, with.allowNull),
-              overlayC(anyOfJsons, with.anyOfJsons),
-              overlayAdditive(customs, with.customs));
+              overlayY(allowNull, with.allowNull));
     }
   }
 
@@ -272,7 +262,7 @@ record PropertyValidations(
     return b;
   }
 
-  private static <E> List<E> overlayAdditive(List<E> a, List<E> b) {
+  private static <E> List<E> overlayEachClassAtMostOnce(List<E> a, List<E> b) {
     if (b.isEmpty()) return a;
     if (a.isEmpty()) return b;
     Set<Class<?>> bs = b.stream().map(Object::getClass).collect(toSet());

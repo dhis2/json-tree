@@ -6,16 +6,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonPath;
 import org.hisp.dhis.jsontree.JsonPathException;
 import org.hisp.dhis.jsontree.JsonSchemaException;
-import org.hisp.dhis.jsontree.Validation.Result;
 import org.hisp.dhis.jsontree.JsonTreeException;
 import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.Error;
+import org.hisp.dhis.jsontree.Validation.Result;
 
 /**
  * @author Jan Bernitt

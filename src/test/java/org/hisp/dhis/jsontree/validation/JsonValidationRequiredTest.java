@@ -118,8 +118,8 @@ class JsonValidationRequiredTest {
 
   @Test
   void testIsA_WrongNodeType() {
-    assertFalse(Json5.of("{'bar':true}").isA(JsonFoo.class));
-    assertFalse(Json5.of("{'key':'x', 'value': '1'}").isA(JsonEntry.class));
+    assertFalse(Json5.of("{'bar':[]}").isA(JsonFoo.class));
+    assertFalse(Json5.of("{'key':'x', 'value': []}").isA(JsonEntry.class));
   }
 
   @Test

@@ -33,10 +33,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
-
 import org.hisp.dhis.jsontree.InputExpression;
+import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
-import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Text;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
@@ -46,8 +45,8 @@ import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.validation.PropertyValidations.ArrayValidation;
 import org.hisp.dhis.jsontree.validation.PropertyValidations.NumberValidation;
+import org.hisp.dhis.jsontree.validation.PropertyValidations.RequiredValidation;
 import org.hisp.dhis.jsontree.validation.PropertyValidations.StringValidation;
-import org.hisp.dhis.jsontree.validation.PropertyValidations.ValueValidation;
 
 /**
  * Analysis types and annotations to extract a {@link PropertyValidations} model description.
@@ -174,7 +173,7 @@ record ObjectValidation(
           new PropertyValidations(
               Set.of(),
               PropertyValidations.Strict.DEFAULT,
-              null,
+              List.of(), null,
               null,
               null,
               null,
@@ -227,12 +226,12 @@ record ObjectValidation(
 
   @NotNull
   private static PropertyValidations toPropertyValidation(Class<?> type) {
-    ValueValidation values =
-        !type.isPrimitive() ? null : new ValueValidation(YES, Set.of(), YesNo.AUTO, Set.of(), List.of());
+    RequiredValidation values =
+        !type.isPrimitive() ? null : new RequiredValidation(YES, Set.of(), YesNo.AUTO);
     StringValidation strings =
         !type.isEnum() ? null : new StringValidation(anyOfStrings(type), YesNo.AUTO, -1, -1, null);
     return new PropertyValidations(
-        anyOfTypes(type), PropertyValidations.Strict.DEFAULT, values, strings, null, null, null, null);
+        anyOfTypes(type), PropertyValidations.Strict.DEFAULT, List.of(), values, strings, null, null, null, null);
   }
 
   @NotNull
@@ -241,13 +240,21 @@ record ObjectValidation(
         new PropertyValidations(
             anyOfTypes(src),
             toStrict(src.strictness()),
-            toValueValidation(src),
+            toCustoms(src),
+            toRequiredValidation(src),
             toStringValidation(src),
             toNumberValidation(src),
             toArrayValidation(src),
             toObjectValidation(src),
             null);
     return src.varargs().isYes() ? res.varargs() : res;
+  }
+
+  private static List<Validation.Validator> toCustoms(@NotNull Validation src) {
+    if (src.oneOfValues().length == 0 || isAutoUnquotedJsonStrings(src.oneOfValues())) return List.of();
+    return List.of(
+        new Validation.EnumJson(
+            Set.copyOf(Stream.of(src.oneOfValues()).map(JsonMixed::of).toList())));
   }
 
   private static PropertyValidations.Strict toStrict(Validation.Strict src) {
@@ -263,21 +270,13 @@ record ObjectValidation(
   }
 
   @CheckNull
-  private static ValueValidation toValueValidation(@NotNull Validation src) {
-    boolean oneOfValuesEmpty =
-        src.oneOfValues().length == 0 || isAutoUnquotedJsonStrings(src.oneOfValues());
+  private static PropertyValidations.RequiredValidation toRequiredValidation(@NotNull Validation src) {
     boolean dependentRequiresEmpty = src.dependentRequired().length == 0;
     if (src.required().isAuto()
-        && oneOfValuesEmpty
         && dependentRequiresEmpty
         && src.acceptNull().isAuto()) return null;
-    Set<String> oneOfValues =
-        oneOfValuesEmpty
-            ? Set.of()
-            : Set.copyOf(
-                Stream.of(src.oneOfValues()).map(e -> JsonValue.of(e).toMinimizedJson()).toList());
-    return new ValueValidation(
-        src.required(), Set.of(src.dependentRequired()), src.acceptNull(), oneOfValues, List.of());
+    return new RequiredValidation(
+        src.required(), Set.of(src.dependentRequired()), src.acceptNull());
   }
 
   private static boolean isAutoUnquotedJsonStrings(String[] values) {

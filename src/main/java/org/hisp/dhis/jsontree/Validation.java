@@ -236,22 +236,26 @@ public @interface Validation {
     boolean value() default false;
 
     /**
-     * Non-strict JSON strings of "true"/"false" are accepted as JSON booleans
+     * Non-strict: The JSON strings "true" and "false" are accepted as JSON booleans
      *
      * @return When YES, do not accept boolean given as JSON string
      */
     YesNo booleans() default YesNo.AUTO;
 
     /**
-     * Non-strict JSON number and boolean are accepted as JSON string (of a corresponding value)
+     * Non-strict: A JSON number or JSON boolean are accepted as JSON string (as their text value)
+     * if and only if no string-specific or custom validations rules are present. For restricted strings
+     * it is always assumed that only a JSON string can match the restrictions.
      *
      * @return When YES, do not accept JSON number or boolean
      */
     YesNo strings() default YesNo.AUTO;
 
     /**
-     * Non-strict JSON string that are numerical are accepted as numbers. Where numbers map to Java
+     * Non-strict: A JSON string that is numerical is accepted as number. Where numbers map to Java
      * doubles the number literals of NaN, Infinite and -Infinite are accepted as well.
+     * In such a case number specific restrictions do apply to the string as well. This handling only
+     * occurs if JSON string wasn't already an accepted type.
      *
      * @return When YES, do not accept JSON string as number
      */
@@ -515,6 +519,21 @@ public @interface Validation {
       if (!regex.matcher(actual).matches())
         addError.accept(
             Error.of(Rule.PATTERN, value, "must match %s but was: %s", regex.pattern(), actual));
+    }
+  }
+
+  /**
+   * The value must be one of the provided JSON strings
+   *
+   * @param constants expected JSON values
+   */
+  record EnumJson(Set<JsonMixed> constants) implements Validator {
+
+    @Override
+    public void validate(JsonMixed value, Consumer<Error> addError) {
+      for (JsonMixed c : constants) if (c.equivalentTo(value)) return;
+      addError.accept(
+          Error.of(Rule.ENUM, value, "must be one of %s but was: %s", constants, value));
     }
   }
 }

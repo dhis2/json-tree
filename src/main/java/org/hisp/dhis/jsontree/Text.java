@@ -260,6 +260,9 @@ public interface Text extends CharSequence, Comparable<Text> {
     return TextualNumber.isTextualDecimal(toCharArray());
   }
 
+  /**
+   * @return true, if this text is exactly "NaN", "Infinite" or "-Infinite" (Java double special number literals)
+   */
   default boolean isSpecialDecimal() {
     return contentEquals("NaN") || contentEquals("Infinite") || contentEquals("-Infinite");
   }

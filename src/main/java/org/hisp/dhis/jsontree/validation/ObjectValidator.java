@@ -29,7 +29,6 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-
 import org.hisp.dhis.jsontree.InputExpression;
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMap;
@@ -146,12 +145,12 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
 
     Set<NodeType> types = validations.types();
     if (types.isEmpty()) types = EnumSet.allOf(NodeType.class);
-    boolean acceptBooleans = types.contains(BOOLEAN);
     boolean acceptStrings = types.contains(STRING);
     boolean acceptNumbers = types.contains(NUMBER) || types.contains(INTEGER);
 
     Validator strings = ofString(validations.strings());
     Validator numbers = ofNumber(validations.numbers());
+    Validator customs = All.of(validations.customs().stream());
     if (acceptStrings) add.accept(JsonNodeType.STRING, strings);
     if (acceptNumbers) add.accept(JsonNodeType.NUMBER, numbers);
     if (types.contains(ARRAY)) add.accept(JsonNodeType.ARRAY, ofArray(validations.arrays()));
@@ -159,15 +158,9 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
 
     // AUTO type conversions
     PropertyValidations.Strict strictness = validations.strictness();
-    boolean strictStrings = strictness.strings().isYes();
+    boolean strictStrings = strings != null || customs != null  || strictness.strings().isYes();
     boolean strictBooleans = strictness.booleans().isYes();
     boolean strictNumbers = strictness.numbers().isYes();
-    if (!strictStrings && acceptStrings && strings != null) {
-      // accept string given as number => string constraints apply to number
-      if (!acceptNumbers) add.accept(JsonNodeType.NUMBER, strings);
-      // accept string given as boolean => string constraints apply to boolean
-      if (!acceptBooleans) add.accept(JsonNodeType.BOOLEAN, strings);
-    }
     if (!strictNumbers && acceptNumbers && numbers != null && !acceptStrings) {
       // accept number given as string => number constraints apply to string
       add.accept(JsonNodeType.STRING, numbers);
@@ -179,21 +172,18 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           new Type(
               EnumSet.copyOf(validations.types()), strictBooleans, strictStrings, strictNumbers);
     }
-    Validator anyType = ofGeneric(validations.values());
-    Validator typeDependent = byType.isEmpty() ? null : new TypeDependent(byType);
+    Validator typeSpecific = byType.isEmpty() ? null : new TypeDependent(byType);
     Validator items = validations.items() == null ? null : Items.of(of(property, validations.items()));
-    Validator whenDefined = Chain.of(type, anyType, typeDependent, items);
-
     Validator required = ofRequired(property, validations);
-    return Chain.of(required, whenDefined);
+    return Chain.of(required, type, customs, typeSpecific, items);
   }
 
   private static Validator ofRequired(Text property, PropertyValidations validations) {
-    PropertyValidations.ValueValidation values = validations.values();
-    boolean isRequiredYes = values != null && values.required().isYes();
+    PropertyValidations.RequiredValidation requiredness = validations.requiredness();
+    boolean isRequiredYes = requiredness != null && requiredness.required().isYes();
     boolean isRequiredAuto =
-        (values == null || values.required().isAuto()) && isRequiredImplicitly(validations);
-    boolean isAllowNull = values != null && values.allowNull().isYes();
+        (requiredness == null || requiredness.required().isAuto()) && isRequiredImplicitly(validations);
+    boolean isAllowNull = requiredness != null && requiredness.allowNull().isYes();
     return !isRequiredYes && !isRequiredAuto ? null : new Required(property, isAllowNull);
   }
 
@@ -212,17 +202,6 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
       case OBJECT -> validations.objects() != null && validations.objects().minProperties() > 0;
       default -> false;
     };
-  }
-
-  @CheckNull
-  private static Validator ofGeneric(@CheckNull PropertyValidations.ValueValidation values) {
-    return values == null
-        ? null
-        : All.of(
-            values.anyOfJsons().isEmpty()
-                ? null
-                : new EnumJson(Set.copyOf(values.anyOfJsons().stream().map(JsonMixed::of).toList())),
-            values.customs().isEmpty() ? null : new All(values.customs()));
   }
 
   @CheckNull
@@ -289,12 +268,12 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
       @NotNull Map<Text, PropertyValidations> properties) {
     if (properties.isEmpty()) return null;
     if (properties.values().stream()
-        .allMatch(p -> p.values() == null || p.values().dependentRequired().isEmpty())) return null;
+        .allMatch(p -> p.requiredness() == null || p.requiredness().dependentRequired().isEmpty())) return null;
     Map<String, Map<Text, String>> groupPropertyRole = new HashMap<>();
     Map<Text, BiPredicate<JsonMixed, Text>> notExists = new HashMap<>();
     properties.forEach(
         (name, validation) -> {
-          PropertyValidations.ValueValidation values = validation.values();
+          PropertyValidations.RequiredValidation values = validation.requiredness();
           notExists.put(name, notExists(values));
           if (values != null && !values.dependentRequired().isEmpty()) {
             values
@@ -360,7 +339,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   }
 
   @NotNull
-  private static BiPredicate<JsonMixed, Text> notExists(PropertyValidations.ValueValidation values) {
+  private static BiPredicate<JsonMixed, Text> notExists(PropertyValidations.RequiredValidation values) {
     if (values == null || !values.allowNull().isYes()) return JsonMixed::isUndefined;
     BiPredicate<JsonMixed, Text> test = JsonMixed::exists;
     return test.negate();
@@ -378,8 +357,11 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
 
     @CheckNull
     static Validator of(Validator... validators) {
+      return of(Stream.of(validators));
+    }
+    static Validator of(Stream<Validator> validators) {
       List<Validator> actual =
-          Stream.of(validators)
+              validators
               .filter(Objects::nonNull)
               .mapMulti(
                   (Validator v, Consumer<Validator> pipe) -> {
@@ -504,22 +486,6 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
                 value,
                 "%s is required but was " + (value.isNull() ? "null" : "undefined"),
                 property));
-    }
-  }
-
-  /**
-   * The value must be one of the provided JSON strings
-   *
-   * @param constants expected JSON values
-   */
-  private record EnumJson(Set<JsonMixed> constants) implements Validator {
-
-    @Override
-    public void validate(JsonMixed value, Consumer<Error> addError) {
-      for (JsonMixed c : constants)
-        if (c.equivalentTo(value)) return;
-      addError.accept(
-          Error.of(Rule.ENUM, value, "must be one of %s but was: %s", constants, value));
     }
   }
 
