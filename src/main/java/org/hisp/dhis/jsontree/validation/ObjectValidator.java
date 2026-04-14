@@ -325,7 +325,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
               triggersByGroup.getOrDefault(group, List.of()),
               nonExclusiveByGroup.getOrDefault(group, List.of()),
               exclusiveByGroup.getOrDefault(group, List.of())
-              ));
+          ));
     }
     return All.of(all.toArray(Validator[]::new));
   }
@@ -661,23 +661,21 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
-      if (value.isArray()) {
-        // TODO toMinimizedJson is simple but costly
-        List<String> elementsAsJson =
-            value.asList(JsonValue.class).toList(JsonValue::toMinimizedJson);
-        for (int i = 0; i < elementsAsJson.size(); i++) {
-          int j = elementsAsJson.lastIndexOf(elementsAsJson.get(i));
-          if (j != i)
+      if (!value.isArray() || value.isEmpty()) return;
+      int size = value.size();
+      for (int i = 0; i < size; i++)
+        for (int j = 1; j < size; j++)
+          if (i != j && value.get(i).equivalentTo(value.get(j))) {
             addError.accept(
                 Error.of(
                     Rule.UNIQUE_ITEMS,
                     value,
                     "items must be unique but %s was found at index %d and %d",
-                    elementsAsJson.get(i),
+                    value.get(i).node().getDeclaration(),
                     i,
                     j));
-        }
-      }
+              return;
+            }
     }
   }
 

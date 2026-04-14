@@ -292,7 +292,7 @@ class JsonValidationMiscDeepGraphTest {
 
     Validation.Error error =
         assertValidationError(
-            json, JsonPage.class, Rule.UNIQUE_ITEMS, "{\"name\":\"foo\",\"value\":1}", 0, 2);
+            json, JsonPage.class, Rule.UNIQUE_ITEMS, "{\"name\": \"foo\", \"value\": 1}", 0, 2);
     assertEquals(".entries.0.attributes", error.path().toString());
   }
 }
