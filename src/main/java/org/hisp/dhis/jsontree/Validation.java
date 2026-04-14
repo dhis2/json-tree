@@ -463,21 +463,25 @@ public @interface Validation {
    * others are the ones that are required depending on the trigger. This property defines the
    * groups for the annotated property and its role using suffixes as described below.
    *
-   * <p>A property marked with the suffix {@code !} triggers when present, a property marked with {@code ?} triggers when
-   * absent.
+   * <h3>Triggers</h3>
+   * Use a CSS selector-like syntax for trigger conditions:
+   * <ul>
+   *   <li>{@code .group[=*]} triggers group when present</li>
+   *   <li>{@code .group[=?]} triggers group when absent</li>
+   *   <li>{@code .group[={value}]} triggers group when it has the given text value</li>
+   * </ul>
    *
-   * <p>Multiple triggers in a group always combine with AND logic (all need to present/absent). For
-   * a group with multiple {@code !} triggers all must be present to trigger. For a group with
-   * multiple {@code ?} triggers all must be absent to trigger. For a group with both {@code !} and
-   * {@code ?} triggers both conditions must be met to trigger.
+   * <p>A group with multiple properties with trigger conditions always combines with AND logic,
+   * meaning all conditions must be met to trigger the group.
    *
    * <p>If none of the properties in a group is marked any of the properties makes all others in the
    * group required (all group properties are co-dependent).
    *
-   * <p>In addition, a property that is dependent required (not a trigger) can use the {@code ^}
-   * suffix if it is mutual exclusive to all other required properties that are marked equally.
+   * <h3>Exclusive Dependent Required</h3>
+   * <p>In addition, a property that is dependent required (not a trigger) can be marked exclusive using {@code *}
+   * suffix, to indicate that it is mutual exclusive to all other dependent required properties that are marked equally.
    *
-   * @return the names of the groups the annotated property belongs to
+   * @return the names of the groups the annotated property belongs to or triggers
    */
   String[] dependentRequired() default {};
 

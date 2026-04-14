@@ -80,12 +80,12 @@ class JsonValidationMiscDeepGraphTest {
       return getString("name").string();
     }
 
-    @Validation(dependentRequired = "val^")
+    @Validation(dependentRequired = ".val*")
     default String text() {
       return getString("text").string();
     }
 
-    @Validation(dependentRequired = "val^")
+    @Validation(dependentRequired = ".val*")
     default Number value() {
       return getNumber("value").number();
     }
@@ -275,7 +275,7 @@ class JsonValidationMiscDeepGraphTest {
 
     Validation.Error error =
         assertValidationError(
-            json, JsonPage.class, Rule.DEPENDENT_REQUIRED, Set.of("text", "value"), Set.of());
+            json, JsonPage.class, Rule.DEPENDENT_REQUIRED, "", Set.of("text", "value"), Set.of());
     assertEquals(".entries.0.attributes.0", error.path().toString());
   }
 

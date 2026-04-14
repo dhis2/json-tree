@@ -1,15 +1,19 @@
 package org.hisp.dhis.jsontree.validation;
 
 import static java.lang.Double.isNaN;
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toSet;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.hisp.dhis.jsontree.InputExpression;
+import org.hisp.dhis.jsontree.JsonMixed;
+import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Validator;
 import org.hisp.dhis.jsontree.Validation.YesNo;
@@ -130,6 +134,14 @@ record PropertyValidations(
               overlayY(required, with.required),
               overlayC(dependentRequired, with.dependentRequired),
               overlayY(allowNull, with.allowNull));
+    }
+
+    Predicate<JsonMixed> present() {
+      return allowNull.isYes() ? JsonValue::exists : not(JsonValue::isUndefined);
+    }
+
+    Predicate<JsonMixed> absent() {
+      return allowNull.isYes() ? not(JsonValue::exists) : JsonValue::isUndefined;
     }
   }
 
