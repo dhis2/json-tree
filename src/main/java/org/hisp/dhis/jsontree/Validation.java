@@ -335,12 +335,14 @@ public @interface Validation {
    */
   String[] pattern() default {};
 
-  // formats are mostly like named patterns,
-  // instead of repeating the pattern the name is given
-  // implying a certain format which is up to the impl
-  // so this only is useful to together with a way of linking names to a @Validation defining the
-  // constraints
-  // TODO String format() default "";
+  /**
+   * ATM formats are purely informal to be used when expressing validations as JSON schema as it
+   * would be used e.g. in OpenAPI. They are meant to be used together with {@link #pattern()} to give
+   * patterns a human readable description or name.
+   *
+   * @return a name of the format
+   */
+  String format() default "";
 
   /*
   Validations for Numbers
@@ -419,15 +421,6 @@ public @interface Validation {
    */
   YesNo uniqueItems() default YesNo.AUTO;
 
-  // only useful in combination with: Class<?>[] items() default {};
-  // TODO boolean additionalItems() default YesNo.Auto;
-
-  // a ref to a class that has a @Validation we enforce for contains
-  // TODO Class<?> contains() default Void.class; //Hm.. might be same as annotating generic that
-  // represents the item
-  // TODO int minContains() default -1;
-  // TODO int maxContains() default -1;
-
   /*
   Validations for Objects
    */
@@ -453,9 +446,6 @@ public @interface Validation {
    * @return object must have at most the given number of properties
    */
   int maxProperties() default -1;
-
-  // recursive restrictions on the properties would come from generics
-  // TODO boolean additionalProperties() default YesNo.Auto;
 
   /**
    * When set to AUTO any property using a Java primitive type is required.

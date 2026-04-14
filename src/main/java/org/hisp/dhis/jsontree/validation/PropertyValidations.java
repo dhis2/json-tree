@@ -20,7 +20,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * A declarative model or description of what validation rules to check for a single property within
  * an object.
  *
- * @param types the node types accepted/expected
+ * @param accepted the node types accepted/expected
  * @param customs a validator defined by class is used (custom or user defined validators), empty
  *     list is off
  * @param requiredness validations about the property being required or not (presence)
@@ -31,7 +31,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @param items validations that apply to array elements or object member values (map use)
  */
 record PropertyValidations(
-    @NotNull Set<NodeType> types,
+    @NotNull Set<NodeType> accepted,
     @NotNull Strict strictness,
     @NotNull List<Validator> customs,
     @CheckNull RequiredValidation requiredness,
@@ -64,7 +64,7 @@ record PropertyValidations(
   PropertyValidations overlay(@CheckNull PropertyValidations with) {
     if (with == null) return this;
     return new PropertyValidations(
-        overlayC(types, with.types),
+        overlayC(accepted, with.accepted),
         strictness.overlay(with.strictness),
         overlayEachClassAtMostOnce(customs, with.customs),
         requiredness == null ? with.requiredness : requiredness.overlay(with.requiredness),
@@ -79,19 +79,19 @@ record PropertyValidations(
   PropertyValidations withItems(@CheckNull PropertyValidations items) {
     if (items == null && this.items == null) return this;
     return new PropertyValidations(
-        types, strictness, customs, requiredness, strings, numbers, arrays, objects, items);
+        accepted, strictness, customs, requiredness, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
   PropertyValidations withCustoms(@NotNull List<Validator> validators) {
     List<Validator> merged = overlayEachClassAtMostOnce(customs, validators);
     return new PropertyValidations(
-        types, strictness, merged, requiredness, strings, numbers, arrays, objects, items);
+        accepted, strictness, merged, requiredness, strings, numbers, arrays, objects, items);
   }
 
   @NotNull
   public PropertyValidations varargs() {
-    Set<NodeType> newTypes = new HashSet<>(types());
+    Set<NodeType> newTypes = new HashSet<>(accepted());
     newTypes.add(NodeType.ARRAY);
     ArrayValidation arrays = this.arrays;
     if (requiredness != null && requiredness.required.isYes()) {
@@ -108,7 +108,7 @@ record PropertyValidations(
         arrays,
         objects,
         new PropertyValidations(
-            types(), strictness, customs, requiredness, strings, numbers, null, objects, items));
+            accepted(), strictness, customs, requiredness, strings, numbers, null, objects, items));
   }
 
   /**

@@ -3,6 +3,7 @@ package org.hisp.dhis.jsontree;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static java.lang.Character.toLowerCase;
 import static java.lang.Integer.MAX_VALUE;
 
 /**
@@ -358,6 +359,17 @@ public record InputExpression(List<Pattern> patterns) {
     };
   }
 
+  private static int skipUnit(Text pattern, int offset) {
+    return switch (pattern.charAt(offset)) {
+      // +2 (+1 for opening, +1 for first character inside)
+      case '|' -> pattern.indexOf('|', offset + 2) + 1;
+      case '[' -> pattern.indexOf(']', offset + 2) + 1;
+      case '(' -> pattern.indexOf(')', offset + 2) + 1;
+      case '{' -> skipUnit(pattern, pattern.indexOf('}', offset + 2) + 1);
+      default -> offset + 1;
+    };
+  }
+
   /*
   Pattern (find length bounds)
    */
@@ -412,7 +424,7 @@ public record InputExpression(List<Pattern> patterns) {
           break;
           case '~': {
             if (max) return -1; // open end
-            if (pattern.charAt(i) == '~') i = skipUnit(pattern, i+1);
+            if (i < end && pattern.charAt(i) == '~') i = skipUnit(pattern, i+1);
             int end2 = skipUnit(pattern, i);
             int len2 = length(pattern, i, end2, false);
             if (len2 < 0) return -1;
@@ -421,7 +433,7 @@ public record InputExpression(List<Pattern> patterns) {
           }
           break;
           case '1','2','3','4','5','6','7','8','9': {
-            boolean zeroOrMore = pattern.charAt(i) == '?';
+            boolean zeroOrMore = i < end && pattern.charAt(i) == '?';
             if (zeroOrMore) i++; // skip ?
             int end2 = skipUnit(pattern, i);
             if (max || !zeroOrMore) {
@@ -443,23 +455,188 @@ public record InputExpression(List<Pattern> patterns) {
       return len;
     }
 
-    private static int skipUnit(Text pattern, int offset) {
-      return switch (pattern.charAt(offset)) {
-        // +2 (+1 for opening, +1 for first character inside)
-        case '|' -> pattern.indexOf('|', offset + 2) + 1;
-        case '[' -> pattern.indexOf(']', offset + 2) + 1;
-        case '(' -> pattern.indexOf(')', offset + 2) + 1;
-        case '{' -> skipUnit(pattern, pattern.indexOf('}', offset + 2) + 1);
-        default -> offset + 1;
-      };
-    }
   }
 
   /*
   To RegEx equivalent
    */
 
-  public String toRegExEquivalent() {
-    return ""; //TODO
+  /**
+   * @return An approximation of this expression as Regular Expression. The RegEx may be more
+   *     permissive.
+   */
+  public String toRegEx() {
+    TextBuilder regex = new TextBuilder();
+    for (Pattern pattern : patterns) {
+      if (!regex.isEmpty()) regex.append('|');
+      // to be safe the | applies correctly wrap each in non-capture group
+      regex.append("(?:");
+      toRegEx(pattern.pattern, 0, pattern.pattern.length(), regex);
+      regex.append(')');
+    }
+    return regex.toString();
+  }
+
+  private void toRegEx(Text pattern, int offset, int end, TextBuilder regex) {
+    int i = offset;
+    while (i < end) {
+      char opcode = pattern.charAt(i++);
+      switch (opcode) {
+        case '#' -> regex.append("[0-9]");
+        case '@' -> regex.append("[-_0-9A-Za-z]");
+        case '[' -> i = toRegExSet(pattern, i, skipUnit(pattern, i-1), regex);
+        case '|' -> i = toRegExSequence(pattern, i, skipUnit(pattern, i-1), regex);
+        case '?', '*', '+', '1','2','3','4','5','6','7','8','9' -> i = toRegExRepeat(pattern, i-1, regex);
+        case '~' -> i = toRegExScan(pattern, i, regex);
+        // ignore bounds as there is no regex equivalent
+        case '{' -> i = pattern.indexOf('}', i) + 1;
+        case '(' -> regex.append('(');
+        case ')' -> regex.append(')');
+        default -> {
+          // everything else is taken literally
+          if (isAlphanumeric(opcode)) {
+            regex.append(opcode);
+          } else {
+            regex.append('[');
+            if (isRegExSetEscaped(opcode)) regex.append('\\');
+            regex.append(opcode).append(']');
+          }
+        }
+      }
+    }
+  }
+
+  private int toRegExScan(Text pattern, int offset, TextBuilder regex) {
+    if (pattern.charAt(offset) == '~') {
+      //~~AB => A*?B
+      regex.append("(?:");
+      int end1 = skipUnit(pattern, offset+1);
+      toRegEx(pattern, offset+1, end1, regex);
+      regex.append(")*?(?:");
+      int end2 = skipUnit(pattern, end1);
+      toRegEx(pattern, end1, end2, regex);
+      regex.append(')');
+      return end2;
+    }
+    // ~A => .*?A
+    int end = skipUnit(pattern, offset);
+    regex.append(".*?(:?");
+    toRegEx(pattern, offset, end, regex);
+    regex.append(')');
+    return end;
+  }
+
+  private int toRegExRepeat(Text pattern, int offset, TextBuilder regex) {
+    int i = offset;
+    char opcode = pattern.charAt(i++);
+    int repMin = switch (opcode) {
+      case '?', '*' -> 0;
+      case '+' -> 1;
+      default -> opcode - '0';
+    };
+    int repMax= switch (opcode) {
+      case '?' -> 1;
+      case '*', '+' -> MAX_VALUE;
+      default -> opcode - '0';
+    };
+    if (pattern.charAt(i) == '?') {
+      repMin = 0;
+      i++;
+    }
+    int end = skipUnit(pattern, i);
+    regex.append("(?:");
+    toRegEx(pattern, i, end, regex);
+    regex.append(')');
+    if (repMin == 0 && repMax == 1) {
+      regex.append('?');
+    } else if (repMin == 0 && repMax == MAX_VALUE) {
+      regex.append('*');
+    } else if (repMin == 1 && repMax == MAX_VALUE) {
+      regex.append('+');
+    } else {
+      if (repMin <= repMax) regex.append('{').append(repMin).append(',');
+      regex.append(repMax).append('}');
+    }
+    return end;
+  }
+
+  private int toRegExSet(Text pattern, int offset, int end, TextBuilder regex) {
+    regex.append('[');
+    int i = offset;
+    while (i < end) {
+      char opcode = pattern.charAt(i++);
+      switch (opcode) {
+        case 'b' -> regex.append("01");
+        case 'd' -> regex.append("0-9");
+        case 'i' -> regex.append("\\-_0-9A-Za-z");
+        case 'u' -> regex.append("A-Z");
+        case 'l' -> regex.append("a-z");
+        case 'c' -> regex.append("A-Za-z");
+        case 'a' -> regex.append("0-9A-Za-z");
+        case 'x' -> regex.append("0-9A-Fa-f");
+        case 's' -> regex.append("\\-+");
+        case ']' -> {
+          if (i-1 == offset) regex.append('\\');
+          regex.append(']');
+        }
+        default -> {
+          if (isUpperLetter(opcode)) {
+            regex.append(opcode).append(toLowerCase(opcode));
+          } else if (isDigit(opcode)) {
+            regex.append("0-").append(opcode);
+          } else if (isLowerLetter(opcode)) {
+            throw reserved(opcode);
+          } else {
+            // everything else is taken literally
+            if (isRegExSetEscaped(opcode)) regex.append('\\');
+            regex.append(opcode);
+          }
+        }
+      }
+    }
+    return end;
+  }
+
+  private int toRegExSequence(Text pattern, int offset, int end, TextBuilder regex) {
+    int i = offset;
+    while (i < end) {
+      char opcode = pattern.charAt(i++);
+      switch (opcode) {
+        case 'b' -> regex.append("[01]");
+        case 'd', '#', '0',  '1','2','3','4','5','6','7','8','9' -> regex.append("[0-9]");
+        case 'i' -> regex.append("[-_0-9A-Za-z]");
+        case 'u' -> regex.append("[A-Z]");
+        case 'l' -> regex.append("[a-z]");
+        case 'c' -> regex.append("[A-Za-z]");
+        case 'a' -> regex.append("[0-9A-Za-z]");
+        case 'x' -> regex.append("[0-9A-Fa-f]");
+        case 's' -> regex.append("[-+]");
+        case '?' -> regex.append(".");
+        case '|' -> {
+          if (i-1 == offset) regex.append("\\|");
+        }
+        default -> {
+          if (isUpperLetter(opcode)) {
+            regex.append('[').append(opcode).append(toLowerCase(opcode)).append(']');
+          } else if (isLowerLetter(opcode)) {
+            throw reserved(opcode);
+          } else {
+            if (isAlphanumeric(opcode)) {
+              regex.append(opcode);
+            } else {
+              // everything else is taken literally
+              regex.append('[');
+              if (isRegExSetEscaped(opcode)) regex.append('\\');
+              regex.append(opcode).append(']');
+            }
+          }
+        }
+      }
+    }
+    return end;
+  }
+
+  private static boolean isRegExSetEscaped(char c) {
+    return c == ']' || c == '^' || c == '-' || c == '\\' || c == '/';
   }
 }

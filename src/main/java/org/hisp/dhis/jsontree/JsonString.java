@@ -40,9 +40,6 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  *
  * @author Jan Bernitt
  */
-// TODO adjust for value duality and allow number +  bool
-// maybe add a JsonStrictString type (as example)
-// maybe add strict to @Validation to opt-in
 @Validation(type = STRING)
 @Validation.Ignore
 public interface JsonString extends JsonPrimitive {

@@ -143,20 +143,20 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           if (validator != null) byType.put(type, validator);
         };
 
-    Set<NodeType> types = validations.types();
-    if (types.isEmpty()) types = EnumSet.allOf(NodeType.class);
-    boolean acceptStrings = types.contains(STRING);
-    boolean acceptNumbers = types.contains(NUMBER) || types.contains(INTEGER);
+    Set<NodeType> accepted = validations.accepted();
+    if (accepted.isEmpty()) accepted = EnumSet.allOf(NodeType.class);
+    boolean acceptStrings = accepted.contains(STRING);
+    boolean acceptNumbers = accepted.contains(NUMBER) || accepted.contains(INTEGER);
 
     Validator strings = ofString(validations.strings());
     Validator numbers = ofNumber(validations.numbers());
     Validator customs = All.of(validations.customs().stream());
     if (acceptStrings) add.accept(JsonNodeType.STRING, strings);
     if (acceptNumbers) add.accept(JsonNodeType.NUMBER, numbers);
-    if (types.contains(ARRAY)) add.accept(JsonNodeType.ARRAY, ofArray(validations.arrays()));
-    if (types.contains(OBJECT)) add.accept(JsonNodeType.OBJECT, ofObject(validations.objects()));
+    if (accepted.contains(ARRAY)) add.accept(JsonNodeType.ARRAY, ofArray(validations.arrays()));
+    if (accepted.contains(OBJECT)) add.accept(JsonNodeType.OBJECT, ofObject(validations.objects()));
 
-    // AUTO type conversions
+    // strictness AUTO acceptance
     PropertyValidations.Strict strictness = validations.strictness();
     boolean strictStrings = strings != null || customs != null  || strictness.strings().isYes();
     boolean strictBooleans = strictness.booleans().isYes();
@@ -167,10 +167,10 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     }
 
     Validator type = null;
-    if (!validations.types().isEmpty()) {
+    if (!validations.accepted().isEmpty()) {
       type =
           new Type(
-              EnumSet.copyOf(validations.types()), strictBooleans, strictStrings, strictNumbers);
+              EnumSet.copyOf(validations.accepted()), strictBooleans, strictStrings, strictNumbers);
     }
     Validator typeSpecific = byType.isEmpty() ? null : new TypeDependent(byType);
     Validator items = validations.items() == null ? null : Items.of(of(property, validations.items()));
@@ -192,7 +192,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
    * possible and if required is AUTO
    */
   private static boolean isRequiredImplicitly(PropertyValidations validations) {
-    return validations.types().stream().allMatch(type -> isRequiredImplicitly(validations, type));
+    return validations.accepted().stream().allMatch(type -> isRequiredImplicitly(validations, type));
   }
 
   private static boolean isRequiredImplicitly(PropertyValidations validations, NodeType type) {
@@ -213,7 +213,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
         strings.maxLength() <= 1 ? null : new MaxLength(strings.maxLength()),
         strings.pattern() == null
             ? null
-            : new Pattern(strings.pattern(), strings.pattern().toRegExEquivalent()));
+            : new Pattern(strings.pattern(), strings.pattern().toRegEx()));
   }
 
   private static Validator ofStringEnum(@NotNull PropertyValidations.StringValidation strings) {
