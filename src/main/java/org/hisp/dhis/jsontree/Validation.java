@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree;
 
+import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -11,6 +12,10 @@ import java.util.regex.Pattern;
 
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
+
+import static java.lang.Double.NaN;
+import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
+import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
 
 /**
  * Structural Validations as defined by the JSON schema specification <a
@@ -260,6 +265,13 @@ public @interface Validation {
      * @return When YES, do not accept JSON string as number
      */
     YesNo numbers() default YesNo.AUTO;
+
+    record Instance(boolean value, YesNo booleans, YesNo strings, YesNo numbers) implements Strict {
+      @Override
+      public Class<Strict> annotationType() {
+        return Strict.class;
+      }
+    }
   }
 
   /**
@@ -495,6 +507,15 @@ public @interface Validation {
   YesNo acceptNull() default YesNo.AUTO;
 
   /**
+   * When a {@link Validation} annotation declares a {@link Meta} {@link Class} all other attributes are ignored.
+   *
+   * @return the factory class that can extract a {@link Validation.Instance} from another
+   *     annotation. This is used to create custom annotation which do have attributes that transfer
+   *     to attributes of {@link Validation}.
+   */
+  Class<? extends Meta> meta() default Meta.class;
+
+  /**
    * A {@link Validator} that uses RegEx patterns.
    * Use via @{@link org.hisp.dhis.jsontree.Validator}.
    */
@@ -528,6 +549,90 @@ public @interface Validation {
       for (JsonMixed c : constants) if (c.equivalentTo(value)) return;
       addError.accept(
           Error.of(Rule.ENUM, value, "must be one of %s but was: %s", constants, value));
+    }
+  }
+
+  /*
+  Meta Annotations from other annotatons with values
+   */
+
+  interface Meta<T extends Annotation> {
+
+    Validation extract(T meta);
+  }
+
+  record Instance(
+      NodeType[] type,
+      Strict strictness,
+      YesNo varargs,
+      String[] oneOfValues,
+      Class<? extends Enum> enumeration,
+      YesNo caseInsensitive,
+      int minLength,
+      int maxLength,
+      String[] pattern,
+      String format,
+      double minimum,
+      double maximum,
+      double exclusiveMinimum,
+      double exclusiveMaximum,
+      double multipleOf,
+      int minItems,
+      int maxItems,
+      YesNo uniqueItems,
+      int minProperties,
+      int maxProperties,
+      YesNo required,
+      String[] dependentRequired,
+      YesNo acceptNull)
+      implements Validation {
+
+    public Instance(
+        int minLength,
+        int maxLength,
+        double minimum,
+        double maximum,
+        double exclusiveMinimum,
+        double exclusiveMaximum,
+        int minItems,
+        int maxItems,
+        int minProperties,
+        int maxProperties,
+        NodeType... types) {
+      this(
+          types,
+          new Validation.Strict.Instance(false, AUTO, AUTO, AUTO),
+          NO,
+          new String[0],
+          Enum.class,
+          AUTO,
+          minLength,
+          maxLength,
+          new String[0],
+          "",
+          minimum,
+          maximum,
+          exclusiveMinimum,
+          exclusiveMaximum,
+          NaN,
+          minItems,
+          maxItems,
+          AUTO,
+          minProperties,
+          maxProperties,
+          AUTO,
+          new String[0],
+          AUTO);
+    }
+
+    @Override
+    public Class<Validation> annotationType() {
+      return Validation.class;
+    }
+
+    @Override
+    public Class<? extends Meta> meta() {
+      return Meta.class;
     }
   }
 }

@@ -140,7 +140,7 @@ record ObjectValidation(
     AnnotatedType[] typeArguments = pt.getAnnotatedActualTypeArguments();
     if (typeArguments.length == 1) return base.withItems(fromValueTypeUse(typeArguments[0]));
     if (Map.class.isAssignableFrom(rawType)) {
-      // TODO make use of "propertyNames" (schema field) for key restrictions
+      // TODO(future) make use of "propertyNames" (JSON schema field) for key restrictions
       return base.withItems(fromValueTypeUse(typeArguments[1]));
     }
     return base;
@@ -207,9 +207,15 @@ record ObjectValidation(
   }
 
   @CheckNull
+  @SuppressWarnings({"rawtypes", "unchecked"})
   private static PropertyValidations fromMetaAnnotation(Annotation a) {
     Class<? extends Annotation> type = a.annotationType();
     if (!type.isAnnotationPresent(Validation.class)) return null;
+    Validation src = type.getAnnotation(Validation.class);
+    if (src.meta() != Validation.Meta.class) {
+      Validation.Meta meta = newFactory(src.meta());
+      return meta == null ? null : toPropertyValidation(meta.extract(a));
+    }
     return META_TYPE_BY_VALIDATIONS.computeIfAbsent(
         type,
         t ->
@@ -366,19 +372,6 @@ record ObjectValidation(
     return newValidator(type, new Class<?>[] {Validation[].class}, new Object[] {params});
   }
 
-  private static Validation.Validator newValidator(Class<?> type, Class<?>[] types, Object[] args) {
-    try {
-      return (Validation.Validator)
-          MethodHandles.lookup()
-              .findConstructor(type, MethodType.methodType(void.class, types))
-              .asFixedArity()
-              .invokeWithArguments(args);
-    } catch (Throwable ex) {
-      log.log(Level.ERROR, "Validator ignored, failed to construct instance", ex);
-      return null;
-    }
-  }
-
   @NotNull
   private static Set<NodeType> anyOfTypes(@NotNull Validation src) {
     return anyOfTypes(src.type());
@@ -416,5 +409,30 @@ record ObjectValidation(
     if (Object[].class.isAssignableFrom(type)) return ARRAY;
     if (Map.class.isAssignableFrom(type)) return OBJECT;
     return null;
+  }
+
+  private static Validation.Validator newValidator(Class<?> type, Class<?>[] types, Object[] args) {
+    try {
+      return (Validation.Validator)
+          MethodHandles.lookup()
+              .findConstructor(type, MethodType.methodType(void.class, types))
+              .asFixedArity()
+              .invokeWithArguments(args);
+    } catch (Throwable ex) {
+      log.log(Level.ERROR, "Validator ignored, failed to construct instance", ex);
+      return null;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T extends Validation.Meta> T newFactory(Class<T> type) {
+    try {
+      return (T) MethodHandles.lookup()
+          .findConstructor(type, MethodType.methodType(void.class, new Class[]{}))
+          .invoke();
+    } catch (Throwable ex) {
+      log.log(Level.ERROR, "Factory ignored, failed to construct instance", ex);
+      return null;
+    }
   }
 }

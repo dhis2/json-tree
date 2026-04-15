@@ -37,7 +37,6 @@ import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonNodeType;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.JsonPath;
-import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Text;
 import org.hisp.dhis.jsontree.Validation.Error;
 import org.hisp.dhis.jsontree.Validation.NodeType;
@@ -166,6 +165,10 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
       // accept number given as string => number constraints apply to string
       add.accept(JsonNodeType.STRING, numbers);
     }
+    if (!strictNumbers && acceptNumbers && numbers == null && acceptStrings && strings != null) {
+      // string constraints apply to numbers
+      add.accept(JsonNodeType.NUMBER, strings);
+    }
 
     Validator type = null;
     if (!validations.accepted().isEmpty()) {
@@ -214,7 +217,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
         strings.maxLength() <= 1 ? null : new MaxLength(strings.maxLength()),
         strings.pattern() == null
             ? null
-            : new Pattern(strings.pattern(), strings.pattern().toRegEx()));
+            : new Pattern(strings.pattern()));
   }
 
   private static Validator ofStringEnum(@NotNull PropertyValidations.StringValidation strings) {
@@ -543,6 +546,9 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   }
 
   private record Pattern(InputExpression expr, String regExEquivalent) implements Validator {
+    Pattern(InputExpression expr) {
+      this(expr, expr.toRegEx());
+    }
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
@@ -683,36 +689,36 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   object values
    */
 
-  private record MinProperties(int limit) implements Validator {
+  private record MinProperties(int count) implements Validator {
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
       if (!value.isObject()) return;
       int actual = value.size();
-      if (actual < limit)
+      if (actual < count)
         addError.accept(
             Error.of(
                 Rule.MIN_PROPERTIES,
                 value,
                 "must have >= %d properties but has: %d",
-                limit,
+                count,
                 actual));
     }
   }
 
-  private record MaxProperties(int limit) implements Validator {
+  private record MaxProperties(int count) implements Validator {
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
       if (!value.isObject()) return;
       int actual = value.size();
-      if (actual > limit)
+      if (actual > count)
         addError.accept(
             Error.of(
                 Rule.MAX_PROPERTIES,
                 value,
                 "must have <= %d properties but has: %d",
-                limit,
+                count,
                 actual));
     }
   }

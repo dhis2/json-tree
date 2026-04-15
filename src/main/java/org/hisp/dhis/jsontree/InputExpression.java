@@ -33,21 +33,43 @@ public record InputExpression(List<Pattern> patterns) {
 
   /**
    * @param input the sequence to check
-   * @return the format that matches the input, or null if none matches
+   * @return the {@link Pattern} that matches the input exactly, or null if none matches
    */
   public Pattern match(CharSequence input) {
     for (Pattern pattern : patterns) if (pattern.matches(input)) return pattern;
     return null;
   }
 
+  /**
+   * @param pattern pattern to test
+   * @param input character sequence that is tested for the pattern
+   * @return true, if the pattern matches the entire input exactly
+   */
   public static boolean matches(String pattern, CharSequence input) {
     return matches(pattern.toCharArray(), input);
   }
 
+  /**
+   * @param pattern pattern to test
+   * @param input character sequence that is tested for the pattern
+   * @return true, if the pattern matches the entire input exactly
+   */
   public static boolean matches(char[] pattern, CharSequence input) {
     return match(pattern, 0, pattern.length, input, 0) == input.length();
   }
 
+  /**
+   * Finds the index in the input (starting at pos) where the given slice of the pattern between
+   * offset and end has matched.
+   *
+   * @param pattern pattern to match
+   * @param offset in pattern to match
+   * @param end end index in pattern where the match is considered complete
+   * @param input input sequence to match against
+   * @param pos offset in input to start matching
+   * @return the next index in input after the pattern is matched or -1 if the pattern does not
+   *     match starting at pos
+   */
   public static int match(char[] pattern, int offset, int end, CharSequence input, int pos) {
     int i = offset;
     int len = input.length();
@@ -467,12 +489,13 @@ public record InputExpression(List<Pattern> patterns) {
    */
   public String toRegEx() {
     TextBuilder regex = new TextBuilder();
+    boolean single = patterns.size() == 1;
     for (Pattern pattern : patterns) {
       if (!regex.isEmpty()) regex.append('|');
       // to be safe the | applies correctly wrap each in non-capture group
-      regex.append("(?:");
+      if (!single) regex.append("(?:");
       toRegEx(pattern.pattern, 0, pattern.pattern.length(), regex);
-      regex.append(')');
+      if (!single) regex.append(')');
     }
     return regex.toString();
   }
@@ -554,7 +577,8 @@ public record InputExpression(List<Pattern> patterns) {
     } else if (repMin == 1 && repMax == MAX_VALUE) {
       regex.append('+');
     } else {
-      if (repMin <= repMax) regex.append('{').append(repMin).append(',');
+      regex.append('{');
+      if (repMin < repMax) regex.append(repMin).append(',');
       regex.append(repMax).append('}');
     }
     return end;

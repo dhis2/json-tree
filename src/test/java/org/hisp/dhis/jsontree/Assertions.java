@@ -27,8 +27,8 @@ public class Assertions {
         1,
         errors.size(),
         () ->
-            "unexpected number of errors: "
-                + String.join("", errors.stream().map(Validation.Error::toString).toList()));
+            "unexpected number of errors: \n\t"
+                + String.join("\n\t", errors.stream().map(Validation.Error::toString).toList()));
     Validation.Error error = errors.get(0);
     assertEquals(expected, error.rule(), () -> "unexpected error type: " + error);
     List<Object> actualArgs = textToString(error.args());

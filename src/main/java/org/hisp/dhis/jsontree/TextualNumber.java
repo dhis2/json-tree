@@ -127,6 +127,7 @@ public final class TextualNumber extends Number implements Textual {
     int i0 = i;
     while (i < end && isDigit(buffer[i])) i++;
     boolean mDigits = i > i0;
+    if (i == end) return mDigits;
     if (buffer[i] == '.') {
       i++; // skip .
       i0 = i;

@@ -2,7 +2,9 @@ package org.hisp.dhis.jsontree;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -218,6 +220,48 @@ class TextTest {
     assertSame(t, t.subSequence(0, 5), "subSequence(0,length()) should return this");
   }
 
+  @DisplayName("slice(int, int)")
+  @Test
+  void testSlice() {
+    assertEquals(Text.of("hello"), Text.of("hello").slice(0, 5));
+    assertEquals(Text.of("ello"), Text.of("hello").slice(1, 5));
+    assertEquals(Text.of("ell"), Text.of("hello").slice(1, -1));
+    assertEquals(Text.of("l"), Text.of("hello").slice(2, -2));
+    assertEquals(Text.of(""), Text.of("hello").slice(2, -3));
+    assertEquals(Text.of(""), Text.of("hello").slice(3, -2));
+    assertEquals(Text.of(""), Text.of("hello").slice(3, -3));
+  }
+
+  @DisplayName("trim()")
+  @Test
+  void testTrim() {
+    assertEquals(Text.of("hello"), Text.of("hello").trim());
+    assertEquals(Text.of("hello"), Text.of(" hello").trim());
+    assertEquals(Text.of("hello"), Text.of("hello ").trim());
+    assertEquals(Text.of("hello"), Text.of(" hello ").trim());
+    assertEquals(Text.of("hello"), Text.of("  hello  ").trim());
+    assertEquals(Text.of(""), Text.of(" ").trim());
+  }
+
+  @DisplayName("slice(Text, Consumer)")
+  @Test
+  void testSlice_Pattern() {
+    List<Text> parts = new ArrayList<>();
+
+    Text foo = Text.of("foo");
+    foo.slice(Text.of("~."), parts::add);
+    assertEquals(List.of(foo), parts);
+    assertSame(foo, parts.get(0));
+
+    parts.clear();
+    Text.of("foo.bar").slice(Text.of("~."), parts::add);
+    assertEquals(List.of(Text.of("foo."), Text.of("bar")), parts);
+
+    parts.clear();
+    Text.of("foo.bar.baz").slice(Text.of("~."), parts::add);
+    assertEquals(List.of(Text.of("foo."), Text.of("bar."), Text.of("baz")), parts);
+  }
+
   @DisplayName("toCharArray()")
   @Test
   void testToCharArray() {
@@ -270,6 +314,60 @@ class TextTest {
     assertTrue(Text.of("-1.0").isNumericInteger());
     assertTrue(Text.of("1.0").isNumericInteger());
     assertTrue(Text.of("12.00").isNumericInteger());
+  }
+
+  @DisplayName("isTextualDecimal()")
+  @Test
+  void testIsTextualDecimal() {
+    assertTrue(Text.of("0").isTextualDecimal());
+    assertTrue(Text.of(".0").isTextualDecimal());
+    assertTrue(Text.of("0.").isTextualDecimal());
+    assertTrue(Text.of("-0").isTextualDecimal());
+    assertTrue(Text.of("-.0").isTextualDecimal());
+    assertTrue(Text.of("-0.").isTextualDecimal());
+    assertTrue(Text.of("+0").isTextualDecimal());
+    assertTrue(Text.of("+.0").isTextualDecimal());
+    assertTrue(Text.of("+0.").isTextualDecimal());
+    assertTrue(Text.of("123").isTextualDecimal());
+    assertTrue(Text.of("123.0").isTextualDecimal());
+    assertTrue(Text.of("-123.0").isTextualDecimal());
+    assertTrue(Text.of("123e-2").isTextualDecimal());
+    assertTrue(Text.of("123.0e234").isTextualDecimal());
+    assertTrue(Text.of("-123.0001E-23").isTextualDecimal());
+
+    assertFalse(Text.of("").isTextualDecimal());
+    assertFalse(Text.of("0a").isTextualDecimal());
+    assertFalse(Text.of("-0a").isTextualDecimal());
+    assertFalse(Text.of("--0").isTextualDecimal());
+    assertFalse(Text.of("+-0").isTextualDecimal());
+    assertFalse(Text.of("++0").isTextualDecimal());
+    assertFalse(Text.of("-+0").isTextualDecimal());
+    assertFalse(Text.of("+0a").isTextualDecimal());
+    assertFalse(Text.of("+").isTextualDecimal());
+    assertFalse(Text.of("-").isTextualDecimal());
+    assertFalse(Text.of(".").isTextualDecimal());
+    assertFalse(Text.of(".0e").isTextualDecimal());
+    assertFalse(Text.of(".0E").isTextualDecimal());
+    assertFalse(Text.of("0.e").isTextualDecimal());
+    assertFalse(Text.of("0.E").isTextualDecimal());
+    assertFalse(Text.of("x0").isTextualDecimal());
+    assertFalse(Text.of("x").isTextualDecimal());
+    assertFalse(Text.of("5.x").isTextualDecimal());
+    assertFalse(Text.of("5.0ex").isTextualDecimal());
+  }
+
+  @DisplayName("isSpecialDecimal()")
+  @Test
+  void testIsSpecialDecimal() {
+    assertTrue(Text.of("NaN").isSpecialDecimal());
+    assertTrue(Text.of("Infinity").isSpecialDecimal());
+    assertTrue(Text.of("-Infinity").isSpecialDecimal());
+    assertFalse(Text.of("").isSpecialDecimal());
+    assertFalse(Text.of("Nan").isSpecialDecimal());
+    assertFalse(Text.of("nan").isSpecialDecimal());
+    assertFalse(Text.of("NaNa").isSpecialDecimal());
+    assertFalse(Text.of("infinity").isSpecialDecimal());
+    assertFalse(Text.of("-infinity").isSpecialDecimal());
   }
 
   @DisplayName("parseInt()")

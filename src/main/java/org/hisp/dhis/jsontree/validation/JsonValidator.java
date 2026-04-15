@@ -81,10 +81,21 @@ public final class JsonValidator {
     }
   }
 
-  // TODO a publicly accessible way to get the JSON Schema validation description (JSON) for a
-  // schema class
+  // TODO(future) a publicly accessible way to get the JSON Schema validation description (JSON)
+  //  for a schema class
   // and also for classes used as values like UID to get what the validation is on these in
-  // isolation for OpenAPI
+  // isolation for e.g. OpenAPI (basically a Validator => JsonSchema function)
+  /*
+  For type dependent this should become something like this
+
+  {
+    "oneOf": [
+      { "type": "string", "minLength": 1 },
+      { "type": "array", "minItems": 1 }
+    ]
+  }
+
+   */
 
   // TODO a mode or setting that allows to skip validation on parts that are about stream processing
   // like Stream<X> or Iterator<X> types where the validation would rack the benefits
