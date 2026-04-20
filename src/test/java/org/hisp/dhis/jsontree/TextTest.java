@@ -16,6 +16,14 @@ import org.junit.jupiter.api.Test;
  */
 class TextTest {
 
+  @Test
+  void testCopyOf() {
+    Text original = Text.of("hello");
+    Text copy = Text.copyOf(original);
+    assertEquals(original, copy);
+    assertNotSame(original, copy);
+  }
+
   @DisplayName("indexOf(char)")
   @Test
   void testIndexOf_char() {
@@ -400,6 +408,18 @@ class TextTest {
     assertThrows(NumberFormatException.class, () -> Text.of("").parseLong());
     assertThrows(NumberFormatException.class, () -> Text.of("12a").parseLong());
     assertThrows(NumberFormatException.class, () -> Text.of("12.3").parseLong());
+  }
+
+  @Test
+  void testParseBoolean() {
+    assertTrue(Text.of("true").parseBoolean());
+    assertTrue(Text.of("TRUE").parseBoolean());
+    assertFalse(Text.of("false").parseBoolean());
+    assertFalse(Text.of("FALSE").parseBoolean());
+    assertThrowsExactly(IllegalArgumentException.class, () -> Text.of("t").parseBoolean());
+    assertThrowsExactly(IllegalArgumentException.class, () -> Text.of("f").parseBoolean());
+    assertThrowsExactly(IllegalArgumentException.class, () -> Text.of("tear").parseBoolean());
+    assertThrowsExactly(IllegalArgumentException.class, () -> Text.of("fear").parseBoolean());
   }
 
   @DisplayName("compareTo(Text)")

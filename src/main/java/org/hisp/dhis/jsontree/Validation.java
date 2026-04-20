@@ -1,5 +1,9 @@
 package org.hisp.dhis.jsontree;
 
+import static java.lang.Double.NaN;
+import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
+import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
+
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -9,13 +13,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
-
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
-
-import static java.lang.Double.NaN;
-import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
-import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
 
 /**
  * Structural Validations as defined by the JSON schema specification <a
@@ -267,6 +266,7 @@ public @interface Validation {
     YesNo numbers() default YesNo.AUTO;
 
     record Instance(boolean value, YesNo booleans, YesNo strings, YesNo numbers) implements Strict {
+      public static final Strict AUTO = new Instance(false, YesNo.AUTO, YesNo.AUTO, YesNo.AUTO);
       @Override
       public Class<Strict> annotationType() {
         return Strict.class;
@@ -601,7 +601,7 @@ public @interface Validation {
         NodeType... types) {
       this(
           types,
-          new Validation.Strict.Instance(false, AUTO, AUTO, AUTO),
+          Strict.Instance.AUTO,
           NO,
           new String[0],
           Enum.class,
