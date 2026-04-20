@@ -72,15 +72,15 @@ class JsonValidationMinimumTest {
             {"age":-1}""",
         JsonMinimumExampleA.class,
         Rule.MINIMUM,
-        0,
-        -1);
+        0L,
+        -1L);
     assertValidationError(
         """
             {"height":19}""",
         JsonMinimumExampleB.class,
         Rule.MINIMUM,
-        20,
-        19);
+        20L,
+        19L);
   }
 
   @Test

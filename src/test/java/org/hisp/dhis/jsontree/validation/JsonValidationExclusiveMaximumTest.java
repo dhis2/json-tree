@@ -69,9 +69,9 @@ class JsonValidationExclusiveMaximumTest {
         """
             {"age":100}""",
         JsonMaximumExampleA.class,
-        Rule.EXCLUSIVE_MAXIMUM,
-        100d,
-        100d);
+        Rule.MAXIMUM,
+        99L,
+        100L);
     assertValidationError(
         """
             {"height":250.5}""",

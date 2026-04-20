@@ -147,9 +147,10 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     if (accepted.isEmpty()) accepted = EnumSet.allOf(NodeType.class);
     boolean acceptStrings = accepted.contains(STRING);
     boolean acceptNumbers = accepted.contains(NUMBER) || accepted.contains(INTEGER);
+    boolean acceptIntegersOnly = accepted.contains(INTEGER) && !accepted.contains(NUMBER);
 
     Validator strings = ofString(validations.strings());
-    Validator numbers = ofNumber(validations.numbers());
+    Validator numbers = ofNumber(validations.numbers(), acceptIntegersOnly);
     Validator customs = All.of(validations.customs().stream());
     if (acceptStrings) add.accept(JsonNodeType.STRING, strings);
     if (acceptNumbers) add.accept(JsonNodeType.NUMBER, numbers);
@@ -229,23 +230,27 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   }
 
   @CheckNull
-  private static Validator ofNumber(@CheckNull PropertyValidations.NumberValidation numbers) {
+  private static Validator ofNumber(
+      @CheckNull PropertyValidations.NumberValidation numbers, boolean acceptIntegersOnly) {
     if (numbers == null) return null;
     double min = numbers.minimum();
     double max = numbers.maximum();
     double minEx = numbers.exclusiveMinimum();
     double maxEx = numbers.exclusiveMaximum();
+    if (acceptIntegersOnly) {
+      return All.of(
+          isNaN(min) ? null : new MinimumLong((long) min),
+          isNaN(max) ? null : new MaximumLong((long) max),
+          isNaN(minEx) ? null : new MinimumLong((long) minEx + 1),
+          isNaN(maxEx) ? null : new MaximumLong((long) maxEx - 1),
+          isNaN(numbers.multipleOf()) ? null : new MultipleOf(numbers.multipleOf()));
+    }
     return All.of(
-        isNaN(min) ? null : isIntRange(min) ? new MinimumInt((int) min) : new Minimum(min),
-        isNaN(max) ? null : isIntRange(max) ? new MaximumInt((int) max) : new Maximum(max),
+        isNaN(min) ? null : new Minimum(min),
+        isNaN(max) ? null : new Maximum(max),
         isNaN(minEx) ? null : new ExclusiveMinimum(minEx),
         isNaN(maxEx) ? null : new ExclusiveMaximum(maxEx),
         isNaN(numbers.multipleOf()) ? null : new MultipleOf(numbers.multipleOf()));
-  }
-
-  private static boolean isIntRange(double limit) {
-    if (limit % 1d != 0d) return false;
-    return limit < 0 ? limit >= Integer.MIN_VALUE : limit <= Integer.MAX_VALUE;
   }
 
   @CheckNull
@@ -563,11 +568,11 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
   number values
    */
 
-  private record MinimumInt(int limit) implements Validator {
+  private record MinimumLong(long limit) implements Validator {
 
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
-      int actual = value.intValue();
+      long actual = value.longValue();
       if (actual < limit)
         addError.accept(Error.of(Rule.MINIMUM, value, "must be >= %d but was: %d", limit, actual));
     }
@@ -583,10 +588,10 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
     }
   }
 
-  private record MaximumInt(int limit) implements Validator {
+  private record MaximumLong(long limit) implements Validator {
     @Override
     public void validate(JsonMixed value, Consumer<Error> addError) {
-      int actual = value.intValue();
+      long actual = value.longValue();
       if (actual > limit)
         addError.accept(Error.of(Rule.MAXIMUM, value, "must be <= %d but was: %d", limit, actual));
     }

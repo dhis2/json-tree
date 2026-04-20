@@ -116,11 +116,11 @@ record ObjectValidation(
 
   @CheckNull
   private static PropertyValidations fromProperty(JsonObject.Property p) {
-    PropertyValidations onMethod = fromAnnotations(p.source());
-    PropertyValidations onReturnType = fromValueTypeUse(p.javaType());
-    if (onMethod == null) return onReturnType;
-    if (onReturnType == null) return onMethod;
-    return onMethod.overlay(onReturnType);
+    PropertyValidations onComponent = fromAnnotations(p.source());
+    PropertyValidations onType = fromValueTypeUse(p.javaType());
+    if (onComponent == null) return onType;
+    if (onType == null) return onComponent;
+    return onType.overlay(onComponent);
   }
 
   /**
@@ -233,7 +233,7 @@ record ObjectValidation(
   @NotNull
   private static PropertyValidations toPropertyValidation(Class<?> type) {
     RequiredValidation values =
-        !type.isPrimitive() ? null : new RequiredValidation(YES, Set.of(), YesNo.AUTO);
+        !type.isPrimitive() ? null : RequiredValidation.PRIMITIVES;
     StringValidation strings =
         !type.isEnum() ? null : new StringValidation(anyOfStrings(type), YesNo.AUTO, -1, -1, null);
     return new PropertyValidations(
@@ -425,7 +425,7 @@ record ObjectValidation(
   }
 
   @SuppressWarnings("unchecked")
-  private static <T extends Validation.Meta> T newFactory(Class<T> type) {
+  private static <T extends Validation.Meta<?>> T newFactory(Class<T> type) {
     try {
       return (T) MethodHandles.lookup()
           .findConstructor(type, MethodType.methodType(void.class, new Class[]{}))

@@ -127,6 +127,8 @@ record PropertyValidations(
   record RequiredValidation(
       @NotNull YesNo required, @NotNull Set<String> dependentRequired, @NotNull YesNo allowNull) {
 
+    static final RequiredValidation PRIMITIVES = new RequiredValidation(YesNo.YES, Set.of(), YesNo.AUTO);
+
     RequiredValidation overlay(@CheckNull PropertyValidations.RequiredValidation with) {
       return with == null
           ? this

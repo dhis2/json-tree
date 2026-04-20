@@ -140,8 +140,8 @@ class JsonValidationMiscDeepGraphTest {
             {"pager": {"size": 0, "page": 0}, "entries":[]}""",
             JsonPage.class,
             Rule.MINIMUM,
-            1,
-            0);
+            1L,
+            0L);
     assertEquals(".pager.size", error.path().toString());
   }
 
@@ -153,8 +153,8 @@ class JsonValidationMiscDeepGraphTest {
             {"pager": {"size": 20, "page": -1}, "entries":[]}""",
             JsonPage.class,
             Rule.MINIMUM,
-            0,
-            -1);
+            0L,
+            -1L);
     assertEquals(".pager.page", error.path().toString());
   }
 

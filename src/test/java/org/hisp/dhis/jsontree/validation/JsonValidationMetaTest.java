@@ -4,6 +4,8 @@ import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.Rule;
+import org.hisp.dhis.jsontree.Validation.YesNo;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.lang.annotation.Retention;
@@ -13,6 +15,10 @@ import java.util.Map;
 import static java.lang.Double.NaN;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Creates meta annotations that mimic common Java server validation
@@ -21,6 +27,9 @@ import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 class JsonValidationMetaTest {
 
   @Retention(RUNTIME)
+  @Validation(required = YesNo.NO)
+  @interface Optional {}
+
   @Validation(minLength = 1, minItems = 1, minProperties = 1)
   @interface NotEmpty {}
 
@@ -55,16 +64,29 @@ class JsonValidationMetaTest {
     }
   }
 
-  record ExampleBean(
-      @NotEmpty String notEmptyString,
-      @NotEmpty List<String> notEmptyArray,
-      @NotEmpty Map<String, String> notEmptyMap,
-      @Positive int positive,
-      @PositiveOrZero int positiveOrZero,
-      @Negative int negative,
-      @NegativeOrZero int negativeOrZero,
-      @Range(min=0, max=120) int range
-  ) {}
+  public record ExampleBean(
+      @Optional @NotEmpty String notEmptyString,
+      @Optional @NotEmpty List<String> notEmptyArray,
+      @Optional @NotEmpty Map<String, String> notEmptyMap,
+      @Optional @Positive int positive,
+      @Optional @PositiveOrZero int positiveOrZero,
+      @Optional @Negative int negative,
+      @Optional @NegativeOrZero int negativeOrZero,
+      @Optional @Range(min=0, max=120) int range
+  ) {
+    static final ExampleBean DEFAULT =
+        new ExampleBean(null, List.of(), Map.of(), 1, 0, -1, 0, 0);
+  }
+
+  @Test
+  void testDefaults() {
+    ExampleBean actual = JsonMixed.of("{}").to(ExampleBean.class);
+    assertEquals(1, actual.positive());
+    assertEquals(-1, actual.negative());
+    assertNull(actual.notEmptyString());
+    assertEquals(List.of(), actual.notEmptyArray());
+    assertEquals(Map.of(), actual.notEmptyMap());
+  }
 
   @Test
   void testRange() {
@@ -72,11 +94,33 @@ class JsonValidationMetaTest {
       {
         "range": 130
       }""");
-    assertValidationError(obj, ExampleBean.class, Rule.MAXIMUM, 120, 130);
+    assertValidationError(obj, ExampleBean.class, Rule.MAXIMUM, 120L, 130L);
+
     obj = JsonMixed.of("""
       {
         "range": -1
       }""");
-    assertValidationError(obj, ExampleBean.class, Rule.MINIMUM, 0, -1);
+    assertValidationError(obj, ExampleBean.class, Rule.MINIMUM, 0L, -1L);
+
+    JsonObject valid = JsonMixed.of("""
+      {
+        "range": 10
+      }""");
+    assertDoesNotThrow(() -> valid.validate(ExampleBean.class));
+  }
+
+  @Test
+  void testPositive() {
+    JsonObject obj = JsonMixed.of("""
+      {
+        "positive": -1
+      }""");
+    assertValidationError(obj, ExampleBean.class, Rule.MINIMUM, 1L, -1L);
+
+    JsonObject valid = JsonMixed.of("""
+      {
+        "positive": 10
+      }""");
+    assertDoesNotThrow(() -> valid.validate(ExampleBean.class));
   }
 }
