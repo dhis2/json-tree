@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
@@ -188,15 +189,101 @@ public interface Text extends CharSequence, Comparable<Text> {
     return true;
   }
 
+  /**
+   * @param input an input string
+   * @return if this text as pattern matches the entirety of the given input
+   */
+  default boolean matches(CharSequence input) {
+    return matches(input, 0, input.length());
+  }
+
+  /**
+   * Match an input sub-sequence against this text as pattern.
+   * @see InputExpression
+   *
+   * @param input an input string
+   * @param offset the first character to match
+   * @param len length from the first character to match
+   * @return if this text as pattern matches the subsequence of the given input
+   */
+  default boolean matches(CharSequence input, int offset, int len) {
+    return InputExpression.match(toCharArray(), 0, length(), input, offset) == offset + len;
+  }
+
   @Override
   default @NotNull Text subSequence(int start, int end) {
-    checkSubSequence(start, end, length());
-    if (start == 0 && end == length()) return this;
+    int length = length();
+    checkSubSequence(start, end, length);
+    if (start == 0 && end == length) return this;
     int len = end - start;
     if (start == 0 && end == len) return this;
     char[] buffer = new char[len];
     for (int i = 0; i < len; i++) buffer[i] = charAt(start + i);
     return of(buffer, 0, len);
+  }
+
+  /**
+   * Same as {@link #subSequence(int, int)} except that negative end is slicing away that number of
+   * characters from the end and that any slice exceeding the limit of what is available results in
+   * an empty text not an error. The operation still fails if start or end are out of bounds (less
+   * than zero or larger than length).
+   *
+   * @param start offset or first character to include in the slice
+   * @param end first character to exclude from the slice or when negative number of characters to
+   *     drop from the end
+   * @return the slice
+   */
+  default Text slice(int start, int end) {
+    return subSequence(start, Math.max(start, end < 0 ? length()+end : end));
+  }
+
+  /**
+   * @return this text without left and right inline whitespace (tabs and spaces removed)
+   */
+  default Text trim() {
+    if (isEmpty()) return this;
+    int len = length();
+    int left = 0;
+    while (left < len && isTrim(charAt(left))) left++;
+    if (left == len) return Text.of("");
+    int right = len-1;
+    while (right > left && isTrim(charAt(right))) right--;
+    if (left == 0 && right == len-1) return this;
+    return subSequence(left, right + 1);
+  }
+
+  static boolean isTrim(char ch) {
+    return ch == ' ' || ch == '\t';
+  }
+
+  /**
+   * Slices this text into segments based on a pattern.
+   * Note that in contrast to a split by regular expression this matches the pattern at the start of this text,
+   * slices of the section as the first segment and repeats the process on the remaining tail text.
+   * If the pattern does not match the beginning of the text the remaining tail is the last segment.
+   *
+   * @param pattern the prefix to extract into segments
+   * @param segments accepts the slices of segments in order left to right
+   */
+  default void slice(Text pattern, Consumer<Text> segments) {
+    if (isEmpty()) {
+      segments.accept(this);
+      return;
+    }
+    char[] p = pattern.toCharArray();
+    int pos = 0;
+    int len = length();
+    int end = InputExpression.match(p, 0, p.length, this, pos);
+    if (end < 0 || end >= len) {
+      segments.accept(this);
+    } else {
+      do {
+        segments.accept(subSequence(pos, end));
+        pos = end;
+        end = InputExpression.match(p, 0, p.length, this, pos);
+      } while (end >= 0 && end < len);
+      segments.accept(subSequence(pos, len));
+    }
   }
 
   /**
@@ -237,6 +324,13 @@ public interface Text extends CharSequence, Comparable<Text> {
    */
   default boolean isTextualDecimal() {
     return TextualNumber.isTextualDecimal(toCharArray());
+  }
+
+  /**
+   * @return true, if this text is exactly "NaN", "Infinity" or "-Infinity" (Java double special number literals)
+   */
+  default boolean isSpecialDecimal() {
+    return contentEquals("NaN") || contentEquals("Infinity") || contentEquals("-Infinity");
   }
 
   /**
@@ -309,7 +403,7 @@ public interface Text extends CharSequence, Comparable<Text> {
    *     necessarily observed as equal.
    */
   default boolean contentMemoryEquals(@NotNull Text other) {
-    return false;
+    return this == other;
   }
 
   static Text copyOf(@NotNull Text text) {
@@ -426,6 +520,11 @@ public interface Text extends CharSequence, Comparable<Text> {
       @Override
       public Number parseNumber() {
         return TextualNumber.of(buffer, offset, length);
+      }
+
+      @Override
+      public boolean matches(CharSequence input, int offset, int len) {
+        return InputExpression.match(buffer, offset, length, input, offset) == offset+len;
       }
 
       @Override

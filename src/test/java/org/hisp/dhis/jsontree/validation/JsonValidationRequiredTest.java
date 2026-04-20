@@ -102,7 +102,7 @@ class JsonValidationRequiredTest {
   void testIsA() {
     assertTrue(Json5.of("{'bar':'x'}").isA(JsonFoo.class));
     JsonMixed val = Json5.of("{'key':'x', 'value': 1}");
-    JsonEntry e = val.as(JsonEntry.class);
+    assertDoesNotThrow(() -> val.as(JsonEntry.class));
     assertTrue(val.isA(JsonEntry.class));
     JsonMixed both = Json5.of("{'key':'x', 'value': 1, 'bar':'y'}");
     assertTrue(both.isA(JsonFoo.class));
@@ -117,8 +117,8 @@ class JsonValidationRequiredTest {
 
   @Test
   void testIsA_WrongNodeType() {
-    assertFalse(Json5.of("{'bar':true}").isA(JsonFoo.class));
-    assertFalse(Json5.of("{'key':'x', 'value': '1'}").isA(JsonEntry.class));
+    assertFalse(Json5.of("{'bar':[]}").isA(JsonFoo.class));
+    assertFalse(Json5.of("{'key':'x', 'value': []}").isA(JsonEntry.class));
   }
 
   @Test
@@ -211,7 +211,6 @@ class JsonValidationRequiredTest {
     String json =
         """
             {"a": [], "b":{"bar":""}}""";
-    JsonMixed obj = JsonMixed.of(json);
     assertValidationError(json, JsonRoot.class, Rule.TYPE, Set.of(NodeType.OBJECT), NodeType.ARRAY);
   }
 

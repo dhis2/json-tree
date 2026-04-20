@@ -38,7 +38,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  */
 @Validation(type = BOOLEAN)
 @Validation.Ignore
-public interface JsonBoolean extends JsonPrimitive {
+public interface JsonBoolean extends JsonValue {
 
   @Override
   default JsonBoolean getValue() {

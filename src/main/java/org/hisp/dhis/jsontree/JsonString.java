@@ -40,12 +40,9 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  *
  * @author Jan Bernitt
  */
-// TODO adjust for value duality and allow number +  bool
-// maybe add a JsonStrictString type (as example)
-// maybe add strict to @Validation to opt-in
 @Validation(type = STRING)
 @Validation.Ignore
-public interface JsonString extends JsonPrimitive {
+public interface JsonString extends JsonValue {
 
   @Override
   default JsonString getValue() {
@@ -55,7 +52,7 @@ public interface JsonString extends JsonPrimitive {
   /**
    * @return the text of the string node, {@code null} when this property is undefined or defined as
    *     JSON {@code null}.
-   * @throws JsonTreeException in case this node exists but is not a string node (or null)
+   * @throws JsonTreeException in case this node exist but does not support {@link JsonNode#textValue()}
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true)
@@ -65,8 +62,20 @@ public interface JsonString extends JsonPrimitive {
   }
 
   /**
+   *
+   * @return length of the text of this node if it exists, or -1 if it does not exists
+   * @throws JsonTreeException in case this node exist but does not support {@link JsonNode#textValue()}
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true)
+  default int length() {
+    JsonNode node = nodeIfExists();
+    return node == null ? -1 : node.textValue().length();
+  }
+
+  /**
    * @return the first character of the text or null if it is empty or undefined
-   * @throws JsonTreeException in case this node exists but is not a string node (or null)
+   * @throws JsonTreeException in case this node exist but does not support {@link JsonNode#textValue()}
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true)
@@ -86,7 +95,7 @@ public interface JsonString extends JsonPrimitive {
   /**
    * @return string value of the property or {@code null} when this property is undefined or defined
    *     as JSON {@code null}.
-   * @throws JsonTreeException in case this node exists but is not a string node (or null)
+   * @throws JsonTreeException in case this node exist but does not support {@link JsonNode#textValue()}
    */
   @TerminalOp(canBeUndefined = true)
   default String string() {

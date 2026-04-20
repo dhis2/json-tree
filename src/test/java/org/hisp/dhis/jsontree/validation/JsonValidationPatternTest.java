@@ -2,84 +2,49 @@ package org.hisp.dhis.jsontree.validation;
 
 import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.util.Set;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests Validation of the @{@link Validation#pattern()} property.
- *
- * @author Jan Bernitt
+ * Tests for {@link Validation#pattern()} based validations.
  */
 class JsonValidationPatternTest {
 
-  public interface JsonPatternExampleA extends JsonObject {
-
-    @Validation(pattern = "[0-9]{1,4}[A-Z]?")
-    default String no() {
-      return getString("no").string();
-    }
-  }
-
-  @Test
-  void testMaxLength_OK() {
-    assertDoesNotThrow(
-        () ->
-            JsonMixed.of(
-                    """
-            {}""")
-                .validate(JsonPatternExampleA.class));
-    assertDoesNotThrow(
-        () ->
-            JsonMixed.of(
-                    """
-            {"no":null}""")
-                .validate(JsonPatternExampleA.class));
-    assertDoesNotThrow(
-        () ->
-            JsonMixed.of(
-                    """
-            {"no":"12"}""")
-                .validate(JsonPatternExampleA.class));
-    assertDoesNotThrow(
-        () ->
-            JsonMixed.of(
-                    """
-            {"no":"12B"}""")
-                .validate(JsonPatternExampleA.class));
-  }
+  /**
+   * An example that show how the number/string duality can be exploited to
+   * add a pattern validation to a number to restrict the integer and fraction digits.
+   */
+  public record PatternOnNumber(
+      @Validation(
+              pattern = "2#.3#",
+              type = {NodeType.STRING, NodeType.NUMBER})
+          double value) {}
 
   @Test
-  void testMaxLength_NoMatch() {
-    assertValidationError(
-        """
-            {"no":"B12"}""",
-        JsonPatternExampleA.class,
-        Rule.PATTERN,
-        "[0-9]{1,4}[A-Z]?",
-        "B12");
-    assertValidationError(
-        """
-            {"no":"12345"}""",
-        JsonPatternExampleA.class,
-        Rule.PATTERN,
-        "[0-9]{1,4}[A-Z]?",
-        "12345");
-  }
+  void testPattern() {
+    JsonObject obj = JsonMixed.of("""
+      {
+        "value": 34.123
+      }""");
 
-  @Test
-  void testMaxLength_WrongType() {
+    assertDoesNotThrow(() -> obj.validate(PatternOnNumber.class));
+    assertEquals(new PatternOnNumber(34.123d), obj.to(PatternOnNumber.class));
+
+    JsonObject obj2 = JsonMixed.of("""
+      {
+        "value": 34.12
+      }""");
+
     assertValidationError(
-        """
-            {"no":true}""",
-        JsonPatternExampleA.class,
-        Rule.TYPE,
-        Set.of(NodeType.STRING),
-        NodeType.BOOLEAN);
+        obj2,
+        PatternOnNumber.class,
+        Validation.Rule.PATTERN,
+        "(?:[0-9]){2}[.](?:[0-9]){3}",
+        "34.12");
   }
 }

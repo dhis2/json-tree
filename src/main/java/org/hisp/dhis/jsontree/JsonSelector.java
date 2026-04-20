@@ -1,7 +1,7 @@
 package org.hisp.dhis.jsontree;
 
 import static java.lang.Integer.parseInt;
-import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
+import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO_SKIP;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -246,10 +246,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   private void matchChildren(JsonNode node, Matches<JsonNode> matches) {
     switch (node.type()) {
       case ARRAY -> {
-        for (JsonNode e : node.elements(SKIP)) match(e, matches);
+        for (JsonNode e : node.elements(AUTO_SKIP)) match(e, matches);
       }
       case OBJECT -> {
-        for (JsonNode e : node.members(SKIP)) match(e, matches);
+        for (JsonNode e : node.members(AUTO_SKIP)) match(e, matches);
       }
     }
   }
@@ -331,9 +331,9 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
       JsonNodeType type = node.type();
       if (type == JsonNodeType.OBJECT) {
-        for (JsonNode e : node.members(SKIP)) next.match(e, matches);
+        for (JsonNode e : node.members(AUTO_SKIP)) next.match(e, matches);
       } else if (type == JsonNodeType.ARRAY) {
-        for (JsonNode e : node.elements(SKIP)) next.match(e, matches);
+        for (JsonNode e : node.elements(AUTO_SKIP)) next.match(e, matches);
       }
     }
 

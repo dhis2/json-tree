@@ -22,13 +22,13 @@ public class Assertions {
             JsonSchemaException.class,
             () -> actual.validate(schema),
             "expected an error of type " + expected);
-    List<Validation.Error> errors = ex.getInfo().errors();
+    List<Validation.Error> errors = ex.getResult().errors();
     assertEquals(
         1,
         errors.size(),
         () ->
-            "unexpected number of errors: "
-                + String.join("", errors.stream().map(Validation.Error::toString).toList()));
+            "unexpected number of errors: \n\t"
+                + String.join("\n\t", errors.stream().map(Validation.Error::toString).toList()));
     Validation.Error error = errors.get(0);
     assertEquals(expected, error.rule(), () -> "unexpected error type: " + error);
     List<Object> actualArgs = textToString(error.args());
@@ -41,6 +41,7 @@ public class Assertions {
   }
 
   private static Object textToString(Object arg) {
+    if (arg instanceof JsonValue v) return v.toJson();
     if (arg instanceof Text t) return t.toString();
     if (arg instanceof Set<?> s)
       return s.stream().map(Assertions::textToString).collect(Collectors.toSet());

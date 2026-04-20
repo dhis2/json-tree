@@ -21,8 +21,8 @@ class JsonValidationExclusiveMinimumTest {
   public interface JsonMinimumExampleA extends JsonObject {
 
     @Validation(exclusiveMinimum = 0)
-    default int age() {
-      return getNumber("age").intValue();
+    default double weight() {
+      return getNumber("weight").intValue();
     }
   }
 
@@ -40,13 +40,13 @@ class JsonValidationExclusiveMinimumTest {
         () ->
             JsonMixed.of(
                     """
-            {"age":1}""")
+            {"weight":1}""")
                 .validate(JsonMinimumExampleA.class));
     assertDoesNotThrow(
         () ->
             JsonMixed.of(
                     """
-            {"age":50}""")
+            {"weight":50}""")
                 .validate(JsonMinimumExampleA.class));
 
     assertDoesNotThrow(() -> JsonMixed.of("{}").validate(JsonMinimumExampleB.class));
@@ -60,14 +60,14 @@ class JsonValidationExclusiveMinimumTest {
 
   @Test
   void testExclusiveMinimum_Required() {
-    assertValidationError("{}", JsonMinimumExampleA.class, Rule.REQUIRED, "age");
+    assertValidationError("{}", JsonMinimumExampleA.class, Rule.REQUIRED, "weight");
   }
 
   @Test
   void testExclusiveMinimum_TooSmall() {
     assertValidationError(
         """
-            {"age":0}""",
+            {"weight":0}""",
         JsonMinimumExampleA.class,
         Rule.EXCLUSIVE_MINIMUM,
         0d,
@@ -76,19 +76,19 @@ class JsonValidationExclusiveMinimumTest {
         """
             {"height":20}""",
         JsonMinimumExampleB.class,
-        Rule.EXCLUSIVE_MINIMUM,
-        20d,
-        20d);
+        Rule.MINIMUM,
+        21L,
+        20L);
   }
 
   @Test
   void testExclusiveMinimum_WrongType() {
     assertValidationError(
         """
-            {"age":true}""",
+            {"weight":true}""",
         JsonMinimumExampleA.class,
         Rule.TYPE,
-        Set.of(NodeType.INTEGER),
+        Set.of(NodeType.NUMBER),
         NodeType.BOOLEAN);
     assertValidationError(
         """

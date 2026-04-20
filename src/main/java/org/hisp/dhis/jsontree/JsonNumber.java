@@ -39,7 +39,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  */
 @Validation(type = NUMBER)
 @Validation.Ignore
-public interface JsonNumber extends JsonPrimitive {
+public interface JsonNumber extends JsonValue {
 
   @Override
   default JsonNumber getValue() {

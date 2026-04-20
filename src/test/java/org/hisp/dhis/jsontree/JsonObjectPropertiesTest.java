@@ -10,6 +10,7 @@ import java.lang.reflect.AnnotatedType;
 import java.util.List;
 import java.util.Set;
 import org.hisp.dhis.jsontree.JsonObject.Property;
+import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -39,7 +40,7 @@ class JsonObjectPropertiesTest {
   void testString() {
     List<Property> properties = JsonObject.properties(User.class);
     Property expected =
-        new Property(User.class, Text.of("username"), JsonString.class, "username", STRING, null);
+        new Property(User.class, Text.of("username"), JsonString.class, Set.of(NodeType.STRING),"username", STRING, null);
     assertPropertyExists("username", expected, properties);
   }
 
@@ -55,11 +56,11 @@ class JsonObjectPropertiesTest {
 
     assertPropertyExists(
         "firstName",
-        new Property(User.class, Text.of("firstName"), JsonString.class, "name", STRING, null),
+        new Property(User.class, Text.of("firstName"), JsonString.class, Set.of(NodeType.STRING), "name", STRING, null),
         properties);
     assertPropertyExists(
         "lastName",
-        new Property(User.class, Text.of("lastName"), JsonString.class, "name", STRING, null),
+        new Property(User.class, Text.of("lastName"), JsonString.class, Set.of(NodeType.STRING), "name", STRING, null),
         properties);
   }
 

@@ -12,7 +12,8 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @since 1.1
  * @param value a pointer expression
  */
-@Validation(type = STRING, pattern = "(/((~[01])|([^/~]))*)*")
+@Validation(type = STRING)
+@Validator(value = Validation.RegEx.class, params = @Validation( pattern = "(/((~[01])|([^/~]))*)*"))
 public record JsonPointer(@NotNull String value) {
 
   public JsonPointer {

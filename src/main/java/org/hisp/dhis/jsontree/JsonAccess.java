@@ -31,6 +31,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
@@ -266,7 +267,7 @@ public final class JsonAccess implements JsonAccessors {
     JsonAccessor<?> elements = accessors.accessor(getRawType(elementType));
     // auto-box simple values in a 1 element sequence
     if (!stream.isArray()) return Stream.of(elements.access(stream, as, accessors));
-    return stream.stream(Index.SKIP)
+    return stream.stream(Index.AUTO_SKIP)
         .map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors));
   }
 
@@ -296,12 +297,18 @@ public final class JsonAccess implements JsonAccessors {
    *
    * @param constructor the handle for the canonical constructor
    * @param components the components in that constructor to pass as args
+   * @param defaults default arguments if the component is undefined in JSON, null of no defaults
+   *     are available (taken from a constant with name {@code DEFAULT}).
    * @param of a static method to construct a record from a single argument (typical {@code
    *     of}-method)
    * @param ofArgType the generic argument type of the {@link #of()}-method
    */
   private record NewRecord(
-      MethodHandle constructor, RecordComponent[] components, MethodHandle of, Type ofArgType) {}
+      MethodHandle constructor,
+      RecordComponent[] components,
+      Object[] defaults,
+      MethodHandle of,
+      Type ofArgType) {}
 
   private static final Map<Class<? extends Record>, NewRecord> NEW_RECORD_BY_TYPE =
       new ConcurrentHashMap<>();
@@ -313,14 +320,15 @@ public final class JsonAccess implements JsonAccessors {
     NewRecord newRecord =
         NEW_RECORD_BY_TYPE.computeIfAbsent(
             type, t -> createRecordFactory(MethodHandles.lookup(), t));
+    RecordComponent[] components = newRecord.components;
     if (!obj.isObject() && !obj.isArray()) {
-      boolean wrapper = newRecord.components.length == 1;
+      boolean wrapper = components.length == 1;
       MethodHandle fromSingleArg = wrapper ? newRecord.constructor : newRecord.of;
       if (fromSingleArg == null)
         throw new JsonAccessException(
             "JSON does not map to Java record %s, object or array expected"
                 .formatted(type.getSimpleName()));
-      Type argType = wrapper ? newRecord.components[0].getGenericType() : newRecord.ofArgType;
+      Type argType = wrapper ? components[0].getGenericType() : newRecord.ofArgType;
       Object arg = accessors.accessor(getRawType(argType)).access(obj, argType, accessors);
       try {
         return type.cast(fromSingleArg.invokeWithArguments(arg));
@@ -330,23 +338,27 @@ public final class JsonAccess implements JsonAccessors {
       }
     }
 
-    Object[] args = new Object[newRecord.components.length];
-
+    Object[] args = new Object[components.length];
+    Object[] defaults = newRecord.defaults;
+    boolean hasDefaults = defaults != null;
     if (obj.isObject()) {
-      int i = 0;
-      for (RecordComponent c : newRecord.components) {
-        args[i++] =
-            accessors
-                .accessor(c.getType())
-                .access(obj.get(c.getName(), JsonMixed.class), c.getGenericType(), accessors);
+      for (int i = 0; i < components.length; i++) {
+        RecordComponent c = components[i];
+        JsonMixed cValue = obj.get(c.getName());
+        args[i] =
+            hasDefaults && cValue.isUndefined()
+                ? defaults[i]
+                : accessors.accessor(c.getType()).access(cValue, c.getGenericType(), accessors);
       }
     } else if (obj.isArray()) {
-      int i = 0;
-      for (RecordComponent c : newRecord.components)
+      for (int i = 0; i < components.length; i++) {
+        RecordComponent c = components[i];
+        JsonMixed cValue = obj.get(i);
         args[i] =
-            accessors
-                .accessor(c.getType())
-                .access(obj.get(i++, JsonMixed.class), c.getGenericType(), accessors);
+            hasDefaults && cValue.isUndefined()
+                ? defaults[i]
+                : accessors.accessor(c.getType()).access(cValue, c.getGenericType(), accessors);
+      }
     }
     try {
       return type.cast(newRecord.constructor.invokeWithArguments(args));
@@ -399,7 +411,7 @@ public final class JsonAccess implements JsonAccessors {
         }
       }
     }
-    return new NewRecord(canonical, components, ofMethod, ofMethodArgType);
+    return new NewRecord(canonical, components, defaults(type), ofMethod, ofMethodArgType);
   }
 
   private static MethodHandle constructor(
@@ -416,6 +428,23 @@ public final class JsonAccess implements JsonAccessors {
     try {
       return lookup.findStatic(type, name, MethodType.methodType(type, param));
     } catch (NoSuchMethodException | IllegalAccessException e) {
+      return null;
+    }
+  }
+
+  private static Object[] defaults(Class<? extends Record> type) {
+    try {
+      Field defaults = type.getDeclaredField("DEFAULT");
+      if (defaults.getType() != type) return null;
+      defaults.setAccessible(true);
+      Object value = defaults.get(null);
+      RecordComponent[] components = type.getRecordComponents();
+      Object[] values = new Object[components.length];
+      for (int i = 0; i < components.length; i++) {
+        values[i] = type.getDeclaredMethod(components[i].getName()).invoke(value);
+      }
+      return values;
+    } catch (Exception ex) {
       return null;
     }
   }

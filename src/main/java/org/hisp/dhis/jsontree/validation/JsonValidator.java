@@ -1,18 +1,20 @@
 package org.hisp.dhis.jsontree.validation;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonPath;
 import org.hisp.dhis.jsontree.JsonPathException;
 import org.hisp.dhis.jsontree.JsonSchemaException;
-import org.hisp.dhis.jsontree.JsonSchemaException.Info;
 import org.hisp.dhis.jsontree.JsonTreeException;
 import org.hisp.dhis.jsontree.JsonValue;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.Error;
+import org.hisp.dhis.jsontree.Validation.Result;
 
 /**
  * @author Jan Bernitt
@@ -20,15 +22,13 @@ import org.hisp.dhis.jsontree.Validation.Error;
  */
 public final class JsonValidator {
 
-  public static void validate(JsonValue value, Class<?> schema) {
-    validate(value, schema, Set.of());
+  public static Result validate(JsonValue value, Class<?> schema, Validation.Mode mode, Validation.Rule[] rules) {
+    Set<Validation.Rule> set =
+        rules.length == 0 ? EnumSet.allOf(Validation.Rule.class) : EnumSet.of(rules[0], rules);
+    return validate(value, schema, mode, set);
   }
 
-  public static void validate(JsonValue value, Class<?> schema, Validation.Rule... rules) {
-    validate(value, schema, Set.of(rules));
-  }
-
-  public static void validate(JsonValue value, Class<?> schema, Set<Validation.Rule> rules) {
+  private static Result validate(JsonValue value, Class<?> schema, Validation.Mode mode, Set<Validation.Rule> rules) {
     if (!value.exists())
       throw new JsonPathException(
           value.path(),
@@ -42,27 +42,59 @@ public final class JsonValidator {
               value.path(), schema.getSimpleName(), value.type()));
     }
     ObjectValidator validator = ObjectValidator.of(schema);
-    if (validator.properties().isEmpty()) return;
+    if (validator.properties().isEmpty()) return new Result(value, schema, rules, List.of());
 
-    List<Error> errors = new ArrayList<>();
+    boolean failFast = mode.isFailFast();
+    List<Error> errors = failFast ? List.of() : new ArrayList<>();
+    Consumer<Error> addError =
+        error -> {
+          if (rules.contains(error.rule())) {
+            if (!failFast) {
+              errors.add(error);
+            } else
+              throw new JsonSchemaException(
+                  "fail fast", new Result(value, schema, rules, List.of(error)));
+          }
+        };
 
-    // TODO add a fail-fast (1st error) mode
-    // TODO strict types vs convertable types mode
-
-    for (Map.Entry<JsonPath, Validation.Validator> e : validator.properties().entrySet()) {
-      JsonMixed property = value.asObject().get(e.getKey(), JsonMixed.class);
-      e.getValue().validate(property, errors::add);
+    if (mode == Validation.Mode.PROBE) {
+      try {
+        validate(value, validator, addError);
+        return new Result(value, schema, rules, List.of());
+      } catch (JsonSchemaException ex) {
+        return ex.getResult();
+      }
+    } else {
+      validate(value, validator, addError);
+      Result result = new Result(value, schema, rules, errors);
+      if (mode != Validation.Mode.PROBE_ALL && !errors.isEmpty())
+        throw new JsonSchemaException("%d errors".formatted(errors.size()), result);
+      return result;
     }
-    if (!rules.isEmpty()) errors = errors.stream().filter(e -> rules.contains(e.rule())).toList();
-    if (!errors.isEmpty())
-      throw new JsonSchemaException(
-          "%d errors".formatted(errors.size()), new Info(value, schema, errors));
   }
 
-  // TODO a publicly accessible way to get the JSON Schema validation description (JSON) for a
-  // schema class
+  private static void validate(JsonValue value, ObjectValidator validator, Consumer<Error> addError) {
+    for (Map.Entry<JsonPath, Validation.Validator> e : validator.properties().entrySet()) {
+      JsonMixed property = value.asObject().get(e.getKey(), JsonMixed.class);
+      e.getValue().validate(property, addError);
+    }
+  }
+
+  // TODO(future) a publicly accessible way to get the JSON Schema validation description (JSON)
+  //  for a schema class
   // and also for classes used as values like UID to get what the validation is on these in
-  // isolation for OpenAPI
+  // isolation for e.g. OpenAPI (basically a Validator => JsonSchema function)
+  /*
+  For type dependent this should become something like this
+
+  {
+    "oneOf": [
+      { "type": "string", "minLength": 1 },
+      { "type": "array", "minItems": 1 }
+    ]
+  }
+
+   */
 
   // TODO a mode or setting that allows to skip validation on parts that are about stream processing
   // like Stream<X> or Iterator<X> types where the validation would rack the benefits

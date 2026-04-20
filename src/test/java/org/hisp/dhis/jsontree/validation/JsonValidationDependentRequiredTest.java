@@ -4,7 +4,6 @@ import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-import java.util.Map;
 import java.util.Set;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
@@ -22,12 +21,12 @@ class JsonValidationDependentRequiredTest {
 
   public interface JsonDependentRequiredExampleA extends JsonObject {
 
-    @Validation(dependentRequired = "name")
+    @Validation(dependentRequired = ".name")
     default String firstName() {
       return getString("firstName").string();
     }
 
-    @Validation(dependentRequired = "name")
+    @Validation(dependentRequired = ".name")
     default String lastName() {
       return getString("lastName").string();
     }
@@ -35,12 +34,12 @@ class JsonValidationDependentRequiredTest {
 
   public interface JsonDependentRequiredExampleB extends JsonObject {
 
-    @Validation(dependentRequired = "city+zip!")
+    @Validation(dependentRequired = ".city+zip[=*]")
     default String zip() {
       return getString("zip").string();
     }
 
-    @Validation(dependentRequired = "city+zip")
+    @Validation(dependentRequired = ".city+zip")
     default String city() {
       return getString("city").string();
     }
@@ -48,17 +47,17 @@ class JsonValidationDependentRequiredTest {
 
   public interface JsonDependentRequiredExampleC extends JsonObject {
 
-    @Validation(dependentRequired = {"street+no?", "box"})
+    @Validation(dependentRequired = {".street+no[=?]", ".box"})
     default String box() {
       return getString("box").string();
     }
 
-    @Validation(dependentRequired = {"street+no", "box?"})
+    @Validation(dependentRequired = {".street+no", ".box[=?]"})
     default String street() {
       return getString("street").string();
     }
 
-    @Validation(dependentRequired = {"street+no"})
+    @Validation(dependentRequired = {".street+no"})
     default String no() {
       return getString("no").string();
     }
@@ -67,17 +66,17 @@ class JsonValidationDependentRequiredTest {
   public interface JsonDependentRequiredExampleD extends JsonObject {
 
     @Required
-    @Validation(dependentRequired = "=update")
+    @Validation(dependentRequired = ".update[=update]")
     default String getOp() {
       return getString("op").string();
     }
 
-    @Validation(dependentRequired = "update")
+    @Validation(dependentRequired = ".update")
     default String getPath() {
       return getString("path").string();
     }
 
-    @Validation(dependentRequired = "update", acceptNull = YES)
+    @Validation(dependentRequired = ".update", acceptNull = YES)
     default JsonMixed value() {
       return get("value", JsonMixed.class);
     }
@@ -90,6 +89,7 @@ class JsonValidationDependentRequiredTest {
                 {"firstName":"peter"}""",
         JsonDependentRequiredExampleA.class,
         Rule.DEPENDENT_REQUIRED,
+        "",
         Set.of("firstName", "lastName"),
         Set.of("lastName"));
     assertValidationError(
@@ -97,6 +97,7 @@ class JsonValidationDependentRequiredTest {
                 {"lastName":"peter"}""",
         JsonDependentRequiredExampleA.class,
         Rule.DEPENDENT_REQUIRED,
+        "",
         Set.of("firstName", "lastName"),
         Set.of("firstName"));
     assertValidationError(
@@ -104,6 +105,7 @@ class JsonValidationDependentRequiredTest {
                 {"lastName":"peter", "firstName": null}""",
         JsonDependentRequiredExampleA.class,
         Rule.DEPENDENT_REQUIRED,
+        "",
         Set.of("firstName", "lastName"),
         Set.of("firstName"));
 
@@ -128,7 +130,7 @@ class JsonValidationDependentRequiredTest {
                 {"zip":"12345"}""",
         JsonDependentRequiredExampleB.class,
         Rule.DEPENDENT_REQUIRED,
-        Set.of("zip"),
+        "with zip",
         Set.of("city"),
         Set.of("city"));
 
@@ -153,7 +155,7 @@ class JsonValidationDependentRequiredTest {
                 {"street":"main"}""",
         JsonDependentRequiredExampleC.class,
         Rule.DEPENDENT_REQUIRED,
-        Set.of("box"),
+        "without box",
         Set.of("street", "no"),
         Set.of("no"));
 
@@ -178,7 +180,7 @@ class JsonValidationDependentRequiredTest {
                 {"op":"update"}""",
         JsonDependentRequiredExampleD.class,
         Rule.DEPENDENT_REQUIRED,
-        Map.of("op", "update"),
+        "with op=update",
         Set.of("value", "path"),
         Set.of("value", "path"));
     assertValidationError(
@@ -186,7 +188,7 @@ class JsonValidationDependentRequiredTest {
                 {"op":"update", "value": null}""",
         JsonDependentRequiredExampleD.class,
         Rule.DEPENDENT_REQUIRED,
-        Map.of("op", "update"),
+        "with op=update",
         Set.of("value", "path"),
         Set.of("path"));
 

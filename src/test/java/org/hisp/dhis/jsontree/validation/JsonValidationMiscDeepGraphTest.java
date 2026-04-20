@@ -79,12 +79,12 @@ class JsonValidationMiscDeepGraphTest {
       return getString("name").string();
     }
 
-    @Validation(dependentRequired = "val^")
+    @Validation(dependentRequired = ".val*")
     default String text() {
       return getString("text").string();
     }
 
-    @Validation(dependentRequired = "val^")
+    @Validation(dependentRequired = ".val*")
     default Number value() {
       return getNumber("value").number();
     }
@@ -139,8 +139,8 @@ class JsonValidationMiscDeepGraphTest {
             {"pager": {"size": 0, "page": 0}, "entries":[]}""",
             JsonPage.class,
             Rule.MINIMUM,
-            1d,
-            0d);
+            1L,
+            0L);
     assertEquals(".pager.size", error.path().toString());
   }
 
@@ -152,8 +152,8 @@ class JsonValidationMiscDeepGraphTest {
             {"pager": {"size": 20, "page": -1}, "entries":[]}""",
             JsonPage.class,
             Rule.MINIMUM,
-            0d,
-            -1d);
+            0L,
+            -1L);
     assertEquals(".pager.page", error.path().toString());
   }
 
@@ -274,7 +274,7 @@ class JsonValidationMiscDeepGraphTest {
 
     Validation.Error error =
         assertValidationError(
-            json, JsonPage.class, Rule.DEPENDENT_REQUIRED, Set.of("text", "value"), Set.of());
+            json, JsonPage.class, Rule.DEPENDENT_REQUIRED, "", Set.of("text", "value"), Set.of());
     assertEquals(".entries.0.attributes.0", error.path().toString());
   }
 
@@ -291,7 +291,7 @@ class JsonValidationMiscDeepGraphTest {
 
     Validation.Error error =
         assertValidationError(
-            json, JsonPage.class, Rule.UNIQUE_ITEMS, "{\"name\":\"foo\",\"value\":1}", 0, 2);
+            json, JsonPage.class, Rule.UNIQUE_ITEMS, "{\"name\": \"foo\", \"value\": 1}", 0, 2);
     assertEquals(".entries.0.attributes", error.path().toString());
   }
 }

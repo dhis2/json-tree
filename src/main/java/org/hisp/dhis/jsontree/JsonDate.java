@@ -31,6 +31,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import org.hisp.dhis.jsontree.Validation.NodeType;
 
 /**
  * A {@link JsonDate} is a {@link JsonString} with a special format.
@@ -40,6 +41,7 @@ import java.time.format.DateTimeFormatter;
  *
  * @author Jan Bernitt
  */
+@Validation(type = {NodeType.STRING, NodeType.INTEGER})
 @Validation.Ignore
 public interface JsonDate extends JsonString {
 

@@ -346,7 +346,7 @@ record JsonTree(
       if (isEmpty()) return emptyIterator();
       return new Iterator<>() {
         private final char[] json = tree.json;
-        private final Index index = op == Index.AUTO ? tree.auto : op;
+        private final Index index = op.resolve(tree.auto);
 
         private int offset = skipWhitespace(json, expectChar(json, start, '{'));
         private int n = 0;
@@ -593,7 +593,7 @@ record JsonTree(
     private Iterator<JsonNode> elementsIterator(Index op) {
       return new Iterator<>() {
         private final char[] json = tree.json;
-        private final Index index = op == Index.AUTO ? tree.auto : op;
+        private final Index index = op.resolve(tree.auto);
 
         private int offset = skipWhitespace(json, expectChar(json, start, '['));
         private int n = 0;
@@ -832,7 +832,7 @@ record JsonTree(
 
   private JsonNode autoDetect(JsonPath path, int offset, JsonNode.Index index) {
     return switch (index) {
-      case SKIP -> autoDetectNoIndexLookup(path, offset);
+      case SKIP, AUTO_SKIP -> autoDetectNoIndexLookup(path, offset);
       case CHECK -> autoDetect(path, offset);
       case AUTO ->
           isPrimitiveNode(json, offset)

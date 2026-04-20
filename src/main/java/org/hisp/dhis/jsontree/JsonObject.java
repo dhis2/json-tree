@@ -33,6 +33,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonNode.Index;
@@ -66,6 +67,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    * @param jsonName of the property
    * @param jsonType the type the property is resolved to internally when calling {@link
    *     #get(CharSequence, Class)}
+   * @param types the expected node types based on validation constraints, empty if unknown or unspecified
    * @param javaName the name of the java property accessed that caused the JSON property to be
    *     resolved
    * @param javaType the return type of the underlying method that declares the property
@@ -76,6 +78,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
       Class<?> in,
       Text jsonName,
       Class<? extends JsonValue> jsonType,
+      Set<Validation.NodeType> types,
       String javaName,
       AnnotatedType javaType,
       AnnotatedElement source) {}
@@ -180,19 +183,18 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   /**
    * Uses the JSON schema validation to check whether this object conforms to the provided type
    *
-   * @param schema a subtype of {@link JsonObject} or {@link Record} to check agsinst
+   * @param schema a subtype of {@link JsonObject} or {@link Record} to check against
    * @param rules optional set of {@link Rule}s to check, empty includes all
    * @return true if this is an object is valid against the provided schema
    * @since 0.11 (in this form with rules parameter)
    */
   @TerminalOp
   default boolean isA(Class<?> schema, Rule... rules) {
-    try {
-      JsonValidator.validate(this, schema, rules);
-      return true;
-    } catch (JsonPathException | JsonTreeException | JsonSchemaException ex) {
-      return false;
-    }
+    if (!exists() || !isObject()) return false;
+    // Note that this uses PROBE_ALL as that avoid throwing exceptions entirely
+    Validation.Result result =
+        JsonValidator.validate(this, schema, Validation.Mode.PROBE_ALL, rules);
+    return result.errors().isEmpty();
   }
 
   /**
@@ -212,7 +214,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   default <T extends JsonObject> T asA(Class<T> schema, Rule... rules)
       throws JsonPathException, JsonTreeException, JsonSchemaException {
     T obj = as(schema);
-    JsonValidator.validate(obj, schema, rules);
+    JsonValidator.validate(obj, schema, Validation.Mode.FAIL, rules);
     return obj;
   }
 
