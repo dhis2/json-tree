@@ -32,10 +32,16 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 /**
- * A common base type for the primitive nodes in a JSON tree.
+ * The union of all JSON simple or primitive types.
  *
  * @author Jan Bernitt
  */
 @Validation(type = {BOOLEAN, NUMBER, STRING})
 @Validation.Ignore
-public interface JsonPrimitive extends JsonValue {}
+public interface JsonPrimitive extends JsonBoolean, JsonNumber, JsonString {
+
+  @Override
+  default JsonPrimitive getValue() {
+    return this;
+  }
+}

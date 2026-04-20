@@ -33,6 +33,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonNode.Index;
@@ -66,6 +67,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    * @param jsonName of the property
    * @param jsonType the type the property is resolved to internally when calling {@link
    *     #get(CharSequence, Class)}
+   * @param types the expected node types based on validation constraints, empty if unknown or unspecified
    * @param javaName the name of the java property accessed that caused the JSON property to be
    *     resolved
    * @param javaType the return type of the underlying method that declares the property
@@ -76,6 +78,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
       Class<?> in,
       Text jsonName,
       Class<? extends JsonValue> jsonType,
+      Set<Validation.NodeType> types,
       String javaName,
       AnnotatedType javaType,
       AnnotatedElement source) {}

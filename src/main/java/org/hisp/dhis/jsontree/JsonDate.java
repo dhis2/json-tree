@@ -27,6 +27,8 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.Validation.NodeType;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -40,6 +42,7 @@ import java.time.format.DateTimeFormatter;
  *
  * @author Jan Bernitt
  */
+@Validation(type = {NodeType.STRING, NodeType.INTEGER})
 @Validation.Ignore
 public interface JsonDate extends JsonString {
 

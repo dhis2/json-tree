@@ -6,10 +6,20 @@ import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Collection;
+import java.util.Date;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
@@ -154,6 +164,50 @@ public @interface Validation {
         case NULL -> NULL;
         case NUMBER -> NUMBER;
       };
+    }
+
+    @NotNull
+    @SuppressWarnings("unchecked")
+    public static Set<NodeType> of(@NotNull Class<?> type) {
+      return ofJsonType(
+          JsonValue.class.isAssignableFrom(type)
+              ? (Class<? extends JsonValue>) type
+              : toJsonType(type));
+    }
+
+    static Class<? extends JsonValue> toJsonType(Class<?> type) {
+      if (type == String.class || type.isEnum()) return JsonString.class;
+      if (type == Character.class || type == char.class) return JsonString.class;
+      if (type == Date.class) return JsonDate.class;
+      if (type == LocalDate.class || type == LocalTime.class || type == LocalDateTime.class) return JsonMixed.class;
+      if (type == Boolean.class || type == boolean.class) return JsonBoolean.class;
+      if (type == Integer.class || type == Long.class || type == BigInteger.class || type == Instant.class)
+        return JsonInteger.class;
+      if (Number.class.isAssignableFrom(type)) return JsonNumber.class;
+      if (type.isPrimitive())
+        return type == float.class || type == double.class ? JsonNumber.class : JsonInteger.class;
+      if (Collection.class.isAssignableFrom(type)) return JsonArray.class;
+      if (Object[].class.isAssignableFrom(type)) return JsonArray.class;
+      if (Map.class.isAssignableFrom(type)) return JsonObject.class;
+      if (Record.class.isAssignableFrom(type)) return JsonObject.class;
+      return JsonValue.class;
+    }
+
+    @SuppressWarnings("unchecked")
+    static Set<NodeType> ofJsonType(Class<? extends JsonValue> type) {
+      Validation validation = type.getAnnotation(Validation.class);
+      if (validation != null) {
+        NodeType[] types = validation.type();
+        if (types.length == 0) return Set.of();
+        return EnumSet.of(types[0], types);
+      }
+      EnumSet<NodeType> res = EnumSet.noneOf(NodeType.class);
+      for (Class<?> si : type.getInterfaces()) {
+        if (JsonValue.class.isAssignableFrom(si)) {
+          res.addAll(ofJsonType((Class<? extends JsonValue>) si));
+        }
+      }
+      return res;
     }
   }
 

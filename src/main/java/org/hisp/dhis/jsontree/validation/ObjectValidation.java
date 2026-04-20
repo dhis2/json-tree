@@ -237,7 +237,7 @@ record ObjectValidation(
     StringValidation strings =
         !type.isEnum() ? null : new StringValidation(anyOfStrings(type), YesNo.AUTO, -1, -1, null);
     return new PropertyValidations(
-        anyOfTypes(type), PropertyValidations.Strict.DEFAULT, List.of(), values, strings, null, null, null, null);
+        NodeType.of(type), PropertyValidations.Strict.DEFAULT, List.of(), values, strings, null, null, null, null);
   }
 
   @NotNull
@@ -384,31 +384,6 @@ record ObjectValidation(
     if (anyOf.contains(NodeType.INTEGER) && anyOf.contains(NodeType.NUMBER))
       anyOf.remove(NodeType.INTEGER);
     return Set.copyOf(anyOf);
-  }
-
-  @NotNull
-  private static Set<NodeType> anyOfTypes(Class<?> type) {
-    NodeType main = nodeTypeOf(type);
-    if (type == Date.class && main != null) return Set.of(main, INTEGER);
-    if (main != null) return Set.of(main);
-    return Set.of();
-  }
-
-  @CheckNull
-  private static NodeType nodeTypeOf(@NotNull Class<?> type) {
-    if (type == String.class || type.isEnum() || type == Date.class) return STRING;
-    if (type == Character.class || type == char.class) return STRING;
-    if (type == Boolean.class || type == boolean.class) return BOOLEAN;
-    if (type == Integer.class || type == Long.class || type == BigInteger.class)
-      return NodeType.INTEGER;
-    if (Number.class.isAssignableFrom(type)) return NUMBER;
-    if (type == Void.class || type == void.class) return NULL;
-    if (type.isPrimitive())
-      return type == float.class || type == double.class ? NUMBER : NodeType.INTEGER;
-    if (Collection.class.isAssignableFrom(type)) return ARRAY;
-    if (Object[].class.isAssignableFrom(type)) return ARRAY;
-    if (Map.class.isAssignableFrom(type)) return OBJECT;
-    return null;
   }
 
   private static Validation.Validator newValidator(Class<?> type, Class<?>[] types, Object[] args) {

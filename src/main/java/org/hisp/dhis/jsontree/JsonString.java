@@ -42,7 +42,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  */
 @Validation(type = STRING)
 @Validation.Ignore
-public interface JsonString extends JsonPrimitive {
+public interface JsonString extends JsonValue {
 
   @Override
   default JsonString getValue() {
