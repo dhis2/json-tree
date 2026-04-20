@@ -258,7 +258,7 @@ public record InputExpression(List<Pattern> patterns) {
             throw reserved(opcode);
           } else {
             // everything else is taken literally
-            if (opcode != in) return -1; break;
+            if (opcode != in) return -1;
           }
       }
     }

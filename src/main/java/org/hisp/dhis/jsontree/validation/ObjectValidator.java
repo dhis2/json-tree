@@ -289,7 +289,7 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
                 .dependentRequired()
                 .forEach(
                     indicator -> {
-                      boolean trigger = indicator.indexOf('[') > 0;
+                      boolean trigger = indicator.indexOf('[') >= 0;
                       String group = indicator;
                       if (trigger) group = group.substring(0, indicator.indexOf('['));
                       boolean exclusive = !trigger && group.endsWith("*");

@@ -67,9 +67,8 @@ public final class JsonValidator {
     } else {
       validate(value, validator, addError);
       Result result = new Result(value, schema, rules, errors);
-      if (mode != Validation.Mode.PROBE_ALL)
-        if (!errors.isEmpty())
-          throw new JsonSchemaException("%d errors".formatted(errors.size()), result);
+      if (mode != Validation.Mode.PROBE_ALL && !errors.isEmpty())
+        throw new JsonSchemaException("%d errors".formatted(errors.size()), result);
       return result;
     }
   }
