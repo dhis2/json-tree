@@ -1,14 +1,14 @@
 package org.hisp.dhis.jsontree.validation;
 
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.junit.jupiter.api.Test;
-
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests for {@link Validation#pattern()} based validations.

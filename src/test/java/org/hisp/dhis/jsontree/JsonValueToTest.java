@@ -1,14 +1,13 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.Validation.NodeType;
-import org.junit.jupiter.api.Test;
+import static java.util.Map.entry;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import static java.util.Map.entry;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests an advanced scenario of the {@link JsonValue#to(Class)} method where the {@link

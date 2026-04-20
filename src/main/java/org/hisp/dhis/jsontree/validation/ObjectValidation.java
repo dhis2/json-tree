@@ -2,13 +2,6 @@ package org.hisp.dhis.jsontree.validation;
 
 import static java.lang.Double.isNaN;
 import static java.util.Comparator.comparing;
-import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
-import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
-import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NULL;
-import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
-import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
-import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 import static org.hisp.dhis.jsontree.Validation.YesNo.AUTO;
 import static org.hisp.dhis.jsontree.Validation.YesNo.YES;
 
@@ -21,9 +14,6 @@ import java.lang.reflect.AnnotatedParameterizedType;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.math.BigInteger;
-import java.util.Collection;
-import java.util.Date;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;

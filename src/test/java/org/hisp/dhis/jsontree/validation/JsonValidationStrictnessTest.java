@@ -1,19 +1,17 @@
 package org.hisp.dhis.jsontree.validation;
 
-import org.hisp.dhis.jsontree.Assertions;
+import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Set;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
-import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
-import static org.hisp.dhis.jsontree.Validation.YesNo.NO;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the consequences of {@link Validation#strictness()}.

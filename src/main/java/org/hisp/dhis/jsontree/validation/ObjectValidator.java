@@ -2,7 +2,6 @@ package org.hisp.dhis.jsontree.validation;
 
 import static java.lang.Double.isNaN;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toMap;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.Validation.NodeType.INTEGER;

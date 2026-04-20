@@ -15,7 +15,6 @@ import org.hisp.dhis.jsontree.Required;
 import org.hisp.dhis.jsontree.Validation;
 import org.hisp.dhis.jsontree.Validation.NodeType;
 import org.hisp.dhis.jsontree.Validation.Rule;
-import org.hisp.dhis.jsontree.Validation.Strict;
 import org.junit.jupiter.api.Test;
 
 /**

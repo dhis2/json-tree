@@ -27,12 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.Validation.NodeType;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import org.hisp.dhis.jsontree.Validation.NodeType;
 
 /**
  * A {@link JsonDate} is a {@link JsonString} with a special format.

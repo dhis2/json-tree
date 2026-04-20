@@ -1,10 +1,10 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.List;
-import java.util.stream.Stream;
-
 import static java.lang.Character.toLowerCase;
 import static java.lang.Integer.MAX_VALUE;
+
+import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Input patterns are specifically designed to match short sequences where the relevant features to
