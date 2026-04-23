@@ -257,6 +257,19 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
+   * @see String#concat(String)
+   */
+  default Text concat(CharSequence suffix) {
+    if (suffix.isEmpty()) return this;
+    char[] a = toCharArray();
+    int len = suffix.length();
+    char[] res = Arrays.copyOf(a, a.length+ len);
+    for (int i = 0; i < len; i++)
+      res[a.length+i] = suffix.charAt(i);
+    return of(res, 0, res.length);
+  }
+
+  /**
    * Slices this text into segments based on a pattern.
    * Note that in contrast to a split by regular expression this matches the pattern at the start of this text,
    * slices of the section as the first segment and repeats the process on the remaining tail text.
@@ -555,6 +568,20 @@ public interface Text extends CharSequence, Comparable<Text> {
       @Override
       public boolean contentMemoryEquals(@NotNull Text other) {
         return other instanceof Slice s && s.buffer == buffer;
+      }
+
+      @Override
+      public Text concat(CharSequence suffix) {
+        if (isEmpty()) return of(suffix);
+        if (suffix.isEmpty()) return this;
+        char[] res = new char[length + suffix.length()];
+        System.arraycopy(buffer, offset, res, 0, length);
+        if (suffix instanceof Slice b) {
+          System.arraycopy(b.buffer, b.offset, res, length, b.length);
+        } else {
+          for (int i = 0; i < suffix.length(); i++) res[length + i] = suffix.charAt(i);
+        }
+        return of(res, 0, res.length);
       }
 
       @Override

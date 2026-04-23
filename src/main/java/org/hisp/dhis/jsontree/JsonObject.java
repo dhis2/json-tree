@@ -167,6 +167,11 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   }
 
   /**
+   * Whether duplicate keys are observed as the first definition every time or as declared in JSON
+   * depends on the {@link Index} strategy used. If the index is effective (either from prior
+   * indexing or because {@link Index#ADD} is used) the first declaration is observed every time the
+   * key re-occurs, otherwise the value is observed as declared in the JSON source.
+   *
    * @implNote This utilizes {@link JsonNode#members(Index)} avoiding map lookups for each element.
    *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
    *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.

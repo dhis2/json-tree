@@ -28,11 +28,24 @@ public final class TextualNumber extends Number implements Textual {
     return of(buffer, 0, buffer.length);
   }
 
+  /**
+   * Does not allow whitespace at start/end of the number.
+   *
+   * @param buffer with content of an integer or decimal number
+   * @param offset start of the number in the buffer
+   * @param length number of characters from offset that represent the number
+   * @return buffer as a {@link Number}
+   * @throws NumberFormatException in case the buffer does not contain a valid number or if offset
+   *     or length do not form a valid slice of characters for the given buffer
+   */
   public static Number of(char @NotNull [] buffer, int offset, int length) {
     if (length < 0) throw nanError(buffer, offset, length, "length must be >= 0");
     if (offset + length > buffer.length)
       throw new NumberFormatException("offset + length must be <= buffer.length");
     if (isTextualInteger(buffer, offset, length)) {
+      // preserve -0 as distinct from 0 by using a double
+      if (buffer[offset] == '-' && isNumericZero(buffer, offset, length))
+        return -0d;
       // up to 9 digits is always in int range
       if (length <= 9) return parseIntExact(buffer, offset, length);
       // will overflow for sure
@@ -46,8 +59,8 @@ public final class TextualNumber extends Number implements Textual {
         return new TextualNumber(buffer, offset, length);
       }
     }
-    if (!isTextualDecimal(buffer, offset, length))
-      throw nanError(buffer, offset, length, "Is neither a integer or decimal number");
+    if (!isTextualDecimal(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDecimal())
+      throw nanError(buffer, offset, length, "Is neither an integer nor a decimal number: ");
     return new TextualNumber(buffer, offset, length);
   }
 
@@ -148,6 +161,20 @@ public final class TextualNumber extends Number implements Textual {
     return true;
   }
 
+  static boolean isNumericZero(char[] buffer, int offset, int length) {
+    if (length <= 0) return false;
+    char sign = buffer[offset];
+    int i = offset;
+    if (sign == '-' || sign == '+') i++;
+    int end = offset + length;
+    int d0 = i;
+    while (i < end && buffer[i] == '0') i++;
+    if (i >= end) return i > d0;
+    if (buffer[i++] != '.') return false;
+    while (i < end && buffer[i] == '0') i++;
+    return i == end;
+  }
+
   static boolean isNumericInteger(char[] buffer) {
     return isNumericInteger(buffer, 0, buffer.length);
   }
@@ -197,7 +224,7 @@ public final class TextualNumber extends Number implements Textual {
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
       if (dpOffset > 0)
-        return parseIntCast(buffer, offset, length - (dpOffset - offset));
+        return parseIntCast(buffer, offset, dpOffset - offset);
     }
     return (int) parseDouble(buffer, offset, length);
   }
@@ -217,7 +244,7 @@ public final class TextualNumber extends Number implements Textual {
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
       if (dpOffset > 0)
-        return parseLongCast(buffer, offset, length - (dpOffset - offset));
+        return parseLongCast(buffer, offset, dpOffset - offset);
     }
     return (long) parseDouble(buffer, offset, length);
   }

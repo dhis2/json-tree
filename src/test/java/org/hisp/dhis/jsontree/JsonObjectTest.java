@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+
+import org.hisp.dhis.jsontree.JsonNode.Index;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -19,9 +21,31 @@ class JsonObjectTest {
   @Test
   void testSize() {
     assertEquals(0, Json5.of("{}").size());
-    assertEquals(1, Json5.of("{\"a\": 1}").size());
-    assertEquals(2, Json5.of("{\"a\": 1, \"b\": 2}").size());
-    assertEquals(3, Json5.of("{\"a\": 1, \"b\": 2, \"c\": null}").size());
+    assertEquals(1, Json5.of("{'a': 1}").size());
+    assertEquals(2, Json5.of("{'a': 1, 'b': 2}").size());
+    assertEquals(3, Json5.of("{'a': 1, 'b': 2, 'c': null}").size());
+    // duplicate keys count for size
+    assertEquals(3, Json5.of("{'a': 1, 'b': 2, 'a': 2}").size());
+  }
+
+  @Test
+  void testMembers_Duplicates() {
+    JsonMixed duplicates = Json5.of("{'a': 1, 'b': 2, 'a': 3}");
+    // with CHECK nodes do not get indexes and so duplicates are observed
+    assertEquals(
+        List.of(1, 2, 3),
+        duplicates.entries(Index.CHECK).map(JsonMixed::intValue).toList());
+    assertEquals(
+        List.of(1, 2, 1),
+        duplicates.entries(Index.ADD).map(JsonMixed::intValue).toList());
+    // now that they are indexes even CHECK de-duplicates
+    assertEquals(
+        List.of(1, 2, 1),
+        duplicates.entries(Index.CHECK).map(JsonMixed::intValue).toList());
+    // but if we skip duplicates are observed again
+    assertEquals(
+        List.of(1, 2, 3),
+        duplicates.entries(Index.SKIP).map(JsonMixed::intValue).toList());
   }
 
   @Test
@@ -49,6 +73,13 @@ class JsonObjectTest {
   void testNames_Empty() {
     assertEquals(List.of(), JsonMixed.of("{}").names());
     assertEquals(List.of("a", "b"), Json5.of("{'a':1,'b':2}").names());
+  }
+
+
+  @Test
+  void testNames_Duplicates() {
+    assertEquals(List.of(), JsonMixed.of("{}").names());
+    assertEquals(List.of("a", "b", "a"), Json5.of("{'a':1,'b':2, 'a': 3}").names());
   }
 
   @Test

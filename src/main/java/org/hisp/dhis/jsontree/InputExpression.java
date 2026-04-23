@@ -2,9 +2,9 @@ package org.hisp.dhis.jsontree;
 
 import static java.lang.Character.toLowerCase;
 import static java.lang.Integer.MAX_VALUE;
+import static java.util.Arrays.asList;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 /**
  * Input patterns are specifically designed to match short sequences where the relevant features to
@@ -28,7 +28,10 @@ import java.util.stream.Stream;
 public record InputExpression(List<Pattern> patterns) {
 
   public static InputExpression of(String... patterns) {
-    return new InputExpression(Stream.of(patterns).map(Pattern::of).toList());
+    if (patterns.length == 1) return new InputExpression(List.of(Pattern.of(0, patterns[0])));
+    Pattern[] arr = new Pattern[patterns.length];
+    for (int i = 0; i < patterns.length; i++) arr[i] = Pattern.of(i, patterns[i]);
+    return new InputExpression(asList(arr));
   }
 
   /**
@@ -399,17 +402,18 @@ public record InputExpression(List<Pattern> patterns) {
   /**
    * A pattern is one alternative within a multi-pattern-{@link InputExpression}.
    *
+   * @param ordinal the ID or serial number within an {@link InputExpression#patterns()} list
    * @param pattern the pattern to match
    * @param minLength the minimum input length required to match the pattern, -1 if not fixed
    * @param maxLength the maximum input length possible to match the pattern, -1 if not fixed
    * @implNote Using length bounds is purely a performance optimisation that makes use of the
    * fact the Input Expressions often have a clear length bounds.
    */
-  public record Pattern(Text pattern, int minLength, int maxLength) {
+  public record Pattern(int ordinal, Text pattern, int minLength, int maxLength) {
 
-    public static Pattern of(CharSequence pattern) {
+    public static Pattern of(int ordinal, CharSequence pattern) {
       Text p = Text.of(pattern);
-      return new Pattern(p, length(p, 0, p.length(), false), length(p, 0, p.length(), true));
+      return new Pattern(ordinal, p, length(p, 0, p.length(), false), length(p, 0, p.length(), true));
     }
 
     public boolean matches(CharSequence input) {
