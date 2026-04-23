@@ -27,7 +27,6 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static java.util.Collections.emptyIterator;
 import static java.util.Objects.requireNonNull;
 import static org.hisp.dhis.jsontree.Chars.expectChar;
 import static org.hisp.dhis.jsontree.Chars.expectDigit;
@@ -41,19 +40,11 @@ import static org.hisp.dhis.jsontree.JsonPathException.noSuchNode;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Spliterator;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.IntSupplier;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -232,7 +223,7 @@ record JsonTree(
     }
   }
 
-  private static final class LazyJsonObject extends LazyJsonNode implements Streamable<JsonNode> {
+  private static final class LazyJsonObject extends LazyJsonNode implements Iterable<JsonNode> {
 
     private int size = -1;
 
@@ -243,17 +234,6 @@ record JsonTree(
     @Override
     public Iterable<JsonNode> value() {
       return this;
-    }
-
-    @NotNull
-    @Override
-    public Iterator<JsonNode> iterator() {
-      return membersIterator(Index.AUTO);
-    }
-
-    @Override
-    public @NotNull Stream<JsonNode> stream() {
-      return JsonTree.stream(iterator(), size());
     }
 
     @Override
@@ -283,11 +263,6 @@ record JsonTree(
     public JsonNode getIfExists(@NotNull JsonPath subPath) {
       if (subPath.isHead()) return getIfExists(subPath.segment());
       return tree.get(path.concat(subPath), true);
-    }
-
-    @Override
-    public Streamable<JsonNode> members() {
-      return this;
     }
 
     @Override
@@ -340,19 +315,31 @@ record JsonTree(
       throw noSuchMember(path, name);
     }
 
+    @NotNull
     @Override
-    public Streamable<JsonNode> members(Index index) {
-      return new StreamableAdapter<>(() -> membersIterator(index), this::size, this::isEmpty);
+    public Iterator<JsonNode> iterator() {
+      return members(Index.AUTO).iterator();
     }
 
-    private Iterator<JsonNode> membersIterator(Index op) {
-      if (isEmpty()) return emptyIterator();
-      return new Iterator<>() {
+    @Override
+    public Streamable<JsonNode> members() {
+      return members(Index.AUTO);
+    }
+
+    @Override
+    public Streamable<JsonNode> members(Index op) {
+      if (isEmpty()) return Streamable.empty();
+      return new Streamable.Sized<>() {
         private final char[] json = tree.json;
         private final Index index = op.resolve(tree.auto);
 
         private int offset = skipWhitespace(json, expectChar(json, start, '{'));
         private int n = 0;
+
+        @Override
+        public long getExactSizeIfKnown() {
+          return size();
+        }
 
         @Override
         public boolean hasNext() {
@@ -397,47 +384,49 @@ record JsonTree(
 
     @Override
     public Streamable<JsonPath> paths() {
-      return keys(path::chain);
+      return keysSized(path::chain);
     }
 
     @Override
     public Streamable<Text> keys() {
-      return keys(name -> name);
+      return keysSized(name -> name);
     }
 
-    private <E> Streamable<E> keys(Function<Text, E> toKey) {
-      return new StreamableAdapter<>(
-          () ->
-              new Iterator<>() {
-                private final char[] json = tree.json;
-                private int offset = skipWhitespace(json, expectChar(json, start, '{'));
+    private <E> Streamable.Sized<E> keysSized(Function<Text, E> toKey) {
+      if (isEmpty()) return Streamable.empty();
+      return new Streamable.Sized<>() {
+        private final char[] json = tree.json;
+        private int offset = skipWhitespace(json, expectChar(json, start, '{'));
 
-                @Override
-                public boolean hasNext() {
-                  return offset < json.length && json[offset] != '}';
-                }
+        @Override
+        public long getExactSizeIfKnown() {
+          return size();
+        }
 
-                @Override
-                public E next() {
-                  if (!hasNext())
-                    throw new NoSuchElementException("next() called without checking hasNext()");
-                  Text name = Chars.unescapeJsonString(json, offset);
-                  offset = expectColon(json, skipString(json, offset)); // move after :
-                  JsonNode member = tree.autoDetect(path.chain(name), offset, Index.ADD);
-                  // move after value
-                  offset =
-                      member == null || member.endIndex() < offset // (duplicates)
-                          ? expectCommaOrEnd(json, skipNodeAutodetect(json, offset), '}')
-                          : expectCommaOrEnd(json, member.endIndex(), '}');
-                  return toKey.apply(name);
-                }
-              },
-          this::size,
-          this::isEmpty);
+        @Override
+        public boolean hasNext() {
+          return offset < json.length && json[offset] != '}';
+        }
+
+        @Override
+        public E next() {
+          if (!hasNext())
+            throw new NoSuchElementException("next() called without checking hasNext()");
+          Text name = Chars.unescapeJsonString(json, offset);
+          offset = expectColon(json, skipString(json, offset)); // move after :
+          JsonNode member = tree.autoDetect(path.chain(name), offset, Index.ADD);
+          // move after value
+          offset =
+              member == null || member.endIndex() < offset // (duplicates)
+                  ? expectCommaOrEnd(json, skipNodeAutodetect(json, offset), '}')
+                  : expectCommaOrEnd(json, member.endIndex(), '}');
+          return toKey.apply(name);
+        }
+      };
     }
   }
 
-  private static final class LazyJsonArray extends LazyJsonNode implements Streamable<JsonNode> {
+  private static final class LazyJsonArray extends LazyJsonNode implements Iterable<JsonNode> {
 
     private int size = -1;
 
@@ -450,25 +439,9 @@ record JsonTree(
       return this;
     }
 
-    @NotNull
-    @Override
-    public Iterator<JsonNode> iterator() {
-      return elementsIterator(Index.AUTO);
-    }
-
-    @Override
-    public @NotNull Stream<JsonNode> stream() {
-      return JsonTree.stream(iterator(), size());
-    }
-
     @Override
     public @NotNull JsonNodeType type() {
       return JsonNodeType.ARRAY;
-    }
-
-    @Override
-    public Streamable<JsonNode> elements() {
-      return this;
     }
 
     @Override
@@ -584,22 +557,29 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<JsonNode> elements(Index index) {
-      return new StreamableAdapter<>(() -> elementsIterator(index), this::size, this::isEmpty);
+    public @NotNull Iterator<JsonNode> iterator() {
+      return elements(Index.AUTO).iterator();
     }
 
     @Override
-    public Streamable<Text> values() {
-      return new StreamableAdapter<>(this::valuesIterator, this::size, this::isEmpty);
+    public Streamable<JsonNode> elements() {
+      return elements(Index.AUTO);
     }
 
-    private Iterator<JsonNode> elementsIterator(Index op) {
-      return new Iterator<>() {
+    @Override
+    public Streamable<JsonNode> elements(Index op) {
+      if (isEmpty()) return Streamable.empty();
+      return new Streamable.Sized<>() {
         private final char[] json = tree.json;
         private final Index index = op.resolve(tree.auto);
 
         private int offset = skipWhitespace(json, expectChar(json, start, '['));
         private int n = 0;
+
+        @Override
+        public long getExactSizeIfKnown() {
+          return size();
+        }
 
         @Override
         public boolean hasNext() {
@@ -619,12 +599,19 @@ record JsonTree(
       };
     }
 
-    private Iterator<Text> valuesIterator() {
-      return new Iterator<>() {
+    @Override
+    public Streamable<Text> values() {
+      if (isEmpty()) return Streamable.empty();
+      return new Streamable.Sized<>() {
         private final char[] json = tree.json;
 
         private int offset = skipWhitespace(json, expectChar(json, start, '['));
         private int n = 0;
+
+        @Override
+        public long getExactSizeIfKnown() {
+          return size();
+        }
 
         @Override
         public boolean hasNext() {
@@ -1036,61 +1023,4 @@ record JsonTree(
   Stream support
    */
 
-  private static <T> Stream<T> stream(Iterator<T> iterator, int knownExactSize) {
-    return StreamSupport.stream(new ItemSpliterator<>(iterator, knownExactSize), false);
-  }
-
-  private record StreamableAdapter<T>(
-      Supplier<Iterator<T>> newIterator, IntSupplier size, BooleanSupplier isEmpty)
-      implements Streamable<T> {
-    @Override
-    public @NotNull Iterator<T> iterator() {
-      return isEmpty.getAsBoolean() ? Collections.emptyIterator() : newIterator.get();
-    }
-
-    @Override
-    public @NotNull Stream<T> stream() {
-      return isEmpty.getAsBoolean() ? Stream.empty() : JsonTree.stream(iterator(), size.getAsInt());
-    }
-  }
-
-  private record ItemSpliterator<T>(Iterator<T> iterator, int knownExactSize)
-      implements Spliterator<T> {
-
-    @Override
-    public void forEachRemaining(Consumer<? super T> action) {
-      iterator.forEachRemaining(action);
-    }
-
-    @Override
-    public boolean tryAdvance(Consumer<? super T> action) {
-      if (iterator.hasNext()) {
-        action.accept(iterator.next());
-        return true;
-      }
-      return false;
-    }
-
-    @Override
-    public Spliterator<T> trySplit() {
-      return null; // not splitting please and thank you...
-    }
-
-    @Override
-    public long getExactSizeIfKnown() {
-      return knownExactSize;
-    }
-
-    @Override
-    public long estimateSize() {
-      // This is not accounting for being called after some items have been consumed
-      // but the JDK Iterator wrappers don't either, so it got to be fine anyhow
-      return knownExactSize;
-    }
-
-    @Override
-    public int characteristics() {
-      return ORDERED | SIZED | NONNULL | IMMUTABLE;
-    }
-  }
 }

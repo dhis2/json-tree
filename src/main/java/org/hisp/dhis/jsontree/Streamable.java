@@ -1,6 +1,13 @@
 package org.hisp.dhis.jsontree;
 
+import static java.util.Collections.emptyIterator;
+
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Spliterator;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
@@ -21,6 +28,95 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  */
 public interface Streamable<T> extends Iterable<T> {
 
+  @SuppressWarnings("unchecked")
+  static <T> Sized<T> empty() {
+    return (Sized<T>) EMPTY;
+  }
+
   @NotNull
   Stream<T> stream();
+
+  /**
+   * The adapter API for sized immutable sources.
+   *
+   * <p>It allows to implement {@link Iterator}-based iteration and {@link Stream}-based consumption
+   * of data sources by implementing {@link Iterator#hasNext()}, {@link Iterator#next()} and {@link
+   * Spliterator#getExactSizeIfKnown()} without causing any unnecessary indirections or allocation
+   * of scaffolding objects. Thereby a highly convenient API is provided without extra costs while
+   * keeping the implementation of subclasses straight forward.
+   *
+   * @author Jan Bernitt
+   */
+  interface Sized<T> extends Iterator<T>, Spliterator<T>, Streamable<T> {
+
+    // override to make it abstract again
+    @Override
+    long getExactSizeIfKnown();
+
+    @Override
+    default @NotNull Stream<T> stream() {
+      return StreamSupport.stream(this, false);
+    }
+
+    @Override
+    default @NotNull Iterator<T> iterator() {
+      return this;
+    }
+
+    @Override
+    default void forEachRemaining(Consumer<? super T> action) {
+      while (hasNext()) action.accept(next());
+    }
+
+    @Override
+    default boolean tryAdvance(Consumer<? super T> action) {
+      if (hasNext()) {
+        action.accept(next());
+        return true;
+      }
+      return false;
+    }
+
+    default Spliterator<T> trySplit() {
+      return null; // not splitting please and thank you...
+    }
+
+    default long estimateSize() {
+      // This is not accounting for being called after some items have been consumed
+      // but the JDK Iterator wrappers don't either, so it got to be fine anyhow
+      return getExactSizeIfKnown();
+    }
+
+    @Override
+    default int characteristics() {
+      return ORDERED | SIZED | NONNULL | IMMUTABLE;
+    }
+  }
+
+  Sized<?> EMPTY = new Sized<>() {
+    @Override
+    public boolean hasNext() {
+      return false;
+    }
+
+    @Override
+    public Object next() {
+      throw new NoSuchElementException("Empty does not have a next() element");
+    }
+
+    @Override
+    public @NotNull Stream<Object> stream() {
+      return Stream.empty();
+    }
+
+    @Override
+    public @NotNull Iterator<Object> iterator() {
+      return emptyIterator();
+    }
+
+    @Override
+    public long getExactSizeIfKnown() {
+      return 0L;
+    }
+  };
 }
