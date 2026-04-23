@@ -6,8 +6,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
 import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
