@@ -114,17 +114,17 @@ record JsonTree(
     Map.Entry
      */
     @Override
-    public Text getKey() {
+    public final Text getKey() {
       return path.segment();
     }
 
     @Override
-    public JsonNode getValue() {
+    public final JsonNode getValue() {
       return this;
     }
 
     @Override
-    public JsonNode setValue(JsonNode value) {
+    public final JsonNode setValue(JsonNode value) {
       throw new UnsupportedOperationException("JSON nodes are immutable");
     }
 
@@ -197,14 +197,17 @@ record JsonTree(
       if (this == obj) return true;
       if (!(obj instanceof LazyJsonNode other)) return false;
       if (tree.json == other.tree.json && start == other.start) return true;
-      return path().equals(other.path()) && getDeclaration().contentEquals(other.getDeclaration());
+      return path.equals(other.path)
+          && type() == other.type()
+          && getDeclaration().contentEquals(other.getDeclaration());
     }
 
     /**
      * This methods necessity is an unfortunate detail of valid JSON which does allow whitespace
-     * after the root but no further other characters. Since the {@link #endIndex()} (skipping over
+     * after the root but no other further characters. Since the {@link #endIndex()} (skipping over
      * the JSON) should be lazy and at least deferred until actual usage an issue with dangling
-     * trash can first be checked for when user accesses the {@link #value()}.
+     * trash can first be found for when a caller accesses the {@link #endIndex()} directly or
+     * indirectly.
      */
     final void checkNoDanglingTrash(int end) {
       Chars.expectEndOfBuffer(tree.json, skipWhitespace(tree.json, end));

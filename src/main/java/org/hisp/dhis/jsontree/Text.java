@@ -6,6 +6,8 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -254,6 +256,19 @@ public interface Text extends CharSequence, Comparable<Text> {
 
   static boolean isTrim(char ch) {
     return ch == ' ' || ch == '\t';
+  }
+
+  /**
+   * @see String#concat(String)
+   */
+  default Text concat(CharSequence suffix) {
+    if (suffix.isEmpty()) return this;
+    char[] a = toCharArray();
+    int len = suffix.length();
+    char[] res = Arrays.copyOf(a, a.length+ len);
+    for (int i = 0; i < len; i++)
+      res[a.length+i] = suffix.charAt(i);
+    return of(res, 0, res.length);
   }
 
   /**
@@ -555,6 +570,20 @@ public interface Text extends CharSequence, Comparable<Text> {
       @Override
       public boolean contentMemoryEquals(@NotNull Text other) {
         return other instanceof Slice s && s.buffer == buffer;
+      }
+
+      @Override
+      public Text concat(CharSequence suffix) {
+        if (isEmpty()) return of(suffix);
+        if (suffix.isEmpty()) return this;
+        char[] res = new char[length + suffix.length()];
+        System.arraycopy(buffer, offset, res, 0, length);
+        if (suffix instanceof Slice b) {
+          System.arraycopy(b.buffer, b.offset, res, length, b.length);
+        } else {
+          for (int i = 0; i < suffix.length(); i++) res[length + i] = suffix.charAt(i);
+        }
+        return of(res, 0, res.length);
       }
 
       @Override

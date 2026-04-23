@@ -251,6 +251,19 @@ class TextTest {
     assertEquals(Text.of(""), Text.of(" ").trim());
   }
 
+  @DisplayName("concat()")
+  @Test
+  void testConcat() {
+    Text hello = Text.of("hello");
+    assertSame(hello, hello.concat(""));
+    assertSame(hello, hello.concat(Text.of("")));
+    assertEquals(hello, Text.of("").concat("hello"));
+    assertSame(hello, Text.of("").concat(hello));
+
+    assertEquals(Text.of("hello world!"), Text.of("hello").concat(" world!"));
+    assertEquals(Text.of("hello world!"), Text.of("hello").concat(Text.of(" world!")));
+  }
+
   @DisplayName("slice(Text, Consumer)")
   @Test
   void testSlice_Pattern() {

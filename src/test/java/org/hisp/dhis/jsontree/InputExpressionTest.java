@@ -50,14 +50,14 @@ class InputExpressionTest {
   @Test
   void testScan() {
     assertMatches("He~o", "Hello", "Hero", "Heo");
-    assertEquals(new Pattern(Text.of("He~o"), 3, -1), Pattern.of("He~o"));
+    assertEquals(new Pattern(0, Text.of("He~o"), 3, -1), Pattern.of(0,"He~o"));
   }
 
   @Test
   void testScanIf() {
     assertMatches("He~~lo", "Hello","Helo","Helllo","Heo");
     assertDoesNotMatch("He~~lo", "Hemo", "Hero");
-    assertEquals(new Pattern(Text.of("He~~lo"), 3, -1), Pattern.of("He~~lo"));
+    assertEquals(new Pattern(0, Text.of("He~~lo"), 3, -1), Pattern.of(0,"He~~lo"));
   }
 
   @Test
@@ -65,7 +65,7 @@ class InputExpressionTest {
     String pattern = "/api~~(/+@)(/gist)";
     assertMatches(pattern, "/api/gist", "/api/foo/gist", "/api/foo/bar/gist");
     assertDoesNotMatch(pattern, "/api/foo","/api/gist/foo");
-    assertEquals(new Pattern(Text.of(pattern), 9, -1), Pattern.of(pattern));
+    assertEquals(new Pattern(0, Text.of(pattern), 9, -1), Pattern.of(0, pattern));
   }
 
   @Test

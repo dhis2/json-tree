@@ -1,7 +1,9 @@
 package org.hisp.dhis.jsontree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Random;
@@ -40,7 +42,14 @@ class TextualNumberTest {
       StringBuilder num = new StringBuilder();
       appendInteger(num);
 
-      assertDoubleEquals(num.toString());
+      String number = num.toString();
+      assertDoubleEquals(number);
+      assertLongEquals(number);
+      assertLongCastEquals(number);
+      if (number.length() < 10) {
+        assertIntEquals(number);
+        assertIntCastEquals(number);
+      }
     }
   }
 
@@ -100,6 +109,7 @@ class TextualNumberTest {
                 123.0 -123.0 123.00 0.0 0.00
 
                 // Boundary of fast‑path (15 significant digits)
+                -123456789012345          // 15 digits
                 123456789012345          // 15 digits
                 123456789012345.0        // still 15 significant
                 123456789012345e0        // 15 significant
@@ -171,6 +181,13 @@ class TextualNumberTest {
   }
 
   @Test
+  void testParseInt_Cast() {
+    assertIntCastEquals("100.0");
+    assertIntCastEquals("123456.7890");
+    assertIntCastEquals("-0.7890");
+  }
+
+  @Test
   void testParseInt_EdgeCasesThrows() {
     assertIntThrows("02147483647.0"); // max with leading zero + 0 fraction
     assertIntThrows("-02147483648.0"); // min with leading zero + 0 fraction
@@ -192,6 +209,14 @@ class TextualNumberTest {
     assertLongEquals("0000000000000000000000000000000000000000000000000000000000");
   }
 
+
+  @Test
+  void testParseLong_Cast() {
+    assertLongCastEquals("100.0");
+    assertLongCastEquals("123456.7890");
+    assertLongCastEquals("-0.7890");
+  }
+
   @Test
   void testParseLong_EdgeCasesThrows() {
     assertLongThrows("09223372036854775807.0"); // max with leading zero + 0 fraction
@@ -205,6 +230,35 @@ class TextualNumberTest {
     assertLongThrows("9223372036854775808", ArithmeticException.class); // a too large number not pre-identified
   }
 
+  @Test
+  void testIsNumericZero() {
+    assertNumericZero("0");
+    assertNumericZero("+0");
+    assertNumericZero("-0");
+    assertNumericZero("0.");
+    assertNumericZero("0.0");
+    assertNumericZero("-0.0");
+    assertNumericZero("00.00");
+    assertNumericZero("-00.00");
+
+    assertNotNumericZero("1");
+    assertNotNumericZero("0.1");
+    assertNotNumericZero("0.0001");
+    assertNotNumericZero("0.000100");
+    assertNotNumericZero("-1");
+    assertNotNumericZero("-0.1");
+    assertNotNumericZero("-0.00010");
+    assertNotNumericZero("hello");
+  }
+
+  private static void assertNumericZero(String value) {
+    assertTrue(TextualNumber.isNumericZero(value.toCharArray(), 0, value.length()));
+  }
+
+  private static void assertNotNumericZero(String value) {
+    assertFalse(TextualNumber.isNumericZero(value.toCharArray(), 0, value.length()));
+  }
+
   private static void assertDoubleThrows(String number) {
     assertThrowsExactly(
         NumberFormatException.class,
@@ -213,21 +267,26 @@ class TextualNumberTest {
     assertThrowsExactly(
         NumberFormatException.class,
         () -> TextualNumber.parseDoubleCast(number.toCharArray()),
-        "Should throw for: " + number);
+        "parseDoubleCast() should throw for: " + number);
+    assertThrowsExactly(NumberFormatException.class,
+        () -> TextualNumber.of(number.toCharArray()),
+        "TextualNumber.of() should throw for: "+number);
   }
 
   private static void assertDoubleEquals(String number) {
-    assertDoubleEqualsExact(number);
-    assertDoubleEqualsExact(number + " ");
-    assertDoubleEqualsExact(" " + number);
-    assertDoubleEqualsExact(" " + number + " ");
+    assertDoubleEqualsNoWS(number);
+    assertDoubleEqualsNoWS(number + " ");
+    assertDoubleEqualsNoWS(" " + number);
+    assertDoubleEqualsNoWS(" " + number + " ");
   }
 
-  private static void assertDoubleEqualsExact(String number) {
+  private static void assertDoubleEqualsNoWS(String number) {
     double expected = Double.parseDouble(number);
     try {
       double actual = TextualNumber.parseDoubleCast(number.toCharArray(), 0, number.length());
       assertEquals(expected, actual, "Failed for: " + number);
+      Number actualNumber = TextualNumber.of(number.trim().toCharArray());
+      assertEquals(expected, actualNumber.doubleValue(), "Failed TextualNumber.of().doubleValue() for: "+number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
     }
@@ -237,9 +296,25 @@ class TextualNumberTest {
     long expected = Long.parseLong(number);
     try {
       long actual = TextualNumber.parseLongExact(number.toCharArray(), 0, number.length());
-      assertEquals(expected, actual, "Failed for: " + number);
+      assertEquals(expected, actual, "Failed parseLongExact() for: " + number);
+      long actualCast = TextualNumber.parseLongCast(number.toCharArray(), 0, number.length());
+      assertEquals(expected, actualCast, "Failed parseLongCast() for: " + number);
+      Number actualNumber = TextualNumber.of(number.trim().toCharArray());
+      assertEquals(expected, actualNumber.longValue(), "Failed TextualNumber.of().longValue() for: "+number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Long.parseLong was rejected: " + number.replace(' ', '_'), ex);
+    }
+  }
+
+  private static void assertLongCastEquals(String number) {
+    long expected = (long) Double.parseDouble(number);
+    try {
+      long actual = TextualNumber.parseLongCast(number.toCharArray(), 0, number.length());
+      assertEquals(expected, actual, "Failed parseLongCast() for: "+number);
+      Number actualNumber = TextualNumber.of(number.trim().toCharArray());
+      assertEquals(expected, actualNumber.longValue(), "Failed TextualNumber.of().longValue() for: "+number);
+    } catch (NumberFormatException ex) {
+      fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
     }
   }
 
@@ -262,11 +337,26 @@ class TextualNumberTest {
     int expected = Integer.parseInt(number);
     try {
       int actual = TextualNumber.parseIntExact(number.toCharArray(), 0, number.length());
-      assertEquals(expected, actual, "Failed for: " + number);
+      assertEquals(expected, actual, "Failed parseIntExact() for: " + number);
+      int actualCast = TextualNumber.parseIntCast(number.toCharArray(), 0, number.length());
+      assertEquals(expected, actualCast, "Failed parseIntCast() for: " + number);
+      Number actualNumber = TextualNumber.of(number.toCharArray());
+      assertEquals(expected, actualNumber.intValue(), "Failed TextualNumber.of().intValue() for: "+number);
     } catch (NumberFormatException ex) {
       fail("Number valid for Integer.parseInt was rejected: " + number.replace(' ', '_'), ex);
     }
   }
+
+  private static void assertIntCastEquals(String number) {
+    int expected = (int) Double.parseDouble(number);
+    try {
+      int actual = TextualNumber.parseIntCast(number.toCharArray(), 0, number.length());
+      assertEquals(expected, actual, "Failed parseIntCast() for: "+number);
+    } catch (NumberFormatException ex) {
+      fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
+    }
+  }
+
   private static void assertIntThrows(String number) {
     assertIntThrows(number, NumberFormatException.class);
   }

@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 class JsonValueToTest {
 
   public record ExampleParams(
-      @Validation
       int number,
       Integer optionalNumber,
       String string,

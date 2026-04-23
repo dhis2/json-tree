@@ -115,11 +115,9 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
   }
 
   /**
-   * Note that keys may differ from the member names as defined in the JSON document in case that
-   * their literal interpretation would have clashed with key syntax. In that case the object member
-   * name is "escaped" so that using the returned key with {@link #get(CharSequence)} will return
-   * the value. Use {@link #names()} to receive the literal object member names as defined in the
-   * document.
+   * Stream of the raw JSON object member names in order of declaration.
+   * If keys re-occur in the JSON (duplicates) they also re-occur in the stream.
+   * Use {@link Stream#distinct()} on the result to de-duplicate when needed.
    *
    * @return The keys of this map.
    * @throws JsonTreeException in case this node does exist but is not an object node
@@ -155,6 +153,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
 
   /**
    * Lists raw JSON object member names in order of declaration.
+   * If keys re-occur in the JSON (duplicates) they also re-occur in the list.
    *
    * @return The list of object member names in the order they were defined.
    * @throws JsonTreeException in case this node does exist but is not an object node
