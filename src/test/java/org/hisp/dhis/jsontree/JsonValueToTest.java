@@ -19,14 +19,22 @@ import org.junit.jupiter.api.Test;
  */
 class JsonValueToTest {
 
-  public record ExampleParams(
+  public record OuterParams(
       int number,
       Integer optionalNumber,
       String string,
       Set<JsonNodeType> types,
       List<ExampleItem> items,
-      ExampleItem fallback
+      ExampleItem fallback,
+      @Collapsed InnerParams inner
   ) {}
+
+  public record InnerParams(
+      String foo,
+      @Collapsed InnerInnerParams inner
+  ) {}
+
+  public record InnerInnerParams(String bar) {}
 
   @Validation(type = NodeType.STRING)
   public record ExampleItem(String key, double value) {
@@ -39,14 +47,17 @@ class JsonValueToTest {
 
   @Test
   void testMinimal() {
+    InnerParams inner = new InnerParams(null, new InnerInnerParams(null));
     assertParamsEquals(
-        new ExampleParams(10, null, null, null, null, null), Map.of("number", List.of("10")));
+        new OuterParams(10, null, null, null, null, null, inner),
+        Map.of("number", List.of("10")));
   }
 
   @Test
   void testEmpty() {
+    InnerParams inner = new InnerParams(null, new InnerInnerParams(null));
     assertParamsEquals(
-        new ExampleParams(10, null, null, Set.of(), List.of(), null),
+        new OuterParams(10, null, null, Set.of(), List.of(), null, inner),
         Map.ofEntries(
             entry("number", List.of("10")),
             entry("optionalNumber", List.of()),
@@ -59,43 +70,48 @@ class JsonValueToTest {
   @Test
   void testMaximal() {
     assertParamsEquals(
-        new ExampleParams(
+        new OuterParams(
             10,
             20,
             "hello",
             Set.of(JsonNodeType.STRING, JsonNodeType.NULL),
             List.of(new ExampleItem("a", 1.5), new ExampleItem("b", 2.0)),
-            new ExampleItem("c", 5)),
+            new ExampleItem("c", 5),
+            new InnerParams("foo", new InnerInnerParams("bar"))),
         Map.ofEntries(
             entry("number", List.of("10")),
             entry("optionalNumber", List.of("20")),
             entry("string", List.of("hello")),
             entry("types", List.of("STRING", "NULL")),
             entry("items", List.of("a:1.5", "b:2.0")),
-            entry("fallback", List.of("c:5"))));
+            entry("fallback", List.of("c:5")),
+            entry("foo", List.of("foo")),
+            entry("bar", List.of("bar"))));
   }
 
   @Test
   void testSingle() {
     assertParamsEquals(
-        new ExampleParams(
+        new OuterParams(
             10,
             20,
             "hello",
             Set.of(JsonNodeType.STRING),
             List.of(new ExampleItem("a", 1.5)),
-            new ExampleItem("c", 5)),
+            new ExampleItem("c", 5),
+            new InnerParams("foo2", new InnerInnerParams(null))),
         Map.ofEntries(
             entry("number", List.of("10")),
             entry("optionalNumber", List.of("20")),
             entry("string", List.of("hello")),
             entry("types", List.of("STRING")),
             entry("items", List.of("a:1.5")),
-            entry("fallback", List.of("c:5"))));
+            entry("fallback", List.of("c:5")),
+            entry("foo", List.of("foo2"))));
   }
 
-  private static void assertParamsEquals(ExampleParams expected, Map<String, List<String>> actual) {
-    List<JsonObject.Property> properties = JsonObject.properties(ExampleParams.class);
+  private static void assertParamsEquals(OuterParams expected, Map<String, List<String>> actual) {
+    List<JsonObject.Property> properties = JsonObject.collapsedProperties(OuterParams.class);
     JsonNode object =
         JsonBuilder.createObject(
             obj -> {
@@ -132,7 +148,7 @@ class JsonValueToTest {
               }
             });
     JsonMixed params = JsonMixed.of(object);
-    params.validate(ExampleParams.class);
-    assertEquals(expected, params.to(ExampleParams.class));
+    params.validate(OuterParams.class);
+    assertEquals(expected, params.to(OuterParams.class));
   }
 }

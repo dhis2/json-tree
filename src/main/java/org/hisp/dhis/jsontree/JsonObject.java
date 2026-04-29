@@ -97,6 +97,16 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   }
 
   /**
+   * @param of an object type
+   * @return a list of the properties in the given object type including those collapsed down from
+   *     {@link Collapsed} inner {@link Record}s
+   * @since 1.9
+   */
+  static List<Property> collapsedProperties(Class<? extends Record> of) {
+    return JsonVirtualTree.collapsedProperties(of);
+  }
+
+  /**
    * Access to object fields by name.
    *
    * <p>Note that this neither checks if a field exist nor if it has the assumed type.
