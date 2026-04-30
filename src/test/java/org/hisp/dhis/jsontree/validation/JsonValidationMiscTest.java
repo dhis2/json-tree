@@ -1,9 +1,13 @@
 package org.hisp.dhis.jsontree.validation;
 
 import static org.hisp.dhis.jsontree.Assertions.assertValidationError;
+import static org.hisp.dhis.jsontree.Validation.Mode.PROBE_ALL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.annotation.RetentionPolicy;
+import java.util.List;
+
 import org.hisp.dhis.jsontree.JsonList;
 import org.hisp.dhis.jsontree.JsonMixed;
 import org.hisp.dhis.jsontree.JsonObject;
@@ -59,5 +63,22 @@ class JsonValidationMiscTest {
         Validation.Rule.MAX_LENGTH,
         5,
         10);
+  }
+
+  public record ImplicitlyRequired(int intValue, long longValue, double doubleValue, float floatValue) {}
+
+  @Test
+  void testPrimitivesAreImplicitlyRequired() {
+    Validation.Result result = JsonMixed.of("{}").validate(ImplicitlyRequired.class, PROBE_ALL);
+    assertEquals(4, result.errors().size());
+    assertTrue(result.errors().stream().allMatch(e -> e.rule() == Validation.Rule.REQUIRED));
+  }
+
+  public record NotImplicitlyRequired(Class<?> type) {}
+
+  @Test
+  void testNotImplicitlyRequired() {
+    Validation.Result result = JsonMixed.of("{}").validate(NotImplicitlyRequired.class, PROBE_ALL);
+    assertEquals(List.of(), result.errors());
   }
 }
