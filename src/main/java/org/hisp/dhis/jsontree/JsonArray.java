@@ -30,6 +30,7 @@ package org.hisp.dhis.jsontree;
 import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.DoubleStream;
@@ -37,6 +38,7 @@ import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonNode.Index;
+import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
@@ -70,24 +72,14 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
 
   @Override
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<JsonMixed> stream() {
-    return stream(AUTO);
+  default @NotNull Iterator<JsonMixed> iterator() {
+    return values(AUTO).iterator();
   }
 
-  /**
-   * @implNote This utilizes {@link JsonNode#elements(Index)} avoiding map lookups for each element.
-   *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
-   *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
-   * @param index the strategy to apply when it comes to node lookup and indexing
-   * @throws JsonTreeException if this node exist but is not an array or null node
-   * @since 1.9
-   */
+  @Override
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<JsonMixed> stream(JsonNode.Index index) {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return Stream.empty();
-    JsonAccessors accessors = getAccessors();
-    return node.elements(index).stream().map(n -> n.lift(accessors));
+  default Stream<JsonMixed> stream() {
+    return values(AUTO).stream();
   }
 
   /**

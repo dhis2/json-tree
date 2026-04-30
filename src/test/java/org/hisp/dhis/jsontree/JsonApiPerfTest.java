@@ -141,12 +141,12 @@ class JsonApiPerfTest {
   @Test
   void testJsonArray_stream() {
     JsonArray arr = JsonMixed.of("[ 1,2 , true , false, \"hello\",{},[]]");
-    List<JsonNode> nodes = arr.stream(Index.SKIP).map(JsonValue::node).toList();
-    List<JsonNode> nodes2 = arr.stream(Index.SKIP).map(JsonValue::node).toList();
+    List<JsonNode> nodes = arr.values(Index.SKIP).map(JsonValue::node).toList();
+    List<JsonNode> nodes2 = arr.values(Index.SKIP).map(JsonValue::node).toList();
     for (int i = 0; i < nodes.size(); i++)
       assertNotSame(nodes.get(i), nodes2.get(i));
-    nodes = arr.stream(Index.ADD).map(JsonValue::node).toList();
-    nodes2 = arr.stream(Index.CHECK).map(JsonValue::node).toList();
+    nodes = arr.values(Index.ADD).map(JsonValue::node).toList();
+    nodes2 = arr.values(Index.CHECK).map(JsonValue::node).toList();
     for (int i = 0; i < nodes.size(); i++)
       assertSame(nodes.get(i), nodes2.get(i));
   }
