@@ -135,10 +135,10 @@ class JsonMapTest {
   }
 
   @Test
-  void testViewAsMap_Values() {
+  void testViewAsMap_entries() {
     JsonMap<JsonArray> obj = JsonMixed.of("{\"b\":[1],\"c\":[2]}").asMap(JsonArray.class);
     JsonMap<JsonNumber> view = obj.project(arr -> arr.getNumber(0));
-    assertEquals(List.of(1, 2), view.values().map(JsonNumber::intValue).toList());
+    assertEquals(List.of(1, 2), view.entries().map(JsonNumber::intValue).toList());
   }
 
   @Test
@@ -151,16 +151,16 @@ class JsonMapTest {
   }
 
   @Test
-  void testValues_Special() {
+  void testEntries_Special1() {
     String json =
         """
             {".":1, "{uid}":2, "[6]":3, "x{y}z": 4}""";
     JsonMap<JsonNumber> map = JsonMixed.of(json).asMap(JsonNumber.class);
-    assertEquals(List.of(1, 2, 3, 4), map.values().map(JsonNumber::intValue).toList());
+    assertEquals(List.of(1, 2, 3, 4), map.entries().map(JsonNumber::intValue).toList());
   }
 
   @Test
-  void testEntries_Special() {
+  void testEntries_Special2() {
     String json =
         """
             {".":1, "{uid}":2, "[6]":3, "x{y}z": 4}""";

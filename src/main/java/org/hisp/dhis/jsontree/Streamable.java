@@ -2,10 +2,13 @@ package org.hisp.dhis.jsontree;
 
 import static java.util.Collections.emptyIterator;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -90,6 +93,34 @@ public interface Streamable<T> extends Iterable<T> {
     @Override
     default int characteristics() {
       return ORDERED | SIZED | NONNULL | IMMUTABLE;
+    }
+
+    default <E> Sized<E> map(Function<T, E> f) {
+      Sized<T> self = this;
+      return new Sized<E>() {
+        @Override
+        public long getExactSizeIfKnown() {
+          return self.getExactSizeIfKnown();
+        }
+
+        @Override
+        public boolean hasNext() {
+          return self.hasNext();
+        }
+
+        @Override
+        public E next() {
+          return f.apply(self.next());
+        }
+      };
+    }
+
+    default List<T> toList() {
+      int size = (int) getExactSizeIfKnown();
+      if (size == 0) return List.of();
+      List<T> res = new ArrayList<>(size);
+      while (hasNext()) res.add(next());
+      return res;
     }
   }
 

@@ -31,6 +31,13 @@ public final class TextualNumber extends Number implements Textual {
   /**
    * Does not allow whitespace at start/end of the number.
    *
+   * <p>The returned number type is chosen to reflect the input text as close as possible. An
+   * integer input will result in {@link Integer} or {@link Long} based on numeric range as long as
+   * the range allows for it based on digit count (not exact numeric range). An input with decimals
+   * will result in {@link Double} for zero or a {@link TextualNumber} for anything else. Negative
+   * zero will always return a {@link Double} to preserve the distinction between positive and
+   * negative zero.
+   *
    * @param buffer with content of an integer or decimal number
    * @param offset start of the number in the buffer
    * @param length number of characters from offset that represent the number
@@ -59,6 +66,8 @@ public final class TextualNumber extends Number implements Textual {
         return new TextualNumber(buffer, offset, length);
       }
     }
+    if (isNumericZero(buffer, offset, length))
+      return buffer[offset] == '-' ? -0d : 0d;
     if (!isTextualDecimal(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDecimal())
       throw nanError(buffer, offset, length, "Is neither an integer nor a decimal number: ");
     return new TextualNumber(buffer, offset, length);
@@ -169,10 +178,12 @@ public final class TextualNumber extends Number implements Textual {
     int end = offset + length;
     int d0 = i;
     while (i < end && buffer[i] == '0') i++;
-    if (i >= end) return i > d0;
+    boolean integerDigits = i > d0;
+    if (i >= end) return integerDigits;
     if (buffer[i++] != '.') return false;
+    d0 = i;
     while (i < end && buffer[i] == '0') i++;
-    return i == end;
+    return i == end && (integerDigits || i > d0);
   }
 
   static boolean isNumericInteger(char[] buffer) {

@@ -30,6 +30,7 @@ package org.hisp.dhis.jsontree;
 import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.DoubleStream;
@@ -56,27 +57,6 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
     return this; // return type override
   }
 
-  @Override
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<JsonMixed> stream() {
-    return stream(AUTO);
-  }
-
-  /**
-   * @implNote This utilizes {@link JsonNode#elements(Index)} avoiding map lookups for each element.
-   *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
-   *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
-   * @param index the strategy to apply when it comes to node lookup and indexing
-   * @since 1.9
-   */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<JsonMixed> stream(JsonNode.Index index) {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return Stream.empty();
-    JsonAccessors accessors = getAccessors();
-    return node.elements(index).stream().map(n -> n.lift(accessors));
-  }
-
   /**
    * Index access to the array.
    *
@@ -89,6 +69,41 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    */
   <E extends JsonValue> E get(int index, Class<E> as);
 
+  @Override
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Stream<JsonMixed> stream() {
+    return stream(AUTO);
+  }
+
+  /**
+   * @implNote This utilizes {@link JsonNode#elements(Index)} avoiding map lookups for each element.
+   *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
+   *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
+   * @param index the strategy to apply when it comes to node lookup and indexing
+   * @throws JsonTreeException if this node exist but is not an array or null node
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Stream<JsonMixed> stream(JsonNode.Index index) {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.isNull()) return Stream.empty();
+    JsonAccessors accessors = getAccessors();
+    return node.elements(index).stream().map(n -> n.lift(accessors));
+  }
+
+  /**
+   * @return this arrays values as {@link org.hisp.dhis.jsontree.Streamable.Sized}
+   * @throws JsonTreeException if this node exist but is not an array or null node
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Streamable.Sized<JsonMixed> values() {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.isNull()) return Streamable.empty();
+    JsonAccessors accessors = getAccessors();
+    return node.elements(SKIP).map(n -> n.lift(accessors));
+  }
+
   /**
    * @return the array elements as a uniform list of {@link String}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
@@ -97,7 +112,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   default List<String> stringValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return List.of();
-    return node.elements(JsonNode.Index.SKIP).stream()
+    return node.elements(SKIP)
         .map(JsonNode::textValue)
         .map(Text::toString)
         .toList();
@@ -111,18 +126,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   default List<Boolean> booleanValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return List.of();
-    return node.elements(JsonNode.Index.SKIP).stream().map(JsonNode::booleanValue).toList();
-  }
-
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default <E> List<E> values(Function<String, E> f) {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.elements(JsonNode.Index.SKIP).stream()
-        .map(JsonNode::textValue)
-        .map(Text::toString)
-        .map(f)
-        .toList();
+    return node.elements(SKIP).map(JsonNode::booleanValue).toList();
   }
 
   /**
@@ -168,6 +172,17 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <E> Stream<E> streamValues(Class<E> to) {
     return stream(SKIP).map(e -> e.to(to));
+  }
+
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default <E> List<E> values(Function<String, E> f) {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.isNull()) return List.of();
+    return node.elements(SKIP)
+        .map(JsonNode::textValue)
+        .map(Text::toString)
+        .map(f)
+        .toList();
   }
 
   /**

@@ -170,9 +170,13 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
     return JsonAbstractCollection.asMultiMap(getObject(name), as);
   }
 
+  /**
+   * @see #entries(Index)
+   * @since 1.9
+   */
   @Override
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonMixed> entries() {
+  default Streamable.Sized<JsonMixed> entries() {
     return entries(AUTO);
   }
 
@@ -189,10 +193,10 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonMixed> entries(JsonNode.Index index) {
-    if (isUndefined() || isEmpty()) return Stream.empty();
+  default Streamable.Sized<JsonMixed> entries(JsonNode.Index index) {
+    if (isUndefined() || isEmpty()) return Streamable.empty();
     JsonAccessors accessors = getAccessors();
-    return node().members(index).stream().map(e -> e.lift(accessors));
+    return node().members(index).map(e -> e.lift(accessors));
   }
 
   /**
