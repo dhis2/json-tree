@@ -19,7 +19,7 @@ class JsonValidationMiscTypeUseTest {
                 @Validator(value = Validation.RegEx.class, params = @Validation(pattern = ".es.*"))
                 String>>
         getData() {
-      return getArray("data").values(e -> List.of());
+      return getArray("data").values().map(e -> List.of(e.text().toString())).toList();
     }
   }
 

@@ -241,6 +241,9 @@ class TextualNumberTest {
     assertNumericZero("00.00");
     assertNumericZero("-00.00");
 
+    assertNotNumericZero(".");
+    assertNotNumericZero("+.");
+    assertNotNumericZero("-.");
     assertNotNumericZero("1");
     assertNotNumericZero("0.1");
     assertNotNumericZero("0.0001");

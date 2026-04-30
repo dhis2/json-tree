@@ -97,6 +97,16 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   }
 
   /**
+   * @param of an object type
+   * @return a list of the properties in the given object type including those collapsed down from
+   *     {@link Collapsed} inner {@link Record}s
+   * @since 1.9
+   */
+  static List<Property> collapsedProperties(Class<? extends Record> of) {
+    return JsonVirtualTree.collapsedProperties(of);
+  }
+
+  /**
    * Access to object fields by name.
    *
    * <p>Note that this neither checks if a field exist nor if it has the assumed type.
@@ -160,9 +170,13 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
     return JsonAbstractCollection.asMultiMap(getObject(name), as);
   }
 
+  /**
+   * @see #entries(Index)
+   * @since 1.9
+   */
   @Override
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonMixed> entries() {
+  default Streamable.Sized<JsonMixed> entries() {
     return entries(AUTO);
   }
 
@@ -179,10 +193,10 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<JsonMixed> entries(JsonNode.Index index) {
-    if (isUndefined() || isEmpty()) return Stream.empty();
+  default Streamable.Sized<JsonMixed> entries(JsonNode.Index index) {
+    if (isUndefined() || isEmpty()) return Streamable.empty();
     JsonAccessors accessors = getAccessors();
-    return node().members(index).stream().map(e -> e.lift(accessors));
+    return node().members(index).map(e -> e.lift(accessors));
   }
 
   /**

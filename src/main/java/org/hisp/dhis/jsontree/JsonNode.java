@@ -576,7 +576,7 @@ public interface JsonNode
    * @return this {@link #value()} as a sequence of {@link Entry}s
    * @throws JsonTreeException if this node is not an object node that could have members
    */
-  default Streamable<JsonNode> members() {
+  default Streamable.Sized<JsonNode> members() {
     throw notA(OBJECT, this, "members()");
   }
 
@@ -593,7 +593,7 @@ public interface JsonNode
    * @throws JsonTreeException if this node is not an object node that could have members
    * @since 0.11
    */
-  default Streamable<Text> keys() {
+  default Streamable.Sized<Text> keys() {
     throw notA(OBJECT, this, "keys()");
   }
 
@@ -604,7 +604,7 @@ public interface JsonNode
    * @throws JsonTreeException if this node is not an object node that could have members
    * @since 1.2
    */
-  default Streamable<JsonPath> paths() {
+  default Streamable.Sized<JsonPath> paths() {
     throw notA(OBJECT, this, "paths()");
   }
 
@@ -619,7 +619,7 @@ public interface JsonNode
    *     internally will be reused and returned by the iterator.
    * @throws JsonTreeException if this node is not an object node that could have members
    */
-  default Streamable<JsonNode> members(Index index) {
+  default Streamable.Sized<JsonNode> members(Index index) {
     throw notA(OBJECT, this, "members(Index)");
   }
 
@@ -674,7 +674,7 @@ public interface JsonNode
    * @return this {@link #value()} as as {@link Stream}
    * @throws JsonTreeException if this node is not an array node that could have elements
    */
-  default Streamable<JsonNode> elements() {
+  default Streamable.Sized<JsonNode> elements() {
     throw notA(ARRAY, this, "elements()");
   }
 
@@ -689,7 +689,7 @@ public interface JsonNode
    *     already exist internally will be reused and returned by the iterator.
    * @throws JsonTreeException if this node is not an array node that could have elements
    */
-  default Streamable<JsonNode> elements(Index index) {
+  default Streamable.Sized<JsonNode> elements(Index index) {
     throw notA(ARRAY, this, "elements(Index)");
   }
 
@@ -702,7 +702,7 @@ public interface JsonNode
    * @throws JsonTreeException if this node is not an array node that could have elements
    * @since 1.9
    */
-  default Streamable<Text> values() {
+  default Streamable.Sized<Text> values() {
     throw notA(ARRAY, this, "values()");
   }
 

@@ -200,7 +200,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
       JsonObject e, JsonObject a, Mode mode, Consumer<Difference> add, PropertyInfo p) {
     if (!p.anyAdditional(mode.objects.anyAdditional)) {
       // list all extra members
-      a.keys()
+      a.keys().stream()
           .filter(not(e::has))
           .forEach(key -> add.accept(new Difference(Type.MORE, e.get(key), a.get(key))));
     }
@@ -211,7 +211,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
     } else {
       // exact order
       Iterator<Text> eKeys = e.keys().iterator();
-      Iterator<Text> aKeys = a.keys().filter(e::has).iterator();
+      Iterator<Text> aKeys = a.keys().stream().filter(e::has).iterator();
       while (eKeys.hasNext() && aKeys.hasNext()) {
         Text eKey = eKeys.next();
         Text aKey = aKeys.next();

@@ -394,7 +394,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
     if (a.isNumber()) return a.doubleValue() == b.doubleValue();
     if (a.isArray())
       return a.size() == b.size() && a.indexes().allMatch(i -> eqItems.test(a.get(i), b.get(i)));
-    return a.size() == b.size() && a.keys().allMatch(key -> eqItems.test(a.get(key), b.get(key)));
+    return a.size() == b.size() && a.keys().stream().allMatch(key -> eqItems.test(a.get(key), b.get(key)));
   }
 
   /**

@@ -196,7 +196,8 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
    * possible and if required is AUTO
    */
   private static boolean isRequiredImplicitly(PropertyValidations validations) {
-    return validations.accepted().stream().allMatch(type -> isRequiredImplicitly(validations, type));
+    Set<NodeType> accepted = validations.accepted();
+    return !accepted.isEmpty() && accepted.stream().allMatch(type -> isRequiredImplicitly(validations, type));
   }
 
   private static boolean isRequiredImplicitly(PropertyValidations validations, NodeType type) {
