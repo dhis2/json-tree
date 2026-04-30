@@ -115,12 +115,22 @@ public interface Streamable<T> extends Iterable<T> {
       };
     }
 
+    /**
+     * @see Stream#toList()
+     */
     default List<T> toList() {
       int size = (int) getExactSizeIfKnown();
       if (size == 0) return List.of();
       List<T> res = new ArrayList<>(size);
       while (hasNext()) res.add(next());
       return res;
+    }
+
+    /**
+     * @see Stream#count()
+     */
+    default long count() {
+      return getExactSizeIfKnown();
     }
   }
 

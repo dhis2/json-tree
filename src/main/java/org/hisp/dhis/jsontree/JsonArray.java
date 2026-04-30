@@ -30,7 +30,6 @@ package org.hisp.dhis.jsontree;
 import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.DoubleStream;
@@ -92,16 +91,33 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * @see #values(Index)
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Streamable.Sized<JsonMixed> values() {
+    return values(SKIP);
+  }
+
+  /**
+   * @see #values()
+   * @since 1.9
+   */
+  default <T> Streamable.Sized<T> values(Class<T> to) {
+    return values().map(e -> e.to(to));
+  }
+
+  /**
    * @return this arrays values as {@link org.hisp.dhis.jsontree.Streamable.Sized}
    * @throws JsonTreeException if this node exist but is not an array or null node
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Streamable.Sized<JsonMixed> values() {
+  default Streamable.Sized<JsonMixed> values(JsonNode.Index index) {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return Streamable.empty();
     JsonAccessors accessors = getAccessors();
-    return node.elements(SKIP).map(n -> n.lift(accessors));
+    return node.elements(index).map(n -> n.lift(accessors));
   }
 
   /**
@@ -160,41 +176,6 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return DoubleStream.empty();
     return node.elements(SKIP).stream().mapToDouble(JsonNode::doubleValue);
-  }
-
-  /**
-   * Uses {@link #getAccessors()} for type conversion.
-   *
-   * @param to element target type
-   * @return a stream of all array values accessed as the given type in the order defined in JSON
-   * @since 1.9
-   */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default <E> Stream<E> streamValues(Class<E> to) {
-    return stream(SKIP).map(e -> e.to(to));
-  }
-
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default <E> List<E> values(Function<String, E> f) {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.elements(SKIP)
-        .map(JsonNode::textValue)
-        .map(Text::toString)
-        .map(f)
-        .toList();
-  }
-
-  /**
-   * Uses {@link #getAccessors()} for type conversion.
-   *
-   * @param to element target type
-   * @return a list of all array values accessed as the given type in the order defined in JSON
-   * @since 1.9
-   */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default <E> List<E> listValues(Class<E> to) {
-    return streamValues(to).toList();
   }
 
   default JsonMixed get(int index) {

@@ -101,12 +101,12 @@ class JsonApiPerfTest {
   }
 
   @Test
-  void testJsonValue_streamValues() {
+  void testJsonValue_values() {
     List<JsonPath> accessed = new ArrayList<>();
     JsonObject root = JsonMixed.of(JsonNode.of("{\"values\":[1,2,3,4,5]", accessed::add));
 
     assertEquals(List.of(), accessed);
-    assertEquals(5L, root.getArray("values").streamValues(double.class).count());
+    assertEquals(5L, root.getArray("values").values(double.class).count());
     assertEquals(List.of(JsonPath.of("values")), accessed, "there should be one access of values");
   }
 
