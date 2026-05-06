@@ -35,7 +35,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Stream;
 import org.hisp.dhis.jsontree.JsonNode.Index;
 import org.hisp.dhis.jsontree.Validation.Rule;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
