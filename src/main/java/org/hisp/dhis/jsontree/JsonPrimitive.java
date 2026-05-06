@@ -38,7 +38,7 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
  */
 @Validation(type = {BOOLEAN, NUMBER, STRING})
 @Validation.Ignore
-public interface JsonPrimitive extends JsonBoolean, JsonNumber, JsonString {
+public interface JsonPrimitive extends JsonBoolean, JsonString, JsonInteger {
 
   @Override
   default JsonPrimitive getValue() {

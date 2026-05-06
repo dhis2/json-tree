@@ -79,6 +79,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
       new JsonVirtualTree(JsonNode.NULL, JsonPath.SELF, JsonAccess.GLOBAL);
 
   private static final Map<Class<?>, List<Property>> PROPERTIES = new ConcurrentHashMap<>();
+  private static final Map<Class<?>, List<Property>> COLLAPSED_PROPERTIES = new ConcurrentHashMap<>();
 
   static List<Property> properties(Class<?> of) {
     if (JsonObject.class.isAssignableFrom(of)) {
@@ -93,6 +94,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
     throw new UnsupportedOperationException(
         "Must be a subtype of JsonObject or Record but was: " + of);
+  }
+
+  static List<Property> collapsedProperties(Class<? extends Record> of) {
+    return COLLAPSED_PROPERTIES.computeIfAbsent(of, type -> collapsedComponentProperties(of));
   }
 
   static JsonMixed lift(JsonNode node, JsonAccessors accessors) {
@@ -473,6 +478,26 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     } else {
       str.append('?');
     }
+  }
+
+  private static List<Property> collapsedComponentProperties(Class<? extends Record> of) {
+    List<Property> res = new ArrayList<>();
+    List<Property> properties = componentProperties(of);
+    for (Property p : properties) {
+      if (p.source().isAnnotationPresent(Collapsed.class)) {
+        Type type = p.javaType().getType();
+        if (type instanceof Class<?> c && c.isRecord()) {
+          @SuppressWarnings("unchecked")
+          Class<? extends Record> rType = (Class<? extends Record>) type;
+          res.addAll(collapsedComponentProperties(rType));
+        } else {
+          res.add(p);
+        }
+      } else {
+        res.add(p);
+      }
+    }
+    return List.copyOf(res);
   }
 
   private static List<Property> componentProperties(Class<? extends Record> of) {

@@ -51,7 +51,7 @@ public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
    * @since 0.11
    */
   default <T> Map<String, T> toMap(Function<E, T> toValue) {
-    return entries().collect(Collectors.toMap(e -> e.getKey().toString(), toValue));
+    return entries().stream().collect(Collectors.toMap(e -> e.getKey().toString(), toValue));
   }
 
   /**

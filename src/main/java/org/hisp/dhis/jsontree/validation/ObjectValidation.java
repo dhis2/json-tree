@@ -222,12 +222,12 @@ record ObjectValidation(
 
   @NotNull
   private static PropertyValidations toPropertyValidation(Class<?> type) {
-    RequiredValidation values =
+    RequiredValidation requiredness =
         !type.isPrimitive() ? null : RequiredValidation.PRIMITIVES;
     StringValidation strings =
         !type.isEnum() ? null : new StringValidation(anyOfStrings(type), YesNo.AUTO, -1, -1, null);
     return new PropertyValidations(
-        NodeType.of(type), PropertyValidations.Strict.DEFAULT, List.of(), values, strings, null, null, null, null);
+        NodeType.of(type), PropertyValidations.Strict.DEFAULT, List.of(), requiredness, strings, null, null, null, null);
   }
 
   @NotNull

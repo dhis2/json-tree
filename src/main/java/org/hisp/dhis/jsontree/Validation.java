@@ -177,6 +177,7 @@ public @interface Validation {
     static Class<? extends JsonValue> toJsonType(Class<?> type) {
       if (type == String.class || type.isEnum()) return JsonString.class;
       if (type == Character.class || type == char.class) return JsonString.class;
+      if (type == Class.class) return JsonString.class;
       if (type == Date.class) return JsonDate.class;
       if (type == LocalDate.class || type == LocalTime.class || type == LocalDateTime.class) return JsonMixed.class;
       if (type == Boolean.class || type == boolean.class) return JsonBoolean.class;

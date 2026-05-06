@@ -101,12 +101,12 @@ class JsonApiPerfTest {
   }
 
   @Test
-  void testJsonValue_streamValues() {
+  void testJsonValue_values() {
     List<JsonPath> accessed = new ArrayList<>();
     JsonObject root = JsonMixed.of(JsonNode.of("{\"values\":[1,2,3,4,5]", accessed::add));
 
     assertEquals(List.of(), accessed);
-    assertEquals(5L, root.getArray("values").streamValues(double.class).count());
+    assertEquals(5L, root.getArray("values").values(double.class).count());
     assertEquals(List.of(JsonPath.of("values")), accessed, "there should be one access of values");
   }
 
@@ -141,12 +141,12 @@ class JsonApiPerfTest {
   @Test
   void testJsonArray_stream() {
     JsonArray arr = JsonMixed.of("[ 1,2 , true , false, \"hello\",{},[]]");
-    List<JsonNode> nodes = arr.stream(Index.SKIP).map(JsonValue::node).toList();
-    List<JsonNode> nodes2 = arr.stream(Index.SKIP).map(JsonValue::node).toList();
+    List<JsonNode> nodes = arr.values(Index.SKIP).map(JsonValue::node).toList();
+    List<JsonNode> nodes2 = arr.values(Index.SKIP).map(JsonValue::node).toList();
     for (int i = 0; i < nodes.size(); i++)
       assertNotSame(nodes.get(i), nodes2.get(i));
-    nodes = arr.stream(Index.ADD).map(JsonValue::node).toList();
-    nodes2 = arr.stream(Index.CHECK).map(JsonValue::node).toList();
+    nodes = arr.values(Index.ADD).map(JsonValue::node).toList();
+    nodes2 = arr.values(Index.CHECK).map(JsonValue::node).toList();
     for (int i = 0; i < nodes.size(); i++)
       assertSame(nodes.get(i), nodes2.get(i));
   }

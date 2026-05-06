@@ -1,6 +1,7 @@
 package org.hisp.dhis.jsontree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
@@ -167,6 +168,16 @@ class JsonNumberTest {
   }
 
   @Test
+  void testNumber() {
+    assertEquals(3, JsonMixed.of("3").number());
+    assertEquals(-0d, JsonMixed.of("-0").number());
+    assertTextualNumberEquals(3.0d, JsonMixed.of("3.0").number());
+    assertTextualNumberEquals(3.14d, JsonMixed.of("3.14").number());
+    assertEquals(0d, JsonMixed.of("0.0").number());
+    assertEquals(-0d, JsonMixed.of("-0.0").number());
+  }
+
+  @Test
   void testIrregularNumberPersistence() {
     JsonMixed big =
         JsonMixed.of(
@@ -185,5 +196,10 @@ class JsonNumberTest {
           "big-two": 99999999999999999999999999999999999999999999999999999999999999999999999999999999999999
         }""",
         root.getDeclaration().toString());
+  }
+
+  private static void assertTextualNumberEquals(double expected, Number actual) {
+    assertEquals(expected, actual.doubleValue());
+    assertInstanceOf(TextualNumber.class, actual);
   }
 }

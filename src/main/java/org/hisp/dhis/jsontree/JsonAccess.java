@@ -267,8 +267,8 @@ public final class JsonAccess implements JsonAccessors {
     JsonAccessor<?> elements = accessors.accessor(getRawType(elementType));
     // auto-box simple values in a 1 element sequence
     if (!stream.isArray()) return Stream.of(elements.access(stream, as, accessors));
-    return stream.stream(Index.AUTO_SKIP)
-        .map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors));
+    return stream.values(Index.AUTO_SKIP)
+        .map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors)).stream();
   }
 
   @SuppressWarnings({"java:S1168", "java:S1452"})
@@ -299,6 +299,7 @@ public final class JsonAccess implements JsonAccessors {
    * @param components the components in that constructor to pass as args
    * @param defaults default arguments if the component is undefined in JSON, null of no defaults
    *     are available (taken from a constant with name {@code DEFAULT}).
+   * @param collapsed true, if the component was annotated with {@link Collapsed}
    * @param of a static method to construct a record from a single argument (typical {@code
    *     of}-method)
    * @param ofArgType the generic argument type of the {@link #of()}-method
@@ -307,6 +308,7 @@ public final class JsonAccess implements JsonAccessors {
       MethodHandle constructor,
       RecordComponent[] components,
       Object[] defaults,
+      boolean[] collapsed,
       MethodHandle of,
       Type ofArgType) {}
 
@@ -340,11 +342,12 @@ public final class JsonAccess implements JsonAccessors {
 
     Object[] args = new Object[components.length];
     Object[] defaults = newRecord.defaults;
+    boolean[] collapsed = newRecord.collapsed;
     boolean hasDefaults = defaults != null;
     if (obj.isObject()) {
       for (int i = 0; i < components.length; i++) {
         RecordComponent c = components[i];
-        JsonMixed cValue = obj.get(c.getName());
+        JsonMixed cValue = collapsed[i] ? obj : obj.get(c.getName());
         args[i] =
             hasDefaults && cValue.isUndefined()
                 ? defaults[i]
@@ -353,7 +356,7 @@ public final class JsonAccess implements JsonAccessors {
     } else if (obj.isArray()) {
       for (int i = 0; i < components.length; i++) {
         RecordComponent c = components[i];
-        JsonMixed cValue = obj.get(i);
+        JsonMixed cValue = collapsed[i] ? obj : obj.get(i);
         args[i] =
             hasDefaults && cValue.isUndefined()
                 ? defaults[i]
@@ -399,6 +402,9 @@ public final class JsonAccess implements JsonAccessors {
       throw new JsonAccessException(
           "JSON cannot be mapped to Java record %s, canonical constructor is not accessible"
               .formatted(type.getSimpleName()));
+    boolean[] collapsed = new boolean[components.length];
+    for (int i = 0; i < components.length; i++)
+      collapsed[i] = components[i].isAnnotationPresent(Collapsed.class);
     MethodHandle ofMethod = null;
     Type ofMethodArgType = null;
     if (components.length > 1) {
@@ -411,7 +417,7 @@ public final class JsonAccess implements JsonAccessors {
         }
       }
     }
-    return new NewRecord(canonical, components, defaults(type), ofMethod, ofMethodArgType);
+    return new NewRecord(canonical, components, defaults(type), collapsed, ofMethod, ofMethodArgType);
   }
 
   private static MethodHandle constructor(

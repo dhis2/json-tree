@@ -76,16 +76,6 @@ class JsonArrayTest {
   }
 
   @Test
-  void testValues_Mapped() {
-    // language=json
-    String json =
-        """
-            ["a","b","c"]""";
-    JsonMixed arr = JsonMixed.of(json);
-    assertEquals(List.of('a', 'b', 'c'), arr.values(str -> str.charAt(0)));
-  }
-
-  @Test
   void testGetList_IndexAs() {
     JsonMixed arr = JsonMixed.of("[[1,2], [3,4]]");
     assertEquals(List.of(1, 2), arr.getList(0, JsonNumber.class).toList(JsonNumber::integer));
@@ -111,13 +101,9 @@ class JsonArrayTest {
   }
 
   @Test
-  void testListValues() {
-    assertEquals(List.of(1d, NaN, 3.1d), Json5.of("[1, NaN, 3.1]").listValues(double.class));
-  }
-
-  @Test
-  void streamValues() {
+  void testValues_ToClass() {
+    assertEquals(List.of(1d, NaN, 3.1d), Json5.of("[1, NaN, 3.1]").values(double.class).toList());
     assertEquals(
-        Stream.of(1, 2, 3).toList(), Json5.of("[1, '2', 3.0]").streamValues(int.class).toList());
+        List.of(1, 2, 3), Json5.of("[1, '2', 3.0]").values(int.class).toList());
   }
 }

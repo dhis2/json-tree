@@ -322,12 +322,12 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<JsonNode> members() {
+    public Streamable.Sized<JsonNode> members() {
       return members(Index.AUTO);
     }
 
     @Override
-    public Streamable<JsonNode> members(Index op) {
+    public Streamable.Sized<JsonNode> members(Index op) {
       if (isEmpty()) return Streamable.empty();
       return new Streamable.Sized<>() {
         private final char[] json = tree.json;
@@ -383,12 +383,12 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<JsonPath> paths() {
+    public Streamable.Sized<JsonPath> paths() {
       return keysSized(path::chain);
     }
 
     @Override
-    public Streamable<Text> keys() {
+    public Streamable.Sized<Text> keys() {
       return keysSized(name -> name);
     }
 
@@ -562,12 +562,12 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<JsonNode> elements() {
+    public Streamable.Sized<JsonNode> elements() {
       return elements(Index.AUTO);
     }
 
     @Override
-    public Streamable<JsonNode> elements(Index op) {
+    public Streamable.Sized<JsonNode> elements(Index op) {
       if (isEmpty()) return Streamable.empty();
       return new Streamable.Sized<>() {
         private final char[] json = tree.json;
@@ -600,7 +600,7 @@ record JsonTree(
     }
 
     @Override
-    public Streamable<Text> values() {
+    public Streamable.Sized<Text> values() {
       if (isEmpty()) return Streamable.empty();
       return new Streamable.Sized<>() {
         private final char[] json = tree.json;

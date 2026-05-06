@@ -125,19 +125,9 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    * @since 0.11 (as Stream)
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<Text> keys() {
-    if (isUndefined() || isEmpty()) return Stream.empty();
-    return node().keys().stream();
-  }
-
-  /**
-   * @return a stream of the map/object values in order of their declaration
-   * @throws JsonTreeException in case this node does exist but is not an object node
-   * @since 0.11
-   */
-  @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<E> values() {
-    return entries();
+  default Streamable.Sized<Text> keys() {
+    if (isUndefined() || isEmpty()) return Streamable.empty();
+    return node().keys();
   }
 
   /**
@@ -146,9 +136,9 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    * @since 0.11
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Stream<E> entries() {
-    if (isUndefined() || isEmpty()) return Stream.empty();
-    return node().keys().stream().map(this::get);
+  default Streamable.Sized<E> entries() {
+    if (isUndefined() || isEmpty()) return Streamable.empty();
+    return node().keys().map(this::get);
   }
 
   /**

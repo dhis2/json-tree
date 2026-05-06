@@ -27,8 +27,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  */
 @Validation(type = {OBJECT, ARRAY, STRING, NUMBER, INTEGER, BOOLEAN})
 @Validation.Ignore
-public interface JsonMixed
-    extends JsonObject, JsonArray, JsonString, JsonNumber, JsonBoolean, JsonInteger {
+public interface JsonMixed extends JsonObject, JsonArray, JsonPrimitive {
 
   /**
    * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
