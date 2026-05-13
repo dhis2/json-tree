@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 
 import org.hisp.dhis.jsontree.JsonNode.Index;
 import org.junit.jupiter.api.Test;
@@ -149,5 +150,18 @@ class JsonObjectTest {
     assertTrue(obj.has("a"));
     assertTrue(obj.has("a", "b"));
     assertFalse(obj.has("a", "b", "c"));
+  }
+
+  @Validation(type = Validation.NodeType.INTEGER)
+  record Id(String value) {}
+  record Container(Id id) {}
+
+  @Test
+  void testNodeType() {
+    List<JsonObject.Property> properties = JsonObject.properties(Container.class);
+    JsonObject.Property id = properties.get(0);
+    assertEquals(Set.of(Validation.NodeType.INTEGER), id.types());
+    assertEquals(JsonInteger.class, id.jsonType());
+    assertEquals(new Container(new Id("12")), JsonMixed.of("{\"id\": 12}").to(Container.class));
   }
 }
