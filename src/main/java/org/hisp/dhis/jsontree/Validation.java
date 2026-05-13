@@ -168,13 +168,33 @@ public @interface Validation {
     @NotNull
     @SuppressWarnings("unchecked")
     public static Set<NodeType> of(@NotNull Class<?> type) {
-      return ofJsonType(
-          JsonValue.class.isAssignableFrom(type)
-              ? (Class<? extends JsonValue>) type
-              : toJsonType(type));
+      if (type.isAnnotationPresent(Validation.class)) {
+        Validation validation = type.getAnnotation(Validation.class);
+        NodeType[] types = validation.type();
+        if (types.length > 0) return EnumSet.of(types[0], types);
+      }
+      if (JsonValue.class.isAssignableFrom(type))
+        return ofJsonType((Class<? extends JsonValue>) type);
+      return ofJsonType(toJsonType(type));
     }
 
     static Class<? extends JsonValue> toJsonType(Class<?> type) {
+      if (type.isAnnotationPresent(Validation.class)) {
+        Validation validation = type.getAnnotation(Validation.class);
+        NodeType[] types = validation.type();
+        if (types.length == 1) {
+          return switch (types[0]) {
+            case INTEGER -> JsonInteger.class;
+            case BOOLEAN -> JsonBoolean.class;
+            case ARRAY -> JsonArray.class;
+            case STRING -> JsonString.class;
+            case OBJECT -> JsonObject.class;
+            case NUMBER -> JsonNumber.class;
+            case NULL -> JsonValue.class;
+          };
+        }
+        if (types.length > 1) return JsonMixed.class;
+      }
       if (type == String.class || type.isEnum()) return JsonString.class;
       if (type == Character.class || type == char.class) return JsonString.class;
       if (type == Class.class) return JsonString.class;
@@ -194,7 +214,7 @@ public @interface Validation {
     }
 
     @SuppressWarnings("unchecked")
-    static Set<NodeType> ofJsonType(Class<? extends JsonValue> type) {
+    private static Set<NodeType> ofJsonType(Class<? extends JsonValue> type) {
       Validation validation = type.getAnnotation(Validation.class);
       if (validation != null) {
         NodeType[] types = validation.type();

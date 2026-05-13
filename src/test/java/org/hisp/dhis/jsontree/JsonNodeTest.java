@@ -27,7 +27,11 @@
  */
 package org.hisp.dhis.jsontree;
 
+import static org.hisp.dhis.jsontree.JsonNode.Index.ADD;
 import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
+import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO_SKIP;
+import static org.hisp.dhis.jsontree.JsonNode.Index.CHECK;
+import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -35,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 import java.util.Deque;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -264,6 +269,25 @@ class JsonNodeTest {
     JsonObject obj = JsonMixed.of(JsonNode.of("{\"bar\": \"str\"}", rec::add));
     assertEquals("str", obj.as(JsonBean.class).bar());
     assertEquals(".bar", rec.getLast().toString());
+  }
+
+  @Test
+  void testIndexResolve() {
+    // AUTO on tree keeps the operation level
+    assertEquals(SKIP, SKIP.resolve(AUTO));
+    assertEquals(SKIP, AUTO_SKIP.resolve(AUTO));
+    assertEquals(CHECK, CHECK.resolve(AUTO));
+    assertEquals(ADD, ADD.resolve(AUTO));
+    assertEquals(AUTO, AUTO.resolve(AUTO));
+
+    // but if something else is set on tree level AUTO(_SKIP) becomes that strategy
+    for (JsonNode.Index strategy : List.of(SKIP, CHECK, ADD, AUTO_SKIP)) {
+      assertEquals(SKIP, SKIP.resolve(strategy));
+      assertEquals(strategy, AUTO_SKIP.resolve(strategy));
+      assertEquals(CHECK, CHECK.resolve(strategy));
+      assertEquals(ADD, ADD.resolve(strategy));
+      assertEquals(strategy, AUTO.resolve(strategy));
+    }
   }
 
   private static void assertGetThrowsJsonPathException(String json, String path, String expected) {
