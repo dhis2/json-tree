@@ -83,7 +83,7 @@ public interface JsonAbstractArray<E extends JsonValue>
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> boolean contains(Function<E, T> toValue, Predicate<T> test) {
-    return count(toValue, test) > 0;
+    return stream().anyMatch(e -> test.test(toValue.apply(e)));
   }
 
   /**

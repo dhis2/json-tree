@@ -168,10 +168,14 @@ public @interface Validation {
     @NotNull
     @SuppressWarnings("unchecked")
     public static Set<NodeType> of(@NotNull Class<?> type) {
-      return ofJsonType(
-          JsonValue.class.isAssignableFrom(type)
-              ? (Class<? extends JsonValue>) type
-              : toJsonType(type));
+      if (type.isAnnotationPresent(Validation.class)) {
+        Validation validation = type.getAnnotation(Validation.class);
+        NodeType[] types = validation.type();
+        if (types.length > 0) return EnumSet.of(types[0], types);
+      }
+      if (JsonValue.class.isAssignableFrom(type))
+        return ofJsonType((Class<? extends JsonValue>) type);
+      return ofJsonType(toJsonType(type));
     }
 
     static Class<? extends JsonValue> toJsonType(Class<?> type) {
@@ -194,7 +198,7 @@ public @interface Validation {
     }
 
     @SuppressWarnings("unchecked")
-    static Set<NodeType> ofJsonType(Class<? extends JsonValue> type) {
+    private static Set<NodeType> ofJsonType(Class<? extends JsonValue> type) {
       Validation validation = type.getAnnotation(Validation.class);
       if (validation != null) {
         NodeType[] types = validation.type();

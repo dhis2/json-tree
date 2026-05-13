@@ -505,12 +505,11 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
         .map(
             c ->
             {
-              Class<? extends JsonValue> jsonType = Validation.NodeType.toJsonType(c.getType());
               return new Property(
                   of,
                   Text.of(c.getName()),
-                  jsonType,
-                  Validation.NodeType.ofJsonType(jsonType),
+                  Validation.NodeType.toJsonType(c.getType()),
+                  Validation.NodeType.of(c.getType()),
                   c.getName(),
                   c.getAnnotatedType(),
                   c);
@@ -541,7 +540,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
                                       in,
                                       name,
                                       type,
-                                      Validation.NodeType.ofJsonType(type),
+                                      Validation.NodeType.of(type),
                                       method.getName(),
                                       method.getAnnotatedReturnType(),
                                       method));
