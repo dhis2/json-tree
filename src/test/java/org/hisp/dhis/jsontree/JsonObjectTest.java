@@ -157,7 +157,7 @@ class JsonObjectTest {
   record Container(Id id) {}
 
   @Test
-  void testNodeType() {
+  void testProperties_NodeTypeOverride() {
     List<JsonObject.Property> properties = JsonObject.properties(Container.class);
     JsonObject.Property id = properties.get(0);
     assertEquals(Set.of(Validation.NodeType.INTEGER), id.types());
