@@ -111,7 +111,7 @@ class JsonValueToTest {
   }
 
   private static void assertParamsEquals(OuterParams expected, Map<String, List<String>> actual) {
-    List<JsonObject.Property> properties = JsonObject.collapsedProperties(OuterParams.class);
+    List<JsonObject.Property> properties = JsonObject.properties(OuterParams.class);
     JsonNode object =
         JsonBuilder.createObject(
             obj -> {

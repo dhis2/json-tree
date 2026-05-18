@@ -88,21 +88,12 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    * access is a property of the accessed {@link Property#jsonName()} with the same {@link
    * Property#javaName()}.
    *
-   * @return a model of this object in form its properties in no particular order
+   * @return a model of this object in form its properties in no particular order, including {@link
+   *     Collapsed} properties for {@link Record}s
    * @since 1.4
    */
   static List<Property> properties(Class<?> of) {
     return JsonVirtualTree.properties(of);
-  }
-
-  /**
-   * @param of an object type
-   * @return a list of the properties in the given object type including those collapsed down from
-   *     {@link Collapsed} inner {@link Record}s
-   * @since 1.9
-   */
-  static List<Property> collapsedProperties(Class<? extends Record> of) {
-    return JsonVirtualTree.collapsedProperties(of);
   }
 
   /**

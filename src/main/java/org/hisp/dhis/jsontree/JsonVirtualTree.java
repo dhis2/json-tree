@@ -79,7 +79,6 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
       new JsonVirtualTree(JsonNode.NULL, JsonPath.SELF, JsonAccess.GLOBAL);
 
   private static final Map<Class<?>, List<Property>> PROPERTIES = new ConcurrentHashMap<>();
-  private static final Map<Class<?>, List<Property>> COLLAPSED_PROPERTIES = new ConcurrentHashMap<>();
 
   static List<Property> properties(Class<?> of) {
     if (JsonObject.class.isAssignableFrom(of)) {
@@ -90,14 +89,10 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     if (Record.class.isAssignableFrom(of)) {
       @SuppressWarnings("unchecked")
       Class<? extends Record> type = (Class<? extends Record>) of;
-      return PROPERTIES.computeIfAbsent(type, t -> componentProperties(type));
+      return PROPERTIES.computeIfAbsent(type, t -> collapsedComponentProperties(type));
     }
     throw new UnsupportedOperationException(
         "Must be a subtype of JsonObject or Record but was: " + of);
-  }
-
-  static List<Property> collapsedProperties(Class<? extends Record> of) {
-    return COLLAPSED_PROPERTIES.computeIfAbsent(of, type -> collapsedComponentProperties(of));
   }
 
   static JsonMixed lift(JsonNode node, JsonAccessors accessors) {
