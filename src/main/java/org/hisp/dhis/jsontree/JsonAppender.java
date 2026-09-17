@@ -83,7 +83,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   private static boolean needsEscaping(char c) {
     if (c < 0x20) return true;                     // controls — all escape
-    if (c < 0x7F) return c == '"' | c == '\\';     // printable ASCII
+    if (c < 0x7F) return c == '"' || c == '\\';    // printable ASCII
     return c == 0x2028 || c == 0x2029;             // escape for JS compatibility
   }
 
