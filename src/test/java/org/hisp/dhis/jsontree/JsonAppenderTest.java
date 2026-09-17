@@ -549,6 +549,31 @@ class JsonAppenderTest {
     );
   }
 
+  @Test
+  void testObject_StringEscapes_SmallRunFillsBuffer() {
+    // Large clean prefix ends at 4088; a quote (2-char escape) brings bufPos to 4090;
+    // a small clean run of 10 chars pushes bufPos to 4096 and triggers the flush
+    // inside the small-run loop.
+    String input    = "a".repeat(4088) + "\"" + "b".repeat(10);
+    String expected = "a".repeat(4088) + "\\\"" + "b".repeat(10);
+    assertJson(
+        "{'s':'" + expected + "'}",
+        JsonBuilder.createObject(obj -> obj.addString("s", input))
+    );
+  }
+
+  @Test
+  void testObject_StringEscapes_SmallRunAfterFullBuffer() {
+    // Regression: 6-char escape leaves bufPos exactly at BUFFER_SIZE;
+    // the following small run must not write at index BUFFER_SIZE.
+    String input    = "a".repeat(4090) + "\u0001" + "b";
+    String expected = "a".repeat(4090) + "\\u0001" + "b";
+    assertJson(
+        "{'s':'" + expected + "'}",
+        JsonBuilder.createObject(obj -> obj.addString("s", input))
+    );
+  }
+
   private static void assertJson(String expected, JsonNode actual) {
     assertEquals(expected.replace('\'', '"'), actual.getDeclaration().toString());
   }

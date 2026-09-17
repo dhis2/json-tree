@@ -94,43 +94,94 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     return false;
   }
 
+  private static final int BUFFER_SIZE    = 4096;
+  private static final int MAX_ESCAPE     = 6;   // backslash+uXXXX is the longest escape
+  private static final int BULK_THRESHOLD = 16;  // below this, char-by-char is faster
+
   void appendEscaped(CharSequence str) {
     if (str == null) {
       json.append("null");
       return;
     }
+
+    int len = str.length();
+
+    // Single scan for the first escapable char. If we reach len, the whole
+    // string is clean and we take the bulk-append path without ever touching
+    // the escape buffer.
+    int i = 0;
+    while (i < len && !needsEscaping(str.charAt(i)))
+      i++;
+
+
     json.append('"');
-    if (!needsEscaping(str)) {
+
+    if (i == len) {
       json.append(str);
-    } else {
-      // lazy init of the buffer as we might not need it most of the time
-      if (escapeBuffer == null)
-        escapeBuffer = new char[4096];
-      bufPos = 0;
-      int len = str.length();
-      if (len <= 4096 / 6) {
-        // even the worst case fits in the buffer
-        // ,so we just append and transfer
-        for (int i = 0; i < len; i++)
-          bufferEscaped(str.charAt(i));
-        json.append(escapeBuffer, 0, bufPos);
-      } else {
-        // we might go outside the buffer
-        // ,so we are checking to not overflow
-        for (int i = 0; i < len; i++) {
-          bufferEscaped(str.charAt(i));
-          if (bufPos >= 4090) {
-            json.append(escapeBuffer, 0, bufPos);
-            bufPos = 0;
-          }
-        }
-        json.append(escapeBuffer, 0, bufPos);
-      }
+      json.append('"');
+      return;
     }
+
+    // Escape path. Buffer is allocated lazily.
+    if (escapeBuffer == null)
+      escapeBuffer = new char[BUFFER_SIZE];
+    bufPos = 0;
+
+    // Copy the clean prefix we already scanned past. We know it contains no
+    // escapes, so a straight bulk copy is safe.
+    bufCopySpan(str, 0, i);
+
+    while (i < len) {
+      // Emit the escape at i (with headroom for the widest escape).
+      if (bufPos > BUFFER_SIZE - MAX_ESCAPE) {
+        json.append(escapeBuffer, 0, bufPos);
+        bufPos = 0;
+      }
+      bufAppendEscaped(str.charAt(i));
+      i++;
+
+      // Scan the next clean run.
+      int start = i;
+      while (i < len && !needsEscaping(str.charAt(i))) {
+        i++;
+      }
+      bufCopySpan(str, start, i - start);
+    }
+
+    json.append(escapeBuffer, 0, bufPos);
+    bufPos = 0;
     json.append('"');
   }
 
-  private void bufferEscaped(char c) {
+  private void bufCopySpan(CharSequence str, int start, int count) {
+    if (count <= 0) return;
+    int end = start + count;
+
+    if (str instanceof String s && count >= BULK_THRESHOLD) {
+      // Bulk path: getChars is intrinsified and much faster than a loop.
+      while (start < end) {
+        int n = Math.min(BUFFER_SIZE - bufPos, end - start);
+        s.getChars(start, start + n, escapeBuffer, bufPos);
+        bufPos += n;
+        start += n;
+        if (bufPos == BUFFER_SIZE) {
+          json.append(escapeBuffer, 0, bufPos);
+          bufPos = 0;
+        }
+      }
+    } else {
+      // Small-run or non-String path: a tight char loop is cheaper.
+      while (start < end) {
+        if (bufPos == BUFFER_SIZE) {
+          json.append(escapeBuffer, 0, bufPos);
+          bufPos = 0;
+        }
+        escapeBuffer[bufPos++] = str.charAt(start++);
+      }
+    }
+  }
+
+  private void bufAppendEscaped(char c) {
     switch (c) {
       case '"'    -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = '"';  }
       case '\\'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = '\\'; }
@@ -139,13 +190,10 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
       case '\t'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 't';  }
       case '\b'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 'b';  }
       case '\f'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 'f';  }
-      case 0x2028, 0x2029 -> bufferUnicodeEscaped(c);
-      default -> {
-        if (c < 0x20) bufferUnicodeEscaped(c);
-        else escapeBuffer[bufPos++] = c;
-      }
+      default -> bufferUnicodeEscaped(c);
     }
   }
+
   private static final char[] HEX = "0123456789ABCDEF".toCharArray();
   private void bufferUnicodeEscaped(char c) {
     escapeBuffer[bufPos++] = '\\';
