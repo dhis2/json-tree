@@ -130,7 +130,6 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     json.append('"');
   }
 
-
   private void bufferEscaped(char c) {
     switch (c) {
       case '"'    -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = '"';  }
