@@ -70,6 +70,7 @@ public interface Appender extends Appendable {
    * Elevate an {@link Appendable} to an {@link Appender}
    */
   static Appender of(@NotNull Appendable to) {
+    if (to instanceof Appender a) return a;
     record Adapter(Appendable to) implements Appender {
 
       @Override

@@ -51,6 +51,9 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   private int level = 0;
   private String indentLevel = "";
 
+  private char[] escBuffer;
+  private int escBufPos = 0;
+
   JsonAppender(PrettyPrint config, Appender json) {
     this.config = config;
     this.json = json;
@@ -78,29 +81,83 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     if (indent) json.append(indentLevel);
   }
 
+  private static boolean needsEscaping(char c) {
+    if (c < 0x20) return true;                     // controls — all escape
+    if (c < 0x7F) return c == '"' || c == '\\';    // printable ASCII
+    return c == 0x2028 || c == 0x2029;             // escape for JS compatibility
+  }
+
+  private static final int ESC_BUFFER_SIZE = 4096;
+  private static final int ESC_MAX_LEN = 6; // 1:6 after escape (uXXXX)
+
   void appendEscaped(CharSequence str) {
     if (str == null) {
       json.append("null");
       return;
     }
     json.append('"');
-    str.chars().forEachOrdered(this::appendEscaped);
+
+    int len = str.length();
+    int i = 0;
+    while (i < len && !needsEscaping(str.charAt(i)))
+      i++;
+
+    // Fast path: if no character needs escaping, append the input as-is.
+    if (i == len) {
+      json.append(str);
+      json.append('"');
+      return;
+    }
+
+    // Escape path: buffer is allocated lazily.
+    if (escBuffer == null)
+      escBuffer = new char[ESC_BUFFER_SIZE];
+    escBufPos = 0;
+
+    // append span of clean prefix
+    json.append(str, 0, i);
+
+    while (i < len) {
+      // 1. append span of escaped chars via buffer
+      while (i < len && needsEscaping(str.charAt(i))) {
+        if (escBufPos > ESC_BUFFER_SIZE - ESC_MAX_LEN) {
+          json.append(escBuffer, 0, escBufPos);
+          escBufPos = 0;
+        }
+        escBufAppendEscaped(str.charAt(i++));
+      }
+      if (escBufPos > 0) {
+        json.append(escBuffer, 0, escBufPos);
+        escBufPos = 0;
+      }
+
+      // 2. append span of non-escaped chars directly from source
+      int start = i;
+      while (i < len && !needsEscaping(str.charAt(i)))
+        i++;
+      json.append(str, start, i );
+    }
     json.append('"');
   }
 
-  private void appendEscaped(int c) {
+  private static final char[] HEX = "0123456789ABCDEF".toCharArray();
+  private void escBufAppendEscaped(char c) {
     switch (c) {
-      case '\b' -> json.append("\\b");
-      case '\f' -> json.append("\\f");
-      case '\n' -> json.append("\\n");
-      case '\r' -> json.append("\\r");
-      case '\t' -> json.append("\\t");
-      case '"' -> json.append("\\\"");
-      case '\\' -> json.append("\\\\");
-      case -31 -> json.append("\\u%04X".formatted(c));
-      case 0x2028 -> json.append("\\u2028");
-      case 0x2029 -> json.append("\\u2029");
-      default -> json.append((char) c);
+      case '"'    -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = '"';  }
+      case '\\'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = '\\'; }
+      case '\n'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'n';  }
+      case '\r'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'r';  }
+      case '\t'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 't';  }
+      case '\b'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'b';  }
+      case '\f'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'f';  }
+      default -> {
+        escBuffer[escBufPos++] = '\\';
+        escBuffer[escBufPos++] = 'u';
+        escBuffer[escBufPos++] = HEX[(c >> 12) & 0xF];
+        escBuffer[escBufPos++] = HEX[(c >>  8) & 0xF];
+        escBuffer[escBufPos++] = HEX[(c >>  4) & 0xF];
+        escBuffer[escBufPos++] = HEX[ c        & 0xF];
+      }
     }
   }
 
