@@ -51,8 +51,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   private int level = 0;
   private String indentLevel = "";
 
-  private char[] escapeBuffer;
-  private int bufPos = 0;
+  private char[] escBuffer;
+  private int escBufPos = 0;
 
   JsonAppender(PrettyPrint config, Appender json) {
     this.config = config;
@@ -87,121 +87,78 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     return c == 0x2028 || c == 0x2029;             // escape for JS compatibility
   }
 
-  private static boolean needsEscaping(CharSequence str) {
-    int len = str.length();
-    for (int i = 0; i < len; i++)
-      if (needsEscaping(str.charAt(i))) return true;
-    return false;
-  }
-
-  private static final int BUFFER_SIZE    = 4096;
-  private static final int MAX_ESCAPE     = 6;   // backslash+uXXXX is the longest escape
-  private static final int BULK_THRESHOLD = 16;  // below this, char-by-char is faster
+  private static final int ESC_BUFFER_SIZE = 4096;
+  private static final int ESC_MAX_LEN = 6; // 1:6 after escape (uXXXX)
 
   void appendEscaped(CharSequence str) {
     if (str == null) {
       json.append("null");
       return;
     }
+    json.append('"');
 
     int len = str.length();
-
-    // Single scan for the first escapable char. If we reach len, the whole
-    // string is clean and we take the bulk-append path without ever touching
-    // the escape buffer.
     int i = 0;
     while (i < len && !needsEscaping(str.charAt(i)))
       i++;
 
-
-    json.append('"');
-
+    // Fast path: if no character needs escaping, append the input as-is.
     if (i == len) {
       json.append(str);
       json.append('"');
       return;
     }
 
-    // Escape path. Buffer is allocated lazily.
-    if (escapeBuffer == null)
-      escapeBuffer = new char[BUFFER_SIZE];
-    bufPos = 0;
+    // Escape path: buffer is allocated lazily.
+    if (escBuffer == null)
+      escBuffer = new char[ESC_BUFFER_SIZE];
+    escBufPos = 0;
 
-    // Copy the clean prefix we already scanned past. We know it contains no
-    // escapes, so a straight bulk copy is safe.
-    bufCopySpan(str, 0, i);
+    // append span of clean prefix
+    json.append(str, 0, i);
 
     while (i < len) {
-      // Emit the escape at i (with headroom for the widest escape).
-      if (bufPos > BUFFER_SIZE - MAX_ESCAPE) {
-        json.append(escapeBuffer, 0, bufPos);
-        bufPos = 0;
+      // 1. append span of escaped chars via buffer
+      while (i < len && needsEscaping(str.charAt(i))) {
+        if (escBufPos > ESC_BUFFER_SIZE - ESC_MAX_LEN) {
+          json.append(escBuffer, 0, escBufPos);
+          escBufPos = 0;
+        }
+        escBufAppendEscaped(str.charAt(i++));
       }
-      bufAppendEscaped(str.charAt(i));
-      i++;
+      if (escBufPos > 0) {
+        json.append(escBuffer, 0, escBufPos);
+        escBufPos = 0;
+      }
 
-      // Scan the next clean run.
+      // 2. append span of non-escaped chars directly from source
       int start = i;
-      while (i < len && !needsEscaping(str.charAt(i))) {
+      while (i < len && !needsEscaping(str.charAt(i)))
         i++;
-      }
-      bufCopySpan(str, start, i - start);
+      json.append(str, start, i );
     }
-
-    json.append(escapeBuffer, 0, bufPos);
-    bufPos = 0;
     json.append('"');
   }
 
-  private void bufCopySpan(CharSequence str, int start, int count) {
-    if (count <= 0) return;
-    int end = start + count;
-
-    if (str instanceof String s && count >= BULK_THRESHOLD) {
-      // Bulk path: getChars is intrinsified and much faster than a loop.
-      while (start < end) {
-        int n = Math.min(BUFFER_SIZE - bufPos, end - start);
-        s.getChars(start, start + n, escapeBuffer, bufPos);
-        bufPos += n;
-        start += n;
-        if (bufPos == BUFFER_SIZE) {
-          json.append(escapeBuffer, 0, bufPos);
-          bufPos = 0;
-        }
-      }
-    } else {
-      // Small-run or non-String path: a tight char loop is cheaper.
-      while (start < end) {
-        if (bufPos == BUFFER_SIZE) {
-          json.append(escapeBuffer, 0, bufPos);
-          bufPos = 0;
-        }
-        escapeBuffer[bufPos++] = str.charAt(start++);
-      }
-    }
-  }
-
-  private void bufAppendEscaped(char c) {
-    switch (c) {
-      case '"'    -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = '"';  }
-      case '\\'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = '\\'; }
-      case '\n'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 'n';  }
-      case '\r'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 'r';  }
-      case '\t'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 't';  }
-      case '\b'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 'b';  }
-      case '\f'   -> { escapeBuffer[bufPos++] = '\\'; escapeBuffer[bufPos++] = 'f';  }
-      default -> bufferUnicodeEscaped(c);
-    }
-  }
-
   private static final char[] HEX = "0123456789ABCDEF".toCharArray();
-  private void bufferUnicodeEscaped(char c) {
-    escapeBuffer[bufPos++] = '\\';
-    escapeBuffer[bufPos++] = 'u';
-    escapeBuffer[bufPos++] = HEX[(c >> 12) & 0xF];
-    escapeBuffer[bufPos++] = HEX[(c >>  8) & 0xF];
-    escapeBuffer[bufPos++] = HEX[(c >>  4) & 0xF];
-    escapeBuffer[bufPos++] = HEX[ c        & 0xF];
+  private void escBufAppendEscaped(char c) {
+    switch (c) {
+      case '"'    -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = '"';  }
+      case '\\'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = '\\'; }
+      case '\n'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'n';  }
+      case '\r'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'r';  }
+      case '\t'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 't';  }
+      case '\b'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'b';  }
+      case '\f'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'f';  }
+      default -> {
+        escBuffer[escBufPos++] = '\\';
+        escBuffer[escBufPos++] = 'u';
+        escBuffer[escBufPos++] = HEX[(c >> 12) & 0xF];
+        escBuffer[escBufPos++] = HEX[(c >>  8) & 0xF];
+        escBuffer[escBufPos++] = HEX[(c >>  4) & 0xF];
+        escBuffer[escBufPos++] = HEX[ c        & 0xF];
+      }
+    }
   }
 
   private void beginLevel(char c) {
