@@ -263,6 +263,18 @@ MyObject actual = JsonValue.of( """
 JsonDiff diff1 = expected.diff( actual ); // same
 ```
 
-## Maven cooordinates
+## RFC 8259 Compatibility
+The library is generally compatible with the rules defined by the RFC 8259
+
+Specific behavior:
+
+* **Duplicate keys**: consistently returns the entry that is encountered first (note that this is not necessarily the first if doing advanced iteration from some mid-point)
+* **Member ordering**: Always reflect the order in the JSON source
+* **Leading zeros**: are permitted
+* **Trailing commas**: are permitted
+* **Unpaired surrogates**: cause errors
+* **BOM**: is skipped
+
+## Maven coordinates
 
 The maven coordinates are [`org.hisp.dhis:json-tree`](https://search.maven.org/artifact/org.hisp.dhis/json-tree).
