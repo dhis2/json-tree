@@ -90,6 +90,32 @@ class JsonPathTest {
   }
 
   @Test
+  void testSegments_DotSquare_CornerCases() {
+    // array syntax
+    assertSegments(".xxx[:1:5]", List.of("xxx", ":1:5"));
+    assertSegments("[0]", List.of("0"));
+    assertSegments("foo[0]", List.of("foo", "0"));
+    assertSegments("[-1]", List.of("-1"));
+    assertSegments("foo[-1]", List.of("foo", "-1"));
+    assertSegments("[?id=foo]", List.of("?id=foo"));
+    assertSegments("foo[?id=bar]", List.of("foo", "?id=bar"));
+
+    // literally
+    assertSegments("[1:5]", List.of("[1:5]"));
+    assertSegments(".xxx[1:5]", List.of("xxx[1:5]"));
+    assertSegments("[-]", List.of("[-]"));
+    assertSegments("foo[-]", List.of("foo[-]"));
+    assertSegments("[]", List.of("[]"));
+    assertSegments("foo[]", List.of("foo[]"));
+    assertSegments("[a]", List.of("[a]"));
+    assertSegments("foo[a]", List.of("foo[a]"));
+    assertSegments("[:]", List.of("[:]"));
+    assertSegments("foo[:]", List.of("foo[:]"));
+    assertSegments("[?]", List.of("[?]"));
+    assertSegments("foo[?]", List.of("foo[?]"));
+  }
+
+  @Test
   void testSegments_DotCurly_Trivial() {
     assertSegments(".xxx{1}", List.of("xxx", "1"));
     assertSegments(".xxx{1}{2}", List.of("xxx", "1", "2"));
