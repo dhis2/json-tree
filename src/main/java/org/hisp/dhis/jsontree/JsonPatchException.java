@@ -14,9 +14,9 @@ public final class JsonPatchException extends IllegalArgumentException {
 
   @NotNull
   public static JsonPatchException clash(
-      @NotNull List<JsonNodeOp.EssentialOp> ops,
-      @NotNull JsonNodeOp.EssentialOp a,
-      @CheckNull JsonNodeOp.EssentialOp b) {
+      @NotNull List<JsonNodeOp> ops,
+      @NotNull JsonNodeOp a,
+      @CheckNull JsonNodeOp b) {
     JsonPath ap = a.path();
     if (b == null)
       return clash(

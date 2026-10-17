@@ -429,41 +429,8 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     if (path.charAt(offset) != '[') return false;
     // there must be a curly end before next .
     int i = offset + 1;
-    int len = path.length();
-    if (i >= len) return false;
-    switch (path.charAt(i++)) {
-      case ']': return false;
-      case '-': i = skipSignedInt(path, i - 1); break;
-      case '?', ':': {
-        int i0 = i;
-        while (i < len && !isSyntaxIndicator(path.charAt(i)) && path.charAt(i) != ']') i++;
-        if (i0 == i) return false;
-      } break;
-      default: i = skipDigits(path, i-1);
-    }
-    return i > offset + 1 && i < len && isSquareSegmentClose(path, i);
-  }
-
-  private static int skipSignedInt(Text path, int offset) {
-    int i = offset;
-    if (isSignedDigit(path.charAt(i))) i++;
-    int iAfterDigits = skipDigits(path, i);
-    return iAfterDigits == i ? offset : iAfterDigits;
-  }
-
-  private static int skipDigits(Text path, int offset) {
-    int i = offset;
-    int len = path.length();
-    while (i < len && isDigit(path.charAt(i))) i++;
-    return i;
-  }
-
-  private static boolean isSignedDigit(char c) {
-    return isDigit(c) || c == '-';
-  }
-
-  private static boolean isDigit(char c) {
-    return c >= '0' && c <= '9';
+    while (i < path.length() && path.charAt(i) >= '0' && path.charAt(i) <= '9') i++;
+    return i > offset + 1 && i < path.length() && isSquareSegmentClose(path, i);
   }
 
   /**

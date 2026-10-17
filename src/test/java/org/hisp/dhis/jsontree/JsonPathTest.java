@@ -92,15 +92,13 @@ class JsonPathTest {
   @Test
   void testSegments_DotSquare_CornerCases() {
     // array syntax
-    assertSegments(".xxx[:1:5]", List.of("xxx", ":1:5"));
     assertSegments("[0]", List.of("0"));
     assertSegments("foo[0]", List.of("foo", "0"));
-    assertSegments("[-1]", List.of("-1"));
-    assertSegments("foo[-1]", List.of("foo", "-1"));
-    assertSegments("[?id=foo]", List.of("?id=foo"));
-    assertSegments("foo[?id=bar]", List.of("foo", "?id=bar"));
 
     // literally
+    assertSegments("[-1]", List.of("[-1]"));
+    assertSegments("foo[-1]", List.of("foo[-1]"));
+    assertSegments(".xxx[:1:5]", List.of("xxx[:1:5]"));
     assertSegments("[1:5]", List.of("[1:5]"));
     assertSegments(".xxx[1:5]", List.of("xxx[1:5]"));
     assertSegments("[-]", List.of("[-]"));
@@ -113,6 +111,8 @@ class JsonPathTest {
     assertSegments("foo[:]", List.of("foo[:]"));
     assertSegments("[?]", List.of("[?]"));
     assertSegments("foo[?]", List.of("foo[?]"));
+    assertSegments("[?id=foo]", List.of("[?id=foo]"));
+    assertSegments("foo[?id=bar]", List.of("foo[?id=bar]"));
   }
 
   @Test
@@ -248,6 +248,13 @@ class JsonPathTest {
         [fool, bar, baz]
         [zoo, keeeeeeeeeeeeperrrrrrrr]""",
         sorted.stream().map(p -> p.segments().toString()).collect(joining("\n")));
+  }
+
+  @Test
+  void testEquals() {
+    assertEquals(JsonPath.SELF, JsonPath.SELF);
+    assertEquals(JsonPath.of("foo"), JsonPath.of("foo"));
+    assertEquals(JsonPath.of("foo", "bar"), JsonPath.of("foo", "bar"));
   }
 
   private void assertSegments(String path, List<String> expected) {

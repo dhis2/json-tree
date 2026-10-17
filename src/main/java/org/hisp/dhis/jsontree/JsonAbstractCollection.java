@@ -31,10 +31,13 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.function.BiConsumer;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
+
+import javax.swing.*;
 
 /**
  * Common base class for JSON nodes that have children.
@@ -58,6 +61,36 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 @Validation(type = {ARRAY, OBJECT})
 @Validation.Ignore
 public interface JsonAbstractCollection extends JsonValue {
+
+  /**
+   * @param path in the subtree of this node to select
+   * @return the value at the given path relative to this node or a non-existing node
+   * @since 1.10
+   */
+  @TerminalOp(canBeUndefined = true)
+  default JsonMixed get(JsonPath path) {
+    JsonNode self = nodeIfExists();
+    if (self != null) {
+      JsonNode target = self.getIfExists(path);
+      if (target != null) return JsonMixed.of(target);
+    }
+    // produce the proper undefined value
+    JsonMixed res = as(JsonMixed.class);
+    for (Text seg : path.segments())
+      res = res.get(seg);
+    return res;
+  }
+
+  /**
+   * @param path the path to look up in the subtree of this node
+   * @return true if for this object or array a node exists at the given path in its subtree
+   * @since 1.10
+   */
+  @TerminalOp(canBeUndefined = true)
+  default boolean exists(JsonPath path) {
+    JsonNode self = nodeIfExists();
+    return self != null && self.exists(path);
+  }
 
   /**
    * @return true, in case the collection exists but has no elements and is not {@code null}

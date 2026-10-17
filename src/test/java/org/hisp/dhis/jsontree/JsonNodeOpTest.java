@@ -400,14 +400,14 @@ class JsonNodeOpTest {
         remove(".foo[3]"));
   }
 
-  private static void assertRejected(String error, JsonNodeOp.EssentialOp... ops) {
+  private static void assertRejected(String error, JsonNodeOp... ops) {
     JsonPatchException ex =
         assertThrows(JsonPatchException.class, () -> JsonNodeOp.checkPatch(List.of(ops)));
     String msg = ex.getMessage();
     assertEquals(error, msg.substring(0, Math.min(msg.length(), error.length())), msg);
   }
 
-  private static void assertAccepted(JsonNodeOp.EssentialOp... ops) {
+  private static void assertAccepted(JsonNodeOp... ops) {
     assertDoesNotThrow(() -> JsonNodeOp.checkPatch(List.of(ops)));
   }
 
