@@ -464,7 +464,7 @@ class JsonPatchOpsTest {
         [{"op": "test", "path": ["foo", "[0:5]"]}]"""));
     }
 
-// ===== test as a guard around mutations =====
+    // ===== test as a guard around mutations =====
 
     @Test
     void test_passes_thenMutationsApplied() {
@@ -515,5 +515,196 @@ class JsonPatchOpsTest {
         ]""";
         assertOps(target, patch,
             new JsonNodeOp.Replace(path("articles", "0", "status"), JsonNode.of("\"published\"")));
+    }
+
+    // ===== test with value: primitives =====
+
+    @Test
+    void test_value_number_passes() {
+        assertOps("{\"a\": 1}", """
+        [{"op": "test", "path": ["a"], "value": 1}]""");
+    }
+
+    @Test
+    void test_value_number_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        [{"op": "test", "path": ["a"], "value": 2}]"""));
+    }
+
+    @Test
+    void test_value_string_passes() {
+        assertOps("{\"a\": \"hello\"}", """
+        [{"op": "test", "path": ["a"], "value": "hello"}]""");
+    }
+
+    @Test
+    void test_value_string_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": \"hello\"}", """
+        [{"op": "test", "path": ["a"], "value": "world"}]"""));
+    }
+
+    @Test
+    void test_value_boolean_passes() {
+        assertOps("{\"a\": true}", """
+        [{"op": "test", "path": ["a"], "value": true}]""");
+    }
+
+    @Test
+    void test_value_boolean_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": true}", """
+        [{"op": "test", "path": ["a"], "value": false}]"""));
+    }
+
+    @Test
+    void test_value_typeMismatch_fails() {
+        // 1 (number) vs "1" (string) — structural compare distinguishes them
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        [{"op": "test", "path": ["a"], "value": "1"}]"""));
+    }
+
+// ===== test with value: composite =====
+
+    @Test
+    void test_value_object_passes() {
+        assertOps("{\"a\": {\"x\": 1, \"y\": 2}}", """
+        [{"op": "test", "path": ["a"], "value": {"x": 1, "y": 2}}]""");
+    }
+
+    @Test
+    void test_value_object_propertyOrderIgnored() {
+        // JSON object member order is not significant; structural compare
+        // should treat {"x":1,"y":2} and {"y":2,"x":1} as equal.
+        assertOps("{\"a\": {\"x\": 1, \"y\": 2}}", """
+        [{"op": "test", "path": ["a"], "value": {"y": 2, "x": 1}}]""");
+    }
+
+    @Test
+    void test_value_object_extraProperty_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": {\"x\": 1}}", """
+        [{"op": "test", "path": ["a"], "value": {"x": 1, "y": 2}}]"""));
+    }
+
+    @Test
+    void test_value_object_missingProperty_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": {\"x\": 1, \"y\": 2}}", """
+        [{"op": "test", "path": ["a"], "value": {"x": 1}}]"""));
+    }
+
+    @Test
+    void test_value_array_passes() {
+        assertOps("{\"a\": [1,2,3]}", """
+        [{"op": "test", "path": ["a"], "value": [1,2,3]}]""");
+    }
+
+    @Test
+    void test_value_array_orderMatters_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": [1,2,3]}", """
+        [{"op": "test", "path": ["a"], "value": [3,2,1]}]"""));
+    }
+
+    @Test
+    void test_value_array_lengthMatters_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": [1,2,3]}", """
+        [{"op": "test", "path": ["a"], "value": [1,2,3,4]}]"""));
+    }
+
+    // ===== test with value combined with conditions =====
+
+    @Test
+    void test_value_withCondition_passes() {
+        assertOps("{\"foo\": [{\"id\":\"x\",\"v\":1}]}", """
+        [{"op": "test", "path": ["foo", "[?id=x]"], "value": {"id":"x","v":1}}]""");
+    }
+
+    @Test
+    void test_value_withCondition_valueMismatch_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"x\",\"v\":1}]}", """
+        [{"op": "test", "path": ["foo", "[?id=x]"], "value": {"id":"x","v":2}}]"""));
+    }
+
+    @Test
+    void test_value_withCondition_noMatch_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"x\"}]}", """
+        [{"op": "test", "path": ["foo", "[?id=y]"], "value": {"id":"y"}}]"""));
+    }
+
+    // ===== test with value and missing node =====
+
+    @Test
+    void test_value_nodeMissing_fails() {
+        // The existence check fires before the value check
+        assertThrows(JsonPatchException.class, () -> ops("{}", """
+        [{"op": "test", "path": ["a"], "value": 1}]"""));
+    }
+
+    @Test
+    void test_value_nodeMissingNested_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": {}}", """
+        [{"op": "test", "path": ["a", "b"], "value": 1}]"""));
+    }
+
+    // ===== test with value and range =====
+
+    @Test
+    void test_value_withRange_throws() {
+        // Combining value with a multi-path range is rejected as ambiguous:
+        // "all elements equal value" is not the client's likely intent.
+        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        [{"op": "test", "path": ["foo", "[0:2]"], "value": 1}]"""));
+    }
+
+    // ===== idempotency / modCount guard pattern =====
+
+    @Test
+    void test_value_modCountGuard_passes() {
+        assertOps("{\"modCount\": 5, \"data\": [1,2,3]}", """
+        [
+          {"op": "test",   "path": ["modCount"], "value": 5},
+          {"op": "insert", "path": ["data", "[-0]"], "value": 4}
+        ]""",
+            new JsonNodeOp.Insert(path("data", "3"), JsonNode.of("4")));
+    }
+
+    @Test
+    void test_value_modCountGuard_stale_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"modCount\": 6, \"data\": [1,2,3]}", """
+        [
+          {"op": "test",   "path": ["modCount"], "value": 5},
+          {"op": "insert", "path": ["data", "[-0]"], "value": 4}
+        ]"""));
+    }
+
+    @Test
+    void test_value_objectSnapshotGuard_passes() {
+        // Guard against concurrent modification: the whole article matches.
+        String target = """
+        {"articles": [{"id": "a1", "status": "draft", "rev": 3}]}""";
+        String patch = """
+        [
+          {"op": "test",    "path": ["articles", "[?id=a1]"], "value": {"id":"a1","status":"draft","rev":3}},
+          {"op": "replace", "path": ["articles", "[?id=a1]", "status"], "value": "published"}
+        ]""";
+        assertOps(target, patch,
+            new JsonNodeOp.Replace(path("articles", "0", "status"), JsonNode.of("\"published\"")));
+    }
+
+    @Test
+    void test_value_objectSnapshotGuard_stale_fails() {
+        assertThrows(JsonPatchException.class, () -> ops("""
+        {"articles": [{"id": "a1", "status": "draft", "rev": 4}]}""", """
+        [
+          {"op": "test",    "path": ["articles", "[?id=a1]"], "value": {"id":"a1","status":"draft","rev":3}},
+          {"op": "replace", "path": ["articles", "[?id=a1]", "status"], "value": "published"}
+        ]"""));
+    }
+
+    // ===== explicit null (behaviour depends on exists() semantics; pin it) =====
+
+    @Test
+    void test_value_explicitNull() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        [{"op": "test", "path": ["a"], "value": null}]"""));
+        assertOps("{\"a\": null}", """
+        [{"op": "test", "path": ["a"], "value": null}]""");
     }
 }

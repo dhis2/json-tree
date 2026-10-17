@@ -162,13 +162,17 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   private static void test(JsonMixed target, JsonPatchOp test) {
     JsonPathExpression path = JsonPathExpression.of(test.$path());
     List<JsonPath> resolved = path.resolve(target).toList();
-    if (resolved.isEmpty()) {
+    if (resolved.isEmpty())
       throw new JsonPatchException("Test failed: no match for path " + path);
-    }
+    JsonMixed expected = test.value();
+    boolean hasExpected = expected.exists();
+    if (hasExpected && resolved.size() > 1)
+      throw new JsonPatchException("Test with value does not support range paths: " + path);
     for (JsonPath p : resolved) {
-      if (!target.exists(p)) {
-        throw new JsonPatchException("Test failed: no value at " + p);
-      }
+      if (!target.exists(p)) throw new JsonPatchException("Test failed: no value at " + p);
+      if (hasExpected && !target.get(p).equivalentTo(expected))
+        throw new JsonPatchException(
+            "Test failed: value at " + p + " is " + target.get(p) + ", expected " + expected);
     }
   }
 }
