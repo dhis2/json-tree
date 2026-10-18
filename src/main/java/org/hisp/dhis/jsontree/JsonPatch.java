@@ -6,6 +6,8 @@ import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTestException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 
 /**
  * A {@link JsonPatch} allows to bulk-edit a {@link JsonValue}s using a set of {@link
@@ -46,8 +48,8 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   interface JsonPatchOp extends JsonObject {
 
-    default OpType op() {
-      return getString("op").parsed(OpType::valueOf);
+    default JsonString op() {
+      return getString("op");
     }
 
     default JsonMixed $path() {
@@ -63,7 +65,8 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     }
 
     default JsonMixed to() {
-      return get("to");
+      JsonMixed to = get("to");
+      return to.exists() ? to : get("path");
     }
   }
 
@@ -78,7 +81,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     List<JsonNodeOp> ops = new ArrayList<>(patch.size());
     for (JsonMixed x : patch) {
       JsonPatchOp op = x.as(JsonPatchOp.class);
-      switch (op.op()) {
+      switch (readOp(op)) {
         case test -> test(target, op);
         case remove -> remove(target, op, ops);
         case insert -> insert(target, op, ops);
@@ -93,70 +96,72 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void insert(JsonMixed target, JsonPatchOp insert, List<JsonNodeOp> ops) {
-    JsonPathPattern pattern = JsonPathPattern.of(insert.$path());
-    checkIsSingleTarget(pattern, "insert `path`");
-    pattern.resolve(target)
+    JsonMixed value = readValue(insert, "insert `value`", true);
+    resolvePaths(target, insert.$path(), "insert `path`", false)
         .findFirst()
-        .map(p -> new JsonNodeOp.Insert(p, insert.value().node()))
+        .map(p -> new JsonNodeOp.Insert(p, value.node()))
         .ifPresent(ops::add);
   }
 
   private static void spread(JsonMixed target, JsonPatchOp spread, List<JsonNodeOp> ops) {
-    JsonPathPattern pattern = JsonPathPattern.of(spread.$path());
-    checkIsSingleTarget(pattern, "spread `path`");
-    pattern.resolve(target)
+    JsonMixed value = readValue(spread, "spread `value`", true);
+    resolvePaths(target, spread.$path(), "spread `path`", false)
         .findFirst()
-        .map(p -> new JsonNodeOp.Spread(p, spread.value().node()))
+        .map(p -> new JsonNodeOp.Spread(p, value.node()))
         .ifPresent(ops::add);
   }
 
   private static void remove(JsonMixed target, JsonPatchOp remove, List<JsonNodeOp> ops) {
-    JsonPathPattern.of(remove.$path())
-        .resolve(target)
+    resolvePaths(target, remove.$path(), "remove `path`", true)
         .filter(target::exists)
         .map(JsonNodeOp.Remove::new)
         .forEach(ops::add);
   }
 
   private static void replace(JsonMixed target, JsonPatchOp replace, List<JsonNodeOp> ops) {
-    JsonPathPattern pattern = JsonPathPattern.of(replace.$path());
-    JsonMixed value = replace.value();
+    JsonMixed path = replace.$path();
+    if (path.isString()) {
+      replace1(target, replace, ops);
+      return;
+    }
+    JsonPathPattern pattern = readPattern(path, "replace `path`");
     if (!pattern.type().isMultiTarget()) {
-      pattern.resolve(target)
-          .findFirst()
-          .map(p -> new JsonNodeOp.Replace(p, value.node()))
-          .ifPresent(ops::add);
-    } else {
-      List<JsonPath> replaced = pattern.resolve(target).toList();
-      int n = replaced.size();
-      int m = value.isArray() ? value.size() : 1;
-      int r = Math.min(n, m);
-      for (int i = 0; i < r; i++)
-        ops.add(new JsonNodeOp.Replace(replaced.get(i), value.isArray() ? value.get(i).node() : value.node()));
-      if (m < n) {
-        for (int i = r; i < n; i++)
-          ops.add(new JsonNodeOp.Remove(replaced.get(i)));
-      } else if (m > n && n > 0) {
-        JsonNode spread = JsonBuilder.createArray(arr -> {
-          for (int i = r; i < m; i++)
-            arr.addElement(value.get(i).node());
-        });
-        JsonPath last = replaced.get(n - 1);
-        JsonPath after = new JsonPath(last.parent(), Text.of(last.segment().parseInt()+1));
-        ops.add(new JsonNodeOp.Spread(after, spread));
-      }
+      replace1(target, replace, ops);
+      return;
+    }
+    JsonMixed value = readValue(replace, "replace `value`", true);
+    List<JsonPath> replaced = resolvePaths(target, pattern, "replace `path`").toList();
+    int n = replaced.size();
+    int m = value.isArray() ? value.size() : 1;
+    int r = Math.min(n, m);
+    for (int i = 0; i < r; i++)
+      ops.add(new JsonNodeOp.Replace(replaced.get(i), value.isArray() ? value.get(i).node() : value.node()));
+    if (m < n) {
+      for (int i = r; i < n; i++)
+        ops.add(new JsonNodeOp.Remove(replaced.get(i)));
+    } else if (m > n && n > 0) {
+      JsonNode spread = JsonBuilder.createArray(arr -> {
+        for (int i = r; i < m; i++)
+          arr.addElement(value.get(i).node());
+      });
+      JsonPath last = replaced.get(n - 1);
+      JsonPath after = new JsonPath(last.parent(), Text.of(last.segment().parseInt()+1));
+      ops.add(new JsonNodeOp.Spread(after, spread));
     }
   }
 
-  private static void move(JsonMixed target, JsonPatchOp move, List<JsonNodeOp> ops) {
-    JsonPathPattern fromPattern = JsonPathPattern.of(move.from());
-    JsonPathPattern toPattern   = JsonPathPattern.of(move.to());
-    checkIsSingleTarget(fromPattern, "move `from`");
-    checkIsSingleTarget(toPattern, "move `to`");
+  private static void replace1(JsonMixed target, JsonPatchOp replace, List<JsonNodeOp> ops) {
+    JsonMixed value = readValue(replace, "replace `value`", true);
+    resolvePaths(target, replace.$path(), "replace `path`", false)
+        .findFirst()
+        .map(p -> new JsonNodeOp.Replace(p, value.node()))
+        .ifPresent(ops::add);
+  }
 
-    JsonPath from = fromPattern.resolve(target).findFirst().orElse(null);
+  private static void move(JsonMixed target, JsonPatchOp move, List<JsonNodeOp> ops) {
+    JsonPath from = resolvePath(target, move.from(), "move `from`");
     if (from == null || !target.exists(from)) return;      // missing source => no-op
-    JsonPath to = toPattern.resolve(target).findFirst().orElse(null);
+    JsonPath to = resolvePath(target, move.to(), "move `to` (or `path`)");
     if (to == null) return;
     if (from.equals(to)) return; // move to self => no-op
 
@@ -166,27 +171,17 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void copy(JsonMixed target, JsonPatchOp copy, List<JsonNodeOp> ops) {
-    JsonPathPattern fromPattern = JsonPathPattern.of(copy.from());
-    JsonPathPattern toPattern   = JsonPathPattern.of(copy.to());
-    checkIsSingleTarget(fromPattern, "copy `from`");
-    checkIsSingleTarget(toPattern, "copy `to`");
-
-    JsonPath from = fromPattern.resolve(target).findFirst().orElse(null);
+    JsonPath from = resolvePath(target, copy.from(), "copy `from`");
     if (from == null || !target.exists(from)) return;
-    JsonPath to = toPattern.resolve(target).findFirst().orElse(null);
+    JsonPath to = resolvePath(target, copy.to(), "copy `to` (or `path`)");
     if (to == null) return;
 
     ops.add(new JsonNodeOp.Insert(to, target.get(from).node()));
   }
 
   private static void swap(JsonMixed target, JsonPatchOp swap, List<JsonNodeOp> ops) {
-    JsonPathPattern fromPattern = JsonPathPattern.of(swap.from());
-    JsonPathPattern toPattern   = JsonPathPattern.of(swap.to());
-    checkIsSingleTarget(fromPattern, "swap `from`");
-    checkIsSingleTarget(toPattern, "swap `to`");
-
-    JsonPath from = fromPattern.resolve(target).findFirst().orElse(null);
-    JsonPath to   = toPattern.resolve(target).findFirst().orElse(null);
+    JsonPath from = resolvePath(target, swap.from(), "swap `from`");
+    JsonPath to   = resolvePath(target, swap.to(), "swap `to` (or `path`)");
     if (from == null || to == null) return;
     if (!target.exists(from) || !target.exists(to)) return;
     if (from.equals(to)) return;
@@ -198,25 +193,124 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void test(JsonMixed target, JsonPatchOp test) {
-    JsonPathPattern pattern = JsonPathPattern.of(test.$path());
-    List<JsonPath> paths = pattern.resolve(target).toList();
-    if (paths.isEmpty())
-      throw new JsonPatchTestException("Test failed: no match for `path` " + pattern);
-    JsonMixed expected = test.value();
+    JsonMixed path = test.$path();
+    JsonMixed expected = readValue(test, "test `value`", false);
     boolean hasExpected = expected.exists();
-    if (hasExpected && paths.size() > 1)
-      throw new JsonPatchDeclarationException(
-          "Test with `value` must use single target `path`, but was: " + pattern);
+    if (hasExpected && !path.isString() && path.isArray()) {
+      JsonPathPattern pattern = readPattern(path, "test `path`");
+      if (pattern.type().isMultiTarget())
+        throw new JsonPatchDeclarationException(
+            "Operation test with `value` must use single target `path`, but was: "
+                + path.toJson());
+    }
+    List<JsonPath> paths = resolvePaths(target, test.$path(), "test `path`", true).toList();
+    if (paths.isEmpty())
+      throw new JsonPatchTestException("Test failed: no match for `path` " + test.$path().toJson());
     for (JsonPath p : paths) {
       if (!target.exists(p)) throw new JsonPatchTestException("Test failed: no value at path " + p);
       if (hasExpected && !target.get(p).equivalentTo(expected))
         throw new JsonPatchTestException(
-            "Test failed: value at path " + p + " is " + target.get(p) + ", expected " + expected);
+            "Test failed: value at path " + p + " is " + target.get(p) + ", expected: " + expected);
     }
   }
 
-  private static void checkIsSingleTarget(JsonPathPattern pattern, String name) {
-    if (pattern.type().isMultiTarget())
-      throw new JsonPatchDeclarationException("Range or enumeration not allowed for " + name);
+  private static JsonPath resolvePath(JsonMixed target, JsonMixed path, String name) {
+    return resolvePaths(target, path, name, false).findFirst().orElse(null);
+  }
+
+  private static Stream<JsonPath> resolvePaths(JsonMixed target, JsonMixed path, String name, boolean allowMultiple) {
+    if (path.isUndefined())
+      throw new JsonPatchDeclarationException(
+          "Operation %s is required but was undefined".formatted(name));
+    if (path.isString()) {
+      try {
+        JsonPath p = new JsonPointer(path.string()).decode();
+        return Stream.of(resolveDashes(target, p));
+      } catch (JsonPathException e) {
+        throw new JsonPatchDeclarationException(
+            "Operation %s has invalid JSON Pointer `%s`: %s"
+                .formatted(name, path.string(), e.getMessage()));
+      }
+    }
+    if (!path.isArray())
+      throw new JsonPatchDeclarationException(
+          "Operation %s must be either a string or an array, but was: %s"
+              .formatted(name, path));
+
+    JsonPathPattern pattern = readPattern(path, name);
+    if (!allowMultiple && pattern.type().isMultiTarget()) {
+      throw new JsonPatchDeclarationException(
+          "Operation %s cannot be used with multi-target %s, but was: %s"
+              .formatted(name, pattern.type().name().toLowerCase(Locale.ROOT), path));
+    }
+    return resolvePaths(target, pattern, name);
+  }
+
+  private static Stream<JsonPath> resolvePaths(JsonMixed target, JsonPathPattern pattern, String name) {
+    try {
+      return pattern.resolve(target);
+    } catch (JsonPathPatternException e) {
+      throw new JsonPatchTargetException(
+          "Operation %s cannot resolve path against target: %s".formatted(name, e.getMessage()));
+    }
+  }
+
+  /**
+   * Resolves {@code -} segments in a decoded JSON Pointer against the target.
+   * Per RFC 6901, {@code -} means "the slot after the last array element" when
+   * the parent is an array; when the parent is an object, it is an ordinary key.
+   */
+  private static JsonPath resolveDashes(JsonMixed target, JsonPath path) {
+    if (path == null || path == JsonPath.SELF) return path;
+    JsonPath parentPath = resolveDashes(target, path.parent());
+    Text segment = path.segment();
+    if (segment != null && segment.contentEquals("-")) {
+      JsonMixed parent = parentPath == null ? target : target.get(parentPath);
+      if (parent.isArray())
+        return new JsonPath(parentPath, Text.of(parent.size()));
+      if (!parent.exists() || !parent.isObject())
+        throw new JsonPatchTargetException(
+            "Cannot resolve `-` in JSON Pointer: parent does not exist");
+      // Not an array: `-` is a literal object key. Leave as-is.
+    }
+    return new JsonPath(parentPath, segment);
+  }
+
+  private static JsonPathPattern readPattern(JsonMixed path, String name) {
+    JsonPathPattern pattern;
+    try {
+      pattern = JsonPathPattern.of(path);
+    } catch (JsonPathPatternException e) {
+      throw new JsonPatchDeclarationException(
+          "Operation %s has invalid path pattern: %s".formatted(name, e.getMessage()));
+    }
+    return pattern;
+  }
+
+  private static JsonMixed readValue(JsonPatchOp op, String name, boolean required) {
+    JsonMixed value = op.value();
+    if (!required || value.exists()) return value;
+    throw new JsonPatchDeclarationException(
+        "Operation %s is required but was undefined".formatted(name));
+  }
+
+  private static OpType readOp(JsonPatchOp op) {
+    JsonString opName = op.op();
+    if (opName.isUndefined())
+      throw new JsonPatchDeclarationException("Operation `op` is required but was undefined: "+op);
+    String name = opName.string().toLowerCase(Locale.ROOT);
+    return switch (name) {
+      case "?", "test" -> OpType.test;
+      case "+", "add", "insert" -> OpType.insert;
+      case "-", "delete", "remove" -> OpType.remove;
+      case "~", "spread" -> OpType.spread;
+      case "move" -> OpType.move;
+      case ">", "copy" -> OpType.copy;
+      case "swap" -> OpType.swap;
+      case "replace" -> OpType.replace;
+      default ->
+          throw new JsonPatchDeclarationException(
+              "Operation `op` %s is unknown in %s: ".formatted(name, op));
+    };
   }
 }
