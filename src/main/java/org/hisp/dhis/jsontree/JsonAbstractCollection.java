@@ -31,15 +31,10 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Predicate;
-
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
-
-import javax.swing.*;
 
 /**
  * Common base class for JSON nodes that have children.
