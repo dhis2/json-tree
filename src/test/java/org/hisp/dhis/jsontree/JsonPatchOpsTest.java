@@ -85,6 +85,14 @@ class JsonPatchOpsTest {
             new JsonNodeOp.Remove(path("foo", "2")));
     }
 
+    @Test void remove_enumerationWithDuplicateIndex_clashesDownstream() {
+        // patchOps emits both; the clash detector is what rejects the pair.
+        assertOps("{\"foo\": [1,2,3]}", """
+        [{"op": "remove", "path": ["foo", [0, 0]]}]""",
+            new JsonNodeOp.Remove(path("foo", "0")),
+            new JsonNodeOp.Remove(path("foo", "0")));
+    }
+
     // ===== insert =====
 
     @Test
@@ -112,6 +120,15 @@ class JsonPatchOpsTest {
     void insert_rangePath_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
             [{"op": "insert", "path": ["foo", [[1,2]]], "value": 99}]"""));
+    }
+
+    @Test void insert_enumerationPath_throws() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        [{"op": "insert", "path": ["foo", [0, 2]], "value": 99}]"""));
+    }
+    @Test void spread_enumerationPath_throws() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        [{"op": "spread", "path": ["foo", [0, 2]], "value": [10,20]}]"""));
     }
 
     // ===== replace (single index) =====
@@ -706,5 +723,20 @@ class JsonPatchOpsTest {
         [{"op": "test", "path": ["a"], "value": null}]"""));
         assertOps("{\"a\": null}", """
         [{"op": "test", "path": ["a"], "value": null}]""");
+    }
+
+    // ==== more gaps ====
+
+    // patchOps
+    @Test void insert_enumeration_throws() {
+        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        [{"op": "insert", "path": ["foo", [0, 2]], "value": 99}]"""));
+    }
+    @Test void remove_enumeration_expands() {
+        assertOps("{\"foo\": [1,2,3,4,5]}", """
+        [{"op": "remove", "path": ["foo", [0, 2, 4]]}]""",
+            new JsonNodeOp.Remove(path("foo", "0")),
+            new JsonNodeOp.Remove(path("foo", "2")),
+            new JsonNodeOp.Remove(path("foo", "4")));
     }
 }

@@ -342,6 +342,49 @@ class JsonPathExpressionResolveTest {
             resolve("[]", "[-0]"));
     }
 
+    // === more gaps ===
+
+    @Test void resolve_condition_singleEqualsString_matchesEqualsValue() {
+        assertEquals(List.of(List.of("foo", "1")),
+            resolve("{\"foo\": [\"a\", \"=\", \"b\"]}", "[\"foo\", [\"=\"]]"));
+    }
+    @Test void resolve_enumeration_negativeZeroResolvesToAppendSlot() {
+        // [0, -0] on size 3 → 0 and 3 (append slot)
+        assertEquals(List.of(List.of("foo", "0"), List.of("foo", "3")),
+            resolve("{\"foo\": [\"a\",\"b\",\"c\"]}", "[\"foo\", [0, -0]]"));
+    }
+    @Test void resolve_enumeration_negativeZero() {
+        assertEquals(List.of(List.of("foo", "0"), List.of("foo", "3")),
+            resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[\"foo\", [0, -0]]"));
+    }
+    @Test void resolve_enumeration_duplicatesThrow() {
+        assertThrows(JsonPatchException.class, () ->
+            resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[[\"foo\", [1, 1]]]"));
+    }
+    @Test void resolve_enumeration_negativeUnderflow() {
+        assertThrows(JsonPatchException.class, () ->
+            resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[[\"foo\", [-10, 0]]]"));
+    }
+    @Test void resolve_rangeThenKey_throws() {
+        // Range mid-path should throw, not silently pick one endpoint
+        assertThrows(JsonPatchException.class, () ->
+            resolve("{\"foo\":[[1],[2],[3]]}", "[[\"foo\", [[0,2]]], \"x\"]"));
+    }
+    @Test void resolve_enumerationThenKey_throws() {
+        assertThrows(JsonPatchException.class, () ->
+            resolve("{\"foo\":[[1],[2],[3]]}", "[[\"foo\", [0,2]], \"x\"]"));
+    }
+    @Test void resolve_emptyObjectCondition_matchesFirst() {
+        // [{}] matches any element; resolves to first
+        assertEquals(List.of(List.of("foo", "0")),
+            resolve("{\"foo\":[1,2,3]}", "[\"foo\", [{}]]"));
+    }
+    @Test void resolve_equalsKeyLongForm_matchesArray() {
+        // Escape hatch for matching array values
+        assertEquals(List.of(List.of("foo", "1")),
+            resolve("{\"foo\":[[1,2],[3,4]]}", "[\"foo\", [\"=\", [3,4]]]"));
+    }
+
     private static List<String> segments(JsonPath path) {
         return path.segments().stream().map(Text::toString).toList();
     }

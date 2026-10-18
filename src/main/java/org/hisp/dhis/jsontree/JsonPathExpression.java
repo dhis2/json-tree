@@ -60,7 +60,9 @@ public record JsonPathExpression(@CheckNull JsonPathExpression parent, @CheckNul
           int e1Size = e1.size();
           if (e1Size == 1) return Kind.ARR_CONDITION; // [[...]] condition with an array value
           if (e1Size != 2 || !e1.every(JsonMixed::isInteger))
-            throw new JsonPatchException("Range must have from and to index values, but was: "+segment);
+            throw new JsonPatchException(
+                "Nested array is neither a 2-integer range nor a single-element condition; "
+                    + "to match array value %s use [\"=\", %s]".formatted(e1, e1));
           return Kind.RANGE;
         }
         if (e1.isObject()) return Kind.OBJ_CONDITION;
@@ -68,8 +70,9 @@ public record JsonPathExpression(@CheckNull JsonPathExpression parent, @CheckNul
         return Kind.ARR_CONDITION; // [true], [null], ["str"]
       }
       if (size == 2) {
+        JsonMixed e1 = segment.get(0);
         // ["=", ?]
-        if (segment.get(0).isString() && segment.get(0).text().contentEquals("="))
+        if (e1.isString() && e1.text().contentEquals("="))
           return Kind.ARR_CONDITION;
       }
       // multi-element: must be all numbers for a "gap-range"
@@ -169,7 +172,7 @@ public record JsonPathExpression(@CheckNull JsonPathExpression parent, @CheckNul
     if (segment == null) return Stream.empty(); // just to satisfy nullness analysis
     JsonArray arr = p == null ? target : target.get(p, JsonArray.class);
     if (!arr.isArray())
-      throw new JsonPatchException("Range `%s` cannot be resolved for target %s".formatted(segment, arr.type()));
+      throw new JsonPatchException("Enumeration `%s` cannot be resolved for target %s".formatted(segment, arr.type()));
     int size = arr.size();
     return segment.values().map(e -> new JsonPath(p, Text.of(resolveBound(e, size)))).stream();
   }

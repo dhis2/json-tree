@@ -308,4 +308,23 @@ class JsonPathExpressionKindTest {
         assertEquals(INDEX, p.parent().kind());
         assertEquals(KEY, p.parent().parent().kind());
     }
+
+    // ===== more gaps =====
+
+    @Test void kind_enumerationWithDuplicateIndex() {
+        // Currently accepted; resolve emits duplicates. Pin behaviour.
+        assertEquals(ENUMERATION, kind("[[1, 1]]"));
+    }
+    @Test void kind_enumerationWithNegativeZero() {
+        assertEquals(ENUMERATION, kind("[[0, -0]]"));
+    }
+    @Test void kind_mixedSignEnumeration() {
+        // Positive and negative in one enumeration — allowed by kind()
+        assertEquals(ENUMERATION, kind("[[1, -1]]"));
+    }
+    @Test void kind_singleElementEqualsString() {
+        // ["="] is a value condition on the string "=", not a malformed value-condition
+        assertEquals(ARR_CONDITION, kind("""
+          [["="]]"""));
+    }
 }
