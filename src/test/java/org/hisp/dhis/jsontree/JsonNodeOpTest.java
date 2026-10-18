@@ -4,11 +4,13 @@ import static org.hisp.dhis.jsontree.JsonNode.NULL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 import java.util.List;
 import org.hisp.dhis.jsontree.JsonNodeOp.Insert;
 import org.hisp.dhis.jsontree.JsonNodeOp.Remove;
 import org.hisp.dhis.jsontree.JsonNodeOp.Spread;
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTargetException;
 import org.junit.jupiter.api.Test;
 
 /** Checks the conflict detection when running a {@link JsonNode#patch(List)}. */
@@ -261,8 +263,8 @@ class JsonNodeOpTest {
   }
 
   private static void assertRejected(String error, JsonNodeOp... ops) {
-    JsonPatchException ex =
-        assertThrows(JsonPatchException.class, () -> JsonNodeOp.checkPatch(List.of(ops)));
+    JsonPatchTargetException ex =
+        assertThrowsExactly(JsonPatchTargetException.class, () -> JsonNodeOp.checkPatch(List.of(ops)));
     String msg = ex.getMessage();
     assertEquals(error, msg.substring(0, Math.min(msg.length(), error.length())), msg);
   }

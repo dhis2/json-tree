@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Paths are supplied as raw JSON arrays so key names must be quoted strings (e.g. {@code
  * ["foo"]}, not {@code [foo]}).
  */
-class JsonPathPatternJsonPathPatternTypeTest {
+class JsonPathPatternTypeTest {
 
   private static JsonPathPattern pathOf(@Language("json") String jsonArray) {
     return JsonPathPattern.of(jsonArray);

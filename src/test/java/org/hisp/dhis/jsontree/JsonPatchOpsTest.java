@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchDeclarationException;
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTestException;
 import org.hisp.dhis.jsontree.internal.Language;
 import org.junit.jupiter.api.Test;
 
@@ -118,16 +120,16 @@ class JsonPatchOpsTest {
 
     @Test
     void insert_rangePath_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
             [{"op": "insert", "path": ["foo", [[1,2]]], "value": 99}]"""));
     }
 
     @Test void insert_enumerationPath_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "insert", "path": ["foo", [0, 2]], "value": 99}]"""));
     }
     @Test void spread_enumerationPath_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "spread", "path": ["foo", [0, 2]], "value": [10,20]}]"""));
     }
 
@@ -236,7 +238,7 @@ class JsonPatchOpsTest {
 
     @Test
     void spread_rangePath_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
             [{"op": "spread", "path": ["foo", [[1,2]]], "value": [10,20]}]"""));
     }
 
@@ -292,13 +294,13 @@ class JsonPatchOpsTest {
 
     @Test
     void move_rangeSource_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "move", "from": ["foo", [[0,1]]], "to": ["x"]}]"""));
     }
 
     @Test
     void move_rangeTarget_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "move", "from": ["foo", 0], "to": ["bar", [[0,1]]]}]"""));
     }
 
@@ -333,7 +335,7 @@ class JsonPatchOpsTest {
 
     @Test
     void copy_rangeSource_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "copy", "from": ["foo", [[0,1]]], "to": ["x"]}]"""));
     }
 
@@ -395,13 +397,13 @@ class JsonPatchOpsTest {
 
     @Test
     void swap_rangeSource_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "swap", "from": ["foo", [[0,1]]], "to": ["a"]}]"""));
     }
 
     @Test
     void swap_rangeTarget_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "swap", "from": ["a"], "to": ["foo", [[0,1]]]}]"""));
     }
 
@@ -426,7 +428,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_missingKey_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{}", """
         [{"op": "test", "path": ["a"]}]"""));
     }
 
@@ -438,7 +440,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_nestedKeyMissingAncestor_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{}", """
         [{"op": "test", "path": ["a", "b"]}]"""));
     }
 
@@ -450,7 +452,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_conditionNoMatch_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"y\"}]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"foo\": [{\"id\":\"y\"}]}", """
         [{"op": "test", "path": ["foo", [{"id":"x"}]]}]"""));
     }
 
@@ -462,7 +464,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_valueConditionNoMatch_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "test", "path": ["foo", ["=", 99]]}]"""));
     }
 
@@ -471,13 +473,13 @@ class JsonPatchOpsTest {
         // Range test: "foo has at least 5 elements"
         assertOps("{\"foo\": [1,2,3,4,5]}", """
         [{"op": "test", "path": ["foo", [[4,4]]]}]""");
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "test", "path": ["foo", [[4,4]]]}]"""));
     }
 
     @Test
     void test_rangeWithNoElements_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": []}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"foo\": []}", """
         [{"op": "test", "path": ["foo", [[0,5]]]}]"""));
     }
 
@@ -496,7 +498,7 @@ class JsonPatchOpsTest {
     @Test
     void test_fails_nothingApplied() {
         // Whole patch rejected — the mutation ops already accumulated are lost.
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1, \"b\": 2}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": 1, \"b\": 2}", """
         [
           {"op": "remove", "path": ["b"]},
           {"op": "test", "path": ["x"]}
@@ -506,12 +508,12 @@ class JsonPatchOpsTest {
     @Test
     void test_positionDoesNotMatter() {
         // Same patch, test at top vs. bottom — both reject.
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": 1}", """
         [
           {"op": "test", "path": ["x"]},
           {"op": "remove", "path": ["a"]}
         ]"""));
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": 1}", """
         [
           {"op": "remove", "path": ["a"]},
           {"op": "test", "path": ["x"]}
@@ -544,7 +546,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_number_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": 1}", """
         [{"op": "test", "path": ["a"], "value": 2}]"""));
     }
 
@@ -556,7 +558,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_string_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": \"hello\"}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": \"hello\"}", """
         [{"op": "test", "path": ["a"], "value": "world"}]"""));
     }
 
@@ -568,14 +570,14 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_boolean_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": true}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": true}", """
         [{"op": "test", "path": ["a"], "value": false}]"""));
     }
 
     @Test
     void test_value_typeMismatch_fails() {
         // 1 (number) vs "1" (string) — structural compare distinguishes them
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": 1}", """
         [{"op": "test", "path": ["a"], "value": "1"}]"""));
     }
 
@@ -597,13 +599,13 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_object_extraProperty_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": {\"x\": 1}}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": {\"x\": 1}}", """
         [{"op": "test", "path": ["a"], "value": {"x": 1, "y": 2}}]"""));
     }
 
     @Test
     void test_value_object_missingProperty_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": {\"x\": 1, \"y\": 2}}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": {\"x\": 1, \"y\": 2}}", """
         [{"op": "test", "path": ["a"], "value": {"x": 1}}]"""));
     }
 
@@ -615,13 +617,13 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_array_orderMatters_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": [1,2,3]}", """
         [{"op": "test", "path": ["a"], "value": [3,2,1]}]"""));
     }
 
     @Test
     void test_value_array_lengthMatters_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": [1,2,3]}", """
         [{"op": "test", "path": ["a"], "value": [1,2,3,4]}]"""));
     }
 
@@ -635,13 +637,13 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_withCondition_valueMismatch_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"x\",\"v\":1}]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"foo\": [{\"id\":\"x\",\"v\":1}]}", """
         [{"op": "test", "path": ["foo", [{"id":"x"}]], "value": {"id":"x","v":2}}]"""));
     }
 
     @Test
     void test_value_withCondition_noMatch_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"x\"}]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"foo\": [{\"id\":\"x\"}]}", """
         [{"op": "test", "path": ["foo", [{"id":"y"}]], "value": {"id":"y"}}]"""));
     }
 
@@ -650,13 +652,13 @@ class JsonPatchOpsTest {
     @Test
     void test_value_nodeMissing_fails() {
         // The existence check fires before the value check
-        assertThrows(JsonPatchException.class, () -> ops("{}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{}", """
         [{"op": "test", "path": ["a"], "value": 1}]"""));
     }
 
     @Test
     void test_value_nodeMissingNested_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": {}}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": {}}", """
         [{"op": "test", "path": ["a", "b"], "value": 1}]"""));
     }
 
@@ -666,7 +668,7 @@ class JsonPatchOpsTest {
     void test_value_withRange_throws() {
         // Combining value with a multi-path range is rejected as ambiguous:
         // "all elements equal value" is not the client's likely intent.
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "test", "path": ["foo", [[0,2]]], "value": 1}]"""));
     }
 
@@ -684,7 +686,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_modCountGuard_stale_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"modCount\": 6, \"data\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"modCount\": 6, \"data\": [1,2,3]}", """
         [
           {"op": "test",   "path": ["modCount"], "value": 5},
           {"op": "insert", "path": ["data", -0], "value": 4}
@@ -707,7 +709,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_objectSnapshotGuard_stale_fails() {
-        assertThrows(JsonPatchException.class, () -> ops("""
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("""
         {"articles": [{"id": "a1", "status": "draft", "rev": 4}]}""", """
         [
           {"op": "test",    "path": ["articles", [{"id":"a1"}]], "value": {"id":"a1","status":"draft","rev":3}},
@@ -734,7 +736,7 @@ class JsonPatchOpsTest {
 
     @Test
     void test_value_explicitNull() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"a\": 1}", """
+        assertThrowsExactly(JsonPatchTestException.class, () -> ops("{\"a\": 1}", """
         [{"op": "test", "path": ["a"], "value": null}]"""));
         assertOps("{\"a\": null}", """
         [{"op": "test", "path": ["a"], "value": null}]""");
@@ -744,7 +746,7 @@ class JsonPatchOpsTest {
 
     // patchOps
     @Test void insert_enumeration_throws() {
-        assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
+        assertThrowsExactly(JsonPatchDeclarationException.class, () -> ops("{\"foo\": [1,2,3]}", """
         [{"op": "insert", "path": ["foo", [0, 2]], "value": 99}]"""));
     }
     @Test void remove_enumeration_expands() {

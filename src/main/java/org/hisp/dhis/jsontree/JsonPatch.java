@@ -1,5 +1,9 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchDeclarationException;
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTargetException;
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTestException;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -197,21 +201,22 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     JsonPathPattern pattern = JsonPathPattern.of(test.$path());
     List<JsonPath> paths = pattern.resolve(target).toList();
     if (paths.isEmpty())
-      throw new JsonPatchException("Test failed: no match for `path` " + pattern);
+      throw new JsonPatchTestException("Test failed: no match for `path` " + pattern);
     JsonMixed expected = test.value();
     boolean hasExpected = expected.exists();
     if (hasExpected && paths.size() > 1)
-      throw new JsonPatchException("Test with `value` must use single target `path`, but was: " + pattern);
+      throw new JsonPatchDeclarationException(
+          "Test with `value` must use single target `path`, but was: " + pattern);
     for (JsonPath p : paths) {
-      if (!target.exists(p)) throw new JsonPatchException("Test failed: no value at path " + p);
+      if (!target.exists(p)) throw new JsonPatchTestException("Test failed: no value at path " + p);
       if (hasExpected && !target.get(p).equivalentTo(expected))
-        throw new JsonPatchException(
+        throw new JsonPatchTestException(
             "Test failed: value at path " + p + " is " + target.get(p) + ", expected " + expected);
     }
   }
 
   private static void checkIsSingleTarget(JsonPathPattern pattern, String name) {
     if (pattern.type().isMultiTarget())
-      throw new JsonPatchException("Range or enumeration not allowed for "+name);
+      throw new JsonPatchDeclarationException("Range or enumeration not allowed for " + name);
   }
 }
