@@ -33,7 +33,6 @@ import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
