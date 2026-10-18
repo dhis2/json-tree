@@ -3,26 +3,25 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.internal.Language;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for {@link JsonPathExpression#resolve(JsonMixed)}.
+ * Tests for {@link JsonPathPattern#resolve(JsonMixed)}.
  *
  * <p>The helper {@link #segments(JsonPath)} flattens a resolved path to its
  * segment strings so assertions read as the path they name:
  * {@code ["foo", "1"]} corresponds to {@code .foo[1]} with all special
  * syntax resolved to concrete keys and non-negative integers.
  */
-class JsonPathExpressionResolveTest {
+class JsonPathPatternResolveTest {
 
     // ===== Root =====
 
     @Test
     void resolve_root_yieldsSelf() {
-        List<JsonPath> paths = JsonPathExpression.ROOT.resolve(JsonMixed.of("{}")).toList();
+        List<JsonPath> paths = JsonPathPattern.ROOT.resolve(JsonMixed.of("{}")).toList();
         assertEquals(1, paths.size());
         assertEquals(JsonPath.SELF, paths.get(0));
     }
@@ -30,7 +29,7 @@ class JsonPathExpressionResolveTest {
     @Test
     void resolve_emptyExpression_yieldsSelf() {
         assertEquals(JsonPath.SELF,
-            JsonPathExpression.ROOT.resolve(JsonMixed.of("{}")).findFirst().orElseThrow());
+            JsonPathPattern.ROOT.resolve(JsonMixed.of("{}")).findFirst().orElseThrow());
     }
 
     // ===== Key-only paths =====
@@ -97,7 +96,7 @@ class JsonPathExpressionResolveTest {
     @Test
     void resolve_index_negativeUnderflowThrows() {
         // -10 on size 3 → 3 + (-10) = -7 => throws
-        assertThrows(JsonPatchException.class, () ->
+        assertThrows(JsonPathPatternException.class, () ->
             resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[\"foo\", -10]"));
     }
 
@@ -135,7 +134,7 @@ class JsonPathExpressionResolveTest {
 
     @Test
     void resolve_range_wrongArityThrows() {
-        assertThrows(JsonPatchException.class, () ->
+        assertThrows(JsonPathPatternException.class, () ->
             resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[\"foo\", [[0,1,2]] ]"));
     }
 
@@ -150,20 +149,20 @@ class JsonPathExpressionResolveTest {
 
     @Test
     void resolve_range_inverted_throws() {
-        assertThrows(JsonPatchException.class,
+        assertThrows(JsonPathPatternException.class,
             () -> resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[\"foo\", [[3,1]] ]"));
     }
 
     @Test
     void resolve_range_negativeUnderflow_throws() {
         // -10 on size 3 → -7 < 0 → underflow, unlike positive overflow
-        assertThrows(JsonPatchException.class,
+        assertThrows(JsonPathPatternException.class,
             () -> resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[\"foo\", [[-10,-1]] ]"));
     }
 
     @Test
     void resolve_range_negativeFromUnderflow_throws() {
-        assertThrows(JsonPatchException.class,
+        assertThrows(JsonPathPatternException.class,
             () -> resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", " [\"foo\", [[-10,2]] ]"));
     }
 
@@ -272,25 +271,25 @@ class JsonPathExpressionResolveTest {
 
     @Test
     void resolve_indexOnNonArray_throws() {
-        assertThrows(JsonPatchException.class,
+        assertThrows(JsonPathPatternException.class,
             () -> resolve("{\"foo\":\"notarray\"}", "[\"foo\", 0]"));
     }
 
     @Test
     void resolve_indexOnObject_throws() {
-        assertThrows(JsonPatchException.class,
+        assertThrows(JsonPathPatternException.class,
             () -> resolve("{\"foo\":{}}", "[\"foo\", 0]"));
     }
 
     @Test
     void resolve_rangeOnNonArray_throws() {
-        assertThrows(JsonPatchException.class,
+        assertThrows(JsonPathPatternException.class,
             () -> resolve("{\"foo\":{}}", "[\"foo\", [[0,2]]]"));
     }
 
     @Test
     void resolve_conditionOnNonArray_throws() {
-        assertThrows(JsonPatchException.class,
+        assertThrows(JsonPathPatternException.class,
             () -> resolve("{\"foo\":1}", "[\"foo\", [{\"id\":\"foo\"}] ]"));
     }
 
@@ -358,20 +357,20 @@ class JsonPathExpressionResolveTest {
             resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[\"foo\", [0, -0]]"));
     }
     @Test void resolve_enumeration_duplicatesThrow() {
-        assertThrows(JsonPatchException.class, () ->
+        assertThrows(JsonPathPatternException.class, () ->
             resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[[\"foo\", [1, 1]]]"));
     }
     @Test void resolve_enumeration_negativeUnderflow() {
-        assertThrows(JsonPatchException.class, () ->
+        assertThrows(JsonPathPatternException.class, () ->
             resolve("{\"foo\":[\"a\",\"b\",\"c\"]}", "[[\"foo\", [-10, 0]]]"));
     }
     @Test void resolve_rangeThenKey_throws() {
         // Range mid-path should throw, not silently pick one endpoint
-        assertThrows(JsonPatchException.class, () ->
+        assertThrows(JsonPathPatternException.class, () ->
             resolve("{\"foo\":[[1],[2],[3]]}", "[[\"foo\", [[0,2]]], \"x\"]"));
     }
     @Test void resolve_enumerationThenKey_throws() {
-        assertThrows(JsonPatchException.class, () ->
+        assertThrows(JsonPathPatternException.class, () ->
             resolve("{\"foo\":[[1],[2],[3]]}", "[[\"foo\", [0,2]], \"x\"]"));
     }
     @Test void resolve_emptyObjectCondition_matchesFirst() {
@@ -390,8 +389,8 @@ class JsonPathExpressionResolveTest {
     }
 
     private static List<List<String>> resolve(JsonMixed target, @Language("json") String path) {
-        return JsonPathExpression.of(path).resolve(target)
-            .map(JsonPathExpressionResolveTest::segments)
+        return JsonPathPattern.of(path).resolve(target)
+            .map(JsonPathPatternResolveTest::segments)
             .toList();
     }
 

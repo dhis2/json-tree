@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Each test provides the target JSON and the authored patch (as JSON strings)
  * and asserts the desugared low-level operation list. Segments in expected
  * {@link JsonPath}s are the concrete resolved forms (keys as-is, indexes as
- * non-negative integers), matching what {@link JsonPathExpression#resolve}
+ * non-negative integers), matching what {@link JsonPathPattern#resolve}
  * produces.
  */
 class JsonPatchOpsTest {
@@ -715,7 +715,22 @@ class JsonPatchOpsTest {
         ]"""));
     }
 
-    // ===== explicit null (behaviour depends on exists() semantics; pin it) =====
+  @Test
+  void test_value_singleElementRange_passes() {
+    // [[3,3]] resolves to one index, so value comparison works
+    assertOps(
+        "{\"foo\": [1,2,3,4]}",
+        """
+        [{"op": "test", "path": ["foo", [[3,3]]], "value": 4}]""");
+  }
+
+  @Test
+  void test_value_singleElementEnumeration_passes() {
+    assertOps(
+        "{\"foo\": [1,2,3,4]}",
+        """
+        [{"op": "test", "path": ["foo", [2]], "value": 3}]""");
+  }
 
     @Test
     void test_value_explicitNull() {

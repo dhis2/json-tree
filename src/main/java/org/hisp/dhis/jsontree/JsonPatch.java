@@ -17,22 +17,22 @@ import java.util.List;
  * <p>
  * For example, if a client wants to delete the first 3 elements in an array they can use
  * <pre>
- *   { "op": "remove", path: ["array", "[0:2]"] }
+ *   { "op": "remove", path: ["array", [[0,2]]] }
  *   // or
  *   [
- *     { "op": "remove", path: ["array", "[0]" },
- *     { "op": "remove", path: ["array", "[1]" },
- *     { "op": "remove", path: ["array", "[2]" },
+ *     { "op": "remove", path: ["array", 0] },
+ *     { "op": "remove", path: ["array", 1] },
+ *     { "op": "remove", path: ["array", 2] },
  *   ]
  *   // or any other order of these 3 (or combination of single and range removals)
  * </pre>
  * Whereas in RFC 6902 the remove must have been issued 2,1,0 (not 0,1,2) to not accidentally delete the wrong elements.
  * <p>
  * Note also that {@code path} uses an array of segment expressions so that no escaping is needed.
- * Path segments are always literal unless a special array indexing syntax is used. See {@link JsonPathExpression}
+ * Path segments are always literal unless a special array indexing syntax is used. See {@link JsonPathPattern}
  * for more details on this.
  *
- * @see JsonPathExpression
+ * @see JsonPathPattern
  *
  * @since 1.10
  */
@@ -89,25 +89,25 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void insert(JsonMixed target, JsonPatchOp insert, List<JsonNodeOp> ops) {
-    JsonPathExpression path = JsonPathExpression.of(insert.$path());
-    if (path.kind().isMultiTarget()) throw new JsonPatchException("Range path not allowed for " + insert.type());
-    path.resolve(target)
+    JsonPathPattern pattern = JsonPathPattern.of(insert.$path());
+    checkIsSingleTarget(pattern, "insert `path`");
+    pattern.resolve(target)
         .findFirst()
         .map(p -> new JsonNodeOp.Insert(p, insert.value().node()))
         .ifPresent(ops::add);
   }
 
   private static void spread(JsonMixed target, JsonPatchOp spread, List<JsonNodeOp> ops) {
-    JsonPathExpression path = JsonPathExpression.of(spread.$path());
-    if (path.kind().isMultiTarget()) throw new JsonPatchException("Range path not allowed for " + spread.type());
-    path.resolve(target)
+    JsonPathPattern pattern = JsonPathPattern.of(spread.$path());
+    checkIsSingleTarget(pattern, "spread `path`");
+    pattern.resolve(target)
         .findFirst()
         .map(p -> new JsonNodeOp.Spread(p, spread.value().node()))
         .ifPresent(ops::add);
   }
 
   private static void remove(JsonMixed target, JsonPatchOp remove, List<JsonNodeOp> ops) {
-    JsonPathExpression.of(remove.$path())
+    JsonPathPattern.of(remove.$path())
         .resolve(target)
         .filter(target::exists)
         .map(JsonNodeOp.Remove::new)
@@ -115,15 +115,15 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void replace(JsonMixed target, JsonPatchOp replace, List<JsonNodeOp> ops) {
-    JsonPathExpression path = JsonPathExpression.of(replace.$path());
+    JsonPathPattern pattern = JsonPathPattern.of(replace.$path());
     JsonMixed value = replace.value();
-    if (!path.kind().isMultiTarget()) {
-      path.resolve(target)
+    if (!pattern.type().isMultiTarget()) {
+      pattern.resolve(target)
           .findFirst()
           .map(p -> new JsonNodeOp.Replace(p, value.node()))
           .ifPresent(ops::add);
     } else {
-      List<JsonPath> replaced = path.resolve(target).toList();
+      List<JsonPath> replaced = pattern.resolve(target).toList();
       int n = replaced.size();
       int m = value.isArray() ? value.size() : 1;
       int r = Math.min(n, m);
@@ -145,15 +145,16 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void move(JsonMixed target, JsonPatchOp move, List<JsonNodeOp> ops) {
-    JsonPathExpression fromExpr = JsonPathExpression.of(move.from());
-    JsonPathExpression toExpr   = JsonPathExpression.of(move.to());
-    if (fromExpr.kind().isMultiTarget()) throw new JsonPatchException("Range path not allowed for move source");
-    if (toExpr.kind().isMultiTarget())   throw new JsonPatchException("Range path not allowed for move target");
+    JsonPathPattern fromPattern = JsonPathPattern.of(move.from());
+    JsonPathPattern toPattern   = JsonPathPattern.of(move.to());
+    checkIsSingleTarget(fromPattern, "move `from`");
+    checkIsSingleTarget(toPattern, "move `to`");
 
-    JsonPath from = fromExpr.resolve(target).findFirst().orElse(null);
-    if (from == null || !target.exists(from)) return;      // missing source → no-op
-    JsonPath to = toExpr.resolve(target).findFirst().orElse(null);
+    JsonPath from = fromPattern.resolve(target).findFirst().orElse(null);
+    if (from == null || !target.exists(from)) return;      // missing source => no-op
+    JsonPath to = toPattern.resolve(target).findFirst().orElse(null);
     if (to == null) return;
+    if (from.equals(to)) return; // move to self => no-op
 
     // snapshot from original
     ops.add(new JsonNodeOp.Remove(from));
@@ -161,27 +162,27 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void copy(JsonMixed target, JsonPatchOp copy, List<JsonNodeOp> ops) {
-    JsonPathExpression fromExpr = JsonPathExpression.of(copy.from());
-    JsonPathExpression toExpr   = JsonPathExpression.of(copy.to());
-    if (fromExpr.kind().isMultiTarget()) throw new JsonPatchException("Range path not allowed for copy source");
-    if (toExpr.kind().isMultiTarget())   throw new JsonPatchException("Range path not allowed for copy target");
+    JsonPathPattern fromPattern = JsonPathPattern.of(copy.from());
+    JsonPathPattern toPattern   = JsonPathPattern.of(copy.to());
+    checkIsSingleTarget(fromPattern, "copy `from`");
+    checkIsSingleTarget(toPattern, "copy `to`");
 
-    JsonPath from = fromExpr.resolve(target).findFirst().orElse(null);
+    JsonPath from = fromPattern.resolve(target).findFirst().orElse(null);
     if (from == null || !target.exists(from)) return;
-    JsonPath to = toExpr.resolve(target).findFirst().orElse(null);
+    JsonPath to = toPattern.resolve(target).findFirst().orElse(null);
     if (to == null) return;
 
     ops.add(new JsonNodeOp.Insert(to, target.get(from).node()));
   }
 
   private static void swap(JsonMixed target, JsonPatchOp swap, List<JsonNodeOp> ops) {
-    JsonPathExpression fromExpr = JsonPathExpression.of(swap.from());
-    JsonPathExpression toExpr   = JsonPathExpression.of(swap.to());
-    if (fromExpr.kind().isMultiTarget()) throw new JsonPatchException("Range path not allowed for swap source");
-    if (toExpr.kind().isMultiTarget())   throw new JsonPatchException("Range path not allowed for swap target");
+    JsonPathPattern fromPattern = JsonPathPattern.of(swap.from());
+    JsonPathPattern toPattern   = JsonPathPattern.of(swap.to());
+    checkIsSingleTarget(fromPattern, "swap `from`");
+    checkIsSingleTarget(toPattern, "swap `to`");
 
-    JsonPath from = fromExpr.resolve(target).findFirst().orElse(null);
-    JsonPath to   = toExpr.resolve(target).findFirst().orElse(null);
+    JsonPath from = fromPattern.resolve(target).findFirst().orElse(null);
+    JsonPath to   = toPattern.resolve(target).findFirst().orElse(null);
     if (from == null || to == null) return;
     if (!target.exists(from) || !target.exists(to)) return;
     if (from.equals(to)) return;
@@ -193,19 +194,24 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void test(JsonMixed target, JsonPatchOp test) {
-    JsonPathExpression path = JsonPathExpression.of(test.$path());
-    List<JsonPath> resolved = path.resolve(target).toList();
-    if (resolved.isEmpty())
-      throw new JsonPatchException("Test failed: no match for path " + path);
+    JsonPathPattern pattern = JsonPathPattern.of(test.$path());
+    List<JsonPath> paths = pattern.resolve(target).toList();
+    if (paths.isEmpty())
+      throw new JsonPatchException("Test failed: no match for `path` " + pattern);
     JsonMixed expected = test.value();
     boolean hasExpected = expected.exists();
-    if (hasExpected && resolved.size() > 1)
-      throw new JsonPatchException("Test with value does not support range paths: " + path);
-    for (JsonPath p : resolved) {
-      if (!target.exists(p)) throw new JsonPatchException("Test failed: no value at " + p);
+    if (hasExpected && paths.size() > 1)
+      throw new JsonPatchException("Test with `value` must use single target `path`, but was: " + pattern);
+    for (JsonPath p : paths) {
+      if (!target.exists(p)) throw new JsonPatchException("Test failed: no value at path " + p);
       if (hasExpected && !target.get(p).equivalentTo(expected))
         throw new JsonPatchException(
-            "Test failed: value at " + p + " is " + target.get(p) + ", expected " + expected);
+            "Test failed: value at path " + p + " is " + target.get(p) + ", expected " + expected);
     }
+  }
+
+  private static void checkIsSingleTarget(JsonPathPattern pattern, String name) {
+    if (pattern.type().isMultiTarget())
+      throw new JsonPatchException("Range or enumeration not allowed for "+name);
   }
 }
