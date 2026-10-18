@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class JsonPatchOpsTest {
 
-    private static List<JsonNodeOp> ops(String target, String patch) {
+    private static List<JsonNodeOp> ops(@Language("json") String target, @Language("json") String patch) {
         return JsonPatch.patchOps(JsonMixed.of(target), JsonMixed.of(patch).as(JsonPatch.class));
     }
 
@@ -59,20 +59,20 @@ class JsonPatchOpsTest {
     @Test
     void remove_arrayIndex() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "remove", "path": ["foo", "[1]"]}]""",
+            [{"op": "remove", "path": ["foo", 1]}]""",
             new JsonNodeOp.Remove(path("foo", "1")));
     }
 
     @Test
     void remove_outOfBoundsIndex_isNoOp() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "remove", "path": ["foo", "[5]"]}]""");
+            [{"op": "remove", "path": ["foo", 5]}]""");
     }
 
     @Test
     void remove_arrayRange_expandsToSingleIndexes() {
         assertOps("{\"foo\": [1,2,3,4,5]}", """
-            [{"op": "remove", "path": ["foo", "[1:3]"]}]""",
+            [{"op": "remove", "path": ["foo", [[1,3]]]}]""",
             new JsonNodeOp.Remove(path("foo", "1")),
             new JsonNodeOp.Remove(path("foo", "2")),
             new JsonNodeOp.Remove(path("foo", "3")));
@@ -81,7 +81,7 @@ class JsonPatchOpsTest {
     @Test
     void remove_negativeIndex() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "remove", "path": ["foo", "[-1]"]}]""",
+            [{"op": "remove", "path": ["foo", -1]}]""",
             new JsonNodeOp.Remove(path("foo", "2")));
     }
 
@@ -97,21 +97,21 @@ class JsonPatchOpsTest {
     @Test
     void insert_arrayIndex() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "insert", "path": ["foo", "[1]"], "value": 99}]""",
+            [{"op": "insert", "path": ["foo", 1], "value": 99}]""",
             new JsonNodeOp.Insert(path("foo", "1"), JsonNode.of("99")));
     }
 
     @Test
     void insert_appendWithNegativeZero() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "insert", "path": ["foo", "[-0]"], "value": 99}]""",
+            [{"op": "insert", "path": ["foo", -0], "value": 99}]""",
             new JsonNodeOp.Insert(path("foo", "3"), JsonNode.of("99")));
     }
 
     @Test
     void insert_rangePath_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-            [{"op": "insert", "path": ["foo", "[1:2]"], "value": 99}]"""));
+            [{"op": "insert", "path": ["foo", [[1,2]]], "value": 99}]"""));
     }
 
     // ===== replace (single index) =====
@@ -126,7 +126,7 @@ class JsonPatchOpsTest {
     @Test
     void replace_arrayIndex() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "replace", "path": ["foo", "[1]"], "value": 99}]""",
+            [{"op": "replace", "path": ["foo", 1], "value": 99}]""",
             new JsonNodeOp.Replace(path("foo", "1"), JsonNode.of("99")));
     }
 
@@ -135,7 +135,7 @@ class JsonPatchOpsTest {
     @Test
     void replace_range_equalLength() {
         assertOps("{\"foo\": [1,2,3,4,5]}", """
-            [{"op": "replace", "path": ["foo", "[1:3]"], "value": [10,20,30]}]""",
+            [{"op": "replace", "path": ["foo", [[1,3]]], "value": [10,20,30]}]""",
             new JsonNodeOp.Replace(path("foo", "1"), JsonNode.of("10")),
             new JsonNodeOp.Replace(path("foo", "2"), JsonNode.of("20")),
             new JsonNodeOp.Replace(path("foo", "3"), JsonNode.of("30")));
@@ -144,7 +144,7 @@ class JsonPatchOpsTest {
     @Test
     void replace_range_shorterValue() {
         assertOps("{\"foo\": [1,2,3,4,5]}", """
-            [{"op": "replace", "path": ["foo", "[1:3]"], "value": [10]}]""",
+            [{"op": "replace", "path": ["foo", [[1,3]]], "value": [10]}]""",
             new JsonNodeOp.Replace(path("foo", "1"), JsonNode.of("10")),
             new JsonNodeOp.Remove(path("foo", "2")),
             new JsonNodeOp.Remove(path("foo", "3")));
@@ -153,7 +153,7 @@ class JsonPatchOpsTest {
     @Test
     void replace_range_emptyValue_deletesRange() {
         assertOps("{\"foo\": [1,2,3,4,5]}", """
-            [{"op": "replace", "path": ["foo", "[1:3]"], "value": []}]""",
+            [{"op": "replace", "path": ["foo", [[1,3]]], "value": []}]""",
             new JsonNodeOp.Remove(path("foo", "1")),
             new JsonNodeOp.Remove(path("foo", "2")),
             new JsonNodeOp.Remove(path("foo", "3")));
@@ -163,7 +163,7 @@ class JsonPatchOpsTest {
     void replace_range_longerValue() {
         // FAILS until the m > n branch is fixed — see review above.
         assertOps("{\"foo\": [1,2,3,4,5]}", """
-            [{"op": "replace", "path": ["foo", "[1:3]"], "value": [10,20,30,40,50]}]""",
+            [{"op": "replace", "path": ["foo", [[1,3]]], "value": [10,20,30,40,50]}]""",
             new JsonNodeOp.Replace(path("foo", "1"), JsonNode.of("10")),
             new JsonNodeOp.Replace(path("foo", "2"), JsonNode.of("20")),
             new JsonNodeOp.Replace(path("foo", "3"), JsonNode.of("30")),
@@ -174,7 +174,7 @@ class JsonPatchOpsTest {
     void replace_range_longerValue_byOne() {
         // Smallest case that exercises the m > n branch.
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "replace", "path": ["foo", "[0:0]"], "value": [10,20]}]""",
+            [{"op": "replace", "path": ["foo", [[0,0]]], "value": [10,20]}]""",
             new JsonNodeOp.Replace(path("foo", "0"), JsonNode.of("10")),
             new JsonNodeOp.Spread(path("foo", "1"), JsonNode.of("[20]")));
     }
@@ -183,7 +183,7 @@ class JsonPatchOpsTest {
     void replace_range_nonArrayValue() {
         // Scalar value; m = 1 via the isArray() guard.
         assertOps("{\"foo\": [1,2,3,4,5]}", """
-            [{"op": "replace", "path": ["foo", "[1:3]"], "value": 99}]""",
+            [{"op": "replace", "path": ["foo", [[1,3]]], "value": 99}]""",
             new JsonNodeOp.Replace(path("foo", "1"), JsonNode.of("99")),
             new JsonNodeOp.Remove(path("foo", "2")),
             new JsonNodeOp.Remove(path("foo", "3")));
@@ -192,13 +192,13 @@ class JsonPatchOpsTest {
     @Test
     void replace_range_resolvesToEmpty_noOp() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "replace", "path": ["foo", "[5:10]"], "value": [10]}]""");
+            [{"op": "replace", "path": ["foo", [[5,10]]], "value": [10]}]""");
     }
 
     @Test
     void replace_range_resolvesToEmpty_scalarValue_noOp() {
         assertOps("{\"foo\": [1,2,3]}", """
-        [{"op": "replace", "path": ["foo", "[5:10]"], "value": 99}]""");
+        [{"op": "replace", "path": ["foo", [[5,10]]], "value": 99}]""");
     }
 
     // ===== spread =====
@@ -206,7 +206,7 @@ class JsonPatchOpsTest {
     @Test
     void spread_arrayElements() {
         assertOps("{\"foo\": [1,2,3]}", """
-            [{"op": "spread", "path": ["foo", "[1]"], "value": [10, 20]}]""",
+            [{"op": "spread", "path": ["foo", 1], "value": [10, 20]}]""",
             new JsonNodeOp.Spread(path("foo", "1"), JsonNode.of("[10, 20]")));
     }
 
@@ -220,7 +220,7 @@ class JsonPatchOpsTest {
     @Test
     void spread_rangePath_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-            [{"op": "spread", "path": ["foo", "[1:2]"], "value": [10,20]}]"""));
+            [{"op": "spread", "path": ["foo", [[1,2]]], "value": [10,20]}]"""));
     }
 
     // ===== multiple operations =====
@@ -230,7 +230,7 @@ class JsonPatchOpsTest {
         assertOps("{\"a\": 1, \"b\": [1,2,3]}", """
             [
               {"op": "remove", "path": ["a"]},
-              {"op": "insert", "path": ["b", "[0]"], "value": 99}
+              {"op": "insert", "path": ["b", 0], "value": 99}
             ]""",
             new JsonNodeOp.Remove(path("a")),
             new JsonNodeOp.Insert(path("b", "0"), JsonNode.of("99")));
@@ -260,7 +260,7 @@ class JsonPatchOpsTest {
     @Test
     void move_arrayElement_toEnd() {
         assertOps("{\"foo\": [10, 20, 30]}", """
-        [{"op": "move", "from": ["foo", "[0]"], "to": ["foo", "[-0]"]}]""",
+        [{"op": "move", "from": ["foo", 0], "to": ["foo", -0]}]""",
             new JsonNodeOp.Remove(path("foo", "0")),
             new JsonNodeOp.Insert(path("foo", "3"), JsonNode.of("10")));
     }
@@ -276,13 +276,13 @@ class JsonPatchOpsTest {
     @Test
     void move_rangeSource_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "move", "from": ["foo", "[0:1]"], "to": ["x"]}]"""));
+        [{"op": "move", "from": ["foo", [[0,1]]], "to": ["x"]}]"""));
     }
 
     @Test
     void move_rangeTarget_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "move", "from": ["foo", "[0]"], "to": ["bar", "[0:1]"]}]"""));
+        [{"op": "move", "from": ["foo", 0], "to": ["bar", [[0,1]]]}]"""));
     }
 
 // ===== copy =====
@@ -303,7 +303,7 @@ class JsonPatchOpsTest {
     @Test
     void copy_arrayElement() {
         assertOps("{\"foo\": [10, 20]}", """
-        [{"op": "copy", "from": ["foo", "[0]"], "to": ["foo", "[-0]"]}]""",
+        [{"op": "copy", "from": ["foo", 0], "to": ["foo", -0]}]""",
             new JsonNodeOp.Insert(path("foo", "2"), JsonNode.of("10")));
     }
 
@@ -317,10 +317,10 @@ class JsonPatchOpsTest {
     @Test
     void copy_rangeSource_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "copy", "from": ["foo", "[0:1]"], "to": ["x"]}]"""));
+        [{"op": "copy", "from": ["foo", [[0,1]]], "to": ["x"]}]"""));
     }
 
-// ===== swap =====
+    // ===== swap =====
 
     @Test
     void swap_simpleKeys() {
@@ -333,7 +333,7 @@ class JsonPatchOpsTest {
     @Test
     void swap_arrayElements() {
         assertOps("{\"foo\": [10, 20, 30]}", """
-        [{"op": "swap", "from": ["foo", "[0]"], "to": ["foo", "[2]"]}]""",
+        [{"op": "swap", "from": ["foo", 0], "to": ["foo", 2]}]""",
             new JsonNodeOp.Replace(path("foo", "0"), JsonNode.of("30")),
             new JsonNodeOp.Replace(path("foo", "2"), JsonNode.of("10")));
     }
@@ -379,13 +379,13 @@ class JsonPatchOpsTest {
     @Test
     void swap_rangeSource_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "swap", "from": ["foo", "[0:1]"], "to": ["a"]}]"""));
+        [{"op": "swap", "from": ["foo", [[0,1]]], "to": ["a"]}]"""));
     }
 
     @Test
     void swap_rangeTarget_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "swap", "from": ["a"], "to": ["foo", "[0:1]"]}]"""));
+        [{"op": "swap", "from": ["a"], "to": ["foo", [[0,1]]]}]"""));
     }
 
     @Test
@@ -428,40 +428,40 @@ class JsonPatchOpsTest {
     @Test
     void test_conditionMatches_passes() {
         assertOps("{\"foo\": [{\"id\":\"x\"},{\"id\":\"y\"}]}", """
-        [{"op": "test", "path": ["foo", "[?id=x]"]}]""");
+        [{"op": "test", "path": ["foo", [{"id": "x"}]]}]""");
     }
 
     @Test
     void test_conditionNoMatch_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"y\"}]}", """
-        [{"op": "test", "path": ["foo", "[?id=x]"]}]"""));
+        [{"op": "test", "path": ["foo", [{"id":"x"}]]}]"""));
     }
 
     @Test
     void test_valueConditionMatches_passes() {
         assertOps("{\"foo\": [1,2,3]}", """
-        [{"op": "test", "path": ["foo", "[?=2]"]}]""");
+        [{"op": "test", "path": ["foo", ["=", 2]]}]""");
     }
 
     @Test
     void test_valueConditionNoMatch_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "test", "path": ["foo", "[?=99]"]}]"""));
+        [{"op": "test", "path": ["foo", ["=", 99]]}]"""));
     }
 
     @Test
     void test_arrayHasMinimumElements() {
         // Range test: "foo has at least 5 elements"
         assertOps("{\"foo\": [1,2,3,4,5]}", """
-        [{"op": "test", "path": ["foo", "[4:4]"]}]""");
+        [{"op": "test", "path": ["foo", [[4,4]]]}]""");
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "test", "path": ["foo", "[4:4]"]}]"""));
+        [{"op": "test", "path": ["foo", [[4,4]]]}]"""));
     }
 
     @Test
     void test_rangeWithNoElements_throws() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": []}", """
-        [{"op": "test", "path": ["foo", "[0:5]"]}]"""));
+        [{"op": "test", "path": ["foo", [[0,5]]]}]"""));
     }
 
     // ===== test as a guard around mutations =====
@@ -510,8 +510,8 @@ class JsonPatchOpsTest {
         {"articles": [{"id": "a1", "status": "draft"}]}""";
         String patch = """
         [
-          {"op": "test",   "path": ["articles", "[?status=draft]"]},
-          {"op": "replace","path": ["articles", "[?status=draft]", "status"], "value": "published"}
+          {"op": "test",   "path": ["articles", [{"status":"draft"}]]},
+          {"op": "replace","path": ["articles", [{"status":"draft"}], "status"], "value": "published"}
         ]""";
         assertOps(target, patch,
             new JsonNodeOp.Replace(path("articles", "0", "status"), JsonNode.of("\"published\"")));
@@ -613,19 +613,19 @@ class JsonPatchOpsTest {
     @Test
     void test_value_withCondition_passes() {
         assertOps("{\"foo\": [{\"id\":\"x\",\"v\":1}]}", """
-        [{"op": "test", "path": ["foo", "[?id=x]"], "value": {"id":"x","v":1}}]""");
+        [{"op": "test", "path": ["foo", [{"id":"x"}]], "value": {"id":"x","v":1}}]""");
     }
 
     @Test
     void test_value_withCondition_valueMismatch_fails() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"x\",\"v\":1}]}", """
-        [{"op": "test", "path": ["foo", "[?id=x]"], "value": {"id":"x","v":2}}]"""));
+        [{"op": "test", "path": ["foo", [{"id":"x"}]], "value": {"id":"x","v":2}}]"""));
     }
 
     @Test
     void test_value_withCondition_noMatch_fails() {
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [{\"id\":\"x\"}]}", """
-        [{"op": "test", "path": ["foo", "[?id=y]"], "value": {"id":"y"}}]"""));
+        [{"op": "test", "path": ["foo", [{"id":"y"}]], "value": {"id":"y"}}]"""));
     }
 
     // ===== test with value and missing node =====
@@ -650,7 +650,7 @@ class JsonPatchOpsTest {
         // Combining value with a multi-path range is rejected as ambiguous:
         // "all elements equal value" is not the client's likely intent.
         assertThrows(JsonPatchException.class, () -> ops("{\"foo\": [1,2,3]}", """
-        [{"op": "test", "path": ["foo", "[0:2]"], "value": 1}]"""));
+        [{"op": "test", "path": ["foo", [[0,2]]], "value": 1}]"""));
     }
 
     // ===== idempotency / modCount guard pattern =====
@@ -660,7 +660,7 @@ class JsonPatchOpsTest {
         assertOps("{\"modCount\": 5, \"data\": [1,2,3]}", """
         [
           {"op": "test",   "path": ["modCount"], "value": 5},
-          {"op": "insert", "path": ["data", "[-0]"], "value": 4}
+          {"op": "insert", "path": ["data", -0], "value": 4}
         ]""",
             new JsonNodeOp.Insert(path("data", "3"), JsonNode.of("4")));
     }
@@ -670,7 +670,7 @@ class JsonPatchOpsTest {
         assertThrows(JsonPatchException.class, () -> ops("{\"modCount\": 6, \"data\": [1,2,3]}", """
         [
           {"op": "test",   "path": ["modCount"], "value": 5},
-          {"op": "insert", "path": ["data", "[-0]"], "value": 4}
+          {"op": "insert", "path": ["data", -0], "value": 4}
         ]"""));
     }
 
@@ -681,8 +681,8 @@ class JsonPatchOpsTest {
         {"articles": [{"id": "a1", "status": "draft", "rev": 3}]}""";
         String patch = """
         [
-          {"op": "test",    "path": ["articles", "[?id=a1]"], "value": {"id":"a1","status":"draft","rev":3}},
-          {"op": "replace", "path": ["articles", "[?id=a1]", "status"], "value": "published"}
+          {"op": "test",    "path": ["articles", [{"id":"a1"}]], "value": {"id":"a1","status":"draft","rev":3}},
+          {"op": "replace", "path": ["articles", [{"id":"a1"}], "status"], "value": "published"}
         ]""";
         assertOps(target, patch,
             new JsonNodeOp.Replace(path("articles", "0", "status"), JsonNode.of("\"published\"")));
@@ -693,8 +693,8 @@ class JsonPatchOpsTest {
         assertThrows(JsonPatchException.class, () -> ops("""
         {"articles": [{"id": "a1", "status": "draft", "rev": 4}]}""", """
         [
-          {"op": "test",    "path": ["articles", "[?id=a1]"], "value": {"id":"a1","status":"draft","rev":3}},
-          {"op": "replace", "path": ["articles", "[?id=a1]", "status"], "value": "published"}
+          {"op": "test",    "path": ["articles", [{"id":"a1"}]], "value": {"id":"a1","status":"draft","rev":3}},
+          {"op": "replace", "path": ["articles", [{"id":"a1"}], "status"], "value": "published"}
         ]"""));
     }
 
