@@ -356,4 +356,49 @@ class JsonPatchReplaceTest {
         {"a":1}""", """
         [{"op": "replace", "path": "", "value": {"b":2}}]""");
     }
+
+    @Test
+    void replace_missingArrayIndex_throws() {
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", 5], "value": 9}]"""));
+    }
+
+    @Test
+    void replace_atArraySize_throws() {
+        // index == size would be append under remove+insert, but replace is
+        // "modify in place" — use insert for append.
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", 3], "value": 9}]"""));
+    }
+
+    @Test
+    void replace_missingParent_throws() {
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("{}", """
+            [{"op": "replace", "path": ["a", "b"], "value": 1}]"""));
+    }
+
+    @Test
+    void replace_conditionNoMatch_throws() {
+        // resolve returns empty stream → can't determine a parent to add to
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[{"id":"y"}]}""", """
+            [{"op": "replace", "path": ["arr", [{"id":"x"}], "v"], "value": 9}]"""));
+    }
+
+    @Test
+    void replace_conditionMatches_missingField_addsField() {
+        // Condition matched → resolves to a specific element; field missing →
+        // add member, consistent with object-set semantics
+        assertPatched("""
+            {"arr":[{"id":"x","v":9}]}""", """
+            {"arr":[{"id":"x"}]}""", """
+            [{"op": "replace", "path": ["arr", [{"id":"x"}], "v"], "value": 9}]""");
+    }
+
 }
