@@ -290,6 +290,17 @@ class JsonNodeTest {
     }
   }
 
+  @Test
+  void exists_and_getIfExists_agree_on_scalarAncestor() {
+    JsonNode target = JsonNode.of("""
+        {"a":5,"b":{"x":1},"c":[1,2]}""");
+    for (String path : List.of("a", "a.b", "b.x", "b.y", "b.x.z", "c.0", "c.5", "missing")) {
+      JsonPath p = JsonPath.of(path);
+      assertEquals(target.exists(p), target.getIfExists(p) != null,
+          "exists/getIfExists disagree on: " + path);
+    }
+  }
+
   private static void assertGetThrowsJsonPathException(String json, String path, String expected) {
     JsonNode root = JsonNode.of(json);
     JsonPathException ex = assertThrowsExactly(JsonPathException.class, () -> root.get(path));

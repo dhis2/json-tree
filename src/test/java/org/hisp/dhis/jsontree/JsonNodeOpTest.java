@@ -10,6 +10,7 @@ import java.util.List;
 import org.hisp.dhis.jsontree.JsonNodeOp.Insert;
 import org.hisp.dhis.jsontree.JsonNodeOp.Remove;
 import org.hisp.dhis.jsontree.JsonNodeOp.Spread;
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchEditException;
 import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTargetException;
 import org.junit.jupiter.api.Test;
 
@@ -260,6 +261,23 @@ class JsonNodeOpTest {
                 """
                 []""")),
         insert(".foo[0]", JsonNode.of("42")));
+  }
+
+  @Test
+  void lowLevel_insert_scalarParent_throwsEditException() {
+    JsonNode target = JsonNode.of("""
+      {"a":5}""");
+    JsonPath path = new JsonPath(new JsonPath(null, Text.of("a")), Text.of("b"));
+    assertThrowsExactly(JsonPatchEditException.class, () ->
+        JsonNodeOp.patch(target, List.of(new JsonNodeOp.Insert(path, JsonNode.of("1")))));
+  }
+
+  @Test
+  void lowLevel_replace_scalarParent_throwsEditException() {
+    JsonNode target = JsonNode.of("""
+      {"a":5}""");
+    assertThrowsExactly(JsonPatchEditException.class, () ->
+        JsonNodeOp.patch(target, List.of(new JsonNodeOp.Replace(JsonPath.of("a", "b"), JsonNode.of("1")))));
   }
 
   private static void assertRejected(String error, JsonNodeOp... ops) {

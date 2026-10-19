@@ -45,7 +45,15 @@ import java.util.stream.Stream;
  */
 public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
-  enum OpType { test, insert, remove, replace, spread, move, copy, swap }
+  enum OpType {
+    /**
+     * A test operation without a value field passes when the target path resolves to a defined
+     * value — one that is neither missing nor JSON null. To assert that a value is exactly null,
+     * use value: null.
+     */
+    test,
+
+    insert, remove, replace, spread, move, copy, swap }
 
   interface JsonPatchOp extends JsonObject {
 
@@ -69,6 +77,9 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
       JsonMixed to = get("to");
       return to.exists() ? to : get("path");
     }
+    // TODO: test() which is a short-hand for a separate test op and defines the test-value
+    // TODO: op type sequential which only allows insert/remove on same parent but then translates the edits to absolute ones
+    // default JsonPatch sequential();
   }
 
   static JsonMixed patch(JsonMixed target, JsonPatch patch) {
@@ -99,7 +110,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   private static void insert(JsonMixed target, JsonPatchOp insert, List<JsonNodeOp> ops) {
     JsonMixed value = readValue(insert, "insert `value`", true);
-    resolvePaths(target, insert.$path(), "insert `path`", false)
+    resolvePaths(target, insert.$path(), "insert `path`", false, true)
         .findFirst()
         .map(p -> new JsonNodeOp.Insert(p, value.node()))
         .ifPresent(ops::add);
@@ -107,14 +118,14 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   private static void spread(JsonMixed target, JsonPatchOp spread, List<JsonNodeOp> ops) {
     JsonMixed value = readValue(spread, "spread `value`", true);
-    resolvePaths(target, spread.$path(), "spread `path`", false)
+    resolvePaths(target, spread.$path(), "spread `path`", false, true)
         .findFirst()
         .map(p -> new JsonNodeOp.Spread(p, value.node()))
         .ifPresent(ops::add);
   }
 
   private static void remove(JsonMixed target, JsonPatchOp remove, List<JsonNodeOp> ops) {
-    resolvePaths(target, remove.$path(), "remove `path`", true)
+    resolvePaths(target, remove.$path(), "remove `path`", true, false)
         .filter(target::exists)
         .map(JsonNodeOp.Remove::new)
         .forEach(ops::add);
@@ -132,7 +143,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
       return;
     }
     JsonMixed value = readValue(replace, "replace `value`", true);
-    List<JsonPath> replaced = resolvePaths(target, pattern, "replace `path`").toList();
+    List<JsonPath> replaced = resolvePaths(target, pattern, "replace `path`", true).toList();
     int n = replaced.size();
 
     // Ranges clamp; enumerations don't. Any "write target" that doesn't exist
@@ -174,7 +185,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   private static void replace1(JsonMixed target, JsonPatchOp replace, List<JsonNodeOp> ops) {
     JsonMixed value = readValue(replace, "replace `value`", true);
-    JsonPath p = resolvePaths(target, replace.$path(), "replace `path`", false)
+    JsonPath p = resolvePaths(target, replace.$path(), "replace `path`", false, true)
         .findFirst()
         .orElseThrow(() -> new JsonPatchTargetException(
             "Replace target could not be resolved: " + replace.$path().toJson()));
@@ -203,9 +214,9 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void move(JsonMixed target, JsonPatchOp move, List<JsonNodeOp> ops) {
-    JsonPath from = resolvePath(target, move.from(), "move `from`");
+    JsonPath from = resolvePath(target, move.from(), "move `from`", false);
     if (from == null || !target.exists(from)) return;      // missing source => no-op
-    JsonPath to = resolvePath(target, move.to(), "move `to` (or `path`)");
+    JsonPath to = resolvePath(target, move.to(), "move `to` (or `path`)", true);
     if (to == null) return;
     if (from.equals(to)) return; // move to self => no-op
 
@@ -215,17 +226,17 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void copy(JsonMixed target, JsonPatchOp copy, List<JsonNodeOp> ops) {
-    JsonPath from = resolvePath(target, copy.from(), "copy `from`");
+    JsonPath from = resolvePath(target, copy.from(), "copy `from`", false);
     if (from == null || !target.exists(from)) return;
-    JsonPath to = resolvePath(target, copy.to(), "copy `to` (or `path`)");
+    JsonPath to = resolvePath(target, copy.to(), "copy `to` (or `path`)", true);
     if (to == null) return;
 
     ops.add(new JsonNodeOp.Insert(to, target.get(from).node()));
   }
 
   private static void swap(JsonMixed target, JsonPatchOp swap, List<JsonNodeOp> ops) {
-    JsonPath from = resolvePath(target, swap.from(), "swap `from`");
-    JsonPath to   = resolvePath(target, swap.to(), "swap `to` (or `path`)");
+    JsonPath from = resolvePath(target, swap.from(), "swap `from`", false);
+    JsonPath to   = resolvePath(target, swap.to(), "swap `to` (or `path`)", false);
     if (from == null || to == null) return;
     if (!target.exists(from) || !target.exists(to)) return;
     if (from.equals(to)) return;
@@ -240,6 +251,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     JsonMixed path = test.$path();
     JsonMixed expected = readValue(test, "test `value`", false);
     boolean hasExpected = expected.exists();
+
     if (hasExpected && !path.isString() && path.isArray()) {
       JsonPathPattern pattern = readPattern(path, "test `path`");
       if (pattern.type().isMultiTarget())
@@ -247,34 +259,44 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
             "Operation test with `value` must use single target `path`, but was: "
                 + path.toJson());
     }
-    List<JsonPath> paths = resolvePaths(target, test.$path(), "test `path`", true).toList();
+
+    List<JsonPath> paths = resolvePaths(target, path, "test `path`", true, false).toList();
     if (paths.isEmpty())
-      throw new JsonPatchTestException("Test failed: no match for `path` " + test.$path().toJson());
+      throw new JsonPatchTestException("Test failed: no match for `path` " + path.toJson());
+
     for (JsonPath p : paths) {
-      if (!target.exists(p)) throw new JsonPatchTestException("Test failed: no value at path " + p);
-      if (hasExpected && !target.get(p).equivalentTo(expected))
-        throw new JsonPatchTestException(
-            "Test failed: value at path " + p + " is " + target.get(p) + ", expected: " + expected);
+      if (hasExpected) {
+        if (!target.exists(p))
+          throw new JsonPatchTestException("Test failed: no value at path " + p);
+        if (!target.get(p).equivalentTo(expected))
+          throw new JsonPatchTestException(
+              "Test failed: value at path " + p + " is " + target.get(p)
+                  + ", expected: " + expected);
+      } else {
+        if (target.get(p).isUndefined())
+          throw new JsonPatchTestException(
+              "Test failed: value at path " + p + " is undefined (null or missing)");
+      }
     }
   }
 
-  private static JsonPath resolvePath(JsonMixed target, JsonMixed path, String name) {
-    return resolvePaths(target, path, name, false).findFirst().orElse(null);
-  }
-
-  private static Stream<JsonPath> resolvePaths(JsonMixed target, JsonMixed path, String name, boolean allowMultiple) {
+  private static Stream<JsonPath> resolvePaths(
+      JsonMixed target, JsonMixed path, String name, boolean allowMultiple, boolean writable) {
     if (path.isUndefined())
       throw new JsonPatchDeclarationException(
           "Operation %s is required but was undefined".formatted(name));
     if (path.isString()) {
+      JsonPath decoded;
       try {
-        JsonPath p = new JsonPointer(path.string()).decode();
-        return Stream.of(resolveDashes(target, p));
+        decoded = new JsonPointer(path.string()).decode();
       } catch (JsonPathException e) {
         throw new JsonPatchDeclarationException(
             "Operation %s has invalid JSON Pointer `%s`: %s"
                 .formatted(name, path.string(), e.getMessage()));
       }
+      JsonPath resolved = resolveDashes(target, decoded);
+      validateResolvedPath(target, resolved, name, writable);
+      return Stream.of(resolved);
     }
     if (!path.isArray())
       throw new JsonPatchDeclarationException(
@@ -282,20 +304,61 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
               .formatted(name, path));
 
     JsonPathPattern pattern = readPattern(path, name);
-    if (!allowMultiple && pattern.type().isMultiTarget()) {
+    if (!allowMultiple && pattern.type().isMultiTarget())
       throw new JsonPatchDeclarationException(
           "Operation %s cannot be used with multi-target %s, but was: %s"
               .formatted(name, pattern.type().name().toLowerCase(Locale.ROOT), path));
-    }
-    return resolvePaths(target, pattern, name);
+
+    return resolvePaths(target, pattern, name, writable);
   }
 
-  private static Stream<JsonPath> resolvePaths(JsonMixed target, JsonPathPattern pattern, String name) {
+  private static Stream<JsonPath> resolvePaths(
+      JsonMixed target, JsonPathPattern pattern, String name, boolean writable) {
+    Stream<JsonPath> resolved;
     try {
-      return pattern.resolve(target);
+      resolved = pattern.resolve(target);
     } catch (JsonPathPatternException e) {
       throw new JsonPatchTargetException(
           "Operation %s cannot resolve path against target: %s".formatted(name, e.getMessage()));
+    }
+    return resolved.peek(p -> validateResolvedPath(target, p, name, writable));
+  }
+
+  private static JsonPath resolvePath(JsonMixed target, JsonMixed path, String name, boolean writable) {
+    return resolvePaths(target, path, name, false, writable).findFirst().orElse(null);
+  }
+
+  private static void validateResolvedPath(JsonMixed target, JsonPath p, String name, boolean writable) {
+    if (p.isEmpty()) return;
+    JsonPath parentPath = p.parentPath();
+
+    JsonMixed parent = parentPath.isEmpty() ? target : target.get(parentPath);
+    if (!parent.exists()) {
+      if (!writable) return;
+      // Parent missing: walk up to find the deepest existing ancestor.
+      // If that ancestor exists and cannot host a write (scalar/null/etc.),
+      // fail at declaration — createMissingParents would fail the same way
+      // but with a worse exception type and message.
+      JsonPath ancestorPath = parentPath;
+      while (!ancestorPath.isEmpty() && !target.exists(ancestorPath))
+        ancestorPath = ancestorPath.parentPath();
+      JsonMixed ancestor = ancestorPath.isEmpty() ? target : target.get(ancestorPath);
+      if (ancestor.exists() && !ancestor.isObject() && !ancestor.isArray())
+        throw new JsonPatchTargetException(
+            "Operation %s: cannot write under %s parent at `%s`"
+                .formatted(name, ancestor.type(), ancestorPath));
+      return;
+    }
+
+    if (parent.isArray()) {
+      if (!p.segment().isTextualInteger())
+        throw new JsonPatchTargetException(
+            "Operation %s: cannot address array `%s` with non-integer segment `%s`"
+                .formatted(name, parentPath, p.segment()));
+    } else if (!parent.isObject() && writable) {
+      throw new JsonPatchTargetException(
+          "Operation %s: cannot write under %s parent at `%s`"
+              .formatted(name, parent.type(), parentPath));
     }
   }
 

@@ -1,8 +1,10 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTargetException;
 import org.hisp.dhis.jsontree.internal.Language;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**

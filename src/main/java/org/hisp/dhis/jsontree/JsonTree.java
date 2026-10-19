@@ -792,6 +792,7 @@ record JsonTree(
       } else if (type == JsonNodeType.OBJECT) {
         parent = orNull ? parent.memberIfExists(segment) : parent.member(segment);
       } else {
+        if (orNull) return null;
         throw noSuchNode(path, parent);
       }
       drop--;

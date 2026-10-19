@@ -108,6 +108,7 @@ public sealed interface JsonNodeOp {
    * @param type of this edit for debugging
    */
   record Edit(int start, int end, Text content, EditType type) {
+
     /** Buffer allocation: reserve room for the comma even if we might skip it. */
     int allocDiff() {
       int base = content.length() - erase();
@@ -121,25 +122,27 @@ public sealed interface JsonNodeOp {
     static final Text COMMA = Text.of(",");
     static final Text COLON = Text.of(":");
     static final Text EMPTY = Text.of("");
+    static final Text OPEN_BRACE = Text.of("{");
+    static final Text CLOSE_BRACE = Text.of("}");
   }
 
   private static List<Edit> edits(JsonNode target, List<? extends JsonNodeOp> ops) {
     List<Edit> edits = new ArrayList<>(ops.size()*2);
     for (JsonNodeOp op : ops) {
       if (op instanceof Remove r) {
-        removeEdits(target, r, edits);
+        editsRemove(target, r, edits);
       } else if (op instanceof Replace r) {
-        replaceEdits(target, r, edits);
+        editsReplace(target, r, edits);
       } else if (op instanceof Insert i) {
-        insertEdits(target, i, edits);
+        editsInsert(target, i, edits);
       } else if (op instanceof Spread s) {
-        spreadEdits(target, s, edits);
+        editsSpread(target, s, edits);
       }
     }
     return edits;
   }
 
-  private static void removeEdits(JsonNode target, JsonNodeOp.Remove op, List<Edit> edits) {
+  private static void editsRemove(JsonNode target, JsonNodeOp.Remove op, List<Edit> edits) {
     JsonNode removed = target.getIfExists(op.path);
     if (removed == null) return;
 
@@ -166,49 +169,60 @@ public sealed interface JsonNodeOp {
     }
   }
 
-  private static void replaceEdits(JsonNode target, JsonNodeOp.Replace of, List<Edit> edits) {
+  private static void editsReplace(JsonNode target, JsonNodeOp.Replace of, List<Edit> edits) {
     JsonNode current = target.getIfExists(of.path);
     if (current == null) throw new JsonPatchEditException("Cannot replace non-existent node: " + of.path());
-    replace1Edits(current, of.value(), edits);
+    editsReplace1(current, of.value(), edits);
   }
 
-  private static void replace1Edits(JsonNode replaced, JsonNode value, List<Edit> edits) {
+  private static void editsReplace1(JsonNode replaced, JsonNode value, List<Edit> edits) {
     edits.add(new Edit(replaced.startIndex(), replaced.endIndex(), value.getDeclaration(), EditType.REPLACE));
   }
 
-  private static void insertEdits(JsonNode target, JsonNodeOp.Insert op, List<Edit> edits) {
+  private static void editsInsert(JsonNode target, JsonNodeOp.Insert op, List<Edit> edits) {
     if (op.path().isEmpty()) {
       // insert at root = replace root
       edits.add(new Edit(target.startIndex(), target.endIndex(),
           op.value().getDeclaration(), EditType.REPLACE));
       return;
     }
-    JsonNode parent = getParent(op.path, target);
-    Text key = op.path.segment();
-    if (parent.type() == JsonNodeType.OBJECT) {
-      JsonNode current = target.getIfExists(op.path);
-      if (current != null) {
-        replace1Edits(current, op.value(), edits);
-        return;
+    JsonPath parentPath = op.path.parentPath();
+    JsonNode parent = parentPath.isEmpty() ? target : target.getIfExists(parentPath);
+    Text name = op.path.segment();
+
+    if (parent != null) {
+      if (parent.type() == JsonNodeType.OBJECT) {
+        JsonNode current = target.getIfExists(op.path);
+        if (current != null) {
+          editsReplace1(current, op.value(), edits);
+        } else {
+          editsInsertMemberAt(parent.endIndex() - 1, name, op.value.getDeclaration(), edits);
+        }
+      } else if (parent.type() == JsonNodeType.ARRAY) {
+        editsInsertArr(parent, name, List.of(op.value.getDeclaration()), edits);
+      } else {
+        throw new JsonPatchEditException("Cannot insert into " + parent.type());
       }
-      insertObj1Edits(parent, key, op.value, edits);
-    } else if (parent.type() == JsonNodeType.ARRAY) {
-      insertArrEdits(parent, key, List.of(op.value.getDeclaration()), edits);
-    } else {
-      throw new JsonPatchEditException("Cannot insert into " + parent.type());
+      return;
     }
+    if (parentPath.isEmpty())
+      throw new JsonPatchEditException("Cannot auto-create parent at root: " + op.path);
+
+    Parents created = editsInsertMissingParents(target, parentPath, edits);
+    editsInsertMemberAt(created.offset(), name, op.value.getDeclaration(), edits);
+    editsCloseParents(created, edits);
   }
 
-  /** Emit edits to append a new member {@code "key":value} inside {@code obj}. */
-  private static void insertObj1Edits(JsonNode obj, Text key, JsonNode value, List<Edit> edits) {
-    int p = obj.endIndex() - 1;
-    Text quotedKey = JsonBuilder.createString(key).getDeclaration();
-    edits.add(new Edit(p, p, quotedKey, EditType.INSERT_WITH_COMMA));
+  private static void editsInsertMemberAt(int p, Text key, Text valueJson, List<Edit> edits) {
+    edits.add(new Edit(p, p, JsonBuilder.createString(key).getDeclaration(), EditType.INSERT_WITH_COMMA));
     edits.add(new Edit(p, p, Edit.COLON, EditType.INSERT));
-    edits.add(new Edit(p, p, value.getDeclaration(), EditType.INSERT));
+    edits.add(new Edit(p, p, valueJson, EditType.INSERT));
   }
 
-  private static void insertArrEdits(JsonNode arr, Text index, Iterable<Text> values, List<Edit> edits) {
+  private static void editsInsertArr(JsonNode arr, Text index, Iterable<Text> values, List<Edit> edits) {
+    if (!index.isTextualInteger())
+      throw new JsonPatchEditException(
+          "Cannot insert into array at non-integer path segment `" + index + "`");
     int idx = index.parseInt();
     int size = arr.size();
     if (idx > size) throw new JsonPatchEditException("Index out of bounds: " + idx + " > " + size);
@@ -225,29 +239,43 @@ public sealed interface JsonNodeOp {
     }
   }
 
-  private static void spreadEdits(JsonNode target, JsonNodeOp.Spread op, List<Edit> edits) {
+  private static void editsSpread(JsonNode target, JsonNodeOp.Spread op, List<Edit> edits) {
     JsonNode value = op.value();
     if (value.type() == JsonNodeType.OBJECT) {
+      // RFC 6902 add semantics: existing key → replace value, new key → append member.
+      // (Arrays take the opposite convention: insert at index i always means
+      // "insert before i", never replace — hence the different branch below.)
       JsonNode obj = target.getIfExists(op.path);
-      if (obj == null) throw new JsonPatchEditException("Spread target does not exist: " + op.path);
-      if (obj.type() != JsonNodeType.OBJECT) throw new JsonPatchEditException("Not an object: " + op.path);
+      if (obj == null) {
+        Parents created = editsInsertMissingParents(target, op.path, edits);
+        for (Text k : value.keys())
+          editsInsertMemberAt(created.offset(), k, value.get(k).getDeclaration(), edits);
+        editsCloseParents(created, edits);
+        return;
+      }
+      if (obj.type() != JsonNodeType.OBJECT)
+        throw new JsonPatchEditException("Not an object: " + op.path);
       for (Text k : value.keys()) {
-        JsonNode e = value.get(k);
+        JsonNode nv = value.get(k);
         JsonNode existing = obj.getIfExists(k);
-        if (existing != null) {
-          replace1Edits(existing, e, edits);
-        } else {
-          insertObj1Edits(obj, k, e, edits);
-        }
+        if (existing != null) editsReplace1(existing, nv, edits);
+        else editsInsertMemberAt(obj.endIndex() - 1, k, nv.getDeclaration(), edits);
       }
     } else if (value.type() == JsonNodeType.ARRAY) {
       JsonNode arr = getParent(op.path, target);
       if (arr.type() != JsonNodeType.ARRAY) throw new JsonPatchEditException("Parent not array: " + op.path);
       Iterable<Text> elements = op.value.elements(SKIP).map(JsonNode::getDeclaration);
-      insertArrEdits(arr, op.path.segment(), elements, edits);
+      editsInsertArr(arr, op.path.segment(), elements, edits);
     }
     else throw new JsonPatchEditException("Spread value must be object or array");
   }
+
+  /*
+  Handling parents, resolving and auto-creating edits
+   */
+
+  /** Offset at which the operation's own edits and the closing braces should be emitted, and how many {@code }} to emit. */
+  record Parents(int offset, int count) {}
 
   private static @NotNull JsonNode getParent(JsonPath path, JsonNode target) {
     JsonPath parentPath = path.parentPath();
@@ -256,8 +284,50 @@ public sealed interface JsonNodeOp {
     return parent;
   }
 
+  private static Parents editsInsertMissingParents(JsonNode target, JsonPath path, List<Edit> edits) {
+    List<Text> missing = new ArrayList<>();
+    JsonPath existing = path;
+    while (!existing.isEmpty() && !target.exists(existing)) {
+      missing.add(0, existing.segment());
+      existing = existing.parentPath();
+    }
+    if (missing.isEmpty())
+      throw new JsonPatchEditException("Auto-create called but parent exists: " + path);
+
+    JsonNode ancestor = existing.isEmpty() ? target : target.getIfExists(existing);
+    if (ancestor == null || ancestor.type() != JsonNodeType.OBJECT)
+      throw new JsonPatchEditException(
+          "Cannot auto-create parent: deepest existing ancestor is not an object: " + existing);
+
+    for (Text seg : missing)
+      if (seg.isTextualInteger())
+        throw new JsonPatchEditException(
+            "Cannot auto-create array parent at segment `" + seg + "`: " + path);
+
+    int p = ancestor.endIndex() - 1;
+    for (int i = 0; i < missing.size(); i++) {
+      Text quoted = JsonBuilder.createString(missing.get(i)).getDeclaration();
+      EditType keyType = i == 0 ? EditType.INSERT_WITH_COMMA : EditType.INSERT;
+      edits.add(new Edit(p, p, quoted, keyType));
+      edits.add(new Edit(p, p, Edit.COLON, EditType.INSERT));
+      edits.add(new Edit(p, p, Edit.OPEN_BRACE, EditType.INSERT));
+    }
+    return new Parents(p, missing.size());
+  }
+
+  private static void editsCloseParents(Parents created, List<Edit> edits) {
+    for (int i = 0; i < created.count(); i++)
+      edits.add(new Edit(created.offset(), created.offset(), Edit.CLOSE_BRACE, EditType.INSERT));
+  }
+
   //TODO when writing keys we can check if the key Text is backed by the same memory as the JSON
   // and if so we know there is no escaping - just need to add quotes around it
+
+
+
+  /*
+  Applying edits...
+   */
 
   static JsonNode patch(JsonNode target, List<? extends JsonNodeOp> patch) {
     if (patch.isEmpty()) return target;
