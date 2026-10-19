@@ -64,7 +64,7 @@ public abstract class JsonPatchException extends IllegalArgumentException {
 
   @NotNull
   public static JsonPatchException clash(
-      @NotNull List<JsonNodeOp> ops,
+      @NotNull List<? extends JsonNodeOp> ops,
       @NotNull JsonNodeOp a,
       @CheckNull JsonNodeOp b) {
     JsonPath ap = a.path();

@@ -206,7 +206,7 @@ class JsonNodeTest {
         """
             {
             "a": 1,
-            "b": {"x":42}
+            "b": { "x":42}
             }""",
         actual.getDeclaration().toString());
   }
@@ -225,7 +225,7 @@ class JsonNodeTest {
         """
             {
             "a": 1,
-            "b": {"y":1}
+            "b": {  "y": 1}
             }""",
         actual.getDeclaration().toString());
   }

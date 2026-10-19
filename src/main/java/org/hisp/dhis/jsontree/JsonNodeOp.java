@@ -65,7 +65,7 @@ public sealed interface JsonNodeOp {
    *     are inserted at the target index as each operation is independent and uniquely targets an
    *     insert position in the target array in its state before any change
    */
-  static void checkPatch(List<JsonNodeOp> ops) {
+  static void checkPatch(List<? extends JsonNodeOp> ops) {
     for (int i = 0; i < ops.size(); i++) {
       for (int j = i + 1; j < ops.size(); j++) {
         JsonNodeOp a = ops.get(i);
@@ -123,7 +123,7 @@ public sealed interface JsonNodeOp {
     static final Text EMPTY = Text.of("");
   }
 
-  private static List<Edit> edits(JsonNode target, List<JsonNodeOp> ops) {
+  private static List<Edit> edits(JsonNode target, List<? extends JsonNodeOp> ops) {
     List<Edit> edits = new ArrayList<>(ops.size()*2);
     for (JsonNodeOp op : ops) {
       if (op instanceof Remove r) {
@@ -259,7 +259,7 @@ public sealed interface JsonNodeOp {
   //TODO when writing keys we can check if the key Text is backed by the same memory as the JSON
   // and if so we know there is no escaping - just need to add quotes around it
 
-  static JsonNode patch(JsonNode target, List<JsonNodeOp> patch) {
+  static JsonNode patch(JsonNode target, List<? extends JsonNodeOp> patch) {
     if (patch.isEmpty()) return target;
     checkPatch(patch);
     List<Edit> edits = edits(target, patch);

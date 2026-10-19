@@ -166,22 +166,6 @@ record JsonTree(
     }
 
     @Override
-    public final JsonNode replaceWith(CharSequence json) {
-      if (isRoot()) return JsonNode.of(json);
-      int endIndex = endIndex();
-      StringBuilder newJson = new StringBuilder();
-      char[] oldJson = tree.json;
-      if (startIndex() > 0) {
-        newJson.append(oldJson, 0, startIndex());
-      }
-      newJson.append(json);
-      if (endIndex < oldJson.length) {
-        newJson.append(oldJson, endIndex, oldJson.length - endIndex);
-      }
-      return JsonNode.of(newJson);
-    }
-
-    @Override
     public final String toString() {
       return getDeclaration().toString();
     }
