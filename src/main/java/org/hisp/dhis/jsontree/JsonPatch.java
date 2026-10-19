@@ -133,7 +133,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     JsonMixed value = readValue(replace, "replace `value`", true);
     List<JsonPath> replaced = resolvePaths(target, pattern, "replace `path`").toList();
     int n = replaced.size();
-    int m = value.isArray() ? value.size() : 1;
+    int m = value.isArray() ? value.size() : n;   // scalar broadcasts to all targets
     int r = Math.min(n, m);
     for (int i = 0; i < r; i++)
       ops.add(new JsonNodeOp.Replace(replaced.get(i), value.isArray() ? value.get(i).node() : value.node()));

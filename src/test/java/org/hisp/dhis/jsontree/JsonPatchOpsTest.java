@@ -252,15 +252,27 @@ class JsonPatchOpsTest {
   }
 
   @Test
-  void replace_range_nonArrayValue() {
+  void replace_range_noBroadcast() {
     // Scalar value; m = 1 via the isArray() guard.
+    assertOps(
+        "{\"foo\": [1,2,3,4,5]}",
+        """
+            [{"op": "replace", "path": ["foo", [[1,3]]], "value": [99]}]""",
+        new JsonNodeOp.Replace(path("foo", "1"), JsonNode.of("99")),
+        new JsonNodeOp.Remove(path("foo", "2")),
+        new JsonNodeOp.Remove(path("foo", "3")));
+  }
+
+  @Test
+  void replace_range_nonArrayValue() {
+    // Scalar value; broadcasts to all affected range indexes
     assertOps(
         "{\"foo\": [1,2,3,4,5]}",
         """
             [{"op": "replace", "path": ["foo", [[1,3]]], "value": 99}]""",
         new JsonNodeOp.Replace(path("foo", "1"), JsonNode.of("99")),
-        new JsonNodeOp.Remove(path("foo", "2")),
-        new JsonNodeOp.Remove(path("foo", "3")));
+        new JsonNodeOp.Replace(path("foo", "2"), JsonNode.of("99")),
+        new JsonNodeOp.Replace(path("foo", "3"), JsonNode.of("99")));
   }
 
   @Test
