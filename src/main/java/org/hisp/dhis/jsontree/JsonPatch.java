@@ -53,7 +53,16 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
      */
     test,
 
-    insert, remove, replace, spread, move, copy, swap }
+    insert, remove, replace, spread, move, copy, swap;
+
+    public boolean allowsTest() {
+      return this != test && this != spread && this != swap;
+    }
+
+    public boolean allowsTo() {
+      return this == move || this == copy || this == swap;
+    }
+  }
 
   interface JsonPatchOp extends JsonObject {
 
@@ -77,7 +86,15 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
       JsonMixed to = get("to");
       return to.exists() ? to : get("path");
     }
-    // TODO: test() which is a short-hand for a separate test op and defines the test-value
+
+    default JsonMixed test() {
+      return get("test");
+    }
+
+    default boolean hasTo() {
+      return get("to").exists();
+    }
+
     // TODO: op type sequential which only allows insert/remove on same parent but then translates the edits to absolute ones
     // default JsonPatch sequential();
   }
@@ -92,10 +109,31 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   static List<JsonNodeOp> patchOps(JsonMixed target, JsonPatch patch) {
     List<JsonNodeOp> ops = new ArrayList<>(patch.size());
+    // do all tests first
     for (JsonMixed x : patch) {
       JsonPatchOp op = x.as(JsonPatchOp.class);
-      switch (readOp(op)) {
-        case test -> test(target, op);
+      OpType opType = readOp(op);
+      if (op.test().exists()) {
+        if (!opType.allowsTest())
+          throw new JsonPatchDeclarationException(
+              "Operation `%s` cannot use a `test` field".formatted(opType));
+        String pathName = op.hasTo() ? "to" : "path";
+        test(target, opType, op.to(), "%s `%s`".formatted(opType, pathName), op.test());
+      } else {
+        if (opType == OpType.test) {
+          test(target, op);
+        }
+      }
+    }
+    // then move to actual changes
+    for (JsonMixed x : patch) {
+      JsonPatchOp op = x.as(JsonPatchOp.class);
+      OpType opType = readOp(op);
+      if (!opType.allowsTo() && op.hasTo())
+        throw new JsonPatchDeclarationException(
+            "Operation %s does not allow use of `to`".formatted(opType));
+      switch (opType) {
+        case test -> {} // already handled
         case remove -> remove(target, op, ops);
         case insert -> insert(target, op, ops);
         case replace -> replace(target, op, ops);
@@ -248,19 +286,21 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   }
 
   private static void test(JsonMixed target, JsonPatchOp test) {
-    JsonMixed path = test.$path();
     JsonMixed expected = readValue(test, "test `value`", false);
-    boolean hasExpected = expected.exists();
+    test(target, OpType.test, test.$path(), "test `path`", expected);
+  }
 
+  private static void test(JsonMixed target, OpType type, JsonMixed path, String pathName, JsonMixed expected) {
+    boolean hasExpected = expected.exists();
     if (hasExpected && !path.isString() && path.isArray()) {
-      JsonPathPattern pattern = readPattern(path, "test `path`");
+      JsonPathPattern pattern = readPattern(path, pathName);
       if (pattern.type().isMultiTarget())
         throw new JsonPatchDeclarationException(
-            "Operation test with `value` must use single target `path`, but was: "
-                + path.toJson());
+            "Operation %s against a value only supports single target `path`, but was: %s"
+                .formatted(type, path.toJson()));
     }
 
-    List<JsonPath> paths = resolvePaths(target, path, "test `path`", true, false).toList();
+    List<JsonPath> paths = resolvePaths(target, path, pathName, true, false).toList();
     if (paths.isEmpty())
       throw new JsonPatchTestException("Test failed: no match for `path` " + path.toJson());
 
