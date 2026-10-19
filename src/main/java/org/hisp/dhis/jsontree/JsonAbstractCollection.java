@@ -69,7 +69,7 @@ public interface JsonAbstractCollection extends JsonValue {
     JsonNode self = nodeIfExists();
     if (self != null) {
       JsonNode target = self.getIfExists(path);
-      if (target != null) return JsonMixed.of(target);
+      if (target != null) return target.lift(getAccessors());
     }
     // produce the proper undefined value
     JsonMixed res = as(JsonMixed.class);

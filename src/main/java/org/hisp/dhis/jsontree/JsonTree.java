@@ -42,6 +42,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
@@ -76,7 +77,7 @@ record JsonTree(
   static JsonNode of(
       char @NotNull [] json, @CheckNull JsonNode.GetListener onGet, @NotNull JsonNode.Index auto) {
     JsonTree res = new JsonTree(json, auto, new HashMap<>(), onGet);
-    JsonNode root = res.autoDetect(JsonPath.SELF, skipWhitespace(res.json, 0));
+    JsonNode root = res.autoDetect(JsonPath.SELF, null, skipWhitespace(res.json, 0));
     res.nodesByPath.put(JsonPath.SELF, root);
     return root;
   }
@@ -92,12 +93,14 @@ record JsonTree(
 
     final JsonTree tree;
     final JsonPath path;
+    final JsonPath predecessor;
     final int start;
     int end = -1;
 
-    LazyJsonNode(JsonTree tree, JsonPath path, int start) {
+    LazyJsonNode(JsonTree tree, JsonPath path, JsonPath predecessor, int start) {
       this.tree = tree;
       this.path = path;
+      this.predecessor = predecessor;
       this.start = start;
     }
 
@@ -131,6 +134,11 @@ record JsonTree(
     @Override
     public final JsonPath path() {
       return path;
+    }
+
+    @Override
+    public final @CheckNull JsonPath predecessor() {
+      return predecessor;
     }
 
     @Override
@@ -227,8 +235,8 @@ record JsonTree(
 
     private int size = -1;
 
-    LazyJsonObject(JsonTree tree, JsonPath path, int start) {
-      super(tree, path, start);
+    LazyJsonObject(JsonTree tree, JsonPath path, JsonPath predecessor, int start) {
+      super(tree, path, predecessor, start);
     }
 
     @Override
@@ -299,17 +307,20 @@ record JsonTree(
       JsonNode member = tree.nodesByPath.get(memberPath);
       if (member != null) return member;
       char[] json = tree.json;
+      JsonPath predecessor = null;
       int index = skipWhitespace(json, expectChar(json, start, '{'));
       while (index < json.length && json[index] != '}') {
         Text key = Chars.unescapeJsonString(json, index);
         index = expectColon(json, skipString(json, index));
         if (name.equals(key)) {
           int mStart = index;
-          return tree.nodesByPath.computeIfAbsent(memberPath, k -> tree.autoDetect(k, mStart));
+          JsonPath p = predecessor;
+          return tree.nodesByPath.computeIfAbsent(memberPath, k -> tree.autoDetect(k, p, mStart));
         } else {
           index = skipNodeAutodetect(json, index);
           index = expectCommaOrEnd(json, index, '}');
         }
+        predecessor = path.chain(key);
       }
       if (orNull) return null;
       throw noSuchMember(path, name);
@@ -333,6 +344,7 @@ record JsonTree(
         private final char[] json = tree.json;
         private final Index index = op.resolve(tree.auto);
 
+        private JsonPath predecessor;
         private int offset = skipWhitespace(json, expectChar(json, start, '{'));
         private int n = 0;
 
@@ -352,7 +364,9 @@ record JsonTree(
             throw new NoSuchElementException("next() called without checking hasNext()");
           Text key = Chars.unescapeJsonString(json, offset);
           offset = expectColon(json, skipString(json, offset));
-          JsonNode member = tree.autoDetect(path.chain(key), offset, index);
+          JsonPath memberPath = path.chain(key);
+          JsonNode member = tree.autoDetect(memberPath, predecessor, offset, index);
+          predecessor = memberPath;
           int end = member.endIndex();
           if (end < offset) {
             // duplicate keys case: skip the duplicate
@@ -396,6 +410,7 @@ record JsonTree(
       if (isEmpty()) return Streamable.empty();
       return new Streamable.Sized<>() {
         private final char[] json = tree.json;
+        private JsonPath predecessor;
         private int offset = skipWhitespace(json, expectChar(json, start, '{'));
 
         @Override
@@ -414,7 +429,9 @@ record JsonTree(
             throw new NoSuchElementException("next() called without checking hasNext()");
           Text name = Chars.unescapeJsonString(json, offset);
           offset = expectColon(json, skipString(json, offset)); // move after :
-          JsonNode member = tree.autoDetect(path.chain(name), offset, Index.ADD);
+          JsonPath memberPath = path.chain(name);
+          JsonNode member = tree.autoDetect(memberPath, predecessor, offset, Index.ADD);
+          predecessor = memberPath;
           // move after value
           offset =
               member == null || member.endIndex() < offset // (duplicates)
@@ -430,8 +447,8 @@ record JsonTree(
 
     private int size = -1;
 
-    LazyJsonArray(JsonTree tree, JsonPath path, int start) {
-      super(tree, path, start);
+    LazyJsonArray(JsonTree tree, JsonPath path, JsonPath predecessor, int start) {
+      super(tree, path, predecessor, start);
     }
 
     @Override
@@ -527,17 +544,18 @@ record JsonTree(
           if (orNull) return null;
           throw outOfBounds(0, 0);
         }
-        return tree.nodesByPath.computeIfAbsent(elementPath, p -> tree.autoDetect(p, i));
+        return tree.nodesByPath.computeIfAbsent(elementPath, p -> tree.autoDetect(p, null, i));
       }
       // maybe the element before it exists? (iteration in a counter loop)
-      JsonNode predecessor = tree.nodesByPath.get(path.chain(index - 1));
+      JsonPath predecessorPath = path.chain(index - 1);
+      JsonNode predecessor = tree.nodesByPath.get(predecessorPath);
       if (predecessor != null) {
         int i = skipWhitespace(json, expectCommaOrEnd(json, predecessor.endIndex(), ']'));
         if (json[i] == ']') {
           if (orNull) return null;
           throw outOfBounds(index, index);
         }
-        return tree.nodesByPath.computeIfAbsent(elementPath, p -> tree.autoDetect(p, i));
+        return tree.nodesByPath.computeIfAbsent(elementPath, p -> tree.autoDetect(p, predecessorPath, i));
       }
       // go there from the start of the array
       int i = skipWhitespace(json, expectChar(json, start, '['));
@@ -553,7 +571,7 @@ record JsonTree(
         throw outOfBounds(index, index - elementsToSkip);
       }
       int eStart = i;
-      return tree.nodesByPath.computeIfAbsent(elementPath, p -> tree.autoDetect(p, eStart));
+      return tree.nodesByPath.computeIfAbsent(elementPath, p -> tree.autoDetect(p, predecessorPath, eStart));
     }
 
     @Override
@@ -573,6 +591,7 @@ record JsonTree(
         private final char[] json = tree.json;
         private final Index index = op.resolve(tree.auto);
 
+        private JsonPath predecessor;
         private int offset = skipWhitespace(json, expectChar(json, start, '['));
         private int n = 0;
 
@@ -590,7 +609,9 @@ record JsonTree(
         public JsonNode next() {
           if (!hasNext())
             throw new NoSuchElementException("next() called without checking hasNext()");
-          JsonNode e = tree.autoDetect(path.chain(n), offset, index);
+          JsonPath ePath = path.chain(n);
+          JsonNode e = tree.autoDetect(ePath, predecessor, offset, index);
+          predecessor = ePath;
           n++;
           offset = expectCommaOrEnd(json, e.endIndex(), ']');
           if (size < 0 && !hasNext()) size = n; // remember size now that we know
@@ -646,8 +667,8 @@ record JsonTree(
    */
   private static final class LazyJsonNumber extends LazyJsonNode {
 
-    LazyJsonNumber(JsonTree tree, JsonPath path, int start) {
-      super(tree, path, start);
+    LazyJsonNumber(JsonTree tree, JsonPath path, JsonPath predecessor, int start) {
+      super(tree, path, predecessor, start);
     }
 
     @Override
@@ -683,8 +704,8 @@ record JsonTree(
 
   private static final class LazyJsonString extends LazyJsonNode {
 
-    LazyJsonString(JsonTree tree, JsonPath path, int start) {
-      super(tree, path, start);
+    LazyJsonString(JsonTree tree, JsonPath path, JsonPath predecessor, int start) {
+      super(tree, path, predecessor, start);
     }
 
     @Override
@@ -725,8 +746,8 @@ record JsonTree(
 
   private static final class LazyJsonBoolean extends LazyJsonNode {
 
-    LazyJsonBoolean(JsonTree tree, JsonPath path, int start) {
-      super(tree, path, start);
+    LazyJsonBoolean(JsonTree tree, JsonPath path, JsonPath predecessor, int start) {
+      super(tree, path, predecessor, start);
     }
 
     @Override
@@ -747,8 +768,8 @@ record JsonTree(
 
   private static final class LazyJsonNull extends LazyJsonNode {
 
-    LazyJsonNull(JsonTree tree, JsonPath path, int start) {
-      super(tree, path, start);
+    LazyJsonNull(JsonTree tree, JsonPath path, JsonPath predecessor, int start) {
+      super(tree, path, predecessor, start);
     }
 
     @Override
@@ -820,34 +841,34 @@ record JsonTree(
     return getClosestIndexedParent(parentPath, nodesByPath);
   }
 
-  private JsonNode autoDetect(JsonPath path, int offset, JsonNode.Index index) {
+  private JsonNode autoDetect(JsonPath path, JsonPath predecessor, int offset, JsonNode.Index index) {
     return switch (index) {
-      case SKIP, AUTO_SKIP -> autoDetectNoIndexLookup(path, offset);
-      case CHECK -> autoDetect(path, offset);
+      case SKIP, AUTO_SKIP -> autoDetectNoIndexLookup(path, predecessor, offset);
+      case CHECK -> autoDetect(path, predecessor, offset);
       case AUTO ->
           isPrimitiveNode(json, offset)
-              ? autoDetect(path, offset)
-              : nodesByPath.computeIfAbsent(path, key -> autoDetectNoIndexLookup(key, offset));
-      case ADD -> nodesByPath.computeIfAbsent(path, key -> autoDetectNoIndexLookup(key, offset));
+              ? autoDetect(path, predecessor, offset)
+              : nodesByPath.computeIfAbsent(path, key -> autoDetectNoIndexLookup(key, predecessor, offset));
+      case ADD -> nodesByPath.computeIfAbsent(path, key -> autoDetectNoIndexLookup(key, predecessor, offset));
     };
   }
 
-  private JsonNode autoDetect(JsonPath path, int offset) {
+  private JsonNode autoDetect(JsonPath path, JsonPath predecessor, int offset) {
     JsonNode node = nodesByPath.get(path);
-    return node != null ? node : autoDetectNoIndexLookup(path, offset);
+    return node != null ? node : autoDetectNoIndexLookup(path, predecessor, offset);
   }
 
-  private JsonNode autoDetectNoIndexLookup(JsonPath path, int offset) {
+  private JsonNode autoDetectNoIndexLookup(JsonPath path, JsonPath predecessor, int offset) {
     if (offset >= json.length) throw expected("<json-node>", json, offset);
     char c = json[offset];
     return switch (c) {
-      case '{' -> new LazyJsonObject(this, path, offset);
-      case '[' -> new LazyJsonArray(this, path, offset);
-      case '"' -> new LazyJsonString(this, path, offset);
-      case 't', 'f' -> new LazyJsonBoolean(this, path, offset);
-      case 'n' -> new LazyJsonNull(this, path, offset);
+      case '{' -> new LazyJsonObject(this, path, predecessor, offset);
+      case '[' -> new LazyJsonArray(this, path, predecessor, offset);
+      case '"' -> new LazyJsonString(this, path, predecessor, offset);
+      case 't', 'f' -> new LazyJsonBoolean(this, path, predecessor, offset);
+      case 'n' -> new LazyJsonNull(this, path, predecessor, offset);
       case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ->
-          new LazyJsonNumber(this, path, offset);
+          new LazyJsonNumber(this, path, predecessor, offset);
       default -> throw expected("<json-node>", json, offset);
     };
   }

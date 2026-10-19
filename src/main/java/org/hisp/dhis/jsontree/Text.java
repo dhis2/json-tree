@@ -309,6 +309,32 @@ public interface Text extends CharSequence, Comparable<Text> {
   }
 
   /**
+   * Copies this entire text to the dest array.
+   *
+   * @param dest array to write to
+   * @param offset first index to write to in dest
+   * @since 1.10
+   */
+  default void copyTo(char[] dest, int offset) {
+    int len = length();
+    for (int i = 0; i < len; i++) dest[i+offset] = charAt(i);
+  }
+
+  /**
+   * Copies a slice of this text to the dest array.
+   *
+   * @param dest array to write to
+   * @param offset first index to write to in dest
+   * @param from first index to write in this text
+   * @param length number of characters to write
+   * @since 1.10
+   */
+  default void copyTo(char[] dest, int offset, int from, int length) {
+    int to = from+length;
+    for (int i = from; i < to; i++) dest[offset++] = charAt(i);
+  }
+
+  /**
    * @return true, if this text is a valid integer value (of any range), or in other words if the
    *     sequence only consists of digits except for the first character which may be a plus or
    *     minus sign.
@@ -587,6 +613,16 @@ public interface Text extends CharSequence, Comparable<Text> {
       @Override
       public char[] toCharArray() {
         return Arrays.copyOfRange(buffer, offset, offset + length);
+      }
+
+      @Override
+      public void copyTo(char[] dest, int offset) {
+        System.arraycopy(buffer, this.offset, dest, offset, length);
+      }
+
+      @Override
+      public void copyTo(char[] dest, int offset, int from, int length) {
+        System.arraycopy(buffer, this.offset+from, dest, offset, length);
       }
 
       @Override

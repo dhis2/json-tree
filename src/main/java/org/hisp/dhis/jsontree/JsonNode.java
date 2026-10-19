@@ -46,6 +46,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -285,6 +286,15 @@ public interface JsonNode
   default JsonNode getParent() {
     return isRoot() ? this : getRoot().get(path().parentPath());
   }
+
+  /**
+   * @return the path of the node before this one in the parent array or object, or null if this
+   *     node did not have a predecessor either because it is the root or because it is the first
+   *     item in the parent array or object
+   * @since 1.10
+   */
+  @CheckNull
+  JsonPath predecessor();
 
   /**
    * @param name exact name of the object member accessed
@@ -757,6 +767,15 @@ public interface JsonNode
    */
   default JsonNode extract() {
     return isRoot() ? this : of(getDeclaration());
+  }
+
+  /**
+   * @param patch the operations to apply
+   * @return a new tree with the patched applied or the same node if no changed occured
+   * @since 1.10
+   */
+  default JsonNode patch(List<JsonNodeOp> patch) {
+    return JsonNodeOp.patch(this, patch);
   }
 
   /**

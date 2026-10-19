@@ -70,11 +70,12 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     }
   }
 
-  static JsonValue patch(JsonMixed target, JsonPatch patch) {
+  static JsonMixed patch(JsonMixed target, JsonPatch patch) {
+    if (!target.exists()) throw new JsonPatchTargetException("Patch target does not exist");
     if (patch.isEmpty()) return target;
     List<JsonNodeOp> ops = patchOps(target, patch);
     if (ops.isEmpty()) return target;
-    return null; // TODO apply
+    return target.node().patch(ops).lift(target.getAccessors());
   }
 
   static List<JsonNodeOp> patchOps(JsonMixed target, JsonPatch patch) {

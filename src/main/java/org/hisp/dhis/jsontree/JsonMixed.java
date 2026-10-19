@@ -32,7 +32,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonPrimitive {
   /**
    * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
    *
-   * @param node non null
+   * @param node non-null
    * @return the provided {@link JsonNode} as virtual {@link JsonMixed}
    */
   static JsonMixed of(JsonNode node) {
