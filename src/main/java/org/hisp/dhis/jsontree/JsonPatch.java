@@ -3,6 +3,7 @@ package org.hisp.dhis.jsontree;
 import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchDeclarationException;
 import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTargetException;
 import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTestException;
+import org.hisp.dhis.jsontree.JsonPathPattern.JsonPathPatternType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -133,7 +134,26 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     JsonMixed value = readValue(replace, "replace `value`", true);
     List<JsonPath> replaced = resolvePaths(target, pattern, "replace `path`").toList();
     int n = replaced.size();
-    int m = value.isArray() ? value.size() : n;   // scalar broadcasts to all targets
+
+    // Ranges clamp; enumerations don't. Any "write target" that doesn't exist
+    // means the client's view of the array is stale — same premise as the
+    // empty-range error below.
+    int m = value.isArray() ? value.size() : n;
+    for (int i = 0; i < Math.min(n, m); i++) {
+      if (!target.exists(replaced.get(i)))
+        throw new JsonPatchTargetException(
+            "Replace target does not exist (target may have changed): " + replaced.get(i));
+    }
+    if (n == 0 && pattern.type() == JsonPathPatternType.RANGE) {
+      throw new JsonPatchTargetException(
+          "Replace range resolved to no existing targets: " + path.toJson());
+    }
+    if (pattern.type() == JsonPathPatternType.ENUMERATION && n > 0 && m > n) {
+      throw new JsonPatchDeclarationException(
+          "Operation replace has more values (%d) than targets (%d) for enumeration path: %s"
+              .formatted(m, n, path.toJson()));
+    }
+
     int r = Math.min(n, m);
     for (int i = 0; i < r; i++)
       ops.add(new JsonNodeOp.Replace(replaced.get(i), value.isArray() ? value.get(i).node() : value.node()));
@@ -141,6 +161,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
       for (int i = r; i < n; i++)
         ops.add(new JsonNodeOp.Remove(replaced.get(i)));
     } else if (m > n && n > 0) {
+      // range only — enumeration already threw above
       JsonNode spread = JsonBuilder.createArray(arr -> {
         for (int i = r; i < m; i++)
           arr.addElement(value.get(i).node());
@@ -153,10 +174,32 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   private static void replace1(JsonMixed target, JsonPatchOp replace, List<JsonNodeOp> ops) {
     JsonMixed value = readValue(replace, "replace `value`", true);
-    resolvePaths(target, replace.$path(), "replace `path`", false)
+    JsonPath p = resolvePaths(target, replace.$path(), "replace `path`", false)
         .findFirst()
-        .map(p -> new JsonNodeOp.Replace(p, value.node()))
-        .ifPresent(ops::add);
+        .orElseThrow(() -> new JsonPatchTargetException(
+            "Replace target could not be resolved: " + replace.$path().toJson()));
+
+    if (target.exists(p)) {
+      // In-place replace
+      ops.add(new JsonNodeOp.Replace(p, value.node()));
+      return;
+    }
+    // Target missing. Distinguish object vs array parent.
+    JsonPath parentPath = p.parentPath();
+    if (!parentPath.isEmpty() && !target.exists(parentPath)) {
+      throw new JsonPatchTargetException(
+          "Replace parent does not exist: " + parentPath);
+    }
+    JsonMixed parent = parentPath.isEmpty() ? target : target.get(parentPath);
+    if (parent.isObject()) {
+      // Object "set key" semantics — add missing member.
+      // Equivalent to Remove(no-op) + Insert(add-member).
+      ops.add(new JsonNodeOp.Insert(p, value.node()));
+      return;
+    }
+    // Array (or other): replacing a non-existent position is an error.
+    throw new JsonPatchTargetException(
+        "Replace target does not exist: " + p);
   }
 
   private static void move(JsonMixed target, JsonPatchOp move, List<JsonNodeOp> ops) {

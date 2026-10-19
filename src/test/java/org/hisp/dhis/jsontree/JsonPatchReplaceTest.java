@@ -1,8 +1,12 @@
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchDeclarationException;
+import org.hisp.dhis.jsontree.JsonPatchException.JsonPatchTargetException;
 import org.hisp.dhis.jsontree.internal.Language;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -169,19 +173,187 @@ class JsonPatchReplaceTest {
     // ===== No-op edges =====
 
     @Test
-    void range_emptyTargets_isNoOp() {
+    void range_emptyTargets_throws() {
+        // Range out of bounds: "replace elements 5 through 10" on a 3-element
+        // array expresses intent to modify something that isn't there. The
+        // client's view of the target is stale.
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", [[5,10]]], "value": 99}]"""));
+    }
+
+    @Test
+    void range_emptyArray_throws() {
+        // Same premise: "replace elements 0 through 5 of an empty array" —
+        // nothing to replace. If the intent is to add elements, use spread.
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[]}""", """
+            [{"op": "replace", "path": ["arr", [[0,5]]], "value": 99}]"""));
+    }
+
+    @Test
+    void range_partialOverlap_works() {
+        // Boundary: as long as at least one target exists, the patch proceeds.
+        // [[1,10]] on size 3 clamps to [1,2]; both exist; broadcast applies.
         assertPatched("""
-            {"arr":[1,2,3]}""", """
-            {"arr":[1,2,3]}""", """
-            [{"op": "replace", "path": ["arr", [[5,10]]], "value": 99}]""");
+          {"arr":[1,99,99]}""", """
+          {"arr":[1,2,3]}""", """
+          [{"op": "replace", "path": ["arr", [[1,10]]], "value": 99}]""");
     }
 
     @Test
     void enumeration_empty_isNoOp() {
-        // Empty array segment → empty enumeration → no targets → no-op
+        // Distinguished from range: an empty enumeration is an explicit
+        // declaration of "zero targets", not a stale-state symptom.
+        assertPatched("""
+          {"arr":[1,2,3]}""", """
+          {"arr":[1,2,3]}""", """
+          [{"op": "replace", "path": ["arr", []], "value": 99}]""");
+    }
+
+    // ==== enumeration path mismatch with replacement values
+
+    @Test
+    void enumeration_arrayLonger_throws() {
+        // More values than targets: no coherent "spread position" exists for a
+        // scattered enumeration. Range handles this via spread-after-last;
+        // enumeration must be a declaration error.
+        assertThrowsExactly(JsonPatchDeclarationException.class, () ->
+            patch("""
+            {"arr":[1,2,3,4]}""", """
+            [{"op": "replace", "path": ["arr", [0,2]], "value": [10,20,30]}]"""));
+    }
+
+    @Test
+    void enumeration_arrayLonger_byOne_throws() {
+        // Smallest failing case
+        assertThrowsExactly(JsonPatchDeclarationException.class, () ->
+            patch("""
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", [0,2]], "value": [10,20,30]}]"""));
+    }
+
+    @Test
+    void enumeration_arrayEqualLength_stillWorks() {
+        // Boundary: m == n is fine
+        assertPatched("""
+            {"arr":[10,2,20,4]}""", """
+            {"arr":[1,2,3,4]}""", """
+            [{"op": "replace", "path": ["arr", [0,2]], "value": [10,20]}]""");
+    }
+
+    @Test
+    void enumeration_empty_isNoOp_evenWithNonEmptyValue() {
+        // n == 0: no targets → no-op, even though m > n
         assertPatched("""
             {"arr":[1,2,3]}""", """
             {"arr":[1,2,3]}""", """
-            [{"op": "replace", "path": ["arr", []], "value": 99}]""");
+            [{"op": "replace", "path": ["arr", []], "value": [10,20]}]""");
+    }
+
+    // but...
+
+    @Test
+    void range_arrayLonger_stillSpreads() {
+        // Range: excess values go past the end of the contiguous span.
+        // This is coherent because "past the end" is well-defined for a range.
+        assertPatched("""
+            {"arr":[1,10,20,30,40,5]}""", """
+            {"arr":[1,2,3,4,5]}""", """
+            [{"op": "replace", "path": ["arr", [[1,3]]], "value": [10,20,30,40]}]""");
+    }
+
+    // ==== replace enumeration clamping =====
+
+    @Test
+    void enumeration_missingTarget_throws() {
+        // Client said "replace 0, 2, and 5" but 5 doesn't exist. Stale state.
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", [0,2,5]], "value": [10,20,30]}]"""));
+    }
+
+    @Test
+    void enumeration_missingTargetScalar_throws() {
+        // Same with scalar broadcast
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", [0,2,5]], "value": 99}]"""));
+    }
+
+    @Test
+    void enumeration_missingTargetBeyondWritePortion_doesNotThrow() {
+        // 5 is past the write portion (m=2), so it's a remove target — and
+        // remove-on-missing is a no-op. The patch proceeds.
+        assertPatched("""
+            {"arr":[10,2,20]}""", """
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", [0,2,5]], "value": [10,20]}]""");
+    }
+
+    @Test
+    void enumeration_allTargetsExist_works() {
+        // Baseline: no missing targets, all good
+        assertPatched("""
+            {"arr":[10,2,20,30]}""", """
+            {"arr":[1,2,3,4]}""", """
+            [{"op": "replace", "path": ["arr", [0,2,3]], "value": [10,20,30]}]""");
+    }
+
+    @Test
+    void remove_outOfBoundsEnumeration_stillNoOps() {
+        // remove stays forgiving: [0,2,5] on size 3 removes 0 and 2, no-ops on 5
+        assertPatched("""
+            {"arr":[2]}""", """
+            {"arr":[1,2,3]}""", """
+            [{"op": "remove", "path": ["arr", [0,2,5]]}]""");
+    }
+
+    // ==== target does not exist issues =====
+
+    @Test
+    void replace_missingObjectKey_inserts() {
+        assertPatched("""
+            {"a":1, "b": 2}""", """
+            {"a":1}""", """
+            [{"op": "replace", "path": ["b"], "value": 2}]""");
+    }
+
+    @Test
+    void replace_outOfBoundsArrayIndex_throwsTargetException() {
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[1,2,3]}""", """
+            [{"op": "replace", "path": ["arr", 5], "value": 9}]"""));
+    }
+
+    @Test
+    void replace_conditionNoMatch_throwsTargetException() {
+        // Previously no-op; now stale-state symptom
+        assertThrows(JsonPatchTargetException.class, () ->
+            patch("""
+            {"arr":[{"id":"y"}]}""", """
+            [{"op": "replace", "path": ["arr", [{"id":"x"}]], "value": 9}]"""));
+    }
+
+    @Test
+    void replace_root_stillWorks() {
+        // exists(SELF) is true; no regression on root replace
+        assertPatched("""
+        {"b":2}""", """
+        {"a":1}""", """
+        [{"op": "replace", "path": [], "value": {"b":2}}]""");
+    }
+
+    @Test
+    void replace_pointerRoot_stillWorks() {
+        assertPatched("""
+        {"b":2}""", """
+        {"a":1}""", """
+        [{"op": "replace", "path": "", "value": {"b":2}}]""");
     }
 }

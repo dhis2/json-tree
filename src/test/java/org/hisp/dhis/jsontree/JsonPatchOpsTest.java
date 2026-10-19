@@ -277,18 +277,18 @@ class JsonPatchOpsTest {
 
   @Test
   void replace_range_resolvesToEmpty_noOp() {
-    assertOps(
+    assertThrowsExactly(JsonPatchTargetException.class, () -> ops(
         "{\"foo\": [1,2,3]}",
         """
-            [{"op": "replace", "path": ["foo", [[5,10]]], "value": [10]}]""");
+            [{"op": "replace", "path": ["foo", [[5,10]]], "value": [10]}]"""));
   }
 
   @Test
   void replace_range_resolvesToEmpty_scalarValue_noOp() {
-    assertOps(
+    assertThrowsExactly(JsonPatchTargetException.class, () -> ops(
         "{\"foo\": [1,2,3]}",
         """
-        [{"op": "replace", "path": ["foo", [[5,10]]], "value": 99}]""");
+        [{"op": "replace", "path": ["foo", [[5,10]]], "value": 99}]"""));
   }
 
   // ===== spread =====
