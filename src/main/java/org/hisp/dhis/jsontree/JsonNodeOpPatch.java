@@ -10,6 +10,9 @@ import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
 /**
  * Private implementation of {@link JsonNodeOp}s.
+ * 
+ * @since 1.10
+ * @author Jan Bernitt
  */
 class JsonNodeOpPatch {
 

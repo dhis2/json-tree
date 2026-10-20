@@ -44,7 +44,7 @@ import java.util.stream.Stream;
  *
  * <p><b>Operation names.</b> Both canonical names ({@code insert}, {@code remove},
  * …) and RFC 6902 aliases ({@code add}, {@code delete}, …) are accepted. See
- * {@link OpType}.
+ * {@link JsonPatchOpType}.
  *
  * <p><b>Test-first semantics.</b> A {@code test} operation — either standalone or
  * provided as the optional {@code test} field on a mutation op — runs before any
@@ -62,7 +62,7 @@ import java.util.stream.Stream;
  */
 public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
-  enum OpType {
+  enum JsonPatchOpType {
     /**
      * Asserts a precondition on the target. Without a {@code value} field, passes
      * when the target path resolves to a <em>defined</em> value (neither missing
@@ -149,9 +149,10 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   static List<JsonNodeOp> patchOps(JsonMixed target, JsonPatch patch) {
     List<JsonNodeOp> ops = new ArrayList<>(patch.size());
     // do all tests first
+    //TODO sort test by target path?
     for (JsonMixed x : patch) {
       JsonPatchOp op = x.as(JsonPatchOp.class);
-      OpType opType = readOp(op);
+      JsonPatchOpType opType = readOp(op);
       if (op.test().exists()) {
         if (!opType.allowsTest())
           throw new JsonPatchDeclarationException(
@@ -159,7 +160,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
         String pathName = op.hasTo() ? "to" : "path";
         test(target, opType, op.to(), "%s `%s`".formatted(opType, pathName), op.test());
       } else {
-        if (opType == OpType.test) {
+        if (opType == JsonPatchOpType.test) {
           test(target, op);
         }
       }
@@ -167,7 +168,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     // then move to actual changes
     for (JsonMixed x : patch) {
       JsonPatchOp op = x.as(JsonPatchOp.class);
-      OpType opType = readOp(op);
+      JsonPatchOpType opType = readOp(op);
       if (!opType.allowsTo() && op.hasTo())
         throw new JsonPatchDeclarationException(
             "Operation %s does not allow use of `to`".formatted(opType));
@@ -326,10 +327,10 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   private static void test(JsonMixed target, JsonPatchOp test) {
     JsonMixed expected = readValue(test, "test `value`", false);
-    test(target, OpType.test, test.$path(), "test `path`", expected);
+    test(target, JsonPatchOpType.test, test.$path(), "test `path`", expected);
   }
 
-  private static void test(JsonMixed target, OpType type, JsonMixed path, String pathName, JsonMixed expected) {
+  private static void test(JsonMixed target, JsonPatchOpType type, JsonMixed path, String pathName, JsonMixed expected) {
     boolean hasExpected = expected.exists();
     if (hasExpected && !path.isString() && path.isArray()) {
       JsonPathPattern pattern = readPattern(path, pathName);
@@ -479,20 +480,20 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
         "Operation %s is required but was undefined".formatted(name));
   }
 
-  private static OpType readOp(JsonPatchOp op) {
+  private static JsonPatchOpType readOp(JsonPatchOp op) {
     JsonString opName = op.op();
     if (opName.isUndefined())
       throw new JsonPatchDeclarationException("Operation `op` is required but was undefined: "+op);
     String name = opName.string().toLowerCase(Locale.ROOT);
     return switch (name) {
-      case "?", "test" -> OpType.test;
-      case "+", "add", "insert" -> OpType.insert;
-      case "-", "delete", "remove" -> OpType.remove;
-      case "~", "spread" -> OpType.spread;
-      case "move" -> OpType.move;
-      case ">", "copy" -> OpType.copy;
-      case "swap" -> OpType.swap;
-      case "replace" -> OpType.replace;
+      case "?", "test" -> JsonPatchOpType.test;
+      case "+", "add", "insert" -> JsonPatchOpType.insert;
+      case "-", "delete", "remove" -> JsonPatchOpType.remove;
+      case "~", "spread" -> JsonPatchOpType.spread;
+      case "move" -> JsonPatchOpType.move;
+      case ">", "copy" -> JsonPatchOpType.copy;
+      case "swap" -> JsonPatchOpType.swap;
+      case "replace" -> JsonPatchOpType.replace;
       default ->
           throw new JsonPatchDeclarationException(
               "Operation `op` %s is unknown in %s: ".formatted(name, op));
