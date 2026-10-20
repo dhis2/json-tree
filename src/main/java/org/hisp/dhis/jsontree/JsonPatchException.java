@@ -12,7 +12,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  */
 public abstract class JsonPatchException extends IllegalArgumentException {
 
-  public JsonPatchException(String msg) {
+  protected JsonPatchException(String msg) {
     super(msg);
   }
 

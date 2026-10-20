@@ -149,7 +149,6 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   static List<JsonNodeOp> patchOps(JsonMixed target, JsonPatch patch) {
     List<JsonNodeOp> ops = new ArrayList<>(patch.size());
     // do all tests first
-    //TODO sort test by target path?
     for (JsonMixed x : patch) {
       JsonPatchOp op = x.as(JsonPatchOp.class);
       JsonPatchOpType opType = readOp(op);
