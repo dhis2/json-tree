@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.hisp.dhis.jsontree.JsonNodeOp.Insert;
@@ -278,6 +279,70 @@ class JsonNodeOpTest {
       {"a":5}""");
     assertThrowsExactly(JsonPatchEditException.class, () ->
         JsonNodeOp.patch(target, List.of(new JsonNodeOp.Replace(JsonPath.of("a", "b"), JsonNode.of("1")))));
+  }
+
+  // ===== duplicate node predecessor detection =====
+
+  @Test
+  void remove_duplicatePredecessor_throws() {
+    // Removing `b` from {"a":1,"a":2,"b":3}: predecessor path .a resolves to
+    // the first a, but source-adjacent predecessor is the second a. Without
+    // the check this would erase ,"a":2,"b":3 — losing both a and b.
+    JsonNode target = JsonNode.of("""
+        {"a":1,"a":2,"b":3}""");
+    JsonPath path = JsonPath.of("b");
+    assertThrowsExactly(JsonPatchEditException.class, () ->
+        JsonNodeOp.patch(target, List.of(new JsonNodeOp.Remove(path))));
+  }
+
+  @Test
+  void remove_duplicateTarget_succeeds_removesFirst() {
+    // Removing `b` from {"a":1,"b":2,"b":3}: predecessor is `a` (not
+    // duplicated), gap is just ,"b": — first b removed, second remains.
+    JsonNode patched = JsonNodeOp.patch(
+        JsonNode.of("""
+        {"a":1,"b":2,"b":3}"""),
+        List.of(new JsonNodeOp.Remove(JsonPath.of("b"))));
+    assertEquals(
+        JsonNode.of("""
+      {"a":1,"b":3}""")
+            .getDeclaration()
+            , patched.getDeclaration());
+  }
+
+  @Test
+  void remove_duplicateFirstMember_stillWorks() {
+    // First member: predecessor == null → no sanity check applies.
+    // Removing the first `a` leaves the second.
+    JsonNode patched = JsonNodeOp.patch(
+        JsonNode.of("""
+        {"a":1,"a":2}"""),
+        List.of(new JsonNodeOp.Remove(JsonPath.of("a"))));
+    assertEquals(JsonNode.of("""
+        { "a":2}""")
+        .getDeclaration(), patched.getDeclaration());
+  }
+
+  @Test
+  void remove_adjacentNoWhitespace_succeeds() {
+    JsonNode patched = JsonNodeOp.patch(
+        JsonNode.of("""
+        {"a":1,"b":2}"""),
+        List.of(new JsonNodeOp.Remove(JsonPath.of("b"))));
+    assertEquals(JsonNode.of("""
+        {"a":1}""")
+        .getDeclaration(), patched.getDeclaration());
+  }
+
+  @Test
+  void remove_adjacentWithWhitespace_succeeds() {
+    JsonNode patched = JsonNodeOp.patch(
+        JsonNode.of("""
+        {"a":1 , "b" : 2 }"""),
+        List.of(new JsonNodeOp.Remove(JsonPath.of("b"))));
+    assertEquals(JsonNode.of("""
+        {"a":1 }""")
+        .getDeclaration(), patched.getDeclaration());
   }
 
   private static void assertRejected(String error, JsonNodeOp... ops) {

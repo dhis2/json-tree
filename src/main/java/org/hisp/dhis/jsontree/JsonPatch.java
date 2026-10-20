@@ -94,9 +94,6 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
     default boolean hasTo() {
       return get("to").exists();
     }
-
-    // TODO: op type sequential which only allows insert/remove on same parent but then translates the edits to absolute ones
-    // default JsonPatch sequential();
   }
 
   static JsonMixed patch(JsonMixed target, JsonPatch patch) {
@@ -377,8 +374,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
       if (!writable) return;
       // Parent missing: walk up to find the deepest existing ancestor.
       // If that ancestor exists and cannot host a write (scalar/null/etc.),
-      // fail at declaration — createMissingParents would fail the same way
-      // but with a worse exception type and message.
+      // fail at declaration
       JsonPath ancestorPath = parentPath;
       while (!ancestorPath.isEmpty() && !target.exists(ancestorPath))
         ancestorPath = ancestorPath.parentPath();

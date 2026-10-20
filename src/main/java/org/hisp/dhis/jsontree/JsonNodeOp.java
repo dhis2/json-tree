@@ -155,18 +155,15 @@ public sealed interface JsonNodeOp {
     JsonNode parent = removed.getParent();
     JsonPath predecessor = removed.predecessor();
     if (predecessor == null) {
-      // first child (object member or array element):
-      //   erase [after opening bracket, end of value], defer trailing comma blanking
       edits.add(new Edit(parent.startIndex() + 1, removed.endIndex(),
           Edit.EMPTY, EditType.REMOVE_WITH_COMMA));
-    } else {
-      // non-first: erase [end of predecessor, end of value]
-      //   for objects this is `,"key":value`
-      //   for arrays this is `,element`
-      JsonNode p = target.getRoot().get(predecessor);
-      edits.add(new Edit(p.endIndex(), removed.endIndex(),
-          Edit.EMPTY, EditType.REMOVE));
+      return;
     }
+
+    JsonNode p = target.getRoot().get(predecessor);
+    checkSourceAdjacent(removed, p, parent, op);
+    edits.add(new Edit(p.endIndex(), removed.endIndex(),
+        Edit.EMPTY, EditType.REMOVE));
   }
 
   private static void editsReplace(JsonNode target, JsonNodeOp.Replace of, List<Edit> edits) {
@@ -320,10 +317,43 @@ public sealed interface JsonNodeOp {
       edits.add(new Edit(created.offset(), created.offset(), Edit.CLOSE_BRACE, EditType.INSERT));
   }
 
-  //TODO when writing keys we can check if the key Text is backed by the same memory as the JSON
-  // and if so we know there is no escaping - just need to add quotes around it
+  /**
+   * Guards against erasing the wrong span when the predecessor path resolves to
+   * a non-adjacent source node. This happens when the target object has duplicate
+   * keys: {@code member()} returns the first occurrence, but {@code predecessor()}
+   * reflects the source-adjacent key, and that path resolves to the first
+   * occurrence of that key, not the immediately-preceding one.
+   *
+   * <p>The check counts commas in the gap between the predecessor's value end and
+   * the target's value start. For a valid object member removal, that gap is
+   * exactly {@code ,"key":} — one comma, one colon, possible whitespace. Extra
+   * commas mean there is source content between the two nodes that the edit span
+   * would silently erase.
+   *
+   * <p>Arrays are immune: array element paths use unique numeric indexes, so
+   * {@code path.chain(index - 1)} always resolves to the true source predecessor.
+   */
+  private static void checkSourceAdjacent(
+      JsonNode removed, JsonNode predecessor, JsonNode parent, JsonNodeOp.Remove op) {
+    if (parent.type() != JsonNodeType.OBJECT) return;
 
+    // The gap [pred.endIndex, removed.startIndex) lies entirely within the
+    // parent's span, so scan the parent's declaration rather than the root's —
+    // parent.endIndex() only walks the parent, not the whole document.
+    Text parentText = parent.getDeclaration();
+    int parentStart = parent.startIndex();
+    int from = predecessor.endIndex() - parentStart;
+    int to = removed.startIndex() - parentStart;
 
+    int commas = 0;
+    for (int i = from; i < to && commas < 2; i++)
+      if (parentText.charAt(i) == ',') commas++;
+
+    if (commas != 1)
+      throw new JsonPatchEditException(
+          "Cannot remove reliably: predecessor of `" + op.path
+              + "` is not source-adjacent (duplicate keys in target)");
+  }
 
   /*
   Applying edits...
