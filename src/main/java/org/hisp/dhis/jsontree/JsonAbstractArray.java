@@ -60,6 +60,18 @@ public interface JsonAbstractArray<E extends JsonValue>
   }
 
   /**
+   * @param test to perform
+   * @return true, if all items in this array satisfy the test (this includes the array being undefined)
+   * @since 1.10
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default boolean every(Predicate<? super E> test) {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.isNull() || node.isEmpty()) return true;
+    return stream().allMatch(test);
+  }
+
+  /**
    * True, if this list contains all the values provided given each value of the list is transformed
    * by the toValue function to access its comparable value.
    *

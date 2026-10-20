@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
 import org.hisp.dhis.jsontree.JsonSelector.Matches;
 import org.hisp.dhis.jsontree.internal.CheckNull;
@@ -525,5 +526,17 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
       }
     }
     node().query(selector, new Lifter(getAccessors(), matches));
+  }
+
+  /**
+   * Essential method for patch API.
+   *
+   * @param patch set of patch operation to apply
+   * @return the patched node (original left unchanged)
+   * @since 1.10
+   * @throws JsonPatchException when patch could not be applied
+   */
+  default JsonMixed patch(JsonPatch patch) throws JsonPatchException {
+    return JsonPatch.patch(as(JsonMixed.class), patch);
   }
 }

@@ -180,7 +180,7 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
   }
 
   /**
-   * @return the number of segments in this path, zero for the root (self)
+   * @return the depth or number of segments in this path, zero for the root (self)
    */
   public int length() {
     if (isEmpty()) return 0;
@@ -352,13 +352,13 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
         start = i;
         while (!isSquareSegmentClose(path, i)) i++;
         end = i;
-        i++; // most past ]
+        i++; // move past ]
       } else if (c == '{' && isCurlySegmentOpen(path, i)) {
         i++;
         start = i;
         while (!isCurlySegmentClose(path, i)) i++;
         end = i;
-        i++; // most past }
+        i++; // move past }
       } else if (c == '.' || i == 0) {
         if (c == '.') i++;
         start = i;

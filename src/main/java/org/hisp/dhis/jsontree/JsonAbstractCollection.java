@@ -60,6 +60,36 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 public interface JsonAbstractCollection extends JsonValue {
 
   /**
+   * @param path in the subtree of this node to select
+   * @return the value at the given path relative to this node or a non-existing node
+   * @since 1.10
+   */
+  @TerminalOp(canBeUndefined = true)
+  default JsonMixed get(JsonPath path) {
+    JsonNode self = nodeIfExists();
+    if (self != null) {
+      JsonNode target = self.getIfExists(path);
+      if (target != null) return target.lift(getAccessors());
+    }
+    // produce the proper undefined value
+    JsonMixed res = as(JsonMixed.class);
+    for (Text seg : path.segments())
+      res = res.get(seg);
+    return res;
+  }
+
+  /**
+   * @param path the path to look up in the subtree of this node
+   * @return true if for this object or array a node exists at the given path in its subtree
+   * @since 1.10
+   */
+  @TerminalOp(canBeUndefined = true)
+  default boolean exists(JsonPath path) {
+    JsonNode self = nodeIfExists();
+    return self != null && self.exists(path);
+  }
+
+  /**
    * @return true, in case the collection exists but has no elements and is not {@code null}
    * @throws JsonPathException in case this value does not exist
    * @throws JsonTreeException in case the value does exist but is not a collection

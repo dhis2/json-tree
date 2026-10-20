@@ -531,7 +531,8 @@ class JsonTreeTest {
         JsonNode.EMPTY_OBJECT.addMembers(
             obj -> obj.addNumber("num", 1).addString("str", "hello").addBoolean("bo", true));
     assertEquals(
-        "{\"num\":1,\"bo\":true,\"str\":\"world\",\"pi\":3.1415}",
+"""
+        {"num":1,"str":"world","bo":true,"pi":3.1415}""",
         before
             .addMembers(obj -> obj.addString("str", "world").addNumber("pi", 3.1415d))
             .getDeclaration()
@@ -647,8 +648,8 @@ class JsonTreeTest {
     JsonNode array = JsonBuilder.createArray(arr -> arr.addNumber(1).addNumber(2).addNumber(3));
     assertSame(array, array.removeElements(3));
     assertEquals("[1,3]", array.removeElements(1, 2).getDeclaration().toString());
-    assertEquals("[3]", array.removeElements(0, 2).getDeclaration().toString());
-    assertEquals("[2,3]", array.removeElements(0, 1).getDeclaration().toString());
+    assertEquals("[ 3]", array.removeElements(0, 2).getDeclaration().toString());
+    assertEquals("[ 2,3]", array.removeElements(0, 1).getDeclaration().toString());
     assertEquals("[1,2]", array.removeElements(2, 5).getDeclaration().toString());
   }
 

@@ -46,6 +46,8 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -285,6 +287,15 @@ public interface JsonNode
   default JsonNode getParent() {
     return isRoot() ? this : getRoot().get(path().parentPath());
   }
+
+  /**
+   * @return the path of the node before this one in the parent array or object, or null if this
+   *     node did not have a predecessor either because it is the root or because it is the first
+   *     item in the parent array or object
+   * @since 1.10
+   */
+  @CheckNull
+  JsonPath predecessor();
 
   /**
    * @param name exact name of the object member accessed
@@ -760,13 +771,24 @@ public interface JsonNode
   }
 
   /**
+   * @param patch the operations to apply
+   * @return a new tree with the patched applied or the same node if no changed occured
+   * @since 1.10
+   */
+  default JsonNode patch(List<? extends JsonNodeOp> patch) {
+    return JsonNodeOp.patch(this, patch);
+  }
+
+  /**
    * Replace this node and returns the root of a new tree where this node got replaced.
    *
    * @param json The JSON used instead of the on this node represents. <br>
    *     <b>Note</b> that the provided JSON is not check to be valid JSON immediately.
    * @return A new document root where this node got replaced with the provided JSON
    */
-  JsonNode replaceWith(CharSequence json);
+  default JsonNode replaceWith(CharSequence json) {
+    return getRoot().patch(List.of(new JsonNodeOp.Replace(path(), JsonNode.of(json))));
+  }
 
   /**
    * @see #replaceWith(CharSequence)
@@ -845,15 +867,7 @@ public interface JsonNode
     checkType(JsonNodeType.OBJECT, obj.type(), "addMembers");
     if (obj.isEmpty()) return getRoot();
     if (isEmpty() && isRoot()) return obj;
-    return replaceWith(
-        JsonBuilder.createObject(
-            merged -> {
-              for (Entry<Text, JsonNode> member : members())
-                if (!obj.isMember(member.getKey()))
-                  merged.addMember(member.getKey(), member.getValue());
-              for (Entry<Text, JsonNode> member : obj.members())
-                merged.addMember(member.getKey(), member.getValue());
-            }));
+    return getRoot().patch(List.of(new JsonNodeOp.Spread(path(), obj)));
   }
 
   /**
@@ -873,15 +887,13 @@ public interface JsonNode
    * @throws JsonTreeException if this node is not an object node
    */
   default JsonNode removeMembers(Set<? extends CharSequence> names) {
-    checkType(JsonNodeType.OBJECT, type(), "removeMembers");
+    checkType(OBJECT, type(), "removeMembers");
     if (isEmpty() || names.isEmpty()) return getRoot();
-    return replaceWith(
-        JsonBuilder.createObject(
-            obj -> {
-              for (Entry<Text, JsonNode> member : members())
-                if (names.stream().noneMatch(name -> member.getKey().contentEquals(name)))
-                  obj.addMember(member.getKey(), member.getValue());
-            }));
+    List<? extends JsonNodeOp> ops = names.stream()
+        .filter(n -> isMember(Text.of(n)))
+        .map(n -> new JsonNodeOp.Remove(path().chain(Text.of(n))))
+        .toList();
+    return ops.isEmpty() ? getRoot() : getRoot().patch(ops);
   }
 
   /**
@@ -918,16 +930,11 @@ public interface JsonNode
    * @since 0.6
    */
   default JsonNode addElements(JsonNode array) {
-    checkType(JsonNodeType.ARRAY, type(), "addElements");
-    checkType(JsonNodeType.ARRAY, array.type(), "addElements");
+    checkType(ARRAY, type(), "addElements");
+    checkType(ARRAY, array.type(), "addElements");
     if (array.isEmpty()) return getRoot();
-    if (isEmpty() && isRoot()) return array;
-    return replaceWith(
-        JsonBuilder.createArray(
-            merged -> {
-              merged.addElements(elements(), JsonBuilder.JsonArrayBuilder::addElement);
-              merged.addElements(array.elements(), JsonBuilder.JsonArrayBuilder::addElement);
-            }));
+    if (isEmpty()) return array;
+    return getRoot().patch(List.of(new JsonNodeOp.Spread(path().chain(size()), array)));
   }
 
   /**
@@ -951,16 +958,18 @@ public interface JsonNode
     checkType(JsonNodeType.ARRAY, type(), "putElements");
     checkType(JsonNodeType.ARRAY, array.type(), "putElements");
     if (array.isEmpty()) return getRoot();
-    return replaceWith(
-        JsonBuilder.createArray(
-            merged -> {
-              int size = size();
-              if (index > 0 && size > 0)
-                range(0, min(index, size)).forEach(i -> merged.addElement(element(i)));
-              if (index > size) range(size, index).forEach(i -> merged.addElement(JsonNode.NULL));
-              array.elements().forEach(merged::addElement);
-              if (size > index) range(index, size).forEach(i -> merged.addElement(element(i)));
-            }));
+    int size = size();
+    if (index <= size) {
+      // common case: insert at existing slot (or append at size)
+      return getRoot().patch(List.of(new JsonNodeOp.Spread(path().chain(index), array)));
+    }
+    // padding case: fill with nulls then append
+    int padCount = index - size;
+    JsonNode padded = JsonBuilder.createArray(arr -> {
+      for (int i = 0; i < padCount; i++) arr.addElement(JsonNode.NULL);
+      arr.addElements(array.elements(), JsonBuilder.JsonArrayBuilder::addElement);
+    });
+    return getRoot().patch(List.of(new JsonNodeOp.Spread(path().chain(size), padded)));
   }
 
   default JsonNode removeElements(int from) {
@@ -972,12 +981,11 @@ public interface JsonNode
     if (isEmpty()) return getRoot();
     int size = size();
     if (from >= size) return getRoot();
-    return replaceWith(
-        JsonBuilder.createArray(
-            array -> {
-              if (from > 0) range(0, from).forEach(i -> array.addElement(element(i)));
-              if (to < size) range(to, size).forEach(i -> array.addElement(element(i)));
-            }));
+    int end = Math.min(to, size);
+    List<JsonNodeOp> ops = new ArrayList<>(end - from);
+    for (int i = from; i < end; i++)
+      ops.add(new JsonNodeOp.Remove(path().chain(i)));
+    return ops.isEmpty() ? getRoot() : getRoot().patch(ops);
   }
 
   private void checkType(JsonNodeType expected, JsonNodeType actual, String operation) {

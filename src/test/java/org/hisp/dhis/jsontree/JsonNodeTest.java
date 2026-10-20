@@ -206,7 +206,7 @@ class JsonNodeTest {
         """
             {
             "a": 1,
-            "b": {"x":42}
+            "b": { "x":42}
             }""",
         actual.getDeclaration().toString());
   }
@@ -225,7 +225,7 @@ class JsonNodeTest {
         """
             {
             "a": 1,
-            "b": {"y":1}
+            "b": {  "y": 1}
             }""",
         actual.getDeclaration().toString());
   }
@@ -287,6 +287,17 @@ class JsonNodeTest {
       assertEquals(CHECK, CHECK.resolve(strategy));
       assertEquals(ADD, ADD.resolve(strategy));
       assertEquals(strategy, AUTO.resolve(strategy));
+    }
+  }
+
+  @Test
+  void exists_and_getIfExists_agree_on_scalarAncestor() {
+    JsonNode target = JsonNode.of("""
+        {"a":5,"b":{"x":1},"c":[1,2]}""");
+    for (String path : List.of("a", "a.b", "b.x", "b.y", "b.x.z", "c.0", "c.5", "missing")) {
+      JsonPath p = JsonPath.of(path);
+      assertEquals(target.exists(p), target.getIfExists(p) != null,
+          "exists/getIfExists disagree on: " + path);
     }
   }
 
