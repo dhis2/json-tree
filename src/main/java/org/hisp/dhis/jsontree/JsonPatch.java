@@ -11,54 +11,96 @@ import java.util.Locale;
 import java.util.stream.Stream;
 
 /**
- * A {@link JsonPatch} allows to bulk-edit a {@link JsonValue}s using a set of {@link
- * JsonPatchOp}erations.
+ * A {@link JsonPatch} allows bulk-editing a {@link JsonValue} using a set of
+ * {@link JsonPatchOp}erations.
  *
- * <p>In contrast to JSON Patch standard described in RFC 6902 this implementation is not iterative.
- * The order of operations does not matter. Instead, all operations are applied in reference to the
- * unmodified target and collisions between the operations are detected based on the modified paths.
- * Any collision aborts the patch. This means all paths always refer to the target value before any
- * change. This also means a patch can be validated without producing any intermediate result. A
- * final result can be created in a single pass with no intermediate representations. This approach
- * has much better performance and is much easier to implement and reason about.
- * <p>
- * For example, if a client wants to delete the first 3 elements in an array they can use
+ * <p><b>Not iterative.</b> In contrast to RFC 6902, this implementation does not
+ * apply operations sequentially. All operations resolve against the <em>original
+ * target</em>, and collisions are detected by comparing the claimed write paths
+ * before any edit is attempted. Any clash aborts the patch. This means:
+ * <ul>
+ *   <li>Operations are order-independent — any permutation produces the same result.</li>
+ *   <li>Every path, index, and condition is resolved against the pre-patch target.</li>
+ *   <li>The patch can be validated without producing an intermediate result, and the
+ *       final result is produced in one pass over the source text.</li>
+ * </ul>
+ *
+ * <p>For example, removing the first three elements of an array:
  * <pre>
- *   { "op": "remove", path: ["array", [[0,2]]] }
+ *   { "op": "remove", "path": ["array", [[0,2]]] }
  *   // or
  *   [
- *     { "op": "remove", path: ["array", 0] },
- *     { "op": "remove", path: ["array", 1] },
- *     { "op": "remove", path: ["array", 2] },
+ *     { "op": "remove", "path": ["array", 0] },
+ *     { "op": "remove", "path": ["array", 1] },
+ *     { "op": "remove", "path": ["array", 2] }
  *   ]
- *   // or any other order of these 3 (or combination of single and range removals)
  * </pre>
- * Whereas in RFC 6902 the remove must have been issued 2,1,0 (not 0,1,2) to not accidentally delete the wrong elements.
- * <p>
- * Note also that {@code path} uses an array of segment expressions so that no escaping is needed.
- * Path segments are always literal unless a special array indexing syntax is used. See {@link JsonPathPattern}
- * for more details on this.
+ * In RFC 6902 the same removals would have to be issued in order {@code 2, 1, 0}.
  *
- * @see JsonPathPattern
+ * <p><b>Path forms.</b> The {@code path} (and {@code from}/{@code to} for
+ * move/copy/swap) may be either a JSON array of segment expressions or an
+ * RFC 6901 JSON Pointer string ({@code "/foo/0/-"}), making the surface
+ * compatible with standard JSON Patch for single-target operations.
  *
+ * <p><b>Operation names.</b> Both canonical names ({@code insert}, {@code remove},
+ * …) and RFC 6902 aliases ({@code add}, {@code delete}, …) are accepted. See
+ * {@link OpType}.
+ *
+ * <p><b>Test-first semantics.</b> A {@code test} operation — either standalone or
+ * provided as the optional {@code test} field on a mutation op — runs before any
+ * mutation is queued. If any test fails, the entire patch aborts without
+ * attempting edits.
+ *
+ * <p><b>Known limitation: duplicate keys.</b> Path-based addressing cannot
+ * disambiguate duplicate object keys; {@code remove} guards against silently
+ * erasing the wrong span when a duplicate predecessor is detected and throws.
+ *
+ * @see JsonPathPattern  the path expression grammar
+ * @see JsonNodeOp  the resolved operations
  * @since 1.10
+ * @author Jan Bernitt
  */
 public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
 
   enum OpType {
     /**
-     * A test operation without a value field passes when the target path resolves to a defined
-     * value — one that is neither missing nor JSON null. To assert that a value is exactly null,
-     * use value: null.
+     * Asserts a precondition on the target. Without a {@code value} field, passes
+     * when the target path resolves to a <em>defined</em> value (neither missing
+     * nor JSON null). With {@code value}, passes only if the value at the path
+     * equals the provided JSON.
+     *
+     * <p>Also accepted as {@code "?"}.
      */
     test,
+    /** Adds a value; {@code spread} for multiple array elements. Alias: {@code "add"}, {@code "+"}. */
+    insert,
+    /** Removes a value at the path; a no-op when the path does not exist. Aliases: {@code "delete"}, {@code "-"}. */
+    remove,
+    /** Replaces the value at a path. Aliases: none beyond {@code "replace"}. */
+    replace,
+    /** Inserts multiple elements or object members at one path. Alias: {@code "~"}. */
+    spread,
+    /** Removes from {@code from} and inserts at {@code to} (or {@code path}). */
+    move,
+    /** Copies the value at {@code from} to {@code to} (or {@code path}). Alias: {@code ">"}. */
+    copy,
+    /** Exchanges the values at {@code from} and {@code to}. */
+    swap;
 
-    insert, remove, replace, spread, move, copy, swap;
-
+    /**
+     * @return true when this op type accepts the optional {@code test} field for
+     *     CAS-style conditional execution. {@code test} itself and ops that do not
+     *     write a single identifiable value ({@code spread}, {@code swap}) are
+     *     excluded.
+     */
     public boolean allowsTest() {
       return this != test && this != spread && this != swap;
     }
 
+    /**
+     * @return true when this op uses the {@code to} field for its destination
+     *     (with {@code path} as fallback for RFC 6902 compatibility).
+     */
     public boolean allowsTo() {
       return this == move || this == copy || this == swap;
     }

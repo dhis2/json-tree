@@ -8,11 +8,48 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * A path addressing a location in a JSON document, expressed as an ordered
- * list of segments.
+ * An <b>unresolved</b> path expression. Resolution against a concrete target
+ * produces zero or more {@link JsonPath}s — the concrete (post-resolution)
+ * form used by {@link JsonNodeOp}s. The distinction matters: {@code JsonPath}
+ * segments are always literal keys or non-negative integer indexes, whereas
+ * {@code JsonPathPattern} segments encode targeting intent that depends on
+ * the target's runtime shape.
  *
- * @author Jan Bernitt
+ * <p>Segments are encoded by type:
+ * <pre>
+ *   "foo"          → KEY            literal object member
+ *   3              → INDEX          array position (resolved against parent)
+ *   -1             → INDEX          negative from-end index
+ *   [[1,3]]        → RANGE          inclusive [from, to] array span
+ *   [0, 2, 4]      → ENUMERATION    scattered array positions
+ *   [{"id": "x"}]  → OBJ_CONDITION  first element whose members match
+ *   ["=", 3]       → ARR_CONDITION  first element equal to given value
+ *   [true], ["a"]  → ARR_CONDITION  shorthand for ["=", true] / ["=", "a"]
+ * </pre>
+ *
+ * <p>RANGE and ENUMERATION are <b>tail-only</b> — they must be the last segment
+ * because they resolve to multiple paths. Conditions may appear anywhere along
+ * the path; each resolves to a single index before the next segment is
+ * evaluated.
+ *
+ * <p>Resolution rules:
+ * <ul>
+ *   <li>Indexes are resolved against the parent array's size; underflow (a
+ *       negative index that resolves below 0) throws.</li>
+ *   <li>Ranges clamp positive overflow but reject underflow; inverted ranges
+ *       throw.</li>
+ *   <li>Conditions match the first element satisfying the predicate; no match
+ *       yields no path (a no-op for the operation).</li>
+ * </ul>
+ *
+ * <p>Segments can also be addressed by JSON Pointer strings when the pattern is
+ * provided via {@link JsonPatch}'s string form; in that case the string is
+ * decoded via {@link JsonPointer} first and then reinterpreted here.
+ *
+ * @see JsonPath  the resolved form
+ * @see JsonPointer  the RFC 6901 string form
  * @since 1.10
+ * @author Jan Bernitt
  */
 public record JsonPathPattern(@NotNull JsonPathPatternType type, @CheckNull JsonPathPattern parent, @CheckNull JsonMixed segment) {
 
