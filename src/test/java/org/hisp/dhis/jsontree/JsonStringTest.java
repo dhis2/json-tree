@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 
 import org.junit.jupiter.api.Test;
 
@@ -55,5 +56,18 @@ class JsonStringTest {
   @Test
   void testParsed_NonEmpty() {
     assertEquals(5, JsonMixed.of("\"world\"").parsed(String::length));
+  }
+
+  @Test
+  void testString_Undefined() {
+    JsonString s = JsonMixed.of( "{}" ).getString( "x" );
+    assertNull(s.string());
+    assertNull(s.text());
+  }
+
+  @Test
+  void testString_Null() {
+    JsonString s = JsonMixed.of( "null" );
+    assertThrowsExactly(JsonTreeException.class, s::string);
   }
 }
