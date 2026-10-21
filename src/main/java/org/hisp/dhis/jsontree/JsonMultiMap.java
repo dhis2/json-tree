@@ -115,6 +115,11 @@ public interface JsonMultiMap<E extends JsonValue> extends JsonAbstractObject<Js
       }
 
       @Override
+      public Streamable.Sized<JsonList<V>> entries(JsonNode.Index index) {
+        return viewed.entries(index).map(e -> e.project(projection));
+      }
+
+      @Override
       public Class<? extends JsonValue> asType() {
         return JsonMultiMap.class;
       }

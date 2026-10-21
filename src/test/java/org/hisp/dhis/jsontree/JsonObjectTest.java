@@ -142,7 +142,7 @@ class JsonObjectTest {
         """
             { "a": [1], "b": [2] }""";
     JsonMixed value = JsonMixed.of(json);
-    JsonObject obj = value.project(e -> e.as(JsonArray.class).get(0));
+    JsonObject obj = value.project(e -> e.asArray().get(0));
     assertSame(JsonObject.class, obj.asType());
     assertEquals(List.of("a", "b"), obj.names());
     assertEquals(List.of(1, 2), List.of(obj.get("a").node().intValue(), obj.get("b").node().intValue()));

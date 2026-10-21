@@ -195,15 +195,15 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   default <E extends JsonValue> JsonList<E> getList(int index, Class<E> as) {
-    return JsonAbstractCollection.asList(getArray(index), as);
+    return JsonContainer.asList(getArray(index), as);
   }
 
   default <E extends JsonValue> JsonMap<E> getMap(int index, Class<E> as) {
-    return JsonAbstractCollection.asMap(getObject(index), as);
+    return JsonContainer.asMap(getObject(index), as);
   }
 
   default <E extends JsonValue> JsonMultiMap<E> getMultiMap(int index, Class<E> as) {
-    return JsonAbstractCollection.asMultiMap(getObject(index), as);
+    return JsonContainer.asMultiMap(getObject(index), as);
   }
 
   /**
@@ -226,6 +226,11 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
       @Override
       public V get(int index) {
         return projection.apply(viewed.get(index));
+      }
+
+      @Override
+      public Stream<V> stream() {
+        return viewed.stream().map(projection);
       }
 
       @Override

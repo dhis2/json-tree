@@ -60,7 +60,7 @@ import java.util.stream.Stream;
  * @since 1.10
  * @author Jan Bernitt
  */
-public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
+public interface JsonPatch extends JsonArray {
 
   enum JsonPatchOpType {
     /**
@@ -149,8 +149,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
   static List<JsonNodeOp> patchOps(JsonMixed target, JsonPatch patch) {
     List<JsonNodeOp> ops = new ArrayList<>(patch.size());
     // do all tests first
-    for (JsonMixed x : patch) {
-      JsonPatchOp op = x.as(JsonPatchOp.class);
+    for (JsonPatchOp op : patch.asList(JsonPatchOp.class)) {
       JsonPatchOpType opType = readOp(op);
       if (op.test().exists()) {
         if (!opType.allowsTest())
@@ -165,8 +164,7 @@ public interface JsonPatch extends JsonAbstractArray<JsonMixed> {
       }
     }
     // then move to actual changes
-    for (JsonMixed x : patch) {
-      JsonPatchOp op = x.as(JsonPatchOp.class);
+    for (JsonPatchOp op : patch.asList(JsonPatchOp.class)) {
       JsonPatchOpType opType = readOp(op);
       if (!opType.allowsTo() && op.hasTo())
         throw new JsonPatchDeclarationException(

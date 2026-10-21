@@ -21,7 +21,7 @@ import org.hisp.dhis.jsontree.validation.JsonValidator;
 @Validation.Ignore
 @Validation(type = ARRAY)
 public interface JsonAbstractArray<E extends JsonValue>
-    extends JsonAbstractCollection, Iterable<E> {
+    extends JsonContainer, Iterable<E> {
 
   /**
    * A typed variant of {@link JsonArray#get(int)}, equivalent to {@link JsonArray#get(int, Class)}
@@ -29,6 +29,10 @@ public interface JsonAbstractArray<E extends JsonValue>
    *
    * @param index index to access
    * @return element at the provided index
+   * @implSpec All exposed subtypes must implement this method (interfaces use a {@code default}
+   *     method)
+   * @throws UnsupportedOperationException in case an interface subtype does not implement this
+   *     method as {@code default} method
    */
   E get(int index);
 
@@ -53,11 +57,13 @@ public interface JsonAbstractArray<E extends JsonValue>
   /**
    * @return this list as a {@link Stream}, if this node does not exist or is JSON {@code null} the
    *     stream is empty
+   * @implSpec All exposed subtypes must implement this method (interfaces use a {@code default}
+   *     method)
+   * @throws UnsupportedOperationException in case an interface subtype does not implement this
+   *     method as {@code default} method
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Stream<E> stream() {
-    return isUndefined() || isEmpty() ? Stream.empty() : indexes().mapToObj(this::get);
-  }
+  Stream<E> stream();
 
   /**
    * @param test to perform
