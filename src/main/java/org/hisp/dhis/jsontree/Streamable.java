@@ -24,7 +24,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * {@link Stream}ing all without this ending up creating adapters upon adapters internally.
  *
  * @author Jan Bernitt
- * @since 1.9
+ * @since 1.9 (revised in 1.10)
  * @param <T> type of elements
  */
 @FunctionalInterface
@@ -36,27 +36,45 @@ public interface Streamable<T> extends Iterable<T> {
   }
 
   /**
+   * In contrast to the {@link Iterable#iterator()} the {@link Sized}-variant is also a {@link
+   * Spliterator} which can directly be used to lift the implementation to a {@link Stream} avoiding
+   * unnecessary wrapper layer that crucially would also drop the nature of the source being able to
+   * provide the exact size and other {@link Spliterator#characteristics()} that are pre-conditions
+   * for {@link Sized} to be a proper fit for the use case.
+   *
    * @return a {@link Sized} iterator
    */
   @NotNull
   @Override
   Sized<T> iterator();
 
+  /**
+   * @return a non-parallel {@link Stream} for {@link #iterator()} as a utility function
+   */
   @NotNull
   default Stream<T> stream() {
-    return StreamSupport.stream(iterator(), false);
+    return this == EMPTY ? Stream.empty() : StreamSupport.stream(iterator(), false);
   }
 
+  /**
+   * @see Sized#map(Function)
+   */
   default <E> Streamable<E> map(Function<T, E> f) {
     return () -> iterator().map(f);
   }
 
+  /**
+   * Equivalent to {@link Stream#toList()}
+   */
   default List<T> toList() {
-    return iterator().toList();
+    return this == EMPTY ? List.of() : iterator().toList();
   }
 
+  /**
+   * Equivalent to {@link Stream#count()}
+   */
   default long count() {
-    return iterator().count();
+    return this == EMPTY ? 0L : iterator().count();
   }
 
   /**
