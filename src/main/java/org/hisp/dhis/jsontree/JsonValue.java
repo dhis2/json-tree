@@ -56,7 +56,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  *   <li>{@link JsonBoolean}
  * </ul>
  *
- * In addition, there is {@link JsonAbstractCollection} as a common base type of {@link JsonObject}
+ * In addition, there is {@link JsonContainer} as a common base type of {@link JsonObject}
  * and {@link JsonArray}, as well as {@link JsonPrimitive} as common base type of {@link
  * JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
  *
@@ -296,7 +296,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @return list view of this value (assumes array)
    */
   default <E extends JsonValue> JsonList<E> asList(Class<E> elementType) {
-    return JsonAbstractCollection.asList(as(JsonArray.class), elementType);
+    return JsonContainer.asList(as(JsonArray.class), elementType);
   }
 
   /**
@@ -307,7 +307,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @return map view of this value (assumes object)
    */
   default <V extends JsonValue> JsonMap<V> asMap(Class<V> valueType) {
-    return JsonAbstractCollection.asMap(as(JsonObject.class), valueType);
+    return JsonContainer.asMap(as(JsonObject.class), valueType);
   }
 
   /**
@@ -318,7 +318,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @return map view of this value (assumes object)
    */
   default <V extends JsonValue> JsonMultiMap<V> asMultiMap(Class<V> valueType) {
-    return JsonAbstractCollection.asMultiMap(as(JsonObject.class), valueType);
+    return JsonContainer.asMultiMap(as(JsonObject.class), valueType);
   }
 
   /**

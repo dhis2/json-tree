@@ -27,11 +27,14 @@
  */
 package org.hisp.dhis.jsontree;
 
+import org.hisp.dhis.jsontree.internal.TerminalOp;
+
 import static java.util.function.Predicate.not;
 import static org.hisp.dhis.jsontree.Validation.NodeType.ARRAY;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * A {@link JsonList} is nothing else then a {@link JsonArray} with "typed" uniform elements.
@@ -83,7 +86,7 @@ public interface JsonList<E extends JsonValue> extends JsonAbstractArray<E> {
    */
   default <T> List<T> toListOfNonNullElements(Function<E, T> toValue) {
     if (isUndefined()) return List.of();
-    return indexes().mapToObj(this::get).filter(not(JsonValue::isUndefined)).map(toValue).toList();
+    return stream().filter(not(JsonValue::isUndefined)).map(toValue).toList();
   }
 
   /**
@@ -106,6 +109,11 @@ public interface JsonList<E extends JsonValue> extends JsonAbstractArray<E> {
       @Override
       public V get(int index) {
         return projection.apply(viewed.get(index));
+      }
+
+      @Override
+      public Stream<V> stream() {
+        return viewed.stream().map(projection);
       }
 
       @Override

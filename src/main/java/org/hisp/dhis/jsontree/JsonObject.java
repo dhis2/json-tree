@@ -149,15 +149,15 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
   }
 
   default <E extends JsonValue> JsonList<E> getList(CharSequence name, Class<E> as) {
-    return JsonAbstractCollection.asList(getArray(name), as);
+    return JsonContainer.asList(getArray(name), as);
   }
 
   default <E extends JsonValue> JsonMap<E> getMap(CharSequence name, Class<E> as) {
-    return JsonAbstractCollection.asMap(getObject(name), as);
+    return JsonContainer.asMap(getObject(name), as);
   }
 
   default <E extends JsonValue> JsonMultiMap<E> getMultiMap(CharSequence name, Class<E> as) {
-    return JsonAbstractCollection.asMultiMap(getObject(name), as);
+    return JsonContainer.asMultiMap(getObject(name), as);
   }
 
   /**
@@ -180,8 +180,10 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    *     On {@link JsonAbstractArray} level this cannot be done as the node cannot be {@link
    *     JsonNode#lift(JsonAccessors)} ed to the unknown generic target type.
    * @param index the strategy to apply when it comes to node lookup and indexing
+   * @return this objects members in order of declaration
    * @since 1.9
    */
+  @Override
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default Streamable.Sized<JsonMixed> entries(JsonNode.Index index) {
     if (isUndefined() || isEmpty()) return Streamable.empty();

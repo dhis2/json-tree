@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests the {@link JsonAbstractCollection} specific API methods.
+ * Tests the {@link JsonContainer} specific API methods.
  *
  * @author Jan Bernitt
  */

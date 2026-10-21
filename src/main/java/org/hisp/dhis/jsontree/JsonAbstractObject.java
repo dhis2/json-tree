@@ -18,12 +18,17 @@ import org.hisp.dhis.jsontree.validation.JsonValidator;
  */
 @Validation.Ignore
 @Validation(type = OBJECT)
-public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCollection {
+public interface JsonAbstractObject<E extends JsonValue> extends JsonContainer {
 
   /**
    * @param key property to access
    * @return value at the provided property
    * @since 1.9
+   *
+   * @implSpec All exposed subtypes must implement this method (interfaces use a {@code default}
+   *     method)
+   * @throws UnsupportedOperationException in case an interface subtype does not implement this
+   *     method as {@code default} method
    */
   E get(Text key);
 
@@ -131,15 +136,25 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
   }
 
   /**
-   * @return a stream of map/object entries in order of their declaration.
-   * @throws JsonTreeException in case this node does exist but is not an object node
+   * @see #entries(JsonNode.Index)
    * @since 0.11
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default Streamable.Sized<E> entries() {
-    if (isUndefined() || isEmpty()) return Streamable.empty();
-    return node().keys().map(this::get);
+    return entries(JsonNode.Index.AUTO);
   }
+
+  /**
+   * @param index the strategy to apply when it comes to node lookup and indexing
+   * @return this objects members in order of declaration
+   * @throws JsonTreeException in case this node does exist but is not an object node
+   * @since 1.10
+   * @implSpec All exposed subtypes must implement this method (interfaces use a {@code default}
+   *     method)
+   * @throws UnsupportedOperationException in case an interface subtype does not implement this
+   *     method as {@code default} method
+   */
+  Streamable.Sized<E> entries(JsonNode.Index index);
 
   /**
    * Lists raw JSON object member names in order of declaration.
@@ -171,9 +186,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default void forEach(BiConsumer<Text, ? super E> action) {
-    // need to use keys() + get(key) because of wrapper type E is not accessible otherwise
-    // and to preserve the path of the values
-    keys().forEach(key -> action.accept(key, get(key)));
+    entries().forEach(e -> action.accept(e.getKey(), e));
   }
 
   /**
@@ -183,7 +196,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonAbstractCol
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
   default void forEachValue(Consumer<E> action) {
-    keys().forEach(name -> action.accept(get(name)));
+    entries().forEach(action);
   }
 
   /**

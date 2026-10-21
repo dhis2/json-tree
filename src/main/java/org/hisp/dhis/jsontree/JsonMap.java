@@ -77,6 +77,11 @@ public interface JsonMap<E extends JsonValue> extends JsonAbstractObject<E> {
       }
 
       @Override
+      public Streamable.Sized<V> entries(JsonNode.Index index) {
+        return viewed.entries(index).map(projection);
+      }
+
+      @Override
       public Class<? extends JsonValue> asType() {
         return JsonMap.class;
       }

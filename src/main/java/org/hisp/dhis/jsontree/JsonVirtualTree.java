@@ -233,7 +233,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
 
   @SuppressWarnings("unchecked")
   private <T extends JsonValue> T asType(Class<T> as, JsonVirtualTree target) {
-    return isJsonMixedSubType(as) ? createProxy(as, target) : (T) target;
+    return isExtensionInterface(as) ? createProxy(as, target) : (T) target;
   }
 
   @Override
@@ -315,13 +315,18 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
       throws Throwable {
     // are we dealing with a default method in the extending class?
     Class<?> declaringClass = method.getDeclaringClass();
-    if (declaringClass == JsonValue.class
-        && "asType".equals(method.getName())
-        && method.getParameterCount() == 0) {
-      return as;
-    }
+    if (isAsTypeCall(method, declaringClass)) return as;
     boolean isDefault = method.isDefault();
-    if (isJsonMixedSubType(declaringClass) || isDefault && alwaysCallDefault) {
+    if (declaringClass == JsonAbstractArray.class || declaringClass == JsonAbstractObject.class) {
+      // these are special because they likely use get(int) or stream() or get(Text)
+      // which must be called on the proxy to reach the right method
+      if (isDefault)
+        return callDefaultMethod(proxy, method, args);
+      // is it an unimplemented abstract core method?
+      if (Modifier.isAbstract(method.getModifiers()))
+        throw new UnsupportedOperationException("%s sub-types must implement %s".formatted(declaringClass.getSimpleName(), method.toGenericString()));
+    }
+    if (isExtensionInterface(declaringClass) || isDefault && alwaysCallDefault) {
       if (isDefault) {
         // call the default method of the proxied type itself
         return callDefaultMethod(proxy, method, args);
@@ -331,6 +336,12 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
     }
     // call the same method on the wrapped object (assuming it has it)
     return callCoreApiMethod(target, method, args);
+  }
+
+  private static boolean isAsTypeCall(Method method, Class<?> declaringClass) {
+    return declaringClass == JsonValue.class
+        && "asType".equals(method.getName())
+        && method.getParameterCount() == 0;
   }
 
   /**
@@ -431,7 +442,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
    * Logically we check for JsonMixed but to be safe any method implemented by {@linkplain
    * JsonVirtualTree} should be considered as "core" and be handled directly
    */
-  private static boolean isJsonMixedSubType(Class<?> declaringClass) {
+  private static boolean isExtensionInterface(Class<?> declaringClass) {
     return !declaringClass.isAssignableFrom(JsonVirtualTree.class);
   }
 
@@ -574,7 +585,7 @@ final class JsonVirtualTree implements JsonMixed, Serializable {
   private static boolean isJsonObjectSubTypeProperty(Method m) {
     return (m.isDefault() || Modifier.isAbstract(m.getModifiers()))
         && m.getParameterCount() == 0
-        && isJsonMixedSubType(m.getDeclaringClass())
+        && isExtensionInterface(m.getDeclaringClass())
         && m.getReturnType() != void.class;
   }
 

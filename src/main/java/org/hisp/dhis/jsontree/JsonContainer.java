@@ -32,6 +32,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 
 import java.lang.reflect.Method;
 import java.util.function.BiConsumer;
+import java.util.stream.Stream;
+
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
@@ -57,7 +59,7 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
  */
 @Validation(type = {ARRAY, OBJECT})
 @Validation.Ignore
-public interface JsonAbstractCollection extends JsonValue {
+public interface JsonContainer extends JsonValue {
 
   /**
    * @param path in the subtree of this node to select
@@ -118,6 +120,11 @@ public interface JsonAbstractCollection extends JsonValue {
       }
 
       @Override
+      public Stream<E> stream() {
+        return array.stream().map(e -> e.as(as));
+      }
+
+      @Override
       public Class<? extends JsonValue> asType() {
         return JsonList.class;
       }
@@ -135,6 +142,11 @@ public interface JsonAbstractCollection extends JsonValue {
       @Override
       public E get(Text key) {
         return viewed.get(key, as);
+      }
+
+      @Override
+      public Streamable.Sized<E> entries(JsonNode.Index index) {
+        return viewed.entries(index).map(e -> e.as(as));
       }
 
       @Override
@@ -158,6 +170,11 @@ public interface JsonAbstractCollection extends JsonValue {
       }
 
       @Override
+      public Streamable.Sized<JsonList<E>> entries(JsonNode.Index index) {
+        return viewed.entries(index).map(e -> e.asList(as));
+      }
+
+      @Override
       public Class<? extends JsonValue> asType() {
         return JsonMultiMap.class;
       }
@@ -165,8 +182,8 @@ public interface JsonAbstractCollection extends JsonValue {
     return new MultiMapView(object);
   }
 
-  abstract class CollectionView<T extends JsonAbstractCollection>
-      implements JsonAbstractCollection {
+  abstract class CollectionView<T extends JsonContainer>
+      implements JsonContainer {
 
     protected final T viewed;
 
