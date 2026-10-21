@@ -67,7 +67,6 @@ class JsonStringTest {
 
   @Test
   void testString_Null() {
-    JsonString s = JsonMixed.of( "null" );
-    assertThrowsExactly(JsonTreeException.class, s::string);
+    assertNull(JsonMixed.of( "null" ).string());
   }
 }

@@ -14,6 +14,7 @@ than a quick start lives here.
 | `user-types.md` | Extending the tree with user `interface`s |
 | `validation.md` | `@Validation` / `@Required` and schema checks |
 | `diff.md` | `JsonDiff` and comparison modes |
+| `json-patch.md` | `JsonPatch` patching JSON via operations |
 | `rfc8259.md` | RFC 8259 behaviour notes |
 | `api-reference.md` | Exhaustive method/type index |
 

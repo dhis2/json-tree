@@ -82,3 +82,4 @@ types.
 
 - [User types as JSON tree](user-types.md)
 - [API reference](api-reference.md)
+- [Input Expressions](input-expressions.md) — a RegEx alternative that is simple, safe and fast
