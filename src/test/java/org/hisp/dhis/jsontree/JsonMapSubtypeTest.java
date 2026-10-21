@@ -129,7 +129,7 @@ class JsonMapSubtypeTest {
     default JsonFoo get(Text k) { return asObject().get(k).as(JsonFoo.class); }
 
     @Override
-    default Streamable.Sized<JsonFoo> entries(JsonNode.Index index) {
+    default Streamable<JsonFoo> entries(JsonNode.Index index) {
       return asObject().entries(index).map(e -> e.as(JsonFoo.class));
     }
   }
@@ -148,7 +148,7 @@ class JsonMapSubtypeTest {
     UnsupportedOperationException ex =
         assertThrows(UnsupportedOperationException.class,
             () -> map.entries().map(JsonFoo::name).toList());
-    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable$Sized<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
+    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
   }
 
   @Test
@@ -158,7 +158,7 @@ class JsonMapSubtypeTest {
     UnsupportedOperationException ex =
         assertThrows(UnsupportedOperationException.class,
             () -> map.forEach((k,v) -> names.add(v.name())));
-    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable$Sized<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
+    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
     assertEquals(0, names.size());
   }
 
@@ -198,7 +198,7 @@ class JsonMapSubtypeTest {
     }
 
     @Override
-    default Streamable.Sized<JsonList<JsonFoo>> entries(JsonNode.Index index) {
+    default Streamable<JsonList<JsonFoo>> entries(JsonNode.Index index) {
       return asObject().entries(index).map(e -> e.asList(JsonFoo.class));
     }
   }
@@ -216,7 +216,7 @@ class JsonMapSubtypeTest {
     FooMultiMap mm = root.get("multimap").as(FooMultiMap.class);
     UnsupportedOperationException ex =
         assertThrows(UnsupportedOperationException.class, () -> mm.entries().toList());
-    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable$Sized<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
+    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
   }
 
   @Test
@@ -225,7 +225,7 @@ class JsonMapSubtypeTest {
     FooMultiMap mm = root.get("multimap").as(FooMultiMap.class);
     UnsupportedOperationException ex =
         assertThrows(UnsupportedOperationException.class, () -> mm.forEach((k,v) -> v.stream().map(JsonFoo::name).forEach(names::add)));
-    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable$Sized<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
+    assertEquals("JsonAbstractObject sub-types must implement public abstract org.hisp.dhis.jsontree.Streamable<E> org.hisp.dhis.jsontree.JsonAbstractObject.entries(org.hisp.dhis.jsontree.JsonNode$Index)", ex.getMessage());
     assertEquals(0, names.size());
   }
 

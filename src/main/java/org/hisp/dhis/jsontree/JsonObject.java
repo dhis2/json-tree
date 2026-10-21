@@ -166,7 +166,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    */
   @Override
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Streamable.Sized<JsonMixed> entries() {
+  default Streamable<JsonMixed> entries() {
     return entries(AUTO);
   }
 
@@ -185,7 +185,7 @@ public interface JsonObject extends JsonAbstractObject<JsonMixed> {
    */
   @Override
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Streamable.Sized<JsonMixed> entries(JsonNode.Index index) {
+  default Streamable<JsonMixed> entries(JsonNode.Index index) {
     if (isUndefined() || isEmpty()) return Streamable.empty();
     JsonAccessors accessors = getAccessors();
     return node().members(index).map(e -> e.lift(accessors));

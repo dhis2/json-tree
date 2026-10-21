@@ -138,7 +138,8 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    *
    * @return The type the current proxy represents. OBS! This is not necessarily the type of the
    *     actual JSON value in the document, just the type it was requested to be programmatically
-   *     (assumed type).
+   *     (assumed type); or in other words the type {@link #as(Class)} was called with to yield this
+   *     instance.
    * @since 0.10
    */
   Class<? extends JsonValue> asType();
@@ -151,16 +152,31 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
   @NotNull
   JsonPath path();
 
+  /**
+   * @apiNote This is inherited from {@link Map.Entry} so that {@link JsonValue}s can be entries at
+   *     the same time
+   * @return the tail segment of this value's {@link #path()} (which for an object parent is the
+   *     property name)
+   */
   @Override
   default Text getKey() {
     return path().segment();
   }
 
+  /**
+   * @apiNote This is inherited from {@link Map.Entry} so that {@link JsonValue}s can be entries at
+   *     the same time
+   * @return this value (self) which is only useful when work with it as an {@link Map.Entry}
+   */
   @Override
   default JsonValue getValue() {
     return this;
   }
 
+  /**
+   * @apiNote extending {@link Map.Entry} forced this method, but we do not want to support modification
+   * @throws UnsupportedOperationException unconditionally
+   */
   @Override
   default JsonValue setValue(JsonValue value) {
     throw new UnsupportedOperationException("A JSON value is an immutable view");
