@@ -156,6 +156,9 @@ public final class JsonAccess implements JsonAccessors {
         .add(LongStream.class, JsonArray::longValues)
         .add(DoubleStream.class, JsonArray::doubleValues)
 
+        // json-tree generic type
+        .add(Streamable.class, JsonAccess::accessAsStreamableSized)
+
         // type-families
         .add(Enum.class, JsonAccess::accessAsEnum)
         .add(Object[].class, JsonAccess::accessAsArray)
@@ -255,20 +258,24 @@ public final class JsonAccess implements JsonAccessors {
   }
 
   public static Iterator<?> accessAsIterator(JsonMixed seq, Type as, JsonAccessors accessors) {
-    return accessAsStream(seq, as, accessors).iterator();
+    return accessAsStreamableSized(seq, as, accessors).iterator();
   }
 
   public static Stream<?> accessAsStream(JsonMixed stream, Type as, JsonAccessors accessors) {
-    if (stream.isUndefined() || stream.isArray() && stream.isEmpty()) return Stream.empty();
+    return accessAsStreamableSized(stream, as, accessors).stream();
+  }
+
+  public static Streamable<?> accessAsStreamableSized(JsonMixed stream, Type as, JsonAccessors accessors) {
+    if (stream.isUndefined() || stream.isArray() && stream.isEmpty()) return Streamable.empty();
     if (stream.isObject())
       throw new JsonAccessException("JSON does not map to Java Stream: " + stream);
     Class<?> seqType = getRawType(as);
     Type elementType = seqType.isArray() ? seqType.getComponentType() : extractTypeParameter(as, 0);
     JsonAccessor<?> elements = accessors.accessor(getRawType(elementType));
     // auto-box simple values in a 1 element sequence
-    if (!stream.isArray()) return Stream.of(elements.access(stream, as, accessors));
+    if (!stream.isArray()) return Streamable.of(elements.access(stream, as, accessors));
     return stream.values(Index.AUTO_SKIP)
-        .map(e -> elements.access(e.as(JsonMixed.class), elementType, accessors)).stream();
+        .map(e -> elements.access(e, elementType, accessors));
   }
 
   @SuppressWarnings({"java:S1168", "java:S1452"})
@@ -288,7 +295,7 @@ public final class JsonAccess implements JsonAccessors {
             e ->
                 res.put(
                     toKey.apply(e.getKey()),
-                    valueAccess.access(e.getValue().as(JsonMixed.class), valueType, accessors)));
+                    valueAccess.access(e.getValue(), valueType, accessors)));
     return res;
   }
 

@@ -589,6 +589,8 @@ class JsonAccessorsTest {
     Stream<List<String>> lists();
 
     Iterator<String> names();
+
+    Streamable<String> sizedNames();
   }
 
   @Test
@@ -621,6 +623,19 @@ class JsonAccessorsTest {
     List<String> actual = new ArrayList<>();
     obj.names().forEachRemaining(actual::add);
     assertEquals(List.of("Tom", "Mary"), actual);
+  }
+
+  @Test
+  void testAccess_StreamableSizedStrings() {
+    StreamBean obj = Json5.of("{'sizedNames': ['Tom', 'Mary']}").as(StreamBean.class);
+    List<String> actual = new ArrayList<>();
+    // forEach
+    obj.sizedNames().forEach(actual::add);
+    assertEquals(List.of("Tom", "Mary"), actual);
+    // direct toList()
+    assertEquals(List.of("Tom", "Mary"), obj.sizedNames().toList());
+    // toList() via stream
+    assertEquals(List.of("Tom", "Mary"), obj.sizedNames().stream().toList());
   }
 
   interface OptionalBean extends JsonValue {

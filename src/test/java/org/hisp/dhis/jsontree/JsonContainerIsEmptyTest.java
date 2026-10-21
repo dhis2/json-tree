@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
  *
  * @author Jan Bernitt
  */
-class JsonCollectionTest {
+class JsonContainerIsEmptyTest {
 
   @Test
   void testIsEmpty_Undefined() {

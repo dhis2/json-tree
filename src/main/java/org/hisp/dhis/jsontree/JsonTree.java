@@ -317,14 +317,14 @@ record JsonTree(
     }
 
     @Override
-    public Streamable.Sized<JsonNode> members() {
+    public Streamable<JsonNode> members() {
       return members(Index.AUTO);
     }
 
     @Override
-    public Streamable.Sized<JsonNode> members(Index op) {
+    public Streamable<JsonNode> members(Index op) {
       if (isEmpty()) return Streamable.empty();
-      return new Streamable.Sized<>() {
+      return () -> new Streamable.Sized<>() {
         private final char[] json = tree.json;
         private final Index index = op.resolve(tree.auto);
 
@@ -381,18 +381,18 @@ record JsonTree(
     }
 
     @Override
-    public Streamable.Sized<JsonPath> paths() {
+    public Streamable<JsonPath> paths() {
       return keysSized(path::chain);
     }
 
     @Override
-    public Streamable.Sized<Text> keys() {
+    public Streamable<Text> keys() {
       return keysSized(name -> name);
     }
 
-    private <E> Streamable.Sized<E> keysSized(Function<Text, E> toKey) {
+    private <E> Streamable<E> keysSized(Function<Text, E> toKey) {
       if (isEmpty()) return Streamable.empty();
-      return new Streamable.Sized<>() {
+      return () -> new Streamable.Sized<>() {
         private final char[] json = tree.json;
         private JsonPath predecessor;
         private int offset = skipWhitespace(json, expectChar(json, start, '{'));
@@ -564,14 +564,14 @@ record JsonTree(
     }
 
     @Override
-    public Streamable.Sized<JsonNode> elements() {
+    public Streamable<JsonNode> elements() {
       return elements(Index.AUTO);
     }
 
     @Override
-    public Streamable.Sized<JsonNode> elements(Index op) {
+    public Streamable<JsonNode> elements(Index op) {
       if (isEmpty()) return Streamable.empty();
-      return new Streamable.Sized<>() {
+      return () -> new Streamable.Sized<>() {
         private final char[] json = tree.json;
         private final Index index = op.resolve(tree.auto);
 
@@ -605,9 +605,9 @@ record JsonTree(
     }
 
     @Override
-    public Streamable.Sized<Text> values() {
+    public Streamable<Text> values() {
       if (isEmpty()) return Streamable.empty();
-      return new Streamable.Sized<>() {
+      return () -> new Streamable.Sized<>() {
         private final char[] json = tree.json;
 
         private int offset = skipWhitespace(json, expectChar(json, start, '['));

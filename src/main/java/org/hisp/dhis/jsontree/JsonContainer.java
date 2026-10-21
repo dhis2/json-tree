@@ -145,7 +145,7 @@ public interface JsonContainer extends JsonValue {
       }
 
       @Override
-      public Streamable.Sized<E> entries(JsonNode.Index index) {
+      public Streamable<E> entries(JsonNode.Index index) {
         return viewed.entries(index).map(e -> e.as(as));
       }
 
@@ -170,7 +170,7 @@ public interface JsonContainer extends JsonValue {
       }
 
       @Override
-      public Streamable.Sized<JsonList<E>> entries(JsonNode.Index index) {
+      public Streamable<JsonList<E>> entries(JsonNode.Index index) {
         return viewed.entries(index).map(e -> e.asList(as));
       }
 

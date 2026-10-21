@@ -1,7 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import static java.util.Collections.emptyIterator;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -26,18 +24,58 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * {@link Stream}ing all without this ending up creating adapters upon adapters internally.
  *
  * @author Jan Bernitt
- * @since 1.9
+ * @since 1.9 (revised in 1.10)
  * @param <T> type of elements
  */
+@FunctionalInterface
 public interface Streamable<T> extends Iterable<T> {
 
   @SuppressWarnings("unchecked")
-  static <T> Sized<T> empty() {
-    return (Sized<T>) EMPTY;
+  static <T> Streamable<T> empty() {
+    return (Streamable<T>) EMPTY;
   }
 
+  /**
+   * In contrast to the {@link Iterable#iterator()} the {@link Sized}-variant is also a {@link
+   * Spliterator} which can directly be used to lift the implementation to a {@link Stream} avoiding
+   * unnecessary wrapper layer that crucially would also drop the nature of the source being able to
+   * provide the exact size and other {@link Spliterator#characteristics()} that are pre-conditions
+   * for {@link Sized} to be a proper fit for the use case.
+   *
+   * @return a {@link Sized} iterator
+   */
   @NotNull
-  Stream<T> stream();
+  @Override
+  Sized<T> iterator();
+
+  /**
+   * @return a non-parallel {@link Stream} for {@link #iterator()} as a utility function
+   */
+  @NotNull
+  default Stream<T> stream() {
+    return this == EMPTY ? Stream.empty() : StreamSupport.stream(iterator(), false);
+  }
+
+  /**
+   * @see Sized#map(Function)
+   */
+  default <E> Streamable<E> map(Function<T, E> f) {
+    return () -> iterator().map(f);
+  }
+
+  /**
+   * Equivalent to {@link Stream#toList()}
+   */
+  default List<T> toList() {
+    return this == EMPTY ? List.of() : iterator().toList();
+  }
+
+  /**
+   * Equivalent to {@link Stream#count()}
+   */
+  default long count() {
+    return this == EMPTY ? 0L : iterator().count();
+  }
 
   /**
    * The adapter API for sized immutable sources.
@@ -50,21 +88,11 @@ public interface Streamable<T> extends Iterable<T> {
    *
    * @author Jan Bernitt
    */
-  interface Sized<T> extends Iterator<T>, Spliterator<T>, Streamable<T> {
+  interface Sized<T> extends Iterator<T>, Spliterator<T> {
 
     // override to make it abstract again
     @Override
     long getExactSizeIfKnown();
-
-    @Override
-    default @NotNull Stream<T> stream() {
-      return StreamSupport.stream(this, false);
-    }
-
-    @Override
-    default @NotNull Iterator<T> iterator() {
-      return this;
-    }
 
     @Override
     default void forEachRemaining(Consumer<? super T> action) {
@@ -134,7 +162,36 @@ public interface Streamable<T> extends Iterable<T> {
     }
   }
 
-  Sized<?> EMPTY = new Sized<>() {
+  static <T> Streamable<T> of(T e) {
+    final class Sized1 implements Sized<T> {
+      final T e;
+      boolean hasNext = true;
+
+      Sized1(T e) {
+        this.e = e;
+      }
+
+      @Override
+      public long getExactSizeIfKnown() {
+        return 1;
+      }
+
+      @Override
+      public boolean hasNext() {
+        return hasNext;
+      }
+
+      @Override
+      public T next() {
+        if (!hasNext) throw new NoSuchElementException("There is no next() element");
+        hasNext = false;
+        return e;
+      }
+    }
+    return () -> new Sized1(e);
+  }
+
+  Streamable<?> EMPTY = () -> new Sized<>() {
     @Override
     public boolean hasNext() {
       return false;
@@ -143,16 +200,6 @@ public interface Streamable<T> extends Iterable<T> {
     @Override
     public Object next() {
       throw new NoSuchElementException("Empty does not have a next() element");
-    }
-
-    @Override
-    public @NotNull Stream<Object> stream() {
-      return Stream.empty();
-    }
-
-    @Override
-    public @NotNull Iterator<Object> iterator() {
-      return emptyIterator();
     }
 
     @Override

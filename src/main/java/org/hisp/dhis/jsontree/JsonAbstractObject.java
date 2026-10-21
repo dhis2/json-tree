@@ -130,7 +130,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonContainer {
    * @since 0.11 (as Stream)
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Streamable.Sized<Text> keys() {
+  default Streamable<Text> keys() {
     if (isUndefined() || isEmpty()) return Streamable.empty();
     return node().keys();
   }
@@ -140,7 +140,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonContainer {
    * @since 0.11
    */
   @TerminalOp(canBeUndefined = true, mustBeObject = true)
-  default Streamable.Sized<E> entries() {
+  default Streamable<E> entries() {
     return entries(JsonNode.Index.AUTO);
   }
 
@@ -154,7 +154,7 @@ public interface JsonAbstractObject<E extends JsonValue> extends JsonContainer {
    * @throws UnsupportedOperationException in case an interface subtype does not implement this
    *     method as {@code default} method
    */
-  Streamable.Sized<E> entries(JsonNode.Index index);
+  Streamable<E> entries(JsonNode.Index index);
 
   /**
    * Lists raw JSON object member names in order of declaration.

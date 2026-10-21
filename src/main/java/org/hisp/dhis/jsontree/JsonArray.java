@@ -87,7 +87,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Streamable.Sized<JsonMixed> values() {
+  default Streamable<JsonMixed> values() {
     return values(SKIP);
   }
 
@@ -95,17 +95,17 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    * @see #values()
    * @since 1.9
    */
-  default <T> Streamable.Sized<T> values(Class<T> to) {
+  default <T> Streamable<T> values(Class<T> to) {
     return values().map(e -> e.to(to));
   }
 
   /**
-   * @return this arrays values as {@link org.hisp.dhis.jsontree.Streamable.Sized}
+   * @return this arrays values as {@link org.hisp.dhis.jsontree.Streamable}
    * @throws JsonTreeException if this node exist but is not an array or null node
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Streamable.Sized<JsonMixed> values(JsonNode.Index index) {
+  default Streamable<JsonMixed> values(JsonNode.Index index) {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return Streamable.empty();
     JsonAccessors accessors = getAccessors();

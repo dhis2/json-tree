@@ -4,6 +4,11 @@ import org.hisp.dhis.jsontree.internal.TerminalOp;
 
 /**
  * A JSON unit that can be tested for fundamental properties.
+ * <p>
+ * It is the common API of {@link JsonValue} and {@link JsonNode}.
+ *
+ * @see JsonValue
+ * @see JsonNode
  *
  * @author Jan Bernitt
  * @since 1.9
