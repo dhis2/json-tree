@@ -180,7 +180,7 @@ public record JsonDiff(JsonValue expected, JsonValue actual, List<Difference> di
     switch (e.type()) {
       case BOOLEAN, STRING, NULL -> diffValue(e, a, add);
       case NUMBER -> diffNumber(e.as(JsonNumber.class), a.as(JsonNumber.class), mode, add);
-      case ARRAY -> diffArray(e.as(JsonArray.class), a.as(JsonArray.class), mode, add, p);
+      case ARRAY -> diffArray(e.asArray(), a.asArray(), mode, add, p);
       case OBJECT -> diffObject(e.asObject(), a.asObject(), mode, add, p);
     }
   }

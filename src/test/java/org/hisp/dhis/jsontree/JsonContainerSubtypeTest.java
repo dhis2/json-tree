@@ -125,11 +125,11 @@ class JsonContainerSubtypeTest {
     @Test
     void extensionList_with_typed_get_is_supported() {
       interface TypedFooList extends JsonList<JsonFoo> {
-        @Override default JsonFoo get(int i) { return as(JsonArray.class).get(i, JsonFoo.class); }
+        @Override default JsonFoo get(int i) { return asArray().get(i, JsonFoo.class); }
 
         @Override
         default Stream<JsonFoo> stream() {
-          return as(JsonArray.class).stream().map(e -> e.as(JsonFoo.class));
+          return asArray().stream().map(e -> e.as(JsonFoo.class));
         }
       }
       TypedFooList list = root().items().as(TypedFooList.class);

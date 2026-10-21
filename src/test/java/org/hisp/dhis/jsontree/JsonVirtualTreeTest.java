@@ -271,7 +271,7 @@ class JsonVirtualTreeTest {
   void testListContainsAll() {
     JsonList<JsonString> list =
         Json5.of("[{'a':'x'}, {'a':'y'}]")
-            .as(JsonArray.class)
+            .asArray()
             .projectAsList(e -> e.asObject().getString("a"));
     assertTrue(list.containsAll(JsonString::string, Set.of("y", "x")));
   }
@@ -280,7 +280,7 @@ class JsonVirtualTreeTest {
   void testListContains() {
     JsonList<JsonString> list =
         Json5.of("[{'a':'x'}, {'a':'y'}]")
-            .as(JsonArray.class)
+            .asArray()
             .projectAsList(e -> e.asObject().getString("a"));
     assertTrue(list.contains(JsonString::string, "y"::equals));
     assertFalse(list.contains(JsonString::string, "z"::equals));
@@ -290,7 +290,7 @@ class JsonVirtualTreeTest {
   void testListContainsUnique() {
     JsonList<JsonString> list =
         Json5.of("[{'a':'x'}, {'a':'y'}, {'a':'y'}]")
-            .as(JsonArray.class)
+            .asArray()
             .projectAsList(e -> e.asObject().getString("a"));
     assertTrue(list.containsUnique(JsonString::string, "x"::equals));
     assertFalse(list.containsUnique(JsonString::string, "y"::equals));

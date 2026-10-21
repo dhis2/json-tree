@@ -63,7 +63,7 @@ class JsonValueTest {
   void testAsType() {
     JsonValue value = JsonMixed.of("\"http://example.com\"");
     assertSame(JsonMixed.class, value.asType());
-    assertSame(JsonMixed.class, value.as(JsonArray.class).asType());
+    assertSame(JsonMixed.class, value.asArray().asType());
     assertSame(JsonURL.class, value.as(JsonURL.class).asType());
     assertSame(JsonMixed.class, value.as(JsonURL.class).as(JsonValue.class).asType());
   }
