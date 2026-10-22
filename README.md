@@ -57,7 +57,7 @@ Coordinates:
 <dependency>
     <groupId>org.hisp.dhis</groupId>
     <artifactId>json-tree</artifactId>
-    <version>1.9.5</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
