@@ -29,3 +29,7 @@ Start here.
 - [JURL reference](jurl-reference) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
 - [Input Expressions](input-expressions-reference) — a RegEx alternative that is simple, safe and fast
 - [JSON5* notation](json5-star-reference.md) — the JSON5 variant accepted by the parser.
+
+## Maintainers
+
+- [Release Process](release.md) — how a release is made
