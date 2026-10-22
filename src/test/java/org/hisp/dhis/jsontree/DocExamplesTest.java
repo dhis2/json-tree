@@ -4,6 +4,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -498,5 +501,57 @@ class DocExamplesTest {
     void refValidation_customArrayType() {
         assertTrue( JsonMixed.of( "{\"values\": [1, 2, 3]}" ).isA( RefUserWithIntList.class ) );
         assertFalse( JsonMixed.of( "{\"values\": [1, \"two\"]}" ).isA( RefUserWithIntList.class ) );
+    }
+
+    interface DocMembership extends JsonObject {
+        String getGroup();
+        LocalDate getJoinDate();
+    }
+
+    interface DocAccount extends JsonObject {
+        boolean isEnabled();
+        String getUsername();
+        List<DocMembership> memberships();
+    }
+
+    @Test
+    void userTypes_abstractProperties() {
+        JsonObject obj = JsonMixed.of( """
+            {
+                "enabled": true,
+                "username": "TomTraubert",
+                "memberships": [
+                    { "group": "BigTimers", "joinDate": "1973-02-05" }
+                ]
+            }""" );
+
+        DocAccount account = obj.as( DocAccount.class );
+        assertTrue( account.isEnabled() );
+        assertEquals( "TomTraubert", account.getUsername() );
+        assertEquals( 1, account.memberships().size() );
+        assertEquals( "BigTimers", account.memberships().get( 0 ).getGroup() );
+        assertEquals( LocalDate.of( 1973, 2, 5 ),
+            account.memberships().get( 0 ).getJoinDate() );
+    }
+
+    @Test
+    void userTypes_javaTimeAccessors() {
+        interface WithDates extends JsonObject {
+            LocalDate date();
+            LocalDateTime dateTime();
+            LocalTime time();
+        }
+
+        JsonObject obj = JsonMixed.of( """
+            {
+                "date":     "1973-02-05",
+                "dateTime": "1973-02-05T13:45:00",
+                "time":     "13:45:00"
+            }""" );
+
+        WithDates d = obj.as( WithDates.class );
+        assertEquals( LocalDate.of( 1973, 2, 5 ), d.date() );
+        assertEquals( LocalDateTime.of( 1973, 2, 5, 13, 45 ), d.dateTime() );
+        assertEquals( LocalTime.of( 13, 45 ), d.time() );
     }
 }
