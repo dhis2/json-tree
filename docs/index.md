@@ -11,7 +11,7 @@ Start here.
 
 - [Java API](java-api.md) — build a tree from Java types.
 - [JSON API](json-api.md) — build a tree from a JSON document.
-- [JSON5 API](json5-star.md) — build a tree from JSON5 document.
+- [JSON5 API](json5-star-reference) — build a tree from JSON5 document.
 - [Null, undefined and existence](null-and-undefined.md) — the three-state model.
 - [User types as JSON tree](user-types.md) — extend the tree with `interface`s.
 - [Navigating the tree](tree-navigation.md) — paths as a uniform way to drill down.
@@ -26,5 +26,5 @@ Start here.
 - [API reference](api-reference.md) — every type and method.
 - [Validation reference](validation-reference.md) — every validation attribute
     and its semantics.
-- [JURL reference](jurl-spec.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
-- [Input Expressions](input-expressions.md) — a RegEx alternative that is simple, safe and fast
+- [JURL reference](jurl-reference) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
+- [Input Expressions](input-expressions-reference) — a RegEx alternative that is simple, safe and fast

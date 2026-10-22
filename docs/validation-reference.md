@@ -24,7 +24,7 @@ Validations include:
 | (any)    | `dependentRequired` | `dependentRequired()`              | annotated property must be present (conditionally); conditions are modelled using named groups and roles in the group (details below)     |
 | `STRING` | `minLength`         | `minLength()`                      | annotated text property must have a minimum length; implicitly makes it required unless `required` explicitly states `NO`                 |
 | `STRING` | `maxLength`         | `maxLength()`                      | annotated text property must not be longer than the maximum length (inclusive)                                                            |
-| `STRING` | `pattern`           | `pattern()`                        | annotated text property must match the given [`InputExpression`](input-expressions.md) pattern                                            |
+| `STRING` | `pattern`           | `pattern()`                        | annotated text property must match the given [`InputExpression`](input-expressions-reference) pattern                                            |
 | `NUMBER` | `minimum`           | `minimum()`                        | annotated number property must be larger than or equal to the minimum value                                                               |
 | `NUMBER` | `maximum`           | `maximum()`                        | annotated number property must be less than or equal to the maximum value                                                                 |
 | `NUMBER` | `exclusiveMinimum`  | `exclusiveMinimum()`               | annotated number property must be larger than the minimum value                                                                           |
