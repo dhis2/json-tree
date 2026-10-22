@@ -35,11 +35,11 @@ class TextualNumberTest {
     for (String n : zeros.split("\\s+")) assertDoubleEquals(n);
   }
 
-  @DisplayName("[+/-]#+")
   @Test
   void testParseDouble_RandomIntegers() {
+    StringBuilder num = new StringBuilder(32);
     for (int k = 0; k < NUM_RANDOM_TESTS; k++) {
-      StringBuilder num = new StringBuilder();
+      num.setLength(0);
       appendInteger(num);
 
       String number = num.toString();
@@ -53,22 +53,22 @@ class TextualNumberTest {
     }
   }
 
-  @DisplayName("[+/-]#*.#+")
   @Test
   void testParseDouble_RandomDecimals() {
+    StringBuilder num = new StringBuilder(32);
     for (int k = 0; k < NUM_RANDOM_TESTS; k++) {
-      StringBuilder num = new StringBuilder();
+      num.setLength(0);
       appendDecimal(num);
 
       assertDoubleEquals(num.toString());
     }
   }
 
-  @DisplayName("#*.#e[+/-]#+")
   @Test
   void testParseDouble_RandomScientific() {
+    StringBuilder num = new StringBuilder(32);
     for (int k = 0; k < NUM_RANDOM_TESTS; k++) {
-      StringBuilder num = new StringBuilder();
+      num.setLength(0);
       appendScientific(num);
 
       assertDoubleEquals(num.toString());
@@ -277,21 +277,37 @@ class TextualNumberTest {
   }
 
   private static void assertDoubleEquals(String number) {
-    assertDoubleEqualsNoWS(number);
-    assertDoubleEqualsNoWS(number + " ");
-    assertDoubleEqualsNoWS(" " + number);
-    assertDoubleEqualsNoWS(" " + number + " ");
+    char[] raw = number.toCharArray();
+    double expected = Double.parseDouble(number);   // once, not 4×
+
+    // of() has no bounds API — equivalent to the old `number.trim()` call, once.
+    try {
+      Number n = TextualNumber.of(raw);
+      assertEquals(expected, n.doubleValue(),
+          "Failed TextualNumber.of().doubleValue() for: " + number);
+    } catch (NumberFormatException ex) {
+      fail("Number valid for Double.parseDouble was rejected: "
+          + number.replace(' ', '_'), ex);
+    }
+
+    // parseDoubleCast: 4 views of one padded buffer, zero extra char[]/String.
+    assertDoubleCast(expected, raw, 0, raw.length, number);
+    char[] padded = new char[raw.length + 2];
+    System.arraycopy(raw, 0, padded, 1, raw.length);
+    padded[0] = ' ';
+    padded[padded.length - 1] = ' ';
+    assertDoubleCast(expected, padded, 0, raw.length + 1, number);   // trailing
+    assertDoubleCast(expected, padded, 1, raw.length + 1, number);   // leading
+    assertDoubleCast(expected, padded, 0, raw.length + 2, number);   // both
   }
 
-  private static void assertDoubleEqualsNoWS(String number) {
-    double expected = Double.parseDouble(number);
+  private static void assertDoubleCast(double expected, char[] buf, int off, int len, String display) {
     try {
-      double actual = TextualNumber.parseDoubleCast(number.toCharArray(), 0, number.length());
-      assertEquals(expected, actual, "Failed for: " + number);
-      Number actualNumber = TextualNumber.of(number.trim().toCharArray());
-      assertEquals(expected, actualNumber.doubleValue(), "Failed TextualNumber.of().doubleValue() for: "+number);
+      double actual = TextualNumber.parseDoubleCast(buf, off, len);
+      assertEquals(expected, actual, "Failed for: " + display);
     } catch (NumberFormatException ex) {
-      fail("Number valid for Double.parseDouble was rejected: " + number.replace(' ', '_'), ex);
+      fail("Number valid for Double.parseDouble was rejected: "
+          + display.replace(' ', '_'), ex);
     }
   }
 
