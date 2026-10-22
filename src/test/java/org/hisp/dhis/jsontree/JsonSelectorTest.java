@@ -204,16 +204,27 @@ class JsonSelectorTest {
 
   @Test
   void testOf_TypeFilter() {
+    // bracketed form: RFC child selector
     assertEquals("$[?(:string)]", JsonSelector.of("$[?(:string)]").toString());
-    assertEquals("$[?(:string)]", JsonSelector.of("$?(:string)").toString());
     assertEquals("$[?(:number)]", JsonSelector.of("$[?(:number)]").toString());
     assertEquals("$[?(:object)]", JsonSelector.of("$[?(:object)]").toString());
-    // case-insensitive, matching TypeMatcher.toString() output
     assertEquals(
         JsonSelector.of("$[?(:string)]").toString(),
         JsonSelector.of("$[?(:STRING)]").toString());
-    // unknown type is a clear error, not a silent pass
+    // top-level form: narrowing filter on the current node
+    assertEquals("$?(:string)", JsonSelector.of("$?(:string)").toString());
+    // unknown type still errors
     assertThrows(IllegalArgumentException.class, () -> JsonSelector.of("$[?(:nope)]"));
+  }
+
+  @Test
+  void testOf_TypeFilter_Semantics() {
+    JsonMixed json = JsonMixed.of("[1, \"a\", true, null, 2, [3], {\"k\":4}]");
+    // bracketed form selects children of the array root
+    assertEquals("[1, 2]",
+        json.query(JsonSelector.of("$[?(:number)]")).toList().toString());
+    // top-level form narrows the root itself — root is an array, not a number
+    assertEquals(0, json.queryCount(JsonSelector.of("$?(:number)")));
   }
 
   @Test

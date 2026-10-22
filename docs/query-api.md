@@ -40,11 +40,16 @@ Two anchors to start building a selector from:
 - `JsonSelector.AT` — the current node (used as a start point for relative
   selectors, e.g. inside filters).
 
+Note that `type` and `filter` narrow the current match set; 
+they don't iterate children. To select all numbers anywhere under `$`, write
+`$.any().type(NUMBER)` or `$.descendants().type(NUMBER)` — not
+`$.type(NUMBER)`, which only checks the root node itself.
+
 ## String form
 
 `JsonSelector.of(String)` parses the subset of RFC 9535 that maps cleanly onto
 the fluent API: keys, indexes, unions, slices, wildcards, descendants, and
-`[?( :type )]` type filters. Filters expressed as `Predicate` are
+`[?(:type)]` type filters. Filters expressed as `Predicate` are
 *programmatic only* — the parser doesn't evaluate expressions.
 
 ```java
@@ -55,7 +60,15 @@ the fluent API: keys, indexes, unions, slices, wildcards, descendants, and
 
 Descendants (`..`) accept either the RFC short form (`$..name`) or the
 bracketed form (`$..['name']`); both normalise to the same selector. Type
-filters use the RFC 9535 shape `[?( :type )]`.
+filters use the RFC 9535 shape `[?(:type)]`.
+
+Type filters come in two shapes. Inside brackets — `$[?(:number)]` — this is
+the RFC 9535 child selector: apply the filter to each child of the current
+node, equivalent to `$.any().type(NUMBER)`. The non-bracketed top-level form
+`$?(:number)` is our own extension: it narrows the current node without
+navigating. Only the bracketed form is RFC-conform; the top-level form
+exists so that the fluent `.type(...)` matcher has a round-trippable string
+shape.
 
 Anything past the common cases is easier to build fluently than to fight the
 parser — the two forms produce the same `JsonSelector` and can be mixed.

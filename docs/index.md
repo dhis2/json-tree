@@ -24,5 +24,7 @@ Start here.
 
 - [RFC 8259 compatibility](rfc8259.md) — conformance notes.
 - [API reference](api-reference.md) — every type and method.
+- [Validation reference](validation-reference.md) — every validation attribute
+    and its semantics.
 - [JURL reference](jurl-spec.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
 - [Input Expressions](input-expressions.md) — a RegEx alternative that is simple, safe and fast

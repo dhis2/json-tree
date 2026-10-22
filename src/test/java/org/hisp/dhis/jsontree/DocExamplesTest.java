@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
+import org.hisp.dhis.jsontree.Validation.NodeType;
+import org.hisp.dhis.jsontree.Validation.YesNo;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -390,5 +392,111 @@ class DocExamplesTest {
             .toList();
 
         assertEquals( List.of( "Grace", "Alan" ), top2 );
+    }
+
+    // =========================================================================
+    // docs/validation-reference.md
+    // =========================================================================
+
+    interface RefUser extends JsonObject {
+        @Validation( pattern = "+[l]", minLength = 8, maxLength = 20 )
+        default String username() { return getString( "username" ).string(); }
+    }
+
+    @Test
+    void refValidation_basicAttributes() {
+        JsonObject ok = JsonMixed.of( "{\"username\": \"alicewond\"}" );
+        assertTrue( ok.isA( RefUser.class ) );
+
+        JsonObject tooShort = JsonMixed.of( "{\"username\": \"alice\"}" );
+        assertFalse( tooShort.isA( RefUser.class ) );
+
+        JsonObject badPattern = JsonMixed.of( "{\"username\": \"AliceWond\"}" );
+        assertFalse( badPattern.isA( RefUser.class ) );
+    }
+
+    @Target( ElementType.METHOD )
+    @Retention( RetentionPolicy.RUNTIME )
+    @Validation( required = YesNo.NO )
+    @interface Optional {}
+
+    interface RefUserOptional extends JsonObject {
+        @Optional
+        @Validation( minLength = 8 )
+        default String username() { return getString( "username" ).string(); }
+    }
+
+    @Test
+    void refValidation_metaAnnotation_optional() {
+        // minLength would implicitly require the property; @Optional undoes that
+        assertTrue( JsonMixed.of( "{}" ).isA( RefUserOptional.class ) );
+        // but if present it must still satisfy minLength
+        assertFalse( JsonMixed.of( "{\"username\": \"short\"}" ).isA( RefUserOptional.class ) );
+    }
+
+    interface RefUserRequiredList extends JsonObject {
+        @Required
+        default List<@Validation( maxLength = 20 ) String> names() {
+            return getArray( "names" ).stringValues();
+        }
+    }
+
+    @Test
+    void refValidation_requiredList() {
+        assertTrue( JsonMixed.of( "{\"names\": [\"a\", \"b\"]}" ).isA( RefUserRequiredList.class ) );
+        // required
+        assertFalse( JsonMixed.of( "{}" ).isA( RefUserRequiredList.class ) );
+        // element maxLength
+        assertFalse(
+            JsonMixed.of( "{\"names\": [\"thisstringislongerthan20\"]}" )
+                .isA( RefUserRequiredList.class ) );
+    }
+
+    @Validation( type = NodeType.STRING, pattern = "9[a]" )
+    record RefId( String id ) {}
+
+    interface RefUserWithId extends JsonObject {
+        default RefId id() { return getString( "id" ).parsed( RefId::new ); }
+    }
+
+    @Test
+    void refValidation_recordType() {
+        assertTrue( JsonMixed.of( "{\"id\": \"abcdef123\"}" ).isA( RefUserWithId.class ) );
+        assertFalse( JsonMixed.of( "{\"id\": \"tooshort\"}" ).isA( RefUserWithId.class ) );
+    }
+
+    interface RefNamesWithItems extends JsonObject {
+        @Validation.Items( @Validation( maxLength = 20 ) )
+        default List<String> names() { return getArray( "names" ).stringValues(); }
+    }
+
+    interface RefNamesWithReturnType extends JsonObject {
+        default List<@Validation( maxLength = 20 ) String> names() {
+            return getArray( "names" ).stringValues();
+        }
+    }
+
+    @Test
+    void refValidation_itemsEquivalence() {
+        String good = "{\"names\": [\"a\", \"b\"]}";
+        String bad  = "{\"names\": [\"thisstringislongerthan20\"]}";
+        assertTrue( JsonMixed.of( good ).isA( RefNamesWithItems.class ) );
+        assertTrue( JsonMixed.of( good ).isA( RefNamesWithReturnType.class ) );
+        assertFalse( JsonMixed.of( bad ).isA( RefNamesWithItems.class ) );
+        assertFalse( JsonMixed.of( bad ).isA( RefNamesWithReturnType.class ) );
+    }
+
+    @Validation( type = NodeType.ARRAY )
+    @Validation.Items( @Validation( type = NodeType.INTEGER ) )
+    interface RefIntList extends JsonList<JsonInteger> {}
+
+    interface RefUserWithIntList extends JsonObject {
+        default RefIntList values() { return get( "values", RefIntList.class ); }
+    }
+
+    @Test
+    void refValidation_customArrayType() {
+        assertTrue( JsonMixed.of( "{\"values\": [1, 2, 3]}" ).isA( RefUserWithIntList.class ) );
+        assertFalse( JsonMixed.of( "{\"values\": [1, \"two\"]}" ).isA( RefUserWithIntList.class ) );
     }
 }

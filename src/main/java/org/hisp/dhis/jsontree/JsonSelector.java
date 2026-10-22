@@ -121,6 +121,12 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   @Override
   public String toString() {
     if (next == null && matcher == null) return "+";
+    // RFC 9535: any() immediately followed by a type filter is the child-
+    // selector form [?(:type)], not [*][?(:type)].
+    if (matcher instanceof AnyMatcher && next != null && next.matcher instanceof TypeMatcher tm) {
+      String head = "[?(:" + tm.type().name().toLowerCase() + ")]";
+      return next.next == null ? head : head + next.next;
+    }
     if (next == null) return matcher.toString();
     return matcher.toString() + next;
   }
@@ -305,10 +311,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      // RFC 9535: filter expressions live in brackets. Type matchers are a
-      // non-standard extension but use the same [?(:name)] shape so the
-      // output parses back through parseTypeFilter.
-      return "[?(:" + type.name().toLowerCase() + ")]";
+      // Bare form: a narrowing filter on the current node, not an RFC child
+      // selector. When this follows any(), JsonSelector.toString() collapses
+      // the pair to [?(:type)] instead. See class-level comment.
+      return "?(:" + type.name().toLowerCase() + ")";
     }
   }
 
@@ -404,6 +410,13 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
         eAbs = Math.min(eAbs, size);
         for (int i = sAbs; i < eAbs; i += step) next.match(node.element(i), matches);
       }
+    }
+
+    @Override
+    public String toString() {
+      Object s = start == null ? "" : start;
+      Object e = end == null ? "" : end;
+      return step == 1 ? "[%s:%s]".formatted(s, e) : "[%s:%s:%d]".formatted(s, e, step);
     }
   }
 
@@ -530,7 +543,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
       throw illegalCharacter(expression, colonPos);
     Text typeName = expression.subSequence(colonPos + 1, end - 1);
     try {
-      return parent.type(JsonNodeType.valueOf(typeName.toString().toUpperCase()));
+      return parent.any().type(JsonNodeType.valueOf(typeName.toString().toUpperCase()));
     } catch (IllegalArgumentException ex) {
       throw new IllegalArgumentException("Unknown JSON node type: " + typeName, ex);
     }

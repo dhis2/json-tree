@@ -59,7 +59,9 @@ test and assert specific shapes given as their Java interface type.
 - `as(Class<T>)` — view as a user type.
 - `validate(Class<T>)` — check against a user type.
 - `isA(Class<T>)` / `asA(Class<T>)` — checking and asserting shape conformity 
-- `@Validation`, `@Required`, `Rule` — see [Validation](validation.md).
+- `@Validation`, `@Required`, `Rule` — see [Validation](validation.md). 
+
+Full attribute list and semantics: see [Validation reference](validation-reference.md).
 
 ## Diff
 
