@@ -23,7 +23,7 @@ Arrays and objects can also be composed in various ways using a builder API.
     o.toJson();   // {"x":1,"y":5}
 
     JsonObject o2 = Json.object( obj -> obj.addArray( "points",
-            arr -> arr.addNumbers( IntStream.range( 0, 10 ) ) ) );
+            arr -> arr.addNumbers( IntStream.range( 1, 10 ) ) ) );
     o2.toJson();  // {"points":[1,2,3,4,5,6,7,8,9]}
 ```
 

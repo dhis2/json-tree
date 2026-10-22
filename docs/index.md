@@ -14,6 +14,8 @@ Start here.
 - [JSON5 API](json5-star.md) — build a tree from JSON5 document.
 - [Null, undefined and existence](null-and-undefined.md) — the three-state model.
 - [User types as JSON tree](user-types.md) — extend the tree with `interface`s.
+- [Navigating the tree](tree-navigation.md) — paths as a uniform way to drill down.
+- [Querying the tree](query-api.md) — finding nodes using matchers.
 - [Validation](validation.md) — check input against a target schema.
 - [Comparing JSON values (diff)](diff.md) — structural comparison of two trees.
 - [Modification](json-patch.md) — bulk patching JSON using patch operations 

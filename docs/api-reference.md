@@ -30,7 +30,7 @@ Some of the key methods to work with the virtual tree API:
 - `get(key)`, `entries()` — object-key access (+ many more typed and utility methods)
 - `get(int)`, `values()` — array-index access (+ many more typed and utility methods including primitive streams)
 
-Furthermore:
+Noteworthy:
 
 - The library seamlessly supports `NaN`, and `Infinity`+`-Infinity` handling.
   In JSON text they use a string but in Java we can receive them as `double`.
@@ -38,6 +38,18 @@ Furthermore:
 - Both `JsonArray` and `JsonObject` are `Iterable` for their elements.
 - Any `JsonValue` is also a JDK `Map.Entry` with the key being their `path()` tail segment 
   which coincides with the key (property name) in their parent object.
+
+## Query
+
+- `JsonSelector` — `$`, `AT`, `of(String)`, `of(JsonNodeType)`, `of(Text)`,
+  `of(int)`, `of(int[])`, `of(int, int[, int])`, `of(Predicate)`, `ofAny()`,
+  `ofDescendants()`.
+- Fluent: `.key`, `.index`, `.indexes`, `.any`, `.descendants`, `.slice`,
+  `.type`, `.filter`, `.find`.
+- `JsonSelectable` — `query(selector, matches)`, `query`, `queryCount`,
+  `queryExists`, `queryFirst`, `queryReduce`, `queryTop`.
+- See [Querying the tree](query.md).
+ 
 
 ## Casting and validation
 
