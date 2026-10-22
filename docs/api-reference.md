@@ -51,28 +51,30 @@ Noteworthy:
 - See [Querying the tree](query.md).
  
 
-## Casting and validation
+## Validation
 
 While the virtual tree allows to view nodes as any shape we can
 test and assert specific shapes given as their Java interface type.
 
-- `as(Class<T>)` — view as a user type.
+- `as(Class<T>)` — view as type (not checked, always works).
+- `isA(Class<T>)` / `asA(Class<T>)` — checking and asserting shape conformity.
 - `validate(Class<T>)` — check against a user type.
-- `isA(Class<T>)` / `asA(Class<T>)` — checking and asserting shape conformity 
 - `@Validation`, `@Required`, `Rule` — see [Validation](validation.md). 
 
 Full attribute list and semantics: see [Validation reference](validation-reference.md).
 
 ## Diff
 
-JSON trees can be compared to find the differences. 
-This is exceptionally useful in test assertions or validating input.
+JSON can be compared to find the differences between two trees. 
+This is exceptionally useful in test assertions or input validation.
 
 - `diff(JsonValue)` / `diff(JsonValue, JsonDiff.Mode)` —
   see [Comparing JSON values](diff.md).
 - `JsonDiff.Mode`, `@JsonDiff.AnyOrder`, `@JsonDiff.AnyAdditional`.
 
 ## Patch
+
+Patch do bulk manipulation via change operations resulting in a new patched JSON text.
 
 - `JsonValue.patch(JsonPatch)` — apply a patch to a node.
 - `JsonPatch` — the patch document; obtainable via `JsonMixed.of(...).as(JsonPatch.class)`.
