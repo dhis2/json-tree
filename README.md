@@ -44,8 +44,8 @@ problems.
 - [User types as JSON tree](docs/user-types.md) — extend the tree with your own types
 - [Validation](docs/validation.md) — check input against a target schema
 - [Comparing JSON values (diff)](docs/diff.md) — structural comparison
-- [RFC 8259 compatibility](docs/rfc8259.md) — how the library deviates / conforms
 - [API reference](docs/api-reference.md) — types and methods at a glance
+- [Standards and RFCs](docs/rfc-reference.md) — conformance and deviations
 
 ## Maven
 

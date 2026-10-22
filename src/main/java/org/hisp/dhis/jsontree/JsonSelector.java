@@ -3,6 +3,7 @@ package org.hisp.dhis.jsontree;
 import static java.lang.Integer.parseInt;
 import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO_SKIP;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -77,7 +78,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   public static final JsonSelector AT = new JsonSelector(new SelfMatcher(), null);
 
   public static JsonSelector of(String expression) {
-    return $.parseExpression(expression);
+    return $.parseExpression(Text.of(expression));
   }
 
   public static JsonSelector of(JsonNodeType type) {
@@ -97,7 +98,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   public static JsonSelector of(int index) {
-    return new JsonSelector(new IndexMatcher(Text.of(index)), null);
+    return new JsonSelector(new IndexMatcher(index), null);
   }
 
   public static JsonSelector of(int[] indexes) {
@@ -120,6 +121,12 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   @Override
   public String toString() {
     if (next == null && matcher == null) return "+";
+    // RFC 9535: any() immediately followed by a type filter is the child-
+    // selector form [?(:type)], not [*][?(:type)].
+    if (matcher instanceof AnyMatcher && next != null && next.matcher instanceof TypeMatcher tm) {
+      String head = "[?(:" + tm.type().name().toLowerCase() + ")]";
+      return next.next == null ? head : head + next.next;
+    }
     if (next == null) return matcher.toString();
     return matcher.toString() + next;
   }
@@ -222,11 +229,11 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   public JsonSelector select(CharSequence expression) {
-    if (expression.isEmpty()) return this;
-    JsonSelector res = parseExpression(expression);
+    Text text = Text.of(expression);
+    if (text.isEmpty()) return this;
+    JsonSelector res = parseExpression(text);
     return !res.isSubSelector() ? res : select(res);
   }
-
   /**
    * This is a special instance that we pass as next if only the last matcher has to match. If it's
    * {@link #match(JsonNode, Matches)} is called we have a match.
@@ -304,7 +311,9 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      // note RFC-9535 does not have type matchers
+      // Bare form: a narrowing filter on the current node, not an RFC child
+      // selector. When this follows any(), JsonSelector.toString() collapses
+      // the pair to [?(:type)] instead. See class-level comment.
       return "?(:" + type.name().toLowerCase() + ")";
     }
   }
@@ -343,16 +352,15 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     }
   }
 
-  private record IndexMatcher(Text index) implements Matcher {
-
+  private record IndexMatcher(int index) implements Matcher {
     @Override
     public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
-      if (node.isArray() && !node.isEmpty()) {
-        JsonNode e = node.elementIfExists(index);
-        if (e != null) next.match(e, matches);
-      }
+      if (!node.isArray() || node.isEmpty()) return;
+      int size = node.size();
+      int idx = index < 0 ? size + index : index;
+      if (idx < 0 || idx >= size) return;
+      next.match(node.element(idx), matches);
     }
-
     @Override
     public String toString() {
       return "[" + index + "]";
@@ -381,19 +389,26 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
-      if (node.isArray() && !node.isEmpty()) {
-        int size = node.size();
-        int sRel = start != null ? start : step > 0 ? 0 : size;
-        int eRel = end != null ? end : step > 0 ? size : 0;
-        int sAbs = sRel < 0 ? size - sRel : Math.min(sRel, size);
-        int eAbs = eRel < 0 ? size - eRel : Math.min(eRel, size);
-        if (step < 0) {
-          // forward iteration
-          for (int i = sAbs; i >= eAbs; i += step) next.match(node.element(i), matches);
-        } else {
-          // backward iteration
-          for (int i = sAbs; i < eAbs; i += step) next.match(node.element(i), matches);
-        }
+      if (!node.isArray() || node.isEmpty()) return;
+      int size = node.size();
+      // defaults per RFC 9535 §2.3.4.2.2:
+      //   step > 0: start = 0,         end = size
+      //   step < 0: start = size - 1,  end = -size - 1  (normalises to -1, "past the start")
+      int sRel = start != null ? start : step > 0 ? 0 : size - 1;
+      int eRel = end != null ? end : step > 0 ? size : -size - 1;
+      // normalise negative indices relative to size
+      int sAbs = sRel < 0 ? size + sRel : sRel;
+      int eAbs = eRel < 0 ? size + eRel : eRel;
+      if (step < 0) {
+        // backward iteration, end exclusive
+        sAbs = Math.min(Math.max(sAbs, 0), size - 1);
+        eAbs = Math.max(eAbs, -1);
+        for (int i = sAbs; i > eAbs; i += step) next.match(node.element(i), matches);
+      } else {
+        // forward iteration, end exclusive
+        sAbs = Math.max(sAbs, 0);
+        eAbs = Math.min(eAbs, size);
+        for (int i = sAbs; i < eAbs; i += step) next.match(node.element(i), matches);
       }
     }
 
@@ -414,7 +429,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
     @Override
     public String toString() {
-      return "?(<condition>)";
+      // Same shape as RFC 9535 filter expressions. The condition itself
+      // cannot be round-tripped, but bracketing keeps output visually
+      // consistent with TypeMatcher and parseable-looking.
+      return "[?(<condition>)]";
     }
   }
 
@@ -429,7 +447,7 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
    * ignored. This is to strike a balance between amount of code
    * and how important this feature is overall.
    */
-  private JsonSelector parseExpression(CharSequence expression) {
+  private JsonSelector parseExpression(Text expression) {
     JsonSelector res = this;
     int offset = 0;
     while (offset < expression.length()) {
@@ -438,9 +456,15 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
         case '$' -> res = $; // drop prior chain
         case '@' -> res = AT; // drop prior chain
         case '.' -> {
-          if (expression.charAt(offset) == '.') {
+          if (offset < expression.length() && expression.charAt(offset) == '.') {
             res = res.descendants();
             offset++;
+            // RFC 9535: ..name == ..['name'] — allow a bare identifier after ..
+            if (offset < expression.length() && isAlphanumeric(expression.charAt(offset))) {
+              int end = skipAlphanumeric(expression, offset);
+              res = res.key(expression.subSequence(offset, end));
+              offset = end;
+            }
           } else {
             int end = skipAlphanumeric(expression, offset);
             res = res.key(expression.subSequence(offset, end));
@@ -448,10 +472,13 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
           }
         }
         case '?' -> {
-          offset++; // (
+          if (offset >= expression.length() || expression.charAt(offset) != '(')
+            throw illegalCharacter(expression, offset);
           int end = skipUntil(')', expression, offset);
+          if (end >= expression.length())
+            throw illegalCharacter(expression, expression.length() - 1);
           res = parseCondition(res, expression, offset, end - offset);
-          offset = end + 1; // )
+          offset = end + 1;
         }
         case '[' -> {
           int end = skipUntil(']', expression, offset);
@@ -465,67 +492,109 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
   }
 
   private static JsonSelector parseCondition(
-      JsonSelector parent, CharSequence expression, int offset, int length) {
-    if (expression.charAt(offset) == ':') {
-      return parent.type(
-          JsonNodeType.valueOf(expression.subSequence(offset + 1, offset + 1 + length).toString()));
+      JsonSelector parent, Text expression, int offset, int length) {
+    if (offset >= expression.length() || expression.charAt(offset) != '(')
+      throw illegalCharacter(expression, offset);
+    int colonPos = offset + 1;
+    if (colonPos >= expression.length() || expression.charAt(colonPos) != ':')
+      throw illegalCharacter(expression, colonPos);
+    Text typeName = expression.subSequence(colonPos + 1, offset + length);
+    try {
+      return parent.type(JsonNodeType.valueOf(typeName.toString().toUpperCase()));
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("Unknown JSON node type: " + typeName, ex);
     }
-    throw illegalCharacter(expression, offset - 1);
   }
 
   private static JsonSelector parseSelection(
-      JsonSelector parent, CharSequence expression, int offset, int length) {
+      JsonSelector parent, Text expression, int offset, int length) {
     char c = expression.charAt(offset);
     if (c == '*') return parent.any();
     if (c == '\'')
-      return parent.key(expression.subSequence(offset + 1, skipUntil('\'', expression, offset+1)));
-    if (c == '-') return parseSlice(parent, expression, offset, length);
-    int end = skipDigits(expression, offset);
-    c = expression.charAt(end);
-    if (c == ']') return parent.index(parseInt(expression.subSequence(offset, offset+length).toString()));
-    if (c == ',') return parseUnion(parent, expression, offset, length);
-    if (c == ':') return parseSlice(parent, expression, offset, length);
-    throw illegalCharacter(expression, offset);
+      return parent.key(expression.subSequence(offset + 1, skipUntil('\'', expression, offset + 1)));
+    if (c == '?') return parseTypeFilter(parent, expression, offset, length);
+
+    int pos = offset;
+    if (pos < expression.length() && expression.charAt(pos) == '-') pos++;
+    while (pos < expression.length() && isDigit(expression.charAt(pos))) pos++;
+
+    if (pos >= expression.length()) throw illegalCharacter(expression, offset);
+    char after = expression.charAt(pos);
+    if (after == ']') {
+      Text num = expression.subSequence(offset, pos);
+      if (num.isEmpty() || (num.length() == 1 && num.charAt(0) == '-'))
+        throw illegalCharacter(expression, offset);
+      return parent.index(num.parseInt());
+    }
+    if (after == ',') return parseUnion(parent, expression, offset, length);
+    if (after == ':') return parseSlice(parent, expression, offset, length);
+    throw illegalCharacter(expression, pos);
   }
 
-  private static JsonSelector parseUnion(JsonSelector parent, CharSequence expression, int offset, int length) {
-    return parent.indexes(
-        Stream.of(expression.subSequence(offset, offset + length).toString().split(","))
-            .mapToInt(Integer::parseInt)
-            .toArray());
+  private static JsonSelector parseTypeFilter(
+      JsonSelector parent, Text expression, int offset, int length) {
+    int end = offset + length; // exclusive, one past ')' if well-formed
+    if (offset + 1 >= end || expression.charAt(offset + 1) != '(')
+      throw illegalCharacter(expression, offset + 1);
+    if (end - 1 <= offset || expression.charAt(end - 1) != ')')
+      throw illegalCharacter(expression, end - 1);
+    int colonPos = offset + 2;
+    if (colonPos >= end - 1 || expression.charAt(colonPos) != ':')
+      throw illegalCharacter(expression, colonPos);
+    Text typeName = expression.subSequence(colonPos + 1, end - 1);
+    try {
+      return parent.any().type(JsonNodeType.valueOf(typeName.toString().toUpperCase()));
+    } catch (IllegalArgumentException ex) {
+      throw new IllegalArgumentException("Unknown JSON node type: " + typeName, ex);
+    }
   }
 
-  private static JsonSelector parseSlice(JsonSelector parent, CharSequence expression, int offset, int length) {
-    String[] parts = expression.subSequence(offset, offset + length).toString().split(":");
-    if (parts.length == 0) return parent.select(new SliceMatcher(null, null, 1));
-    if (parts.length == 1) return parent.select(new SliceMatcher(parseInt(parts[0]), null, 1));
-    if (parts.length == 2) return parent.select(new SliceMatcher(sliceIndex(parts[0]), sliceIndex(parts[1]), 1));
-    return parent.select(new SliceMatcher(sliceIndex(parts[0]), sliceIndex(parts[1]), parseInt(parts[2])));
+  private static JsonSelector parseUnion(JsonSelector parent, Text expression, int offset, int length) {
+    Text content = expression.subSequence(offset, offset + length);
+    List<Text> parts = new ArrayList<>();
+    int start = 0, comma;
+    while ((comma = content.indexOf(',', start)) >= 0) {
+      parts.add(content.slice(start, comma));
+      start = comma + 1;
+    }
+    parts.add(content.slice(start, content.length()));
+    return parent.indexes(parts.stream().mapToInt(Text::parseInt).toArray());
   }
 
-  private static Integer sliceIndex(String value) {
-    if (value.isEmpty()) return null;
-    return parseInt(value);
+  private static JsonSelector parseSlice(
+      JsonSelector parent, Text expression, int offset, int length) {
+    Text content = expression.subSequence(offset, offset + length);
+    int firstColon = content.indexOf(':');
+    if (firstColon < 0) throw illegalCharacter(expression, offset);
+    Text startPart = content.slice(0, firstColon);
+    int secondColon = content.indexOf(':', firstColon + 1);
+    if (secondColon < 0) {
+      Text endPart = content.slice(firstColon + 1, content.length());
+      return parent.select(new SliceMatcher(sliceIndex(startPart), sliceIndex(endPart), 1));
+    }
+    Text endPart = content.slice(firstColon + 1, secondColon);
+    Text stepPart = content.slice(secondColon + 1, content.length());
+    int step = stepPart.isEmpty() ? 1 : stepPart.parseInt();
+    return parent.select(new SliceMatcher(sliceIndex(startPart), sliceIndex(endPart), step));
   }
 
-  private static IllegalArgumentException illegalCharacter(CharSequence expression, int offset) {
+  private static Integer sliceIndex(Text value) {
+    return value.isEmpty() ? null : value.parseInt();
+  }
+
+  private static IllegalArgumentException illegalCharacter(Text expression, int offset) {
     return new IllegalArgumentException(
         "Illegal character %s at offset %d".formatted(expression.charAt(offset), offset));
   }
 
-  private static int skipAlphanumeric(CharSequence expression, int offset) {
+  private static int skipAlphanumeric(Text expression, int offset) {
     while (offset < expression.length() && isAlphanumeric(expression.charAt(offset))) offset++;
     return offset;
   }
 
-  private static int skipDigits(CharSequence expression, int offset) {
-    while (offset < expression.length() && isDigit(expression.charAt(offset))) offset++;
-    return offset;
-  }
-
-  private static int skipUntil(char ch, CharSequence expression, int offset) {
-    while (offset < expression.length() && expression.charAt(offset) != ch) offset++;
-    return offset;
+  private static int skipUntil(char ch, Text expression, int offset) {
+    int i = expression.indexOf(ch, offset);
+    return i < 0 ? expression.length() : i;
   }
 
   private static boolean isAlphanumeric(char c) {

@@ -30,7 +30,7 @@ Some of the key methods to work with the virtual tree API:
 - `get(key)`, `entries()` — object-key access (+ many more typed and utility methods)
 - `get(int)`, `values()` — array-index access (+ many more typed and utility methods including primitive streams)
 
-Furthermore:
+Noteworthy:
 
 - The library seamlessly supports `NaN`, and `Infinity`+`-Infinity` handling.
   In JSON text they use a string but in Java we can receive them as `double`.
@@ -38,6 +38,18 @@ Furthermore:
 - Both `JsonArray` and `JsonObject` are `Iterable` for their elements.
 - Any `JsonValue` is also a JDK `Map.Entry` with the key being their `path()` tail segment 
   which coincides with the key (property name) in their parent object.
+
+## Query
+
+- `JsonSelector` — `$`, `AT`, `of(String)`, `of(JsonNodeType)`, `of(Text)`,
+  `of(int)`, `of(int[])`, `of(int, int[, int])`, `of(Predicate)`, `ofAny()`,
+  `ofDescendants()`.
+- Fluent: `.key`, `.index`, `.indexes`, `.any`, `.descendants`, `.slice`,
+  `.type`, `.filter`, `.find`.
+- `JsonSelectable` — `query(selector, matches)`, `query`, `queryCount`,
+  `queryExists`, `queryFirst`, `queryReduce`, `queryTop`.
+- See [Querying the tree](query.md).
+ 
 
 ## Casting and validation
 
@@ -47,7 +59,9 @@ test and assert specific shapes given as their Java interface type.
 - `as(Class<T>)` — view as a user type.
 - `validate(Class<T>)` — check against a user type.
 - `isA(Class<T>)` / `asA(Class<T>)` — checking and asserting shape conformity 
-- `@Validation`, `@Required`, `Rule` — see [Validation](validation.md).
+- `@Validation`, `@Required`, `Rule` — see [Validation](validation.md). 
+
+Full attribute list and semantics: see [Validation reference](validation-reference.md).
 
 ## Diff
 
@@ -58,7 +72,18 @@ This is exceptionally useful in test assertions or validating input.
   see [Comparing JSON values](diff.md).
 - `JsonDiff.Mode`, `@JsonDiff.AnyOrder`, `@JsonDiff.AnyAdditional`.
 
+## Patch
+
+- `JsonValue.patch(JsonPatch)` — apply a patch to a node.
+- `JsonPatch` — the patch document; obtainable via `JsonMixed.of(...).as(JsonPatch.class)`.
+- Operation names and aliases, path segment types, and the `test` field are
+  covered in [JSON Patch](json-patch.md).
+
+See also [Standards and RFCs](rfc-reference.md#json-patch--rfc-6902) for
+conformance notes.
+
 ## Related
 
 - [Java API](java-api.md)
 - [JSON API](json-api.md)
+- [JSON Patch](json-patch.md) — the RFC 6902-based patch feature.

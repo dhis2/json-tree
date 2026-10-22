@@ -59,12 +59,75 @@ Entire domain models can easily be created using this approach.
     }
 ```
 
-The benefit over using `record`s or Java `class`es JSON is mapped to is 
-that no CPU or memory has to be spent on mapping a JSON text input 
-while also allowing to work with the input as if it is a domain model.
-The flexibility even allows for alternate form without much issue.
-For example, a header that is either a list of field objects or 
-an object representing said fields can both be supported with ease. 
+## Abstract properties
+
+Properties don't have to be `default` methods. An abstract method declares a
+property that is looked up by name: the accessor reads the JSON member whose
+name matches the method name, after stripping a leading `get` or `is` prefix
+and lower-casing the first remaining character.
+
+```java
+    interface JsonMembership extends JsonObject {
+
+        String getGroup();                  // reads member "group"
+
+        LocalDate getJoinDate();            // reads member "joinDate"
+
+    }
+
+    interface JsonAccount extends JsonObject {
+
+        boolean isEnabled();                // reads member "enabled"
+
+        String getUsername();               // reads member "username"
+
+        List<JsonMembership> memberships(); // reads member "memberships"
+
+    }
+```
+
+These match JSON of the shape:
+
+```json
+    {
+        "enabled": true,
+        "username": "TomTraubert",
+        "memberships": [
+            { "group": "BigTimers", "joinDate": "1973-02-05" }
+        ]
+    }
+```
+
+```java
+    JsonAccount account = JsonMixed.of( json ).as( JsonAccount.class );
+    account.isEnabled();            // true
+    account.getUsername();          // "TomTraubert"
+    account.memberships().size();   // 1
+```
+
+The return type determines how the member is converted: primitives and their
+wrappers, `String`, `java.time` types (`LocalDate`, `LocalDateTime`,
+`LocalTime`), collections, and other common JDK types are mapped
+automatically. Types not covered by the built-in accessors can be added by
+registering a custom `JsonAccessor`.
+
+> [!NOTE]
+> `java.time` types are parsed from ISO 8601 strings — `LocalDate` from
+> `"1973-02-05"`, `LocalDateTime` from `"1973-02-05T00:00:00"`, `LocalTime`
+> from `"00:00:00"`. The legacy `java.util.Date` is also accepted, but only
+> via the deprecated `Date(String)` constructor, which parses legacy RFC-822
+> formats. Prefer `java.time` types.
+
+Abstract properties can be mixed freely with `default` methods and the lazily
+mapped collection types (`JsonList`, `JsonMap`, …). Reach for an abstract
+method when the property is just "read this member and convert it"; reach for
+a `default` method when the property needs custom logic, a fallback, or a
+non-trivial conversion.
+
+A user type can extend any `JsonValue` subtype. In practice `JsonObject` is the
+useful parent — it provides the generic object accessor methods (`get`,
+`getString`, …) that abstract and default properties alike call into — while
+`JsonValue` is the minimal base when those methods aren't needed.
 
 ## Related
 

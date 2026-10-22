@@ -1,6 +1,6 @@
 # Lazy parsing and the virtual tree
 
-## The two ideas
+## Two ideas
 
 **Virtual.** A `Json*` instance describes the "wanted" or "expected" structure
 of the tree. It's not a copy of the data — it's a view that is checked against
@@ -20,6 +20,27 @@ objects, memory stays close to the size of the source string. In practice this
 lets `json-tree` comfortably handle inputs in the MB range, and it makes it
 cheap to extend the tree with user types (see [User types](user-types.md))
 without paying for eager conversion.
+
+## Two APIs
+The user facing API `JsonValue`+`JsonMixed` (+user types) is for convenience
+when working with JSON data; the actual tree API `JsonNode` is for driving
+the lazy parsing when needed under the hood. 
+
+| `JsonValue` API                                                       | `JsonNode` API                                             |
+|-----------------------------------------------------------------------|------------------------------------------------------------|
+| `JsonValue#node()` =>                                                 | <= `JsonValue.of(node)`                                    |
+| `JsonMixed#node()` =>                                                 | <= `JsonMixed.of(node)`                                    |
+| **virtual** 👻  (how we view it)                                      | **actual** ☠️ (what is actually in the JSON text)          |
+| high level abstraction                                                | low level abstraction                                      |
+| the JSON assumed/expected                                             | the actual JSON                                            |
+| navigation without requiring existence (no exceptions)                | navigation demands existence (otherwise throws exceptions) |
+| extendable tree API                                                   | non-extendable tree API                                    |
+| `JsonObject`, `JsonArray`, `JsonNumber`, `JsonString`, `JsonBoolean`  | `JsonNode` + `JsonNodeType`                                |
+| `JsonValue` (API all above have in common; bottom type)               | `JsonNode`                                                 |
+| `JsonMixed` (API of all above together; top type)                     | `JsonNode`                                                 |
+| read-only (+ projections)                                             | immutable (transformations to new trees)                   |
+| extendable by user types                                              | build in mapping to JDK types                              |
+| Implemented by `JsonVirtualTree`                                      | Implemented by `JsonTree`                                  |
 
 ## Related
 
