@@ -22,9 +22,10 @@ Start here.
 
 ## Reference
 
-- [RFC 8259 compatibility](rfc8259.md) — conformance notes.
 - [API reference](api-reference.md) — every type and method.
+- [Standards and RFCs](rfc-reference.md) — implementations and deviations.
 - [Validation reference](validation-reference.md) — every validation attribute
     and its semantics.
 - [JURL reference](jurl-reference) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
 - [Input Expressions](input-expressions-reference) — a RegEx alternative that is simple, safe and fast
+- [JSON5* notation](json5-star-reference.md) — the JSON5 variant accepted by the parser.

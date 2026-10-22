@@ -72,7 +72,18 @@ This is exceptionally useful in test assertions or validating input.
   see [Comparing JSON values](diff.md).
 - `JsonDiff.Mode`, `@JsonDiff.AnyOrder`, `@JsonDiff.AnyAdditional`.
 
+## Patch
+
+- `JsonValue.patch(JsonPatch)` — apply a patch to a node.
+- `JsonPatch` — the patch document; obtainable via `JsonMixed.of(...).as(JsonPatch.class)`.
+- Operation names and aliases, path segment types, and the `test` field are
+  covered in [JSON Patch](json-patch.md).
+
+See also [Standards and RFCs](rfc-reference.md#json-patch--rfc-6902) for
+conformance notes.
+
 ## Related
 
 - [Java API](java-api.md)
 - [JSON API](json-api.md)
+- [JSON Patch](json-patch.md) — the RFC 6902-based patch feature.

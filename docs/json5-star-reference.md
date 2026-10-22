@@ -1,43 +1,44 @@
-# JSON5‑ish Notation Specification
+# JSON5* notation
 
-This library implements a lightweight variant of JSON5 coined JSON5*.  
-The syntax is designed so that any valid document can be transformed 
-into standard JSON **without inserting characters**.
-This ensures low overhead while offering convenient JSON5‑like syntax.
+The library implements a lightweight variant of JSON5, which we call JSON5*.
+The syntax is designed so that any valid document can be transformed into
+standard JSON without inserting characters. This keeps the parser's offsets
+valid against the original source text and preserves the lazy-parsing and
+memory characteristics described in [Lazy parsing](lazy-parsing.md).
 
----
-
-## Differences to JSON5 
+## Differences from JSON5
 
 The following JSON5 features are **not** supported:
 
-- **Unquoted object keys** – all keys must be quoted.
-- **Hexadecimal numbers** – only decimal numbers are allowed.
-- **Numbers with a leading decimal point** (e.g., `.5`).
-- **Numbers with a trailing decimal point** (e.g., `5.`).
-- **Whitespace characters other than** space (` `), tab (`\t`), line feed (`\n`), and carriage return (`\r`).
- 
-The following JSON5 features **are** supported with special transformation rules:
+- Unquoted object keys. All keys must be quoted.
+- Hexadecimal numbers. Only decimal numbers are allowed.
+- Numbers with a leading decimal point (e.g. `.5`).
+- Numbers with a trailing decimal point (e.g. `5.`).
+- Whitespace characters other than space, tab, line feed, and carriage
+  return.
 
-- **Trailing commas** in arrays and objects.
-- **Comments**.
-- **Single‑quoted strings** (in addition to double‑quoted JSON strings).
-- **The literals `NaN`, `Infinity`, `-Infinity`** under specific conditions.
+The following JSON5 features are supported, with special transformation
+rules:
 
----
+- Trailing commas in arrays and objects.
+- Comments.
+- Single-quoted strings (in addition to double-quoted JSON strings).
+- The literals `NaN`, `Infinity`, and `-Infinity` under specific
+  conditions.
 
-## Syntax Rules
+## Syntax rules
 
 ### 1. Whitespace
 
-Only the following whitespace characters are allowed (JSON standard):
+Only the following whitespace characters are allowed (matching the JSON
+standard):
 
-| Character | Code Point | Name          |
-|-----------|------------|---------------|
-| space     | U+0020     | space         |
-| `\t`      | U+0009     | horizontal tab|
-| `\n`      | U+000A     | line feed     |
-| `\r`      | U+000D     | carriage return|
+| Character | Code Point | Name            |
+|-----------|------------|-----------------|
+| space     | U+0020     | space           |
+| `\t`      | U+0009     | horizontal tab  |
+| `\n`      | U+000A     | line feed       |
+| `\r`      | U+000D     | carriage return |
 
 No other whitespace may appear.
 
@@ -45,83 +46,100 @@ No other whitespace may appear.
 
 Strings may be written in two ways:
 
-- **Double‑quoted strings**: Follow the JSON string syntax exactly.  
-  These are already valid JSON and are passed through unchanged.
-- **Single‑quoted strings**: Follow the same escape rules as JSON, but delimited by `'`.
+- **Double-quoted strings**: follow the JSON string syntax exactly. These
+  are already valid JSON and are passed through unchanged.
+- **Single-quoted strings**: follow the same escape rules as JSON, but
+  delimited by `'`.
 
-When a single‑quoted string is transformed to JSON, the following substitutions are applied **without inserting any characters**:
+When a single-quoted string is transformed to JSON, the following
+substitutions are applied without inserting any characters:
 
-| Input (inside single‑quoted string) | Output (inside double‑quoted JSON) | Explanation |
-|--------------------------------------|-------------------------------------|-------------|
-| `"` (unescaped double quote)         | `'` (single quote)                 | Prevents the need to insert a backslash escape. |
-| `\"` (escaped double quote)          | `\"` (escaped double quote)        | Already escaped; remains as a double quote in JSON. |
-| Any other content                    | unchanged                          | All other characters (including `\n`, `\t`, etc.) remain as in JSON. |
+| Input (inside single-quoted string) | Output (inside double-quoted JSON) | Explanation                                                          |
+|-------------------------------------|------------------------------------|----------------------------------------------------------------------|
+| `"` (unescaped double quote)        | `'` (single quote)                 | Avoids the need to insert a backslash escape.                        |
+| `\"` (escaped double quote)         | `\"` (escaped double quote)        | Already escaped; remains a double quote in JSON.                     |
+| Any other content                   | unchanged                          | All other characters (including `\n`, `\t`, etc.) remain as in JSON. |
 
-After these substitutions, the outer single quotes are replaced with double quotes to produce a standard JSON string.
-Note that single quotes do not allow to escape the single quote with `\'`.
+After these substitutions, the outer single quotes are replaced with double
+quotes to produce a standard JSON string. Note that single quotes do not
+allow escaping the single quote with `\'`.
 
 #### Examples
 
-| Input (single‑quoted) | Transformed JSON String |
-|------------------------|-------------------------|
-| `'Hello "world"'`      | `"Hello 'world'"`       |
-| `'She said \"Hi\"'`    | `"She said \"Hi\""`     |
-| `'Line1\nLine2'`       | `"Line1\nLine2"`        |
+| Input (single-quoted) | Transformed JSON string |
+|-----------------------|-------------------------|
+| `'Hello "world"'`     | `"Hello 'world'"`       |
+| `'She said \"Hi\"'`   | `"She said \"Hi\""`     |
+| `'Line1\nLine2'`      | `"Line1\nLine2"`        |
 
 ### 3. Objects
 
-- Keys **must** be quoted.
-- Keys may be written with **either** single quotes (`'`) or double quotes (`"`).  
-  Single‑quoted keys undergo the same string transformation as single‑quoted string values.
-- Unquoted keys are **not** permitted.
-- Objects **may** have a **trailing comma**
+- Keys must be quoted.
+- Keys may be written with either single quotes (`'`) or double quotes
+  (`"`). Single-quoted keys undergo the same string transformation as
+  single-quoted string values.
+- Unquoted keys are not permitted.
+- Objects may have a trailing comma.
 
 ### 4. Numbers
 
-Numbers follow **JSON number syntax** exactly:
+Numbers follow the JSON number syntax exactly:
 
 - No leading `+`.
 - No hexadecimal.
 - No leading or trailing decimal point.
-- No `NaN`, `Infinity`, `-Infinity` literals unless the special rules below apply.
+- No `NaN`, `Infinity`, or `-Infinity` literals unless the special rules
+  below apply.
 
-These literals are allowed only when they can be transformed into
-the equivalent JSON **string** (`"NaN"`, `"Infinity"`, `"-Infinity"`) **without inserting characters**.  
-The transformation may delete whitespace or move a comma.
+The `NaN`, `Infinity`, and `-Infinity` literals are allowed only when they
+can be transformed into the equivalent JSON string (`"NaN"`, `"Infinity"`,
+`"-Infinity"`) without inserting characters. The transformation replaces
+existing characters or shifts a comma one position, but never inserts a
+new character.
 
-**Allowed contexts:**
+The requirements are:
 
-- The literal must have space to the left
-- The literal must have space to the right or a comma that can be shifted right 1
-  taking the position of a space
+- The literal must have whitespace to its left. That whitespace becomes the
+  opening `"`.
+- The literal must have either whitespace to its right (which becomes the
+  closing `"`), or a comma to its right followed by whitespace. In the
+  latter case, the comma shifts one position right into the whitespace,
+  and the comma's former position becomes the closing `"`.
 
 #### Examples
 
-| Input                         | Transformed JSON (after processing)   |
-|-------------------------------|---------------------------------------|
-| `[1, NaN, 2]`                 | `[1,"NaN",2]`                         |
-| `{ 'value': NaN }`            | `{ "value":"NaN"}`                    |
-| `[ NaN ]`                     | `["NaN"]`                             |
-| `[1, Infinity, 2]`            | `[1,"Infinity",2]`                    |
-| `[ -Infinity, 1 ]`            | `["-Infinity",1 ]`                    |
-| `[NaN]` (no whitespace)       | Not allowed (no space left and right) |
-| `[1, NaN]`                    | Not allowed (no space right)          |
+| Input                    | Transformed JSON                           |
+|--------------------------|--------------------------------------------|
+| `[1, NaN, 2]`            | `[1,"NaN",2]`                              |
+| `{ 'value': NaN }`       | `{ "value":"NaN"}`                         |
+| `[ NaN ]`                | `["NaN"]`                                  |
+| `[1, Infinity, 2]`       | `[1,"Infinity",2]`                         |
+| `[ -Infinity, 1 ]`       | `["-Infinity",1 ]`                         |
+| `[NaN]` (no whitespace)  | Not allowed (no whitespace on either side) |
+| `[1, NaN]`               | Not allowed (no whitespace to the right)   |
 
-Note that while this does change the node to a JSON string the `JsonNode` and `JsonValue` API
-do handle this transparently and accessing it via `doubleValue` will yield the
-expected `double`.
+While this does change the node into a JSON string, the `JsonNode` and
+`JsonValue` APIs handle this transparently: accessing such a node via
+`doubleValue()` yields the expected `double`.
+
+### 5. Comments
+
+Comments in the JSON5 style (`//` line comments and `/* ... */` block
+comments) are accepted. During transformation to standard JSON they are
+blanked out with whitespace, so that the resulting document is valid JSON
+while offsets in the original source remain valid.
 
 ### 6. Arrays
 
-- Arrays follow JSON syntax, with one addition: **trailing commas are allowed**.
-- A trailing comma after the last element will be **blanked** with a space during transformation.
+Arrays follow JSON syntax, with one addition: trailing commas are allowed.
+A trailing comma after the last element is blanked with a space during
+transformation.
 
-```json5
-[1, 2, 3,]
+```json
+    [1, 2, 3,]
 ```
 
-### 7. Standard Literals
+### 7. Standard literals
 
-The literals `true`, `false`, `null` are identical in JSON and JSON5 
-and no special treatment has to be considered.
-
+The literals `true`, `false`, and `null` are identical in JSON and JSON5
+and require no special treatment.
