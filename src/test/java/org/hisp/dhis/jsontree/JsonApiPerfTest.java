@@ -189,4 +189,127 @@ class JsonApiPerfTest {
     for (int i = 0; i < nodes.size(); i++)
       assertSame(nodes.get(i), nodes2.get(i));
   }
+
+  // ---------------------------------------------------------------------------
+  // Tree-level default Index (via JsonNode.of(json, onGet, Index))
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testTreeDefault_Skip() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.SKIP);
+    assertNotSame(
+        tree.elements().iterator().next(),
+        tree.elements().iterator().next(),
+        "SKIP tree default: AUTO op resolves to SKIP, fresh instances each pass");
+  }
+
+  @Test
+  void testTreeDefault_Add() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.ADD);
+    assertSame(
+        tree.elements().iterator().next(),
+        tree.elements().iterator().next(),
+        "ADD tree default: AUTO op resolves to ADD, cached instances");
+  }
+
+  @Test
+  void testTreeDefault_Check() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.CHECK);
+    // CHECK never writes, so AUTO op → CHECK produces fresh instances
+    assertNotSame(
+        tree.elements().iterator().next(),
+        tree.elements().iterator().next(),
+        "CHECK tree default: iteration does not grow the cache");
+    // but once something caches it, CHECK finds it
+    JsonNode cached = tree.elements(Index.ADD).iterator().next();
+    assertSame(
+        cached,
+        tree.elements().iterator().next(),
+        "CHECK tree default reads existing cache entries");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Explicit op mode overrides tree default
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testExplicitSkip_OverridesAddTree() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.ADD);
+    assertNotSame(
+        tree.elements(Index.SKIP).iterator().next(),
+        tree.elements(Index.SKIP).iterator().next(),
+        "explicit SKIP overrides ADD tree default");
+  }
+
+  @Test
+  void testExplicitAdd_OverridesSkipTree() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.SKIP);
+    assertSame(
+        tree.elements(Index.ADD).iterator().next(),
+        tree.elements(Index.ADD).iterator().next(),
+        "explicit ADD overrides SKIP tree default");
+  }
+
+  // ---------------------------------------------------------------------------
+  // AUTO_SKIP: prefers SKIP when tree is AUTO, otherwise follows the tree
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testAutoSkip_OnAutoTree() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.AUTO);
+    assertNotSame(
+        tree.elements(Index.AUTO_SKIP).iterator().next(),
+        tree.elements(Index.AUTO_SKIP).iterator().next(),
+        "AUTO_SKIP on AUTO tree resolves to SKIP");
+  }
+
+  @Test
+  void testAutoSkip_OnAddTree() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.ADD);
+    assertSame(
+        tree.elements(Index.AUTO_SKIP).iterator().next(),
+        tree.elements(Index.AUTO_SKIP).iterator().next(),
+        "AUTO_SKIP on ADD tree defers to ADD");
+  }
+
+  @Test
+  void testAutoSkip_OnSkipTree() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.SKIP);
+    assertNotSame(
+        tree.elements(Index.AUTO_SKIP).iterator().next(),
+        tree.elements(Index.AUTO_SKIP).iterator().next(),
+        "AUTO_SKIP on SKIP tree stays SKIP");
+  }
+
+  // ---------------------------------------------------------------------------
+  // Direct access bypasses iteration modes and always caches
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testDirectMember_AlwaysCaches_EvenOnSkipTree() {
+    JsonNode tree = JsonNode.of("{\"a\": {\"x\":1}}", null, Index.SKIP);
+    assertSame(
+        tree.member(Text.of("a")),
+        tree.member(Text.of("a")),
+        "direct member access uses computeIfAbsent, bypassing tree default");
+  }
+
+  @Test
+  void testDirectElement_AlwaysCaches_EvenOnSkipTree() {
+    JsonNode tree = JsonNode.of("[{\"x\":1},{\"x\":2}]", null, Index.SKIP);
+    assertSame(
+        tree.element(0),
+        tree.element(0),
+        "direct element access uses computeIfAbsent, bypassing tree default");
+  }
+
+  @Test
+  void testDirectElement_CachesPrimitivesToo() {
+    // AUTO iteration does not cache primitives, but direct element access does
+    JsonNode tree = JsonNode.of("[1,2,3]", null, Index.SKIP);
+    assertSame(
+        tree.element(0),
+        tree.element(0),
+        "direct element access caches primitives");
+  }
 }

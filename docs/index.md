@@ -10,6 +10,8 @@ Start here.
 - [Java API](intro-4-json-from-java) — build a tree from Java types.
 - [Null, undefined and existence](intro-5-null-and-undefined) — the three-state model.
 - [User types as JSON tree](intro-6-user-types) — extend the tree with `interface`s.
+- [Performance and streaming](intro-7-json-performance.md) — choosing an `Index` mode
+    for large-container iteration.
  
 ## Discover
 

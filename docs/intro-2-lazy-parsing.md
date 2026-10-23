@@ -47,3 +47,4 @@ the lazy parsing when needed under the hood.
 - [JSON from text](intro-3-json-from-text)
 - [JSON from Java](intro-4-json-from-java)
 - [Null, undefined and existence](intro-5-null-and-undefined)
+- [Lazyness, Performance and Streaming](intro-7-json-performance.md)

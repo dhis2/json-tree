@@ -7,6 +7,7 @@ import java.lang.annotation.Target;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -98,7 +99,7 @@ class DocExamplesTest {
         assertEquals( "{\"x\":1,\"y\":5}", o.toJson() );
 
         JsonObject o2 = Json.object( obj -> obj.addArray( "points",
-                arr -> arr.addNumbers( IntStream.range( 1, 10 ) ) ) );
+            arr -> arr.addNumbers( IntStream.range( 1, 10 ) ) ) );
         assertEquals( "{\"points\":[1,2,3,4,5,6,7,8,9]}", o2.toJson() );
     }
 
@@ -389,8 +390,8 @@ class DocExamplesTest {
         JsonMixed root = queryRoot();
 
         List<String> top2 = root.queryTop( 2,
-            JsonSelector.of( "$.people[*]" ),
-            node -> node.getNumber( "age" ).integer() )
+                JsonSelector.of( "$.people[*]" ),
+                node -> node.getNumber( "age" ).integer() )
             .map( node -> node.getString( "name" ).string() )
             .toList();
 
@@ -646,4 +647,5 @@ class DocExamplesTest {
 
         assertTrue( expected.diff( actual ).differences().isEmpty() );
     }
+
 }
