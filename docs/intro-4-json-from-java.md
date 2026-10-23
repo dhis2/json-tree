@@ -29,5 +29,6 @@ Arrays and objects can also be composed in various ways using a builder API.
 
 ## Related
 
-- [JSON API](json-api.md)
-- [User types as JSON tree](user-types.md)
+- [JSON from text](intro-3-json-from-text)
+- [Null, undefined and existence](intro-5-null-and-undefined)
+- [Extending with user types](intro-6-user-types)

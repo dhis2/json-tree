@@ -128,6 +128,6 @@ aggregation.
 
 ## Related
 
-- [Navigating the tree](tree-navigation.md) — `JsonPath`, the fixed-location
+- [Navigating the tree](json-paths) — `JsonPath`, the fixed-location
   counterpart to `JsonSelector`.
-- [API reference](api-reference.md)
+- [API reference](json-api-overview)

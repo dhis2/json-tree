@@ -554,4 +554,96 @@ class DocExamplesTest {
         assertEquals( LocalDateTime.of( 1973, 2, 5, 13, 45 ), d.dateTime() );
         assertEquals( LocalTime.of( 13, 45 ), d.time() );
     }
+
+    // =========================================================================
+    // docs/json-diff.md
+    // =========================================================================
+
+    @Test
+    void jsonDiff_quickExample() {
+        JsonValue expected = JsonValue.of( "[1,2,3]" );
+        JsonValue actual   = JsonValue.of( "[1,5,3]" );
+
+        JsonDiff diff = expected.diff( actual );
+        assertEquals(
+            List.of( "!= $.1: 2 <> 5" ),
+            diff.differences().stream()
+                .map( JsonDiff.Difference::toString )
+                .toList() );
+    }
+
+    @Test
+    void jsonDiff_modes_reorderedArray() {
+        // DEFAULT: arrays are strict-order → one NEQ per mismatched index
+        JsonDiff d1 = JsonValue.of( "[1,2,3]" ).diff( JsonValue.of( "[1,3,2]" ) );
+        assertEquals(
+            List.of( "!= $.1: 2 <> 3", "!= $.2: 3 <> 2" ),
+            d1.differences().stream().map( JsonDiff.Difference::toString ).toList() );
+
+        // LENIENT: arrays are any-order → no diff
+        JsonDiff d2 = JsonValue.of( "[1,2,3]" )
+            .diff( JsonValue.of( "[1,3,2]" ), JsonDiff.Mode.LENIENT );
+        assertTrue( d2.differences().isEmpty() );
+    }
+
+    @Test
+    void jsonDiff_modes_numberEquality() {
+        // DEFAULT uses numeric equivalence: 4 == 4.0
+        assertTrue( JsonValue.of( "4" ).diff( JsonValue.of( "4.0" ) ).differences().isEmpty() );
+
+        // STRICT uses textual equivalence
+        assertEquals(
+            List.of( "!= $: 4 <> 4.0" ),
+            JsonValue.of( "4" )
+                .diff( JsonValue.of( "4.0" ), JsonDiff.Mode.STRICT )
+                .differences().stream().map( JsonDiff.Difference::toString ).toList() );
+    }
+
+    @Test
+    void jsonDiff_modeBuilder() {
+        JsonDiff.Mode m = JsonDiff.Mode.STRICT
+            .anyOrder()
+            .numbers( JsonDiff.Equivalence.NUMERIC );
+        assertTrue(
+            JsonValue.of( "[1,2,3]" )
+                .diff( JsonValue.of( "[3,1,2]" ), m )
+                .differences().isEmpty() );
+    }
+
+    interface DocStrictTags extends JsonObject {
+        default JsonArray tags() {
+            return getArray( "tags" );
+        }
+    }
+
+    interface DocAnyOrderTags extends JsonObject {
+        @JsonDiff.AnyOrder
+        default JsonArray tags() {
+            return getArray( "tags" );
+        }
+    }
+
+    @Test
+    void jsonDiff_perProperty_strict() {
+        DocStrictTags expected = JsonValue.of( """
+            {"tags": ["hello", "intro"]}""" ).as( DocStrictTags.class );
+        DocStrictTags actual = JsonValue.of( """
+            {"tags": ["intro", "hello"]}""" ).as( DocStrictTags.class );
+
+        List<String> diffs = expected.diff( actual ).differences().stream()
+            .map( JsonDiff.Difference::toString ).toList();
+        assertEquals( 2, diffs.size() );
+        assertTrue( diffs.contains( "!= $.tags.0: \"hello\" <> \"intro\"" ) );
+        assertTrue( diffs.contains( "!= $.tags.1: \"intro\" <> \"hello\"" ) );
+    }
+
+    @Test
+    void jsonDiff_perProperty_anyOrder() {
+        DocAnyOrderTags expected = JsonValue.of( """
+            {"tags": ["hello", "intro"]}""" ).as( DocAnyOrderTags.class );
+        DocAnyOrderTags actual = JsonValue.of( """
+            {"tags": ["intro", "hello"]}""" ).as( DocAnyOrderTags.class );
+
+        assertTrue( expected.diff( actual ).differences().isEmpty() );
+    }
 }

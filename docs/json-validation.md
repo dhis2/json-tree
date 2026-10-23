@@ -80,8 +80,8 @@ types.
 
 ## Related
 
-- [Validation reference](validation-reference.md) — full attribute table,
+- [Validation reference](json-validation-reference) — full attribute table,
   precedence, item validation, custom validators, `dependentRequired`
-- [User types as JSON tree](user-types.md)
-- [API reference](api-reference.md)
+- [User types as JSON tree](intro-6-user-types)
+- [API reference](json-api-overview)
 - [Input Expressions](input-expressions-reference) — a RegEx alternative that is simple, safe and fast

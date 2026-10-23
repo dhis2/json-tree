@@ -36,15 +36,15 @@ problems.
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md) — install and first example
-- [Lazy parsing and the virtual tree](docs/lazy-parsing.md) — the idea behind the library
-- [Java API](docs/java-api.md) — build a tree from Java types
-- [JSON API](docs/json-api.md) — work from a JSON document
-- [Null, undefined and existence](docs/null-and-undefined.md) — the subtle states
-- [User types as JSON tree](docs/user-types.md) — extend the tree with your own types
-- [Validation](docs/validation.md) — check input against a target schema
-- [Comparing JSON values (diff)](docs/diff.md) — structural comparison
-- [API reference](docs/api-reference.md) — types and methods at a glance
+- [Getting started](docs/intro-1-getting-started) — install and first example
+- [Lazy parsing and the virtual tree](docs/intro-2-lazy-parsing) — the idea behind the library
+- [Java API](docs/intro-4-json-from-java) — build a tree from Java types
+- [JSON API](docs/intro-3-json-from-text) — work from a JSON document
+- [Null, undefined and existence](docs/intro-5-null-and-undefined) — the subtle states
+- [User types as JSON tree](docs/intro-6-user-types) — extend the tree with your own types
+- [Validation](docs/json-validation) — check input against a target schema
+- [Comparing JSON values (diff)](docs/json-diff) — structural comparison
+- [API reference](docs/json-api-overview) — types and methods at a glance
 - [Standards and RFCs](docs/rfc-reference.md) — conformance and deviations
 
 ## Maven

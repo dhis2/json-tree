@@ -195,6 +195,146 @@ class JsonDiffTest {
             .as(JsonTypeDefaultsObject.class));
   }
 
+  // ---------------------------------------------------------------------------
+  // Type mismatches
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testTypeMismatch() {
+    assertDiff( "{\"x\": 1}", "{\"x\": \"1\"}", "!= $.x: 1 <> \"1\"" );
+    assertDiff( "{\"x\": []}", "{\"x\": {}}", "!= $.x: [] <> {}" );
+    assertDiff( "{\"x\": null}", "{\"x\": 0}", "!= $.x: null <> 0" );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Deep paths and multiple diffs
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testDeepPath() {
+    assertDiff(
+        "{\"a\":{\"b\":{\"c\": 1}}}",
+        "{\"a\":{\"b\":{\"c\": 2}}}",
+        "!= $.a.b.c: 1 <> 2" );
+  }
+
+  @Test
+  void testMultipleDiffs() {
+    assertDiff(
+        "{\"a\":1,\"b\":2,\"c\":3}",
+        "{\"a\":10,\"b\":2,\"c\":30}",
+        "!= $.a: 1 <> 10",
+        "!= $.c: 3 <> 30" );
+  }
+
+  @Test
+  void testEmptyDiff_Complex() {
+    String json = """
+            {"a":[1,2,{"b":"c"}],"d":null}""";
+    assertNoDiff( json, json );
+  }
+
+  @Test
+  void testWhitespace() {
+    assertNoDiff( "{ \"a\" : 1 , \"b\" : 2 }", "{\"a\":1,\"b\":2}" );
+    assertNoDiff( "[ 1 , 2 , 3 ]", "[1,2,3]" );
+  }
+
+  // ---------------------------------------------------------------------------
+  // SORT: object member order under strict-object mode
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testObject_StrictOrder() {
+    assertDiff(
+        "{ \"a\": 1, \"b\": 2 }",
+        "{ \"b\": 2, \"a\": 1 }",
+        JsonDiff.Mode.STRICT,
+        ">> $.a/$.b: 1 <> 2",
+        ">> $.b/$.a: 2 <> 1" );
+  }
+
+  @Test
+  void testObject_DEFAULT_AnyOrder() {
+    // DEFAULT treats object members as any-order
+    assertNoDiff(
+        JsonValue.of( "{\"a\":1,\"b\":2}" ),
+        JsonValue.of( "{\"b\":2,\"a\":1}" ),
+        JsonDiff.Mode.DEFAULT );
+  }
+
+  // ---------------------------------------------------------------------------
+  // AnyOrder / AnyAdditional opt-out via annotation value = false
+  // ---------------------------------------------------------------------------
+
+  interface JsonStrictTags extends JsonObject {
+    @JsonDiff.AnyOrder( value = false )
+    default JsonArray tags() { return getArray( "tags" ); }
+  }
+
+  @Test
+  void testAnyOrder_False() {
+    // LENIENT makes arrays any-order by default; the annotation overrides it
+    assertDiff(
+        JsonValue.of( "{\"tags\":[1,2,3]}" ),
+        JsonValue.of( "{\"tags\":[1,3,2]}" ).as( JsonStrictTags.class ),
+        JsonDiff.Mode.LENIENT,
+        "!= $.tags.1: 2 <> 3",
+        "!= $.tags.2: 3 <> 2" );
+  }
+
+  interface JsonStrictAdditional extends JsonObject {
+    @JsonDiff.AnyAdditional( value = false )
+    default JsonArray tags() { return getArray( "tags" ); }
+  }
+
+  @Test
+  void testAnyAdditional_False() {
+    // LENIENT makes arrays any-additional by default; the annotation overrides it
+    assertDiff(
+        JsonValue.of( "{\"tags\":[1,2]}" ),
+        JsonValue.of( "{\"tags\":[1,2,3]}" ).as( JsonStrictAdditional.class ),
+        JsonDiff.Mode.LENIENT,
+        "++ $.tags.2: ? <> 3" );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mode builders — each builder overrides exactly one aspect
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testModeBuilder_Arrays() {
+    // STRICT is strict everywhere; make only arrays any-order
+    JsonDiff.Mode m = JsonDiff.Mode.STRICT.arrays( new JsonDiff.Strictness( true, false ) );
+
+    assertNoDiff( "[1,2,3]", "[3,1,2]", m );
+    assertDiff(
+        "{\"a\":1,\"b\":2}",
+        "{\"b\":2,\"a\":1}",
+        m,
+        ">> $.a/$.b: 1 <> 2",
+        ">> $.b/$.a: 2 <> 1" );
+  }
+
+  @Test
+  void testModeBuilder_Numbers() {
+    // DEFAULT is numeric; switch to textual
+    JsonDiff.Mode m = JsonDiff.Mode.DEFAULT.numbers( JsonDiff.Equivalence.TEXTUAL );
+    assertDiff( "4", "4.0", m, "!= $: 4 <> 4.0" );
+  }
+
+  @Test
+  void testModeBuilder_Objects() {
+    // DEFAULT is any-order for objects; switch to strict
+    JsonDiff.Mode m = JsonDiff.Mode.DEFAULT.objects( new JsonDiff.Strictness( false, false ) );
+    assertDiff(
+        "{\"a\":1,\"b\":2}",
+        "{\"b\":2,\"a\":1}",
+        m,
+        ">> $.a/$.b: 1 <> 2",
+        ">> $.b/$.a: 2 <> 1" );
+  }
+
   private static void assertDiff(String expected, String actual, String... differences) {
     assertDiff(expected, actual, DEFAULT, differences);
   }

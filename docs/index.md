@@ -4,31 +4,33 @@ Start here.
 
 ## Learn
 
-- [Getting started](getting-started.md) — coordinates and a first example.
-- [Lazy parsing and the virtual tree](lazy-parsing.md) — what "virtual" and "lazy" mean here.
+- [Getting started](intro-1-getting-started) — coordinates and a first example.
+- [Lazy parsing and the virtual tree](intro-2-lazy-parsing) — what "virtual" and "lazy" mean here.
+- [JSON API](intro-3-json-from-text) — build a tree from a JSON document.
+- [Java API](intro-4-json-from-java) — build a tree from Java types.
+- [Null, undefined and existence](intro-5-null-and-undefined) — the three-state model.
+- [User types as JSON tree](intro-6-user-types) — extend the tree with `interface`s.
+ 
+## Discover
 
-## Use
-
-- [Java API](java-api.md) — build a tree from Java types.
-- [JSON API](json-api.md) — build a tree from a JSON document.
-- [JSON5 API](json5-star-reference) — build a tree from JSON5 document.
-- [Null, undefined and existence](null-and-undefined.md) — the three-state model.
-- [User types as JSON tree](user-types.md) — extend the tree with `interface`s.
-- [Navigating the tree](tree-navigation.md) — paths as a uniform way to drill down.
-- [Querying the tree](query-api.md) — finding nodes using matchers.
-- [Validation](validation.md) — check input against a target schema.
-- [Comparing JSON values (diff)](diff.md) — structural comparison of two trees.
-- [Modification](json-patch.md) — bulk patching JSON using patch operations 
+- [API overview](json-api-overview) — most used API methods overview.
+- [Navigating the tree](json-paths) — paths as a uniform way to drill down.
+- [Querying the tree](json-search) — finding nodes using matchers.
+- [Validation](json-validation) — check input against a target schema.
+- [Comparing JSON values (diff)](json-diff) — structural comparison of two trees.
+- [Modification](json-patch) — bulk patching JSON using patch operations 
 
 ## Reference
 
-- [API reference](api-reference.md) — every type and method.
 - [Standards and RFCs](rfc-reference.md) — implementations and deviations.
-- [Validation reference](validation-reference.md) — every validation attribute
-    and its semantics.
+- [JSON5* notation](json5-star-reference.md) — the JSON5 variant accepted by the parser.
 - [JURL reference](jurl-reference) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
 - [Input Expressions](input-expressions-reference) — a RegEx alternative that is simple, safe and fast
-- [JSON5* notation](json5-star-reference.md) — the JSON5 variant accepted by the parser.
+
+APIs in depth
+
+- [Validation reference](json-validation-reference) — every validation attribute
+  and its semantics.
 
 ## Maintainers
 
