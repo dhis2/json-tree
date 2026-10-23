@@ -76,7 +76,15 @@ record JsonTree(
 
   static JsonNode of(
       char @NotNull [] json, @CheckNull JsonNode.GetListener onGet, @NotNull JsonNode.Index auto) {
-    JsonTree res = new JsonTree(json, auto, new HashMap<>(), onGet);
+    return of(json, onGet, auto, new HashMap<>());
+  }
+
+  static JsonNode of(
+      char @NotNull [] json,
+      JsonNode.@CheckNull GetListener onGet,
+      JsonNode.@NotNull Index auto,
+      HashMap<JsonPath, JsonNode> cache) {
+    JsonTree res = new JsonTree(json, auto, cache, onGet);
     JsonNode root = res.autoDetect(JsonPath.SELF, null, skipWhitespace(res.json, 0));
     res.nodesByPath.put(JsonPath.SELF, root);
     return root;

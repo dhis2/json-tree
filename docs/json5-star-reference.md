@@ -4,7 +4,7 @@ The library implements a lightweight variant of JSON5, which we call JSON5*.
 The syntax is designed so that any valid document can be transformed into
 standard JSON without inserting characters. This keeps the parser's offsets
 valid against the original source text and preserves the lazy-parsing and
-memory characteristics described in [Lazy parsing](lazy-parsing.md).
+memory characteristics described in [Lazy parsing](intro-2-lazy-parsing).
 
 ## Differences from JSON5
 

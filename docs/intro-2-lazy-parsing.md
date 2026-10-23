@@ -18,7 +18,7 @@ are used.
 Because the underlying input is never expanded into a tree of intermediate
 objects, memory stays close to the size of the source string. In practice this
 lets `json-tree` comfortably handle inputs in the MB range, and it makes it
-cheap to extend the tree with user types (see [User types](user-types.md))
+cheap to extend the tree with user types (see [User types](intro-6-user-types))
 without paying for eager conversion.
 
 ## Two APIs
@@ -44,6 +44,7 @@ the lazy parsing when needed under the hood.
 
 ## Related
 
-- [Null, undefined and existence](null-and-undefined.md)
-- [Java API](java-api.md)
-- [JSON API](json-api.md)
+- [JSON from text](intro-3-json-from-text)
+- [JSON from Java](intro-4-json-from-java)
+- [Null, undefined and existence](intro-5-null-and-undefined)
+- [Lazyness, Performance and Streaming](intro-7-json-performance.md)

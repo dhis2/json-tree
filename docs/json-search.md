@@ -25,13 +25,13 @@ Fluent building blocks, all defined on `JsonSelector`:
 |----------------------------|--------------------------------------------------|
 | `.key("name")`             | object member with that name                     |
 | `.index(i)`                | array element at that index                      |
-| `.indexes(i, j, …)`        | union of indexes                                 |
+| `.indexes(i, j, ...)`      | union of indexes                                 |
 | `.any()`                   | all children (object members or array elements)  |
 | `.descendants()`           | this node and every node below it                |
 | `.slice(start, end, step)` | array slice                                      |
 | `.type(JsonNodeType.X)`    | keep only nodes of that JSON type                |
-| `.filter(node -> …)`       | keep only nodes matching a `Predicate<JsonNode>` |
-| `.find(node -> …)`         | descendants that match a `Predicate<JsonMixed>`  |
+| `.filter(node -> ...)`     | keep only nodes matching a `Predicate<JsonNode>` |
+| `.find(node -> ...)`       | descendants that match a `Predicate<JsonMixed>`  |
 
 Two anchors to start building a selector from:
 
@@ -120,6 +120,24 @@ Rank matches with a scoring function:
         .toList();                                              // [Grace, Alan]
 ```
 
+### Entry points at a glance
+
+`JsonSelectable` exposes ten methods; one is abstract, the rest are default
+methods layered on top of it.
+
+| Method                                                | Returns       | Purpose                                                      |
+|-------------------------------------------------------|---------------|--------------------------------------------------------------|
+| `query(selector, matches)`                            | `void`        | the essential method; hand each match to a `Matches<T>` sink |
+| `query(selector)`                                     | `Stream<T>`   | all matches as a stream                                      |
+| `query(selector, limit)`                              | `Stream<T>`   | up to `limit` matches as a stream                            |
+| `queryCount(selector)`                                | `int`         | number of matches                                            |
+| `queryCount(selector, limit)`                         | `int`         | number of matches, capped at `limit`                         |
+| `queryExists(selector)`                               | `boolean`     | `true` if at least one match                                 |
+| `queryFirst(selector)`                                | `Optional<T>` | first match, if any                                          |
+| `queryReduce(selector, extract, init, reduce)`        | `V`           | fold all matches into one value                              |
+| `queryReduce(selector, limit, extract, init, reduce)` | `V`           | fold matches, capped at `limit`                              |
+| `queryTop(n, selector, score)`                        | `Stream<T>`   | highest-scoring `n` matches, descending                      |
+
 The `query(selector, matches)` form is what all of the above use underneath —
 it takes a `Matches<T>` sink instead of returning a `Stream`, which avoids
 allocating a result collection when you only need a count, an existence check,
@@ -128,6 +146,6 @@ aggregation.
 
 ## Related
 
-- [Navigating the tree](tree-navigation.md) — `JsonPath`, the fixed-location
+- [Navigating the tree](json-paths) — `JsonPath`, the fixed-location
   counterpart to `JsonSelector`.
-- [API reference](api-reference.md)
+- [API reference](json-api-overview)

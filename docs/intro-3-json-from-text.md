@@ -10,7 +10,7 @@ and `JsonObject`. An instance of one of these represents a virtual tree node;
 the node's value is then accessed using the appropriate access method.
 
 Representing JSON `null` as a type is not necessary — see
-[Null, undefined and existence](null-and-undefined.md) for how a node can be
+[Null, undefined and existence](intro-5-null-and-undefined) for how a node can be
 undefined or a defined `null` regardless of the requested type.
 
 ## Example
@@ -37,6 +37,7 @@ complex inputs:
 
 ## Related
 
-- [Null, undefined and existence](null-and-undefined.md)
-- [Java API](java-api.md)
-- [Lazy parsing](lazy-parsing.md)
+- [Lazy parsing](intro-2-lazy-parsing)
+- [JSON from Java](intro-4-json-from-java)
+- [Null, undefined and existence](intro-5-null-and-undefined)
+

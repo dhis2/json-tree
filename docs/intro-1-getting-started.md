@@ -40,6 +40,6 @@ Or wrap an existing JSON document and navigate it:
 
 ## Next steps
 
-- [Lazy parsing and the virtual tree](lazy-parsing.md)
-- [Java API](java-api.md)
-- [JSON API](json-api.md)
+- [Lazy parsing and the virtual tree](intro-2-lazy-parsing)
+- [JSON from text](intro-3-json-from-text)
+- [JSON from Java](intro-4-json-from-java)

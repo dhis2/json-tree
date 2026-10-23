@@ -42,5 +42,6 @@ Is a node that is absent in the actual tree or a node defined JSON `null`.
 
 ## Related
 
-- [JSON API](json-api.md)
-- [Lazy parsing](lazy-parsing.md)
+- [JSON API](intro-3-json-from-text)
+- [JSON from Java](intro-4-json-from-java)
+- [Extending with user types](intro-6-user-types)

@@ -1,7 +1,7 @@
 # Validation reference
 
 > [!TIP]
-> This page assumes familiarity with the basics in [Validation](validation.md).
+> This page assumes familiarity with the basics in [Validation](json-validation).
 > Later sections build upon earlier ones, so reading top-to-bottom is recommended.
 
 ## Overview
@@ -424,5 +424,5 @@ form:
 
 ## Related
 
-- [Validation](validation.md) — basic usage, `@Required`, `isA` / `asA`
-- [API reference](api-reference.md)
+- [Validation](json-validation) — basic usage, `@Required`, `isA` / `asA`
+- [API reference](json-api-overview)
