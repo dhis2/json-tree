@@ -9,6 +9,8 @@ import java.util.Arrays;
 import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
+import static java.lang.Math.abs;
+
 /**
  * A {@link String}-like API without requiring to manifest a {@link String} instance.
  *
@@ -90,9 +92,6 @@ public interface Text extends CharSequence, Comparable<Text> {
     return indexOf(infix, startIndex, length());
   }
 
-  /**
-   * @see String#indexOf(String, int, int)
-   */
   default int indexOf(CharSequence infix, int startIndex, int endIndex) {
     if (startIndex < 0) return -1;
     if (infix.isEmpty()) return 0;
@@ -682,9 +681,9 @@ public interface Text extends CharSequence, Comparable<Text> {
       if (value < 100) return of(Cache._100_TO_999, value * 3 + 1, 2);
       if (value < 1000) return of(Cache._100_TO_999, (value - 100) * 3, 3);
     }
-    int len = TextBuilder.characterCount(value);
+    int len = characterCount(value);
     char[] digits = new char[len];
-    TextBuilder.appendInt(value, digits, 0, len);
+    appendInt(value, digits, 0, len);
     return of(digits, 0, digits.length);
   }
 
@@ -732,5 +731,46 @@ public interface Text extends CharSequence, Comparable<Text> {
         hash = 31 * hash + text.charAt(i * step >> 3);
     }
     return hash;
+  }
+
+  /*
+  Text(int) Helpers
+   */
+
+  private static void appendInt(int value, char[] buffer, int offset, int length) {
+    boolean neg = value < 0;
+    boolean overflow = value == Integer.MIN_VALUE;
+    value = overflow ? value - 1 : abs(value);
+    int digit0 = neg ? 1 : 0;
+    if (neg) buffer[offset] = '-';
+    int rest = value;
+    for (int i = length - 1; i >= digit0; i--) {
+      buffer[offset + i] = (char) ('0' + (rest % 10));
+      rest /= 10;
+    }
+    if (overflow) buffer[offset + length - 1] += 1;
+  }
+
+  private static int characterCount(int value) {
+    if (value == 0) return 1;
+    int n = digitCount(value);
+    return value < 0 ? n + 1 : n;
+  }
+
+  private static int digitCount(int n) {
+    if (n < 0) {
+      if (n == Integer.MIN_VALUE) return 10;
+      n = -n;
+    }
+    if (n < 10) return 1;
+    if (n < 100) return 2;
+    if (n < 1000) return 3;
+    if (n < 10000) return 4;
+    if (n < 100000) return 5;
+    if (n < 1000000) return 6;
+    if (n < 10000000) return 7;
+    if (n < 100000000) return 8;
+    if (n < 1000000000) return 9;
+    return 10;
   }
 }

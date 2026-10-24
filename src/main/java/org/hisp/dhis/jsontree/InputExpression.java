@@ -495,11 +495,11 @@ public record InputExpression(List<Pattern> patterns) {
     TextBuilder regex = new TextBuilder();
     boolean single = patterns.size() == 1;
     for (Pattern pattern : patterns) {
-      if (!regex.isEmpty()) regex.append('|');
+      if (!regex.isEmpty()) regex.appendAscii('|');
       // to be safe the | applies correctly wrap each in non-capture group
-      if (!single) regex.append("(?:");
+      if (!single) regex.appendAscii("(?:");
       toRegEx(pattern.pattern, 0, pattern.pattern.length(), regex);
-      if (!single) regex.append(')');
+      if (!single) regex.appendAscii(')');
     }
     return regex.toString();
   }
@@ -509,24 +509,25 @@ public record InputExpression(List<Pattern> patterns) {
     while (i < end) {
       char opcode = pattern.charAt(i++);
       switch (opcode) {
-        case '#' -> regex.append("[0-9]");
-        case '@' -> regex.append("[-_0-9A-Za-z]");
+        case '#' -> regex.appendAscii("[0-9]");
+        case '@' -> regex.appendAscii("[-_0-9A-Za-z]");
         case '[' -> i = toRegExSet(pattern, i, skipUnit(pattern, i-1), regex);
         case '|' -> i = toRegExSequence(pattern, i, skipUnit(pattern, i-1), regex);
         case '?', '*', '+', '1','2','3','4','5','6','7','8','9' -> i = toRegExRepeat(pattern, i-1, regex);
         case '~' -> i = toRegExScan(pattern, i, regex);
         // ignore bounds as there is no regex equivalent
         case '{' -> i = pattern.indexOf('}', i) + 1;
-        case '(' -> regex.append('(');
-        case ')' -> regex.append(')');
+        case '(' -> regex.appendAscii("(?:");
+        case ')' -> regex.appendAscii(')');
         default -> {
           // everything else is taken literally
           if (isAlphanumeric(opcode)) {
-            regex.append(opcode);
+            regex.appendAscii(opcode);
           } else {
-            regex.append('[');
-            if (isRegExSetEscaped(opcode)) regex.append('\\');
-            regex.append(opcode).append(']');
+            regex.appendAscii('[');
+            if (isRegExSetEscaped(opcode)) regex.appendAscii('\\');
+            regex.appendAscii(opcode);
+            regex.appendAscii(']');
           }
         }
       }
@@ -536,20 +537,20 @@ public record InputExpression(List<Pattern> patterns) {
   private int toRegExScan(Text pattern, int offset, TextBuilder regex) {
     if (pattern.charAt(offset) == '~') {
       //~~AB => A*?B
-      regex.append("(?:");
+      regex.appendAscii("(?:");
       int end1 = skipUnit(pattern, offset+1);
       toRegEx(pattern, offset+1, end1, regex);
-      regex.append(")*?(?:");
+      regex.appendAscii(")*?(?:");
       int end2 = skipUnit(pattern, end1);
       toRegEx(pattern, end1, end2, regex);
-      regex.append(')');
+      regex.appendAscii(')');
       return end2;
     }
     // ~A => .*?A
     int end = skipUnit(pattern, offset);
-    regex.append(".*?(:?");
+    regex.appendAscii(".*?(?:");
     toRegEx(pattern, offset, end, regex);
-    regex.append(')');
+    regex.appendAscii(')');
     return end;
   }
 
@@ -571,53 +572,59 @@ public record InputExpression(List<Pattern> patterns) {
       i++;
     }
     int end = skipUnit(pattern, i);
-    regex.append("(?:");
+    regex.appendAscii("(?:");
     toRegEx(pattern, i, end, regex);
-    regex.append(')');
+    regex.appendAscii(')');
     if (repMin == 0 && repMax == 1) {
-      regex.append('?');
+      regex.appendAscii('?');
     } else if (repMin == 0 && repMax == MAX_VALUE) {
-      regex.append('*');
+      regex.appendAscii('*');
     } else if (repMin == 1 && repMax == MAX_VALUE) {
-      regex.append('+');
+      regex.appendAscii('+');
     } else {
-      regex.append('{');
-      if (repMin < repMax) regex.append(repMin).append(',');
-      regex.append(repMax).append('}');
+      regex.appendAscii('{');
+      if (repMin < repMax) {
+        regex.appendInt(repMin);
+        regex.appendAscii(',');
+      }
+      regex.appendInt(repMax);
+      regex.appendAscii('}');
     }
     return end;
   }
 
   private int toRegExSet(Text pattern, int offset, int end, TextBuilder regex) {
-    regex.append('[');
+    regex.appendAscii('[');
     int i = offset;
     while (i < end) {
       char opcode = pattern.charAt(i++);
       switch (opcode) {
-        case 'b' -> regex.append("01");
-        case 'd' -> regex.append("0-9");
-        case 'i' -> regex.append("\\-_0-9A-Za-z");
-        case 'u' -> regex.append("A-Z");
-        case 'l' -> regex.append("a-z");
-        case 'c' -> regex.append("A-Za-z");
-        case 'a' -> regex.append("0-9A-Za-z");
-        case 'x' -> regex.append("0-9A-Fa-f");
-        case 's' -> regex.append("\\-+");
+        case 'b' -> regex.appendAscii("01");
+        case 'd' -> regex.appendAscii("0-9");
+        case 'i' -> regex.appendAscii("\\-_0-9A-Za-z");
+        case 'u' -> regex.appendAscii("A-Z");
+        case 'l' -> regex.appendAscii("a-z");
+        case 'c' -> regex.appendAscii("A-Za-z");
+        case 'a' -> regex.appendAscii("0-9A-Za-z");
+        case 'x' -> regex.appendAscii("0-9A-Fa-f");
+        case 's' -> regex.appendAscii("\\-+");
         case ']' -> {
-          if (i-1 == offset) regex.append('\\');
-          regex.append(']');
+          if (i-1 == offset) regex.appendAscii('\\');
+          regex.appendAscii(']');
         }
         default -> {
           if (isUpperLetter(opcode)) {
-            regex.append(opcode).append(toLowerCase(opcode));
+            regex.appendAscii(opcode);
+            regex.appendAscii(toLowerCase(opcode));
           } else if (isDigit(opcode)) {
-            regex.append("0-").append(opcode);
+            regex.appendAscii("0-");
+            regex.appendAscii(opcode);
           } else if (isLowerLetter(opcode)) {
             throw reserved(opcode);
           } else {
             // everything else is taken literally
-            if (isRegExSetEscaped(opcode)) regex.append('\\');
-            regex.append(opcode);
+            if (isRegExSetEscaped(opcode)) regex.appendAscii('\\');
+            regex.appendAscii(opcode);
           }
         }
       }
@@ -630,32 +637,36 @@ public record InputExpression(List<Pattern> patterns) {
     while (i < end) {
       char opcode = pattern.charAt(i++);
       switch (opcode) {
-        case 'b' -> regex.append("[01]");
-        case 'd', '#', '0',  '1','2','3','4','5','6','7','8','9' -> regex.append("[0-9]");
-        case 'i' -> regex.append("[-_0-9A-Za-z]");
-        case 'u' -> regex.append("[A-Z]");
-        case 'l' -> regex.append("[a-z]");
-        case 'c' -> regex.append("[A-Za-z]");
-        case 'a' -> regex.append("[0-9A-Za-z]");
-        case 'x' -> regex.append("[0-9A-Fa-f]");
-        case 's' -> regex.append("[-+]");
-        case '?' -> regex.append(".");
+        case 'b' -> regex.appendAscii("[01]");
+        case 'd', '#', '0',  '1','2','3','4','5','6','7','8','9' -> regex.appendAscii("[0-9]");
+        case 'i' -> regex.appendAscii("[-_0-9A-Za-z]");
+        case 'u' -> regex.appendAscii("[A-Z]");
+        case 'l' -> regex.appendAscii("[a-z]");
+        case 'c' -> regex.appendAscii("[A-Za-z]");
+        case 'a' -> regex.appendAscii("[0-9A-Za-z]");
+        case 'x' -> regex.appendAscii("[0-9A-Fa-f]");
+        case 's' -> regex.appendAscii("[-+]");
+        case '?' -> regex.appendAscii(".");
         case '|' -> {
-          if (i-1 == offset) regex.append("\\|");
+          if (i-1 == offset) regex.appendAscii("\\|");
         }
         default -> {
           if (isUpperLetter(opcode)) {
-            regex.append('[').append(opcode).append(toLowerCase(opcode)).append(']');
+            regex.appendAscii('[');
+            regex.appendAscii(opcode);
+            regex.appendAscii(toLowerCase(opcode));
+            regex.appendAscii(']');
           } else if (isLowerLetter(opcode)) {
             throw reserved(opcode);
           } else {
             if (isAlphanumeric(opcode)) {
-              regex.append(opcode);
+              regex.appendAscii(opcode);
             } else {
               // everything else is taken literally
-              regex.append('[');
-              if (isRegExSetEscaped(opcode)) regex.append('\\');
-              regex.append(opcode).append(']');
+              regex.appendAscii('[');
+              if (isRegExSetEscaped(opcode)) regex.appendAscii('\\');
+              regex.appendAscii(opcode);
+              regex.appendAscii(']');
             }
           }
         }

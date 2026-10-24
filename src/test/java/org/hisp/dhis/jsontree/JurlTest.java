@@ -3,7 +3,9 @@ package org.hisp.dhis.jsontree;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -240,11 +242,118 @@ class JurlTest {
         "(name,id,(dataElements:(id,name)),(orgUnits:size))");
   }
 
+  @Test
+  void testRoundTrip_Strings() {
+    String[] cases = {
+        "",
+        "hello",
+        "hello world",         // space → literal
+        "héllo",               // 2-byte UTF-8
+        "€",                   // 3-byte UTF-8
+        "日本語",               // 3-byte UTF-8 sequence
+        "😀",                   // 4-byte UTF-8 (surrogate pair)
+        "a😀b",                 // pair between ASCII
+        "a\"b",                // mnemonic ~d
+        "a~b",                 // mnemonic ~~ (round-trip regression)
+        "a'b",                 // mnemonic ~q
+        "a\\b",                // mnemonic ~b
+        "a&b=c+d#e%f",         // mnemonics ~a ~e ~p ~h ~c
+        "line1\nline2",        // control → ~0A (not URL-safe)
+        "tab\there",           // control → ~09
+        "<>[]{}|^`",           // non-mnemonic punctuation → bare UTF-8 bytes
+        "😀€héllo",            // mixed
+    };
+    for (String s : cases) {
+      String jurl = Jurl.createObject(o -> o.addString("k", s));
+      JsonMixed parsed = Jurl.of(jurl);
+      try {
+        assertEquals(s, parsed.get("k").string(), "round-trip: " + s + " → " + jurl);
+      } catch (JsonFormatException ex) {
+        fail("%s cause malformed JURL %s and JSON %s".formatted(s, jurl, parsed));
+      }
+    }
+  }
+
+  @Test
+  void testRawEncoding_Utf8ByteEscape() {
+    // é = U+00E9 = UTF-8 C3 A9
+    assertEquals(
+        "(k:'h~C3~A9llo')",
+        Jurl.createObject(o -> o.addString("k", "héllo")));
+    // € = U+20AC = UTF-8 E2 82 AC
+    assertEquals(
+        "(k:'~E2~82~AC')",
+        Jurl.createObject(o -> o.addString("k", "€")));
+    // 😀 = U+1F600 = UTF-8 F0 9F 98 80
+    assertEquals(
+        "(k:'~F0~9F~98~80')",
+        Jurl.createObject(o -> o.addString("k", "😀")));
+  }
+
+  @Test
+  void testParse_Utf8ByteEscape() {
+    assertEquals("héllo", Jurl.of("(k:'h~C3~A9llo')").get("k").string());
+    assertEquals("€", Jurl.of("(k:'~E2~82~AC')").get("k").string());
+    assertEquals("😀", Jurl.of("(k:'~F0~9F~98~80')").get("k").string());
+  }
+
+  @Test
+  void testParse_InvalidUtf8() {
+    // bare continuation byte without lead
+    assertThrows(
+        JsonFormatException.class, () -> Jurl.of("(k:'~A9')"));
+    // truncated 3-byte sequence
+    assertThrows(
+        JsonFormatException.class, () -> Jurl.of("(k:'~E2~82')"));
+    // missing ~ between bytes
+    assertThrows(
+        JsonFormatException.class, () -> Jurl.of("(k:'~E282AC')"));
+  }
+
+  @Test
+  void testParse_SurrogateCodePoint() {
+    // ED A0 80 = 3-byte UTF-8 decoding to U+D800 (CESU-8); lenient decoders replace with U+FFFD
+    assertEquals(
+        "\uFFFD", Jurl.of("(k:'~ED~A0~80')").get("k").string());
+  }
+
   private static void assertJurlEquals(JsonValue expected, String input) {
     // on the client
     String encoded = URLEncoder.encode(input, UTF_8);
     // on the server
     String decoded = URLDecoder.decode(encoded, UTF_8);
     assertEquals(expected, Jurl.of(decoded));
+  }
+
+  @Test
+  void testParse_HexEscapedJsonSpecials() {
+    // ~22 = " and ~5C = \ must survive hand-crafted JURL
+    assertEquals("\"", Jurl.of("(k:'~22')").get("k").string());
+    assertEquals("\\", Jurl.of("(k:'~5C')").get("k").string());
+    assertEquals("a\"b\\c", Jurl.of("(k:'a~22b~5Cc')").get("k").string());
+  }
+
+  @Test
+  void testParse_HexEscapedControls() {
+    // ~00, ~01, ~1F must all round-trip through valid JSON
+    for (int i = 0; i < 0x20; i++) {
+      String jurl = "(k:'~%02X')".formatted(i);
+      assertEquals(String.valueOf((char) i), Jurl.of(jurl).get("k").string(),
+          "control char 0x" + Integer.toHexString(i));
+    }
+  }
+
+  @Test
+  void testCreateObject_InvalidMemberName() {
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("with space", "x")));
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("a\u00A9b", "x")));
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("a~b", "x")));   // if ~ stays excluded
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("", "x")));
+    // valid names still work
+    assertEquals("(a-b.c_d@e:1)", Jurl.createObject(o -> o.addNumber("a-b.c_d@e", 1)));
   }
 }

@@ -5,9 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import java.util.List;
-import org.hisp.dhis.jsontree.InputExpression.Pattern;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -50,14 +55,18 @@ class InputExpressionTest {
   @Test
   void testScan() {
     assertMatches("He~o", "Hello", "Hero", "Heo");
-    assertEquals(new Pattern(0, Text.of("He~o"), 3, -1), Pattern.of(0,"He~o"));
+    assertEquals(
+        new InputExpression.Pattern(0, Text.of("He~o"), 3, -1),
+        InputExpression.Pattern.of(0, "He~o"));
   }
 
   @Test
   void testScanIf() {
     assertMatches("He~~lo", "Hello","Helo","Helllo","Heo");
     assertDoesNotMatch("He~~lo", "Hemo", "Hero");
-    assertEquals(new Pattern(0, Text.of("He~~lo"), 3, -1), Pattern.of(0,"He~~lo"));
+    assertEquals(
+        new InputExpression.Pattern(0, Text.of("He~~lo"), 3, -1),
+        InputExpression.Pattern.of(0, "He~~lo"));
   }
 
   @Test
@@ -65,7 +74,9 @@ class InputExpressionTest {
     String pattern = "/api~~(/+@)(/gist)";
     assertMatches(pattern, "/api/gist", "/api/foo/gist", "/api/foo/bar/gist");
     assertDoesNotMatch(pattern, "/api/foo","/api/gist/foo");
-    assertEquals(new Pattern(0, Text.of(pattern), 9, -1), Pattern.of(0, pattern));
+    assertEquals(
+        new InputExpression.Pattern(0, Text.of(pattern), 9, -1),
+        InputExpression.Pattern.of(0, pattern));
   }
 
   @Test
@@ -269,7 +280,7 @@ class InputExpressionTest {
   private static void assertMatches(InputExpression expr, String...inputs) {
     java.util.regex.Pattern regex = java.util.regex.Pattern.compile(expr.toRegEx());
     for (String input : inputs) {
-      Pattern matching = expr.match(input);
+      InputExpression.Pattern matching = expr.match(input);
       assertNotNull(matching, () -> "Pattern should match %s".formatted(input));
       assertTrue(regex.matcher(input).matches(), () -> "RegEx %s should match input: %s".formatted(regex, input));
     }
@@ -282,7 +293,7 @@ class InputExpressionTest {
   private static void assertDoesNotMatch(InputExpression expr, Boolean regexMatches, String...inputs) {
     java.util.regex.Pattern regex = java.util.regex.Pattern.compile(expr.toRegEx());
     for (String input : inputs) {
-      Pattern matching = expr.match(input);
+      InputExpression.Pattern matching = expr.match(input);
       assertNull(matching, () -> "Pattern should NOT match %s".formatted(input));
       if (regexMatches != null)
         assertEquals(
@@ -291,6 +302,91 @@ class InputExpressionTest {
           () ->
               "RegEx %s should %s match input: %s"
                   .formatted(regex, regexMatches ? "" : "NOT ", input));
+    }
+  }
+
+
+  // ——— toRegEx() scan (~ and ~~) ———
+
+  @Test
+  void testToRegEx_Scan_Single() {
+    // Regression: buggy output was ".*?(:?[0-9])" (capturing group with optional ':')
+    // Fixed output is   ".*?(?:[0-9])"   (non-capturing group)
+    assertEquals(".*?(?:[0-9])", InputExpression.of("~#").toRegEx());
+  }
+
+  @Test
+  void testToRegEx_Scan_Single_NoCaptureGroup() {
+    // Behavioural check: the buggy version produces groupCount()==1,
+    // the fixed version produces groupCount()==0.
+    Pattern p = Pattern.compile(InputExpression.of("~#").toRegEx());
+    assertEquals(0, p.matcher("").groupCount(),
+        "~# should produce a non-capturing group; regex was: " + p.pattern());
+  }
+
+  @Test
+  void testToRegEx_Scan_Single_Match() {
+    Pattern p = Pattern.compile(InputExpression.of("~#").toRegEx());
+    assertTrue(p.matcher("5").matches(), "single digit");
+    assertTrue(p.matcher("abc5").matches(), "prefix + digit");
+    assertTrue(p.matcher("abc:5").matches(), "prefix + colon + digit");
+    assertTrue(p.matcher(":5").matches(), "leading colon + digit");
+    assertFalse(p.matcher("abc").matches(), "no digit");
+    assertFalse(p.matcher("").matches(), "empty");
+  }
+
+  @Test
+  void testToRegEx_Scan_Repeated() {
+    // ~~#a => (?:[0-9])*?(?:a) — already non-capturing in the original code;
+    // this test is regression protection, not a fix verification.
+    assertEquals("(?:[0-9])*?(?:a)", InputExpression.of("~~#a").toRegEx());
+  }
+
+  @Test
+  void testToRegEx_Scan_Repeated_NoCaptureGroup() {
+    Pattern p = Pattern.compile(InputExpression.of("~~#a").toRegEx());
+    assertEquals(0, p.matcher("").groupCount(),
+        "~~#a should produce non-capturing groups; regex was: " + p.pattern());
+  }
+
+  @Test
+  void testToRegEx_Scan_Repeated_Match() {
+    Pattern p = Pattern.compile(InputExpression.of("~~#a").toRegEx());
+    assertTrue(p.matcher("a").matches(), "zero repeats");
+    assertTrue(p.matcher("1a").matches(), "one repeat");
+    assertTrue(p.matcher("123a").matches(), "many repeats");
+    assertFalse(p.matcher("123").matches(), "no terminator");
+    assertFalse(p.matcher("123b").matches(), "wrong terminator");
+  }
+
+// ——— toRegEx() broader sanity ———
+
+  @Test
+  void testToRegEx_AllCompile() {
+    String[] patterns = {
+        "#", "@", "[du]", "|ab|", "?#", "*#", "+#", "3#", "3?#",
+        "~#", "~~#a", "(ab)", "2(ab)", "{0-9}#",
+        "|2099-12-31|", "~[0-9]", "~~|ab|a", "?[s]+#"
+    };
+    for (String p : patterns) {
+      String regex = InputExpression.of(p).toRegEx();
+      try {
+        Pattern.compile(regex);
+      } catch (PatternSyntaxException ex) {
+        fail("pattern '%s' produced invalid regex '%s': %s"
+            .formatted(p, regex, ex.getMessage()));
+      }
+    }
+  }
+
+  @Test
+  void testToRegEx_RepeatUnits_NoCaptureGroup() {
+    // repeat units already use (?:...) — this is regression protection
+    for (String p : new String[]{"?#", "*#", "+#", "3#", "2(ab)"}) {
+      int gc = Pattern.compile(InputExpression.of(p).toRegEx()).matcher("").groupCount();
+      assertEquals(0, gc,
+          "pattern '%s' produced capturing groups: %s"
+              .formatted(p, InputExpression.of(p).toRegEx()));
     }
   }
 }

@@ -1,7 +1,13 @@
 package org.hisp.dhis.jsontree;
 
+import static java.lang.Character.highSurrogate;
+import static java.lang.Character.isBmpCodePoint;
+import static java.lang.Character.lowSurrogate;
 import static java.lang.Math.abs;
 import static java.util.Objects.requireNonNull;
+import static org.hisp.dhis.jsontree.Appender.checkCodePoint;
+import static org.hisp.dhis.jsontree.Appender.checkRange;
+import static org.hisp.dhis.jsontree.Appender.needsJsonEscaping;
 
 import java.util.Arrays;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -103,202 +109,101 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
   }
 
   @Override
-  public TextBuilder append(CharSequence text) {
-    return append(text, 0, text == null ? 4 : text.length());
+  public void appendAscii(char c) {
+    appendEncoded(c);
   }
 
   @Override
-  public TextBuilder append(CharSequence text, int start, int end) {
+  public void appendAscii(CharSequence text, int start, int end) {
+    appendEncoded(text, start, end);
+  }
+
+  @Override
+  public void appendEncoded(CharSequence text, int start, int end) {
     if (text == null) text = "null";
-    if (start < 0 || end < start || text.length() < end)
-      throw new IndexOutOfBoundsException(
-          "0 <= start %d <= end %d <= length %d".formatted(start, end, text.length()));
-    if (text.isEmpty()) return this;
+    checkRange(text, start, end);
+    if (text.isEmpty()) return;
     int len = end - start;
-    if (len == 0) return this;
+    if (len == 0) return;
     ensureCapacity(len);
-    for (int i = 0; i < len; i++) buffer[length++] = text.charAt(start + i);
-    return this;
+    appendSlice(text, start, len);
   }
 
   @Override
-  public TextBuilder append(char[] chars) {
-    return append(chars, 0, chars.length);
-  }
-
-  @Override
-  public TextBuilder append(char[] chars, int offset, int len) {
-    requireNonNull(chars);
-    if (offset < 0 || offset+len > chars.length)
-      throw new IndexOutOfBoundsException(
-          "0 <= offset %d <= offset+len %d <= length %d".formatted(offset, offset+len, chars.length));
-    if (len == 0) return this;
-    ensureCapacity(len);
-    System.arraycopy(chars, offset, buffer, length, len);
-    length+=len;
-    return this;
-  }
-
-  @Override
-  public TextBuilder append(char c) {
+  public void appendEncoded(char c) {
     ensureCapacity(1);
     buffer[length++] = c;
-    return this;
   }
 
   @Override
-  public TextBuilder append(int value) {
-    int len = characterCount(value);
-    ensureCapacity(len);
-    char[] buf = buffer;
-    appendInt(value, buf, length, len);
-    length += len;
-    return this;
+  public void appendCodePoint(int cp) {
+    checkCodePoint(cp);
+    if (isBmpCodePoint(cp)) {
+      appendEncoded((char) cp);
+    } else {
+      appendEncoded(highSurrogate(cp));
+      appendEncoded(lowSurrogate(cp));
+    }
   }
 
   @Override
-  public TextBuilder append(long value) {
-    int len = characterCount(value);
-    ensureCapacity(len);
-    char[] buf = buffer;
-    appendLong(value, buf, length, len);
-    length += len;
-    return this;
+  public void appendJsonEscaped(CharSequence value) {
+    if (value == null) { appendAscii("null"); return; }
+    int len = value.length();
+    int i = 0;
+    while (i < len && !needsJsonEscaping(value.charAt(i))) i++;
+    if (i == len) {                              // fast path: no escapes
+      ensureCapacity(len + 2);
+      buffer[length++] = '"';
+      appendSlice(value, 0, len);
+      buffer[length++] = '"';
+      return;
+    }
+    ensureCapacity(1);
+    buffer[length++] = '"';
+    int start = 0;
+    while (i < len) {
+      appendAscii(value, start, i);
+      while (i < len && needsJsonEscaping(value.charAt(i))) {
+        writeEscapeToBuffer(value.charAt(i++));
+      }
+      start = i;
+      while (i < len && !needsJsonEscaping(value.charAt(i))) i++;
+    }
+    appendAscii(value, start, len);
+    ensureCapacity(1);
+    buffer[length++] = '"';
   }
 
-  @Override
-  public TextBuilder append(double value) {
-    if (Double.isNaN(value)) return append("NaN");
-    if (value == Double.POSITIVE_INFINITY) return append("Infinity");
-    if (value == Double.NEGATIVE_INFINITY) return append("-Infinity");
-    if (value == 0d) return Double.compare(value, -0d) == 0 ? append("-0.0") : append("0.0");
-    if (isDecimalNotation(value)) {
-      if (value % 1d == 0) return append((long) value).append(".0");
-      double scaled = value * 10d;
-      if (scaled % 1d == 0) {
-        if (scaled / 10d == value) {
-          long val10x = (long) scaled;
-          return append(val10x/10).appendDecimal(abs(val10x)%10);
-        }
-      } else {
-        scaled = value * 100d;
-        if (scaled % 1d == 0) {
-          if (scaled / 100d == value) {
-            long val100x = (long) scaled;
-            return append(val100x/100).appendDecimal(abs(val100x)%100);
-          }
-        } else {
-          scaled = value * 1000d;
-          if (scaled % 1d == 0 && scaled / 1000d == value) {
-            long val1000x = (long) scaled;
-            return append(val1000x/1000).appendDecimal(abs(val1000x)%1000);
-          }
-        }
+  private void appendSlice(CharSequence value, int start, int len) {
+    if (len > 16 && value instanceof Text t) {
+      t.copyTo(buffer, length, start, len);
+      length += len;
+    } else {
+      for (int j = 0; j < len; j++)
+        buffer[length++] = value.charAt(start + j);
+    }
+  }
+
+  private static final char[] HEX = "0123456789ABCDEF".toCharArray();
+  private void writeEscapeToBuffer(char c) {
+    ensureCapacity(6);                           // worst case /uXXXX
+    switch (c) {
+      case '"'    -> { buffer[length++] = '\\'; buffer[length++] = '"';  }
+      case '\\'   -> { buffer[length++] = '\\'; buffer[length++] = '\\'; }
+      case '\n'   -> { buffer[length++] = '\\'; buffer[length++] = 'n';  }
+      case '\r'   -> { buffer[length++] = '\\'; buffer[length++] = 'r';  }
+      case '\t'   -> { buffer[length++] = '\\'; buffer[length++] = 't';  }
+      case '\b'   -> { buffer[length++] = '\\'; buffer[length++] = 'b';  }
+      case '\f'   -> { buffer[length++] = '\\'; buffer[length++] = 'f';  }
+      default -> {
+        buffer[length++] = '\\';
+        buffer[length++] = 'u';
+        buffer[length++] = HEX[(c >> 12) & 0xF];
+        buffer[length++] = HEX[(c >>  8) & 0xF];
+        buffer[length++] = HEX[(c >>  4) & 0xF];
+        buffer[length++] = HEX[ c        & 0xF];
       }
     }
-    return append(String.valueOf(value));
-  }
-
-  private TextBuilder appendDecimal(long value) {
-    while (value > 10 && value % 10 == 0) value /= 10;
-    return append('.').append(value);
-  }
-
-  /**
-   * Would the number print in decimal notation?
-   */
-  private static boolean isDecimalNotation(double value) {
-    double abs = abs(value);
-    return abs >= 1e-3 && abs < 1e7; // JLS Rule: decimal if 10^-3 ≤ abs < 10^7
-  }
-
-  @Override
-  public TextBuilder appendCodePoint(int cp) {
-    ensureCapacity(2);
-    Appender.super.appendCodePoint(cp);
-    return this;
-  }
-
-  static void appendInt(int value, char[] buffer, int offset, int length) {
-    boolean neg = value < 0;
-    boolean overflow = value == Integer.MIN_VALUE;
-    value = overflow ? value - 1 : abs(value);
-    int digit0 = neg ? 1 : 0;
-    if (neg) buffer[offset] = '-';
-    int rest = value;
-    for (int i = length - 1; i >= digit0; i--) {
-      buffer[offset + i] = (char) ('0' + (rest % 10));
-      rest /= 10;
-    }
-    if (overflow) buffer[offset + length - 1] += 1;
-  }
-
-  static void appendLong(long value, char[] buffer, int offset, int length) {
-    boolean neg = value < 0;
-    boolean overflow = value == Long.MIN_VALUE;
-    value = overflow ? value - 1L : abs(value);
-    int digit0 = neg ? 1 : 0;
-    if (neg) buffer[offset] = '-';
-    long rest = value;
-    for (int i = length - 1; i >= digit0; i--) {
-      buffer[offset + i] = (char) ('0' + (rest % 10));
-      rest /= 10;
-    }
-    if (overflow) buffer[offset + length - 1] += 1;
-  }
-
-  static int characterCount(int value) {
-    if (value == 0) return 1;
-    int n = digitCount(value);
-    return value < 0 ? n + 1 : n;
-  }
-
-  static int characterCount(long value) {
-    if (value == 0L) return 1;
-    int n = digitCount(value);
-    return value < 0 ? n+1 : n;
-  }
-
-  private static int digitCount(int n) {
-    if (n < 0) {
-      if (n == Integer.MIN_VALUE) return 10;
-      n = -n;
-    }
-    if (n < 10) return 1;
-    if (n < 100) return 2;
-    if (n < 1000) return 3;
-    if (n < 10000) return 4;
-    if (n < 100000) return 5;
-    if (n < 1000000) return 6;
-    if (n < 10000000) return 7;
-    if (n < 100000000) return 8;
-    if (n < 1000000000) return 9;
-    return 10;
-  }
-
-  private static int digitCount(long n) {
-    if (n < 0) {
-      if (n == Long.MIN_VALUE) return 19;
-      n = -n;
-    }
-    if (n < 10L) return 1;
-    if (n < 100L) return 2;
-    if (n < 1000L) return 3;
-    if (n < 10000L) return 4;
-    if (n < 100000L) return 5;
-    if (n < 1000000L) return 6;
-    if (n < 10000000L) return 7;
-    if (n < 100000000L) return 8;
-    if (n < 1000000000L) return 9;
-    if (n < 10000000000L) return 10;
-    if (n < 100000000000L) return 11;
-    if (n < 1000000000000L) return 12;
-    if (n < 10000000000000L) return 13;
-    if (n < 100000000000000L) return 14;
-    if (n < 1000000000000000L) return 15;
-    if (n < 10000000000000000L) return 16;
-    if (n < 100000000000000000L) return 17;
-    if (n < 1000000000000000000L) return 18;
-    return 19;
   }
 }
