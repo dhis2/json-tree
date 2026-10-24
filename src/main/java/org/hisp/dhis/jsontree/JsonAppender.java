@@ -34,7 +34,11 @@ import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 
 /**
  * An "append only" {@link JsonBuilder} implementation that can be used with a {@link PrintStream}
- * or a {@link StringBuilder}.
+ * or a {@link StringBuilder} or anything really that implements {@link Appender}.
+ * <p>
+ * So in a sense this is a translation layer that is about turning Java values and nesting trough
+ * {@link JsonObjectBuilder}s and {@link JsonArrayBuilder}s into JSON text. This transformation
+ * can be customized using the {@link JsonBuilder.PrettyPrint} options.
  *
  * @author Jan Bernitt
  */
@@ -65,7 +69,13 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   private void appendDouble(double value) {
     if (JsonBuilder.requiresString(value)) {
       json.append('"');
-      json.append(String.valueOf(value));
+      if (Double.isNaN(value)) {
+        json.append("NaN");
+      } else if (value == Double.NEGATIVE_INFINITY) {
+        json.append("-Infinity");
+      } else {
+        json.append("Infinity");
+      }
       json.append('"');
     } else {
       json.append(value);

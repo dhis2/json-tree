@@ -8,6 +8,8 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.OBJECT;
 import static org.hisp.dhis.jsontree.Validation.NodeType.STRING;
 
 import java.nio.file.Path;
+
+import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.Language;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -35,7 +37,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonPrimitive {
    * @param node non-null
    * @return the provided {@link JsonNode} as virtual {@link JsonMixed}
    */
-  static JsonMixed of(JsonNode node) {
+  static JsonMixed of(@NotNull JsonNode node) {
     return new JsonVirtualTree(node.extract(), JsonAccess.GLOBAL);
   }
 
@@ -45,11 +47,11 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonPrimitive {
    * @param json a standard conform JSON string
    * @return root of the virtual tree representing the given JSON input
    */
-  static JsonMixed of(CharSequence json) {
+  static JsonMixed of(@CheckNull CharSequence json) {
     return of(json, JsonAccess.GLOBAL);
   }
 
-  static JsonMixed of(@Language("json") String json) {
+  static JsonMixed of(@CheckNull @Language("json") String json) {
     return of(json, JsonAccess.GLOBAL);
   }
 
@@ -62,7 +64,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonPrimitive {
    *     methods, when {@code null} default mapping is used
    * @return root of the virtual tree representing the given JSON input
    */
-  static JsonMixed of(CharSequence json, @NotNull JsonAccessors accessors) {
+  static JsonMixed of(@CheckNull CharSequence json, @NotNull JsonAccessors accessors) {
     return json == null || "null".contentEquals(json)
         ? JsonVirtualTree.NULL
         : new JsonVirtualTree(json, accessors);
@@ -73,7 +75,7 @@ public interface JsonMixed extends JsonObject, JsonArray, JsonPrimitive {
    * @return root of the virtual tree representing the given JSON input
    * @since 1.0
    */
-  static JsonMixed of(Path file) {
+  static JsonMixed of(@NotNull Path file) {
     return of(JsonNode.of(file));
   }
 

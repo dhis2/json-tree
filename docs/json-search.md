@@ -28,6 +28,7 @@ Fluent building blocks, all defined on `JsonSelector`:
 | `.indexes(i, j, ...)`      | union of indexes                                 |
 | `.any()`                   | all children (object members or array elements)  |
 | `.descendants()`           | this node and every node below it                |
+| `.flatten()`               | one level of array nesting expanded              |
 | `.slice(start, end, step)` | array slice                                      |
 | `.type(JsonNodeType.X)`    | keep only nodes of that JSON type                |
 | `.filter(node -> ...)`     | keep only nodes matching a `Predicate<JsonNode>` |
@@ -122,7 +123,7 @@ Rank matches with a scoring function:
 
 ### Entry points at a glance
 
-`JsonSelectable` exposes ten methods; one is abstract, the rest are default
+`JsonSelectable` exposes eleven methods; one is abstract, the rest are default
 methods layered on top of it.
 
 | Method                                                | Returns       | Purpose                                                      |
@@ -136,6 +137,7 @@ methods layered on top of it.
 | `queryFirst(selector)`                                | `Optional<T>` | first match, if any                                          |
 | `queryReduce(selector, extract, init, reduce)`        | `V`           | fold all matches into one value                              |
 | `queryReduce(selector, limit, extract, init, reduce)` | `V`           | fold matches, capped at `limit`                              |
+| `queryMap(selector, mapper)`                          | `List<R>`     | transform each match; null results are skipped               |
 | `queryTop(n, selector, score)`                        | `Stream<T>`   | highest-scoring `n` matches, descending                      |
 
 The `query(selector, matches)` form is what all of the above use underneath —
@@ -143,6 +145,149 @@ it takes a `Matches<T>` sink instead of returning a `Stream`, which avoids
 allocating a result collection when you only need a count, an existence check,
 or a running aggregate. Reach for it directly when you want a custom
 aggregation.
+
+## Transforming matches
+
+`queryMap(selector, mapper)` runs a selector and applies a mapper to each
+match, returning the results as a list. It's the transformation counterpart
+to `query(...)`:
+
+```java
+    JsonMixed root = JsonMixed.of( """
+        {
+            "people": [
+                { "first": "James", "age": 30 },
+                { "first": "Jacob", "age": 25 },
+                { "first": "Jayden", "age": 41 }
+            ]
+        }""" );
+
+    List<String> firsts = root.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> p.getString( "first" ).string() );
+    // [James, Jacob, Jayden]
+```
+
+The mapper can return any type — a scalar, a constructed `JsonObject` or
+`JsonArray`, another list, or a domain type. This is where the shape of the
+result is decided: instead of encoding the output shape in the selector, you
+compose it in Java.
+
+**Constructed output**
+
+```java
+    List<JsonObject> slimmed = root.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> Json.object( o -> o
+            .addString( "name", p.getString( "first" ).string() )
+            .addNumber( "age",  p.getNumber( "age" ).integer() ) ) );
+    // [{name: James, age: 30}, {name: Jacob, age: 25}, {name: Jayden, age: 41}]
+```
+
+If the list should become a JSON document rather than stay a Java `List`,
+feed the results into a builder:
+
+```java
+    JsonArray materialised = Json.array( arr ->
+        root.queryMap( JsonSelector.of( "$.people[*]" ),
+            p -> p.getString( "first" ).string() )
+        .forEach( arr::addString ) );
+    // ["James","Jacob","Jayden"]
+```
+
+**Nested results**
+
+Languages like JMESPath distinguish a *nested* projection
+(`reservations[*].instances[*].state`, one array per reservation) from a
+*flattened* projection (`reservations[].instances[].state`, one array
+overall). Both are expressible with `queryMap` — the choice is whether you
+nest the calls or let the selector flatten.
+
+```java
+    JsonMixed fleet = JsonMixed.of( """
+        {
+            "reservations": [
+                { "instances": [ { "state": "running" }, { "state": "stopped" } ] },
+                { "instances": [ { "state": "terminated" }, { "state": "running" } ] }
+            ]
+        }""" );
+```
+
+Nested — one list per outer match:
+
+```java
+    List<List<String>> nested = fleet.queryMap(
+        JsonSelector.of( "$.reservations[*]" ),
+        res -> res.queryMap(
+            JsonSelector.of( "@.instances[*]" ),         // @ = self, not $
+            inst -> inst.getString( "state" ).string() ) );
+    // [[running, stopped], [terminated, running]]
+```
+
+Note `@` in the inner selector: it anchors the query at the current match,
+not at the document root. Using `$` there would re-enter the whole document
+for every outer match.
+
+Flat — a single list overall:
+
+```java
+    List<String> flat = fleet.queryMap(
+        JsonSelector.of( "$.reservations[*].instances[*]" ),
+        inst -> inst.getString( "state" ).string() );
+    // [running, stopped, terminated, running]
+```
+
+`[*]` at each level maps to `.any()` and visits every instance once, so the
+result is flat by construction. When the arrays you're iterating might
+themselves contain arrays, use `.flatten()` where JMESPath would use `[]`:
+
+```java
+    JsonMixed grid = JsonMixed.of( "{\"matrix\": [[1,2],[3,4]]}" );
+
+    List<Integer> numbers = grid.queryMap(
+        JsonSelector.of( "$.matrix" ).flatten(),          // flatten one level
+        n -> n.as( JsonNumber.class ).integer() );
+    // [1, 2, 3, 4]
+```
+
+Without `.flatten()`, the same selector would match the two inner arrays and
+the mapper would be called twice.
+
+**Null handling**
+
+A mapper that returns `null` causes that match to be skipped; the returned
+list never contains `null`s. This matches the projection semantics of
+JMESPath and keeps nulls out of downstream code, but means the result size
+is not necessarily equal to the number of matches.
+
+```java
+    JsonMixed mixed = JsonMixed.of( """
+        {"people": [
+            {"name": "James"},
+            {"nickname": "JJ"},
+            {"name": "Jacob"}
+        ]}""" );
+
+    List<String> names = mixed.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> p.getString( "name" ).isUndefined()
+            ? null
+            : p.getString( "name" ).string() );
+    // [James, Jacob]  — the middle entry produced null and was skipped
+```
+
+When `null` values are meaningful in the output, use the stream form.
+`Stream.toList()` rejects nulls, so use `Collectors.toList()`:
+
+```java
+    List<String> withNulls = mixed
+        .query( JsonSelector.of( "$.people[*]" ) )
+        .map( p -> p.getString( "name" ).isUndefined()
+            ? null
+            : p.getString( "name" ).string() )
+        .collect( Collectors.toList() );
+    // [James, null, Jacob]
+```
 
 ## Related
 

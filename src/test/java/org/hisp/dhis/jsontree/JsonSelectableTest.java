@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree;
 
+import static java.util.stream.Collectors.toList;
 import static org.hisp.dhis.jsontree.JsonNodeType.NUMBER;
 import static org.hisp.dhis.jsontree.JsonSelector.$;
 import static org.hisp.dhis.jsontree.JsonSelector.AT;
@@ -8,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -392,5 +395,231 @@ class JsonSelectableTest {
     assertEquals(
         "[2, 1]",
         json.queryTop(10, $.any(), JsonMixed::intValue).toList().toString());
+  }
+
+  // ============================================================================
+  // flatten: chain and static factory
+  // ============================================================================
+
+  @Test
+  void testFlatten_ArrayOfArrays() {
+    JsonMixed json = JsonMixed.of( "[[1,2],[3,4]]" );
+    List<String> flat = json.query( JsonSelector.$.flatten() )
+        .map( n -> n.toString() ).toList();
+    assertEquals( List.of( "1", "2", "3", "4" ), flat );
+  }
+
+  @Test
+  void testFlatten_AlreadyFlat() {
+    JsonMixed json = JsonMixed.of( "[1,2,3]" );
+    List<String> flat = json.query( JsonSelector.$.flatten() )
+        .map( n -> n.toString() ).toList();
+    assertEquals( List.of( "1", "2", "3" ), flat );
+  }
+
+  @Test
+  void testFlatten_MixedArray() {
+    // scalars pass through, nested arrays expand one level
+    JsonMixed json = JsonMixed.of( "[1,[2,3],4]" );
+    List<String> flat = json.query( JsonSelector.$.flatten() )
+        .map( n -> n.toString() ).toList();
+    assertEquals( List.of( "1", "2", "3", "4" ), flat );
+  }
+
+  @Test
+  void testFlatten_NonArray_PassesThrough() {
+    // flatten on a non-array is identity
+    JsonMixed json = JsonMixed.of( "5" );
+    List<String> flat = json.query( JsonSelector.$.flatten() )
+        .map( n -> n.toString() ).toList();
+    assertEquals( List.of( "5" ), flat );
+  }
+
+  @Test
+  void testOfFlatten_EqualsChain() {
+    JsonMixed json = JsonMixed.of( "[[1,2],[3,4]]" );
+    assertEquals(
+        json.query( JsonSelector.$.flatten() ).map( n -> n.toString() ).toList(),
+        json.query( JsonSelector.ofFlatten() ).map( n -> n.toString() ).toList() );
+  }
+
+  @Test
+  void testFlatten_ComposedWithKey() {
+    // equivalent of JMESPath reservations[].instances[].state
+    JsonMixed json = JsonMixed.of( """
+        {
+          "reservations": [
+            {"instances": [{"state":"running"},{"state":"stopped"}]},
+            {"instances": [{"state":"terminated"}]}
+          ]
+        }""" );
+
+    List<String> states = json.query(
+            JsonSelector.$.key( "reservations" )
+                .flatten()
+                .key( "instances" )
+                .flatten()
+                .key( "state" ) )
+        .map( n -> n.as( JsonString.class ).string() )
+        .toList();
+
+    assertEquals( List.of( "running", "stopped", "terminated" ), states );
+  }
+
+  // ============================================================================
+  // queryMap: single level, nested, constructors, materialised form
+  // ============================================================================
+
+  @Test
+  void testQueryMap_SingleLevel() {
+    JsonMixed json = JsonMixed.of( """
+        {
+          "people": [
+            {"first": "James", "last": "Smith"},
+            {"first": "Jacob", "last": "Johnson"},
+            {"first": "Jayden", "last": "Williams"}
+          ]
+        }""" );
+
+    List<String> firsts = json.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> p.getString( "first" ).string() );
+
+    assertEquals( List.of( "James", "Jacob", "Jayden" ), firsts );
+  }
+
+  @Test
+  void testQueryMap_Nested() {
+    // equivalent of JMESPath reservations[*].instances[*].state
+    // nesting in JMESPath is expressed here as nested queryMap calls
+    JsonMixed json = JsonMixed.of( """
+        {
+          "reservations": [
+            {"instances": [{"state":"running"},{"state":"stopped"}]},
+            {"instances": [{"state":"terminated"},{"state":"running"}]}
+          ]
+        }""" );
+
+    List<List<String>> states = json.queryMap(
+        JsonSelector.of( "$.reservations[*]" ),
+        res -> res.queryMap(
+            JsonSelector.of( "@.instances[*]" ),
+            inst -> inst.getString( "state" ).string() ) );
+
+    assertEquals(
+        List.of(
+            List.of( "running", "stopped" ),
+            List.of( "terminated", "running" ) ),
+        states );
+  }
+
+  @Test
+  void testQueryMap_Constructor_Object() {
+    // equivalent of JMESPath multiselect hash: people[*].{name: first, age: age}
+    JsonMixed json = JsonMixed.of( """
+        {
+          "people": [
+            {"first": "James", "age": 30},
+            {"first": "Jacob", "age": 25}
+          ]
+        }""" );
+
+    List<JsonObject> slimmed = json.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> Json.object( o -> o
+            .addString( "name", p.getString( "first" ).string() )
+            .addNumber( "age", p.getNumber( "age" ).integer() ) ) );
+
+    assertEquals( 2, slimmed.size() );
+    assertEquals( "{\"name\":\"James\",\"age\":30}", slimmed.get( 0 ).toJson() );
+    assertEquals( "{\"name\":\"Jacob\",\"age\":25}", slimmed.get( 1 ).toJson() );
+  }
+
+  @Test
+  void testQueryMap_Constructor_Array() {
+    // equivalent of JMESPath multiselect list: people[*].[first, age]
+    JsonMixed json = JsonMixed.of( """
+        {
+          "people": [
+            {"first": "James", "age": 30},
+            {"first": "Jacob", "age": 25}
+          ]
+        }""" );
+
+    List<JsonArray> pairs = json.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> Json.array( a -> a
+            .addString( p.getString( "first" ).string() )
+            .addNumber( p.getNumber( "age" ).integer() ) ) );
+
+    assertEquals( "[\"James\",30]", pairs.get( 0 ).toJson() );
+    assertEquals( "[\"Jacob\",25]", pairs.get( 1 ).toJson() );
+  }
+
+  @Test
+  void testQueryMap_MaterialisedForm_JsonArray() {
+    // Demonstrates the "list projection" materialised as a JSON document
+    // rather than a Java list — the queryMap results are re-serialised.
+    JsonMixed json = JsonMixed.of( """
+        {"people": [{"name": "James"}, {"name": "Jacob"}]}""" );
+
+    List<String> names = json.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> p.getString( "name" ).string() );
+
+    JsonArray materialised = Json.array( arr -> names.forEach( arr::addString ) );
+
+    assertEquals( "[\"James\",\"Jacob\"]", materialised.toJson() );
+  }
+
+  @Test
+  void testQueryMap_MaterialisedForm_JsonObject() {
+    // Same pattern but assembling a JSON document keyed by one of the
+    // projected values — closer to a "build a lookup" use case.
+    JsonMixed json = JsonMixed.of( """
+        {"people": [
+            {"id": "u1", "name": "James"},
+            {"id": "u2", "name": "Jacob"}
+        ]}""" );
+
+    List<Map.Entry<String, String>> pairs = json.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> Map.entry( p.getString( "id" ).string(),
+            p.getString( "name" ).string() ) );
+
+    JsonObject materialised = Json.object( o ->
+        pairs.forEach( e -> o.addString( e.getKey(), e.getValue() ) ) );
+
+    assertEquals( "{\"u1\":\"James\",\"u2\":\"Jacob\"}", materialised.toJson() );
+  }
+
+  @Test
+  void testQueryMap_EmptyResult() {
+    JsonMixed json = JsonMixed.of( "{\"people\": []}" );
+    List<String> names = json.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> p.getString( "name" ).string() );
+    assertTrue( names.isEmpty() );
+  }
+
+  @Test
+  void testQueryMap_NullsSkipped() {
+    JsonMixed json = JsonMixed.of( """
+        {"people": [{"name": "James"}, {"nickname": "JJ"}, {"name": "Jacob"}]}""" );
+    List<String> names = json.queryMap(
+        JsonSelector.of( "$.people[*]" ),
+        p -> p.getString( "name" ).isUndefined() ? null : p.getString( "name" ).string() );
+    assertEquals( List.of( "James", "Jacob" ), names );
+  }
+
+  @Test
+  void testQueryMap_NullsPreservedViaStream() {
+    // what to do instead of queryMap to keep nulls
+    JsonMixed json = JsonMixed.of( """
+        {"people": [{"name": "James"}, {"nickname": "JJ"}, {"name": "Jacob"}]}""" );
+    List<String> names = json.query( JsonSelector.of( "$.people[*]" ) )
+        .map( p -> p.getString( "name" ).isUndefined() ? null : p.getString( "name" ).string() )
+        .collect( toList() );
+    assertEquals( java.util.Arrays.asList( "James", null, "Jacob" ), names );
   }
 }

@@ -39,6 +39,45 @@ Noteworthy:
 - Any `JsonValue` is also a JDK `Map.Entry` with the key being their `path()` tail segment 
   which coincides with the key (property name) in their parent object.
 
+## Entry points by operation
+
+The library splits into two APIs — the *virtual* API (`JsonValue` /
+`JsonMixed` and user types) and the *actual* tree API (`JsonNode`). Each
+operation has an entry point in one or both. The full explanation of the
+split is in [Lazy parsing and the virtual tree](intro-2-lazy-parsing.md);
+this section is the index.
+
+| Operation              | `JsonValue` / `JsonMixed`                                                                                                                                 | `JsonNode`                                                                                                                                                                  | Supporting types                                                             |
+|------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|
+| **Parse from text**    | `JsonMixed.of(CharSequence)`, `JsonValue.of(CharSequence)`                                                                                                | `JsonNode.of(CharSequence[, GetListener[, Index]])`, plus `Path` and `byte[]` variants                                                                                      | `JsonPath`, `JsonNode.GetListener`, `JsonNode.Index`                         |
+| **Generate from Java** | `Json.of(...)`, `Json.array(...)`, `Json.object(...)`                                                                                                     | —                                                                                                                                                                           | `JsonBuilder`                                                                |
+| **Read back**          | `toJson()` (returns `String`); type-specific accessors (`string()`, `intValue()`, …)                                                                      | `getDeclaration()` (returns `Text`), `textValue()`, `toString()`                                                                                                            | `Text`                                                                       |
+| **Navigate**           | `get(...)`, `getString(...)`, `getNumber(...)`, `getArray(...)`, `getObject(...)`, … — never throw; missing values come back as an undefined virtual node | `get(...)`, `member(...)`, `element(...)` — throw `JsonPathException` when missing. `getIfExists(...)`, `memberIfExists(...)`, `elementIfExists(...)` return `null` instead | `JsonPath`, `Text`                                                           |
+| **Stream / iterate**   | `values(Index)`, `entries(Index)` (typed level)                                                                                                           | `elements(Index)`, `members(Index)`, `values()`                                                                                                                             | `JsonNode.Index`                                                             |
+| **Search**             | `query(...)`, `queryCount(...)`, `queryExists(...)`, `queryFirst(...)`, `queryReduce(...)`, `queryTop(...)`                                               | same, inherited from `JsonSelectable`                                                                                                                                       | `JsonSelector`, `JsonSelector.Matches`                                       |
+| **Patch**              | `patch(JsonPatch)`                                                                                                                                        | `patch(List<? extends JsonNodeOp>)`; conveniences `replaceWith`, `addMembers`, `removeMembers`, `addElements`, `putElements`, `removeElements`                              | `JsonPatch`, `JsonNodeOp`                                                    |
+| **Diff**               | `diff(JsonValue[, JsonDiff.Mode])`                                                                                                                        | —                                                                                                                                                                           | `JsonDiff`, `JsonDiff.Mode`, `@JsonDiff.AnyOrder`, `@JsonDiff.AnyAdditional` |
+| **Validate**           | `validate(Class)`, `isA(Class, Rule...)`, `asA(Class, Rule...)`                                                                                           | —                                                                                                                                                                           | `@Validation`, `@Required`, `Validation.Rule`                                |
+
+Two entry points sit between the two APIs rather than in one of them:
+
+- **Convert.** `JsonValue.node()` gives the underlying `JsonNode`;
+  `JsonNode.lift(JsonAccessors)` re-wraps a node as a `JsonMixed` view that
+  shares the same tree. (`JsonMixed.of(node)` also works but creates an
+  independent tree.)
+- **Extract.** `JsonNode.extract()` produces a new, independent tree with the
+  node as its root — the way to hand off a subtree without keeping the parent
+  document alive.
+
+Each operation is documented in depth on its own page:
+
+- [Querying the tree](json-search.md) — selectors, matchers, query entry points
+- [JSON Patch](json-patch.md) — operation types, path expressions, RFC 6902 comparison
+- [Comparing JSON values](json-diff.md) — modes, per-property opt-in, difference format
+- [Validation](intro-8-validation.md) — annotation-based validation
+- [Performance and streaming](intro-7-json-performance.md) — `Index` modes and tree defaults
+
+
 ## Query
 
 - `JsonSelector` — `$`, `AT`, `of(String)`, `of(JsonNodeType)`, `of(Text)`,
