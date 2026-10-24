@@ -451,7 +451,7 @@ public interface Jurl {
   /**
    * The characters allowed in an unquoted string or object member name
    */
-  private static boolean isUnquotedString(char c) {
+  static boolean isUnquotedString(char c) {
     return isLetter(c) || isDigit(c) || c == '-' || c == '.' || c == '_' || c == '@';
   }
 

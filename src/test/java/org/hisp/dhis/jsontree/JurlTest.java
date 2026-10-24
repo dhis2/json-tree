@@ -342,4 +342,18 @@ class JurlTest {
           "control char 0x" + Integer.toHexString(i));
     }
   }
+
+  @Test
+  void testCreateObject_InvalidMemberName() {
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("with space", "x")));
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("a\u00A9b", "x")));
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("a~b", "x")));   // if ~ stays excluded
+    assertThrows(IllegalArgumentException.class,
+        () -> Jurl.createObject(o -> o.addString("", "x")));
+    // valid names still work
+    assertEquals("(a-b.c_d@e:1)", Jurl.createObject(o -> o.addNumber("a-b.c_d@e", 1)));
+  }
 }

@@ -117,9 +117,24 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   }
 
   private void addMember(CharSequence name) {
+    checkMemberName(name);
     appendCommaWhenNeeded();
-    out.appendEncoded(name);
+    out.appendAscii(name);    // ASCII by validation, bulk write
     appendAscii(':');
+  }
+
+  private static void checkMemberName(CharSequence name) {
+    int len = name.length();
+    if (len == 0)
+      throw new IllegalArgumentException("JURL member name must not be empty");
+    for (int i = 0; i < len; i++) {
+      char c = name.charAt(i);
+      if (!Jurl.isUnquotedString(c))
+        throw new IllegalArgumentException(
+            "JURL member name may only contain URL unreserved characters "
+                + "(A-Z a-z 0-9 - . _ @), but was '%s' (U+%04X) at index %d in: \"%s\""
+                .formatted(c, (int) c, i, name));
+    }
   }
 
   private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue) {
