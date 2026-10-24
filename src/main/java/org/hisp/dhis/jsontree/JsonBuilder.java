@@ -30,10 +30,12 @@ package org.hisp.dhis.jsontree;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.StreamSupport.stream;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.UncheckedIOException;
+import java.io.Writer;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -223,7 +225,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamObject(PrettyPrint config, OutputStream out, Consumer<JsonObjectBuilder> obj) {
-    try (OutputStreamWriter jsonStream = new OutputStreamWriter(out, UTF_8)) {
+    try (Writer jsonStream = new BufferedWriter(new OutputStreamWriter(out, UTF_8))) {
       new JsonAppender(config, Appender.of(jsonStream)).visitObject(obj);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -245,7 +247,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamArray(PrettyPrint config, OutputStream out, Consumer<JsonArrayBuilder> arr) {
-    try (OutputStreamWriter jsonStream = new OutputStreamWriter(out, UTF_8)) {
+    try (Writer jsonStream = new BufferedWriter(new OutputStreamWriter(out, UTF_8))) {
       new JsonAppender(config, Appender.of(jsonStream)).visitArray(arr);
     } catch (IOException e) {
       throw new UncheckedIOException(e);

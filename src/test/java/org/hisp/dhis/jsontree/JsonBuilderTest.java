@@ -73,4 +73,34 @@ class JsonBuilderTest {
     JsonBuilder.streamArray(out, arr -> arr.addNumber(42).addString("42").addBoolean(true));
     assertEquals("[42,\"42\",true]", out.toString());
   }
+
+  /** Output much larger than the writer's buffer must arrive complete, the tail included. */
+  @Test
+  void testStreamArray_LargeOutputIsComplete() {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    int n = 20_000;
+    JsonBuilder.streamArray(
+        out,
+        arr -> {
+          for (int i = 0; i < n; i++) {
+            int id = i;
+            arr.addObject(obj -> obj.addNumber("id", id).addString("value", "v" + id));
+          }
+        });
+    JsonMixed array = JsonMixed.of(out.toString());
+    assertEquals(n, array.size());
+    assertEquals(n - 1, array.getObject(n - 1).getNumber("id").intValue());
+    assertEquals("v" + (n - 1), array.getObject(n - 1).getString("value").string());
+  }
+
+  @Test
+  void testStreamObject_LargeOutputIsComplete() {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    int n = 20_000;
+    JsonBuilder.streamObject(
+        out, obj -> { for (int i = 0; i < n; i++) obj.addString("k" + i, "v" + i); });
+    JsonMixed object = JsonMixed.of(out.toString());
+    assertEquals(n, object.size());
+    assertEquals("v" + (n - 1), object.getString("k" + (n - 1)).string());
+  }
 }
