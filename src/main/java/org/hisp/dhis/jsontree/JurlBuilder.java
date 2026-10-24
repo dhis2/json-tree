@@ -67,14 +67,14 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, int value) {
     addMember(name);
-    out.append(value);
+    out.appendInt(value);
     return this;
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, long value) {
     addMember(name);
-    out.append(value);
+    out.appendLong(value);
     return this;
   }
 
@@ -118,20 +118,20 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
 
   private void addMember(CharSequence name) {
     appendCommaWhenNeeded();
-    append(name);
-    append(':');
+    out.appendEncoded(name);
+    appendAscii(':');
   }
 
   private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue) {
     if (rawValue == null) return this;
     addMember(name);
-    append(rawValue);
+    out.appendEncoded(rawValue);
     return this;
   }
 
   private JsonArrayBuilder addRawElement(CharSequence rawValue) {
     appendCommaWhenNeeded();
-    if (rawValue != null && !rawValue.isEmpty()) append(rawValue);
+    if (rawValue != null && !rawValue.isEmpty()) out.appendEncoded(rawValue);
     return this;
   }
 
@@ -167,14 +167,14 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   @Override
   public JsonArrayBuilder addNumber(int value) {
     appendCommaWhenNeeded();
-    out.append(value);
+    out.appendInt(value);
     return this;
   }
 
   @Override
   public JsonArrayBuilder addNumber(long value) {
     appendCommaWhenNeeded();
-    out.append(value);
+    out.appendLong(value);
     return this;
   }
 
@@ -187,11 +187,11 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
 
   private void appendDouble(double value) {
     if (JsonBuilder.requiresString(value)) {
-      if (Double.isNaN(value)) out.append("\"NaN\"");
-      if (value == Double.POSITIVE_INFINITY) out.append("\"Infinity\"");
-      if (value == Double.NEGATIVE_INFINITY) out.append("\"-Infinity\"");
+      if (Double.isNaN(value)) out.appendAscii("\"NaN\"");
+      if (value == Double.POSITIVE_INFINITY) out.appendAscii("\"Infinity\"");
+      if (value == Double.NEGATIVE_INFINITY) out.appendAscii("\"-Infinity\"");
     } else {
-      out.append(value);
+      out.appendDouble(value);
     }
   }
 
@@ -229,9 +229,9 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
       // approximate the empty object with null
       String value = format.nullsInArrays().value;
       if (value == null) {
-        append("null");
+        out.appendAscii("null");
       } else
-        append(value);
+        out.appendAscii(value);
       return this;
     }
     beginLevel();
@@ -241,65 +241,97 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   }
 
   private void beginLevel() {
-    append('(');
+    appendAscii('(');
     hasChildrenAtLevel[++level] = false;
   }
 
   private void endLevel() {
     level--;
-    append(')');
+    appendAscii(')');
   }
 
   private void appendCommaWhenNeeded() {
     if (!hasChildrenAtLevel[level]) {
       hasChildrenAtLevel[level] = true;
     } else {
-      append(',');
+      appendAscii(',');
     }
   }
 
-  private void append(CharSequence str) {
-    out.append(str);
-  }
-
-  private void append(char c) {
-    out.append(c);
+  private void appendAscii(char c) {
+    out.appendAscii(c);
   }
 
   void appendEscaped(@NotNull CharSequence str) {
-    append('\'');
-    for (int i = 0; i < str.length(); i++) {
-      appendEscaped(str.charAt(i));
-    }
-    append('\'');
-  }
-
-  private void appendEscaped(char c) {
-    if (Jurl.isQuotedString(c)) {
-      out.append(c);
-    } else {
-      switch (c) {
-        case '&' -> out.append("~a");
-        case '=' -> out.append("~e");
-        case '+' -> out.append("~p");
-        case '#' -> out.append("~h");
-        case '%' -> out.append("~c");
-        case '\'' -> out.append("~q");
-        case '"' -> out.append("~d");
-        case '~' -> out.append("~~");
-        case '\\' -> out.append("~b");
-        default -> {
-          out.append('~');
-          out.append(toHexDigit(c / 16));
-          out.append(toHexDigit(c % 16));
+    appendAscii('\'');
+    int len = str.length();
+    for (int i = 0; i < len; i++) {
+      char c = str.charAt(i);
+      if (Character.isHighSurrogate(c) && i + 1 < len) {
+        char low = str.charAt(i + 1);
+        if (Character.isLowSurrogate(low)) {
+          appendEscapedCodePoint(Character.toCodePoint(c, low));
+          i++;
+          continue;
         }
       }
+      appendEscapedCodePoint(c);
     }
+    appendAscii('\'');
+  }
+
+  private void appendEscapedCodePoint(int cp) {
+    // lone surrogate → replacement char (matches encoder-side robustness of Appender sinks)
+    if (cp >= 0xD800 && cp <= 0xDFFF) cp = 0xFFFD;
+
+    // mnemonics (ASCII only) — must run before isQuotedString so '~' and '\'' are escaped
+    if (cp < 0x100) {
+      switch (cp) {
+        case '&'  -> { out.appendAscii("~a"); return; }
+        case '='  -> { out.appendAscii("~e"); return; }
+        case '+'  -> { out.appendAscii("~p"); return; }
+        case '#'  -> { out.appendAscii("~h"); return; }
+        case '%'  -> { out.appendAscii("~c"); return; }
+        case '\'' -> { out.appendAscii("~q"); return; }
+        case '"'  -> { out.appendAscii("~d"); return; }
+        case '~'  -> { out.appendAscii("~~"); return; }
+        case '\\' -> { out.appendAscii("~b"); return; }
+      }
+    }
+
+    // literal if URL-safe
+    if (cp < 0x80 && Jurl.isQuotedString((char) cp)) {
+      out.appendAscii((char) cp);
+      return;
+    }
+
+    // otherwise: UTF-8 byte escape, one ~XX per byte
+    if (cp < 0x80) {
+      hexEscape(cp);
+    } else if (cp < 0x800) {
+      hexEscape(0xC0 | (cp >> 6));
+      hexEscape(0x80 | (cp & 0x3F));
+    } else if (cp < 0x10000) {
+      hexEscape(0xE0 | (cp >> 12));
+      hexEscape(0x80 | ((cp >> 6) & 0x3F));
+      hexEscape(0x80 | (cp & 0x3F));
+    } else {
+      hexEscape(0xF0 | (cp >> 18));
+      hexEscape(0x80 | ((cp >> 12) & 0x3F));
+      hexEscape(0x80 | ((cp >> 6) & 0x3F));
+      hexEscape(0x80 | (cp & 0x3F));
+    }
+  }
+
+  private void hexEscape(int b) {
+    out.appendAscii('~');
+    out.appendAscii(toHexDigit(b >> 4));
+    out.appendAscii(toHexDigit(b & 0xF));
   }
 
   private static char toHexDigit(int value) {
-    if (value < 10) return (char) ('0'+value);
-    return (char) ('A'+(value-10));
+    // value is 0-15 by construction
+    return value < 10 ? (char) ('0' + value) : (char) ('A' + (value - 10));
   }
 
   private final class Probe implements JsonObjectBuilder {

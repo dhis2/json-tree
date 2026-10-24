@@ -5,173 +5,131 @@ import static java.lang.Character.isBmpCodePoint;
 import static java.lang.Character.lowSurrogate;
 import static java.util.Objects.requireNonNull;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.util.stream.IntStream;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
+import java.io.OutputStream;
+
 /**
- * A more user-friendly version of an {@link Appendable} append-only sink.
- * <p>
- * {@link StringBuilder} can be wrapped using {@link #of(StringBuilder)}.
- * All other {@link Appendable}s can be wrapped using {@link #of(Appendable)}.
+ * A text sink API that in its core has the same idea as {@link Appendable} but
+ * the {@link Appender} API is dedicated to support optimal writing of JSON.
+ * To that end the caller can distinguish when ASCII character(s) are written
+ * or character(s) or unknown nature that might require JSON escaping and/or
+ * text encoding in the target encoding set in the sink represented by the API.
  *
  * @author Jan Bernitt
- * @since 1.9
+ * @since 1.9 (revised in 1.12)
  */
-public interface Appender extends Appendable {
+public interface Appender extends AutoCloseable {
+
+  static Appender ofUTF8(OutputStream out) {
+    return new Utf8OutputStreamAppender(out);
+  }
+
+  static TextBuilder of(int capacity) {
+    return new TextBuilder(capacity);
+  }
+
+  void appendAscii(char c);
+  default void appendAscii(CharSequence text) {
+    appendAscii(text, 0, text == null ? 4 : text.length());
+  }
+
+  void appendAscii(CharSequence text, int start, int end);
+
+  void appendEncoded(char c);
+  default void appendEncoded(CharSequence text) {
+      appendEncoded(text, 0, text == null ? 4 : text.length());
+  }
+  void appendEncoded(CharSequence text, int start, int end);
 
   @Override
-  Appender append(char c);
+  default void close() {}     // no checked exception, char sinks are no-ops
 
-  @Override
-  default Appender append(CharSequence text) {
-    return append(text, 0, text == null ? 4 : text.length());
-  }
+  void appendJsonEscaped(CharSequence jsonString);
 
-  @Override
-  default Appender append(CharSequence text, int start, int end) {
-    if (text == null) text = "null";
-    if (text.isEmpty()) return this;
-    int len = end - start;
-    for (int i = 0; i < len; i++) append(text.charAt(start + i));
-    return this;
-  }
+  void appendCodePoint(int cp);
 
-  default Appender append(char[] chars) {
-    return append(chars, 0, chars.length);
-  }
-
-  default Appender append(char[] chars, int offset, int len) {
-    requireNonNull(chars);
-    for (int i = 0; i < len; i++) append(chars[offset + i]);
-    return this;
-  }
-
-  default Appender append(int value) {
-    return append(String.valueOf(value));
-  }
-
-  default Appender append(long value) {
-    return append(String.valueOf(value));
-  }
-
-  default Appender append(double value) {
-    return append(String.valueOf(value));
-  }
-
-  default Appender appendCodePoint(int cp) {
-    if (isBmpCodePoint(cp)) return append((char) cp);
-    append(highSurrogate(cp));
-    return append(lowSurrogate(cp));
-  }
-
-  /**
-   * Elevate an {@link Appendable} to an {@link Appender}
-   */
-  static Appender of(@NotNull Appendable to) {
-    if (to instanceof Appender a) return a;
-    record Adapter(Appendable to) implements Appender {
-
-      @Override
-      public Appender append(char c) {
-        try {
-          to.append(c);
-          return this;
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
+  default void appendInt(int value) {
+    if (value < 0) {
+      appendAscii('-');
+      if (value == Integer.MIN_VALUE) {
+        appendAscii("2147483648");       // |MIN_VALUE| overflows int
+        return;
       }
-
-      @Override
-      public Appender append(CharSequence text, int start, int end) {
-        try {
-          to.append(text, start, end);
-          return this;
-        } catch (IOException e) {
-          throw new UncheckedIOException(e);
-        }
-      }
-
-      @Override
-      public String toString() {
-        return to.toString();
-      }
+      value = -value;
     }
-    return new Adapter(to);
-  }
-
-  /**
-   * Special adapter for {@link StringBuilder} just for lower overhead
-   */
-  static Appender of(@NotNull StringBuilder to) {
-    record Adapter(StringBuilder to) implements Appender {
-
-      @Override
-      public Appender append(char c) {
-          to.append(c);
-          return this;
-      }
-
-      @Override
-      public Appender append(CharSequence text) {
-        to.append(text);
-        return this;
-      }
-
-      @Override
-      public Appender append(CharSequence text, int start, int end) {
-          to.append(text, start, end);
-          return this;
-      }
-
-      @Override
-      public Appender append(char[] chars) {
-        to.append(chars);
-        return this;
-      }
-
-      @Override
-      public Appender append(char[] chars, int offset, int len) {
-        to.append(chars, offset, len);
-        return this;
-      }
-
-      @Override
-      public Appender appendCodePoint(int cp) {
-        to.appendCodePoint(cp);
-        return this;
-      }
-
-      public Appender appendCodePoints(IntStream codePoints) {
-        codePoints.forEach(this::appendCodePoint);
-        return this;
-      }
-
-      @Override
-      public Appender append(int value) {
-        to.append(value);
-        return this;
-      }
-
-      @Override
-      public Appender append(long value) {
-        to.append(value);
-        return this;
-      }
-
-      @Override
-      public Appender append(double value) {
-        to.append(value);
-        return this;
-      }
-
-      @Override
-      public String toString() {
-        return to.toString();
-      }
+    if (value < 10) {
+      appendAscii((char) ('0' + value));
+      return;
     }
-    return new Adapter(to);
+    int div = 1_000_000_000;                 // 10^9 covers every non-negative int
+    while (value < div) div /= 10;
+    while (div > 0) {
+      int digit = value / div;
+      appendAscii((char) ('0' + digit));
+      value -= digit * div;
+      div /= 10;
+    }
   }
 
+  default void appendLong(long value) {
+    if (value < 0) {
+      appendAscii('-');
+      if (value == Long.MIN_VALUE) {
+        appendAscii("9223372036854775808");  // |MIN_VALUE| overflows long
+        return;
+      }
+      value = -value;
+    }
+    if (value < 10) {
+      appendAscii((char) ('0' + value));
+      return;
+    }
+    long div = 1_000_000_000_000_000_000L;   // 10^18 covers every non-negative long
+    while (value < div) div /= 10;
+    while (div > 0) {
+      int digit = (int) (value / div);
+      appendAscii((char) ('0' + digit));
+      value -= (long) digit * div;
+      div /= 10;
+    }
+  }
+
+  default void appendDouble(double value) {
+    if (Double.isNaN(value)) {
+      appendAscii("NaN");
+    } else if (value == Double.POSITIVE_INFINITY) {
+      appendAscii("Infinity");
+    } else if (value == Double.NEGATIVE_INFINITY) {
+      appendAscii("-Infinity");
+    } else if (value == 0d) {
+      appendAscii(Double.compare(value, -0d) == 0 ? "-0.0" : "0.0");
+    } else if (value == Math.floor(value) && Math.abs(value) < 1e7) {
+      // integral value that JDK would also print in decimal form
+      appendLong((long) value);
+      appendAscii(".0");
+    } else {
+      // let the JDK produce the shortest round-trip representation
+      appendAscii(String.valueOf(value));
+    }
+  }
+
+  static boolean needsJsonEscaping(char c) {
+    if (c < 0x20) return true;                     // controls — all escape
+    if (c < 0x7F) return c == '"' || c == '\\';    // printable ASCII
+    return c == 0x2028 || c == 0x2029;             // escape for JS compatibility
+  }
+
+  static void checkRange(CharSequence text, int start, int end) {
+    if (start < 0 || end < start || text.length() < end)
+      throw new IndexOutOfBoundsException(
+          "0 <= start %d <= end %d <= length %d".formatted(start, end, text.length()));
+  }
+
+  static void checkCodePoint(int cp) {
+    if (!Character.isValidCodePoint(cp)) {
+      throw new IllegalArgumentException(
+          "Not a valid Unicode code point: 0x" + Integer.toHexString(cp));
+    }
+  }
 }

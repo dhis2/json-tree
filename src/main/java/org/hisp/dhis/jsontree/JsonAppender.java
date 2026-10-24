@@ -32,6 +32,10 @@ import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonArrayBuilder;
 import org.hisp.dhis.jsontree.JsonBuilder.JsonObjectBuilder;
 
+import static java.lang.Character.highSurrogate;
+import static java.lang.Character.isBmpCodePoint;
+import static java.lang.Character.lowSurrogate;
+
 /**
  * An "append only" {@link JsonBuilder} implementation that can be used with a {@link PrintStream}
  * or a {@link StringBuilder} or anything really that implements {@link Appender}.
@@ -55,9 +59,6 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   private int level = 0;
   private String indentLevel = "";
 
-  private char[] escBuffer;
-  private int escBufPos = 0;
-
   JsonAppender(PrettyPrint config, Appender json) {
     this.config = config;
     this.json = json;
@@ -68,111 +69,29 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   private void appendDouble(double value) {
     if (JsonBuilder.requiresString(value)) {
-      json.append('"');
-      if (Double.isNaN(value)) {
-        json.append("NaN");
-      } else if (value == Double.NEGATIVE_INFINITY) {
-        json.append("-Infinity");
-      } else {
-        json.append("Infinity");
-      }
-      json.append('"');
+      json.appendAscii('"');
+      json.appendDouble(value);
+      json.appendAscii('"');
     } else {
-      json.append(value);
+      json.appendDouble(value);
     }
+  }
+
+  private void appendEscaped(CharSequence str) {
+    json.appendJsonEscaped(str);
   }
 
   private void appendCommaWhenNeeded() {
     if (!hasChildrenAtLevel[level]) {
       hasChildrenAtLevel[level] = true;
     } else {
-      json.append(',');
+      json.appendAscii(',');
     }
-    if (indent) json.append(indentLevel);
-  }
-
-  private static boolean needsEscaping(char c) {
-    if (c < 0x20) return true;                     // controls — all escape
-    if (c < 0x7F) return c == '"' || c == '\\';    // printable ASCII
-    return c == 0x2028 || c == 0x2029;             // escape for JS compatibility
-  }
-
-  private static final int ESC_BUFFER_SIZE = 4096;
-  private static final int ESC_MAX_LEN = 6; // 1:6 after escape (uXXXX)
-
-  void appendEscaped(CharSequence str) {
-    if (str == null) {
-      json.append("null");
-      return;
-    }
-    json.append('"');
-
-    int len = str.length();
-    int i = 0;
-    while (i < len && !needsEscaping(str.charAt(i)))
-      i++;
-
-    // Fast path: if no character needs escaping, append the input as-is.
-    if (i == len) {
-      json.append(str);
-      json.append('"');
-      return;
-    }
-
-    // Escape path: buffer is allocated lazily.
-    if (escBuffer == null)
-      escBuffer = new char[ESC_BUFFER_SIZE];
-    escBufPos = 0;
-
-    // append span of clean prefix
-    json.append(str, 0, i);
-
-    while (i < len) {
-      // 1. append span of escaped chars via buffer
-      while (i < len && needsEscaping(str.charAt(i))) {
-        if (escBufPos > ESC_BUFFER_SIZE - ESC_MAX_LEN) {
-          json.append(escBuffer, 0, escBufPos);
-          escBufPos = 0;
-        }
-        escBufAppendEscaped(str.charAt(i++));
-      }
-      if (escBufPos > 0) {
-        json.append(escBuffer, 0, escBufPos);
-        escBufPos = 0;
-      }
-
-      // 2. append span of non-escaped chars directly from source
-      int start = i;
-      while (i < len && !needsEscaping(str.charAt(i)))
-        i++;
-      json.append(str, start, i );
-    }
-    json.append('"');
-  }
-
-  private static final char[] HEX = "0123456789ABCDEF".toCharArray();
-  private void escBufAppendEscaped(char c) {
-    switch (c) {
-      case '"'    -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = '"';  }
-      case '\\'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = '\\'; }
-      case '\n'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'n';  }
-      case '\r'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'r';  }
-      case '\t'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 't';  }
-      case '\b'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'b';  }
-      case '\f'   -> { escBuffer[escBufPos++] = '\\'; escBuffer[escBufPos++] = 'f';  }
-      default -> {
-        escBuffer[escBufPos++] = '\\';
-        escBuffer[escBufPos++] = 'u';
-        escBuffer[escBufPos++] = HEX[(c >> 12) & 0xF];
-        escBuffer[escBufPos++] = HEX[(c >>  8) & 0xF];
-        escBuffer[escBufPos++] = HEX[(c >>  4) & 0xF];
-        escBuffer[escBufPos++] = HEX[ c        & 0xF];
-      }
-    }
+    if (indent) json.appendAscii(indentLevel);
   }
 
   private void beginLevel(char c) {
-    json.append(c);
+    json.appendAscii(c);
     hasChildrenAtLevel[++level] = false;
     indentLevel = "\n" + indent1.repeat(level);
   }
@@ -180,8 +99,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   private void endLevel(char c) {
     level--;
     indentLevel = "\n" + indent1.repeat(level);
-    if (indent && hasChildrenAtLevel[level + 1]) json.append(indentLevel);
-    json.append(c);
+    if (indent && hasChildrenAtLevel[level + 1]) json.appendAscii(indentLevel);
+    json.appendAscii(c);
   }
 
   @Override
@@ -219,15 +138,13 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   private void appendMemberName(CharSequence name) {
     appendCommaWhenNeeded();
-    json.append('"');
-    json.append(name);
-    json.append('"');
-    json.append(colon);
+    json.appendJsonEscaped(name);
+    json.appendAscii(colon);
   }
 
   private JsonObjectBuilder addRawMember(CharSequence name, CharSequence rawValue) {
     appendMemberName(name);
-    json.append(rawValue);
+    json.appendEncoded(rawValue);
     return this;
   }
 
@@ -261,14 +178,14 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, int value) {
     appendMemberName(name);
-    json.append(value);
+    json.appendInt(value);
     return this;
   }
 
   @Override
   public JsonObjectBuilder addNumber(CharSequence name, long value) {
     appendMemberName(name);
-    json.append(value);
+    json.appendLong(value);
     return this;
   }
 
@@ -318,7 +235,7 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
 
   private JsonArrayBuilder addRawElement(CharSequence rawValue) {
     appendCommaWhenNeeded();
-    json.append(rawValue);
+    json.appendEncoded(rawValue);
     return this;
   }
 
@@ -350,14 +267,14 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   @Override
   public JsonArrayBuilder addNumber(int value) {
     appendCommaWhenNeeded();
-    json.append(value);
+    json.appendInt(value);
     return this;
   }
 
   @Override
   public JsonArrayBuilder addNumber(long value) {
     appendCommaWhenNeeded();
-    json.append(value);
+    json.appendLong(value);
     return this;
   }
 

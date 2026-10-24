@@ -102,12 +102,12 @@ public interface Jurl {
     char c = jurl[offset + 1];
     // () => empty array
     if (c == ')') {
-      json.append("[]");
+      json.appendAscii("[]");
       return offset+2;
     }
     // (,) => empty array
     if (c == ',' && offset+2 < jurl.length && jurl[offset+2] == ')') {
-      json.append("[]");
+      json.appendAscii("[]");
       return offset+3;
     }
     // omitted null at start of an array or another level of array or object
@@ -125,96 +125,161 @@ public interface Jurl {
 
   private static int toJsonObject(char[] jurl, int offset, TextBuilder json) {
     int i = expectChar(jurl, offset, '(');
-    json.append('{');
+    json.appendAscii('{');
     while (true) {
       if (i >= jurl.length) throw expected("<member-name>", jurl, i);
       char c = jurl[i];
       if (!isUnquotedString(c)) throw expected("<member-name>", jurl, i);
-      json.append('"');
-      while (i < jurl.length && isUnquotedString(jurl[i])) json.append(jurl[i++]);
-      json.append('"');
+      json.appendAscii('"');
+      while (i < jurl.length && isUnquotedString(jurl[i])) json.appendAscii(jurl[i++]);
+      json.appendAscii('"');
       i = expectChar(jurl, i, ':');
-      json.append(':');
+      json.appendAscii(':');
       if (i >= jurl.length) throw expected("<member-value>", jurl, i);
       c = jurl[i];
       if (c == ',' || c ==')') {
-        json.append("null");
+        json.appendAscii("null");
       } else i = toJsonAutoDetect(jurl, i, json);
       if (i >= jurl.length) throw expected("<end-of-object>", jurl, i);
       c = jurl[i];
       if (c == ')') {
-        json.append('}');
+        json.appendAscii('}');
         return i + 1;
       }
       if (c != ',' || i + 1 >= jurl.length) throw expected("<end-of-object>", jurl, i);
       if (jurl[i + 1] == ')') { // dangling ,
-        json.append('}');
+        json.appendAscii('}');
         return i + 2;
       }
-      json.append(',');
+      json.appendAscii(',');
       i++; // skip ,
     }
   }
 
   private static int toJsonArray(char[] jurl, int offset, TextBuilder json) {
     int i = expectChar(jurl, offset, '(');
-    json.append('[');
+    json.appendAscii('[');
     while (true) {
       if (i >= jurl.length) throw expected("<value>", jurl, i);
       char c = jurl[i];
       if (c == ',' || c == ')') {
-        json.append("null");
+        json.appendAscii("null");
       } else i = toJsonAutoDetect(jurl, i, json);
       if (i >= jurl.length) throw expected("<end-of-array>", jurl, i);
       c = jurl[i];
       if (c == ')') {
-        json.append(']');
+        json.appendAscii(']');
         return i + 1;
       }
       if (c != ',' || i + 1 >= jurl.length) throw expected("<end-of-array>", jurl, i);
       if (jurl[i + 1] == ')') { // dangling ,
-        json.append(']');
+        json.appendAscii(']');
         return i + 2;
       }
-      json.append(',');
+      json.appendAscii(',');
       i++; // skip ,
     }
   }
 
   private static int toJsonString(char[] jurl, int offset, TextBuilder json) {
     int i = expectChar(jurl, offset, '\'');
-    json.append('"');
+    json.appendAscii('"');
     while (i < jurl.length) {
       char c = jurl[i++];
       if (c == '\'') {
-        json.append('"');
+        json.appendAscii('"');
         return i; // found end of string literal
       } else if (c == '~') {
-        // escaped stuff
         if (i >= jurl.length) throw expected("<escaped-character>", jurl, i);
         switch (jurl[i++]) {
-          case '~' -> json.append('~');
-          case 'b' -> json.append("\\\\"); // backslash escaped for JSON
-          case 'a', 'P' -> json.append('&');
-          case 'e', 'g' -> json.append('=');
-          case 'p', 'U' -> json.append('+');
-          case 'h', 'M' -> json.append('#');
-          case 'c', 'O' -> json.append('%');
-          case 'q', 'Q' -> json.append('\'');
-          case 'd', 'L' -> json.append("\\\""); // " escaped for JSON
-          case 's', 'J' -> json.append(' ');
-          default -> {
-            // ~XX
-            if (!isHexDigit(jurl[i-1]) || i >= jurl.length || !isHexDigit(jurl[i]))
-              throw expected("<hex-digits>", jurl, i-1);
-            json.append((char)(hexValue(jurl[i-1])*16 + hexValue(jurl[i++])));
-          }
+          case '~' -> json.appendAscii('~');
+          case 'b' -> json.appendAscii("\\\\");
+          case 'a', 'P' -> json.appendAscii('&');
+          case 'e', 'g' -> json.appendAscii('=');
+          case 'p', 'U' -> json.appendAscii('+');
+          case 'h', 'M' -> json.appendAscii('#');
+          case 'c', 'O' -> json.appendAscii('%');
+          case 'q', 'Q' -> json.appendAscii('\'');
+          case 'd', 'L' -> json.appendAscii("\\\"");
+          case 's', 'J' -> json.appendAscii(' ');
+          // ~XX — first UTF-8 byte
+          default -> i = toJsonStringHexEscaped(jurl, i, json);
         }
       } else if (isQuotedString(c)) {
-        json.append(c); // these are also all allowed plain in JSON
+        json.appendAscii(c); // these are also all allowed plain in JSON
       } else throw expected("<url-safe-character>", jurl, i-1);
     }
     throw expected('\'', jurl, i);
+  }
+
+  private static int toJsonStringHexEscaped(char[] jurl, int offset, TextBuilder json) {
+    int i = offset;
+    if (!isHexDigit(jurl[i -1]) || i >= jurl.length || !isHexDigit(jurl[i]))
+      throw expected("<hex-digits>", jurl, i -1);
+    int b0 = hexValue(jurl[i -1]) * 16 + hexValue(jurl[i++]);
+    if (b0 < 0x80) {
+      appendJsonChar(json, (char) b0);
+    } else if ((b0 & 0xE0) == 0xC0) {
+      int b1 = readContinuation(jurl, i); i += 3;
+      int cp = ((b0 & 0x1F) << 6) | (b1 & 0x3F);
+      json.appendCodePoint(cp);
+    } else if ((b0 & 0xF0) == 0xE0) {
+      int b1 = readContinuation(jurl, i); i += 3;
+      int b2 = readContinuation(jurl, i); i += 3;
+      int cp = ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F);
+      if (cp >= 0xD800 && cp <= 0xDFFF) cp = 0xFFFD;   // invalid UTF-8 → replacement
+      json.appendCodePoint(cp);
+    } else if ((b0 & 0xF8) == 0xF0) {
+      int b1 = readContinuation(jurl, i); i += 3;
+      int b2 = readContinuation(jurl, i); i += 3;
+      int b3 = readContinuation(jurl, i); i += 3;
+      int cp = ((b0 & 0x07) << 18) | ((b1 & 0x3F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F);
+      json.appendCodePoint(cp);
+    } else {
+      throw expected("<utf8-sequence>", jurl, i -1);
+    }
+    return i;
+  }
+
+  /**
+   * Writes a single decoded character into the JSON being built, applying JSON string escaping
+   * where needed. Only the single-byte UTF-8 branch can produce characters that require escaping
+   * here (multi-byte branches always yield codepoints {@code >= 0x80}).
+   */
+  private static void appendJsonChar(TextBuilder json, char c) {
+    switch (c) {
+      case '"'  -> json.appendAscii("\\\"");
+      case '\\' -> json.appendAscii("\\\\");
+      case '\n' -> json.appendAscii("\\n");
+      case '\r' -> json.appendAscii("\\r");
+      case '\t' -> json.appendAscii("\\t");
+      case '\b' -> json.appendAscii("\\b");
+      case '\f' -> json.appendAscii("\\f");
+      default -> {
+        if (c < 0x20) {
+          json.appendAscii("\\u00");
+          json.appendAscii(toHexDigit((c >> 4) & 0xF));
+          json.appendAscii(toHexDigit(c & 0xF));
+        } else {
+          json.appendAscii(c);
+        }
+      }
+    }
+  }
+
+  private static char toHexDigit(int value) {
+    return value < 10 ? (char) ('0' + value) : (char) ('A' + (value - 10));
+  }
+
+  private static int readContinuation(char[] jurl, int pos) {
+    if (pos + 2 >= jurl.length
+        || jurl[pos] != '~'
+        || !isHexDigit(jurl[pos + 1])
+        || !isHexDigit(jurl[pos + 2]))
+      throw expected("<utf8-continuation>", jurl, pos);
+    int b = hexValue(jurl[pos + 1]) * 16 + hexValue(jurl[pos + 2]);
+    if ((b & 0xC0) != 0x80) throw expected("<utf8-continuation-byte>", jurl, pos);
+    return b;
   }
 
   private static int toJsonPrimitive(char[] jurl, int offset, TextBuilder json) {
@@ -226,34 +291,34 @@ public interface Jurl {
     // literal ?
     if (len == 1) {
       if (c0 == 't') {
-        json.append("true");
+        json.appendAscii("true");
         return offset + 1;
       } else if (c0 == 'f') {
-        json.append("false");
+        json.appendAscii("false");
         return offset + 1;
       }
       if (c0 == 'n') {
-        json.append("null");
+        json.appendAscii("null");
         return offset + 1;
       }
     } else if (len == 4) {
       if (c0 == 't' && jurl[i+1] == 'r' && jurl[i+2] == 'u' && jurl[i+3] == 'e') {
-        json.append("true");
+        json.appendAscii("true");
         return offset+4;
       } else if (c0 == 'n' && jurl[i+1] == 'u' && jurl[i+2] == 'l' && jurl[i+3] == 'l') {
-        json.append("null");
+        json.appendAscii("null");
         return offset+4;
       }
     } else if (len == 5 && c0 == 'f' && jurl[i+1] == 'a' && jurl[i+2] == 'l' && jurl[i+3] == 's' && jurl[i+4] == 'e') {
-      json.append("false");
+      json.appendAscii("false");
       return offset+5;
     }
     // else => number
     if (isNumber(jurl, offset)) return toJsonNumber(jurl, offset, json);
     // else => string
-    json.append('"');
-    for (int j = 0; j < len; j++) json.append(jurl[offset + j]);
-    json.append('"');
+    json.appendAscii('"');
+    for (int j = 0; j < len; j++) json.appendAscii(jurl[offset + j]);
+    json.appendAscii('"');
     return offset+len;
   }
 
@@ -261,42 +326,42 @@ public interface Jurl {
     char c = jurl[offset]; // we got here from autodetect so it is safe
     // sign
     if (c == '-') {
-      json.append('-');
+      json.appendAscii('-');
       return toJsonNumber(jurl,offset + 1, json);
     }
     // integer part
     int i = offset;
     if (c == '.') {
-      json.append('0'); // insert leading zero
+      json.appendAscii('0'); // insert leading zero
     } else {
-      while (i < jurl.length && isDigit(jurl[i])) json.append(jurl[i++]);
+      while (i < jurl.length && isDigit(jurl[i])) json.appendAscii(jurl[i++]);
     }
     if (i >= jurl.length) return i; // integer number
     c = jurl[i];
     // fraction part ?
     if (c == '.') {
       i++; // skip .
-      json.append('.');
+      json.appendAscii('.');
       if (i >= jurl.length || !isDigit(jurl[i])) {
-        json.append("0"); // auto-add zero after decimal point when no digits follow
+        json.appendAscii("0"); // auto-add zero after decimal point when no digits follow
         return i;
       }
-      while (i < jurl.length && isDigit(jurl[i])) json.append(jurl[i++]);
+      while (i < jurl.length && isDigit(jurl[i])) json.appendAscii(jurl[i++]);
     }
     if (i >= jurl.length) return i; // decimal number
     // exponent part ?
     c = jurl[i];
     if (c != 'e' && c != 'E') return i; // no exponent
     i++; // skip e/E
-    json.append('e');
+    json.appendAscii('e');
     if (i >= jurl.length) throw expected("<exponent>", jurl, i);
     c = jurl[i];
     if (c == '-') {
       i++; // skip -
-      json.append('-');
+      json.appendAscii('-');
     }
     // this would transfer zero digits here -> fine, JSON parsing will find it
-    while (i < jurl.length && isDigit(jurl[i])) json.append(jurl[i++]);
+    while (i < jurl.length && isDigit(jurl[i])) json.appendAscii(jurl[i++]);
     return i;
   }
 

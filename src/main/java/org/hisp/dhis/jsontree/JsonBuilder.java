@@ -145,8 +145,8 @@ public interface JsonBuilder {
   static JsonNode createString(CharSequence value) {
     if (value == null) return JsonNode.NULL;
     TextBuilder json = new TextBuilder(value.length() + 2);
-    new JsonAppender(MINIMIZED, json).appendEscaped(value);
-    return JsonNode.of(json);
+    json.appendJsonEscaped(value);
+    return JsonNode.of(json.textValue());
   }
 
   /**
@@ -225,10 +225,8 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamObject(PrettyPrint config, OutputStream out, Consumer<JsonObjectBuilder> obj) {
-    try (Writer jsonStream = new BufferedWriter(new OutputStreamWriter(out, UTF_8))) {
-      new JsonAppender(config, Appender.of(jsonStream)).visitObject(obj);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    try (Appender a =  Appender.ofUTF8(out)) {
+      new JsonAppender(config, a).visitObject(obj);
     }
   }
 
@@ -247,10 +245,8 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamArray(PrettyPrint config, OutputStream out, Consumer<JsonArrayBuilder> arr) {
-    try (Writer jsonStream = new BufferedWriter(new OutputStreamWriter(out, UTF_8))) {
-      new JsonAppender(config, Appender.of(jsonStream)).visitArray(arr);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    try (Appender a = Appender.ofUTF8(out)) {
+      new JsonAppender(config, a).visitArray(arr);
     }
   }
 
