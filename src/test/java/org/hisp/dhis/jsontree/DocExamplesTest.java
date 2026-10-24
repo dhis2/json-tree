@@ -648,4 +648,146 @@ class DocExamplesTest {
         assertTrue( expected.diff( actual ).differences().isEmpty() );
     }
 
+    // =========================================================================
+    // docs/json-search.md — Transforming matches
+    // =========================================================================
+
+    private static JsonMixed searchPeople() {
+        return JsonMixed.of( """
+            {
+                "people": [
+                    { "first": "James", "age": 30 },
+                    { "first": "Jacob", "age": 25 },
+                    { "first": "Jayden", "age": 41 }
+                ]
+            }""" );
+    }
+
+    private static JsonMixed searchFleet() {
+        return JsonMixed.of( """
+            {
+                "reservations": [
+                    { "instances": [ { "state": "running" }, { "state": "stopped" } ] },
+                    { "instances": [ { "state": "terminated" }, { "state": "running" } ] }
+                ]
+            }""" );
+    }
+
+    private static JsonMixed searchMixedPeople() {
+        return JsonMixed.of( """
+            {"people": [
+                {"name": "James"},
+                {"nickname": "JJ"},
+                {"name": "Jacob"}
+            ]}""" );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_basic() {
+        JsonMixed root = searchPeople();
+
+        List<String> firsts = root.queryMap(
+            JsonSelector.of( "$.people[*]" ),
+            p -> p.getString( "first" ).string() );
+
+        assertEquals( List.of( "James", "Jacob", "Jayden" ), firsts );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_constructedObject() {
+        JsonMixed root = searchPeople();
+
+        List<JsonObject> slimmed = root.queryMap(
+            JsonSelector.of( "$.people[*]" ),
+            p -> Json.object( o -> o
+                .addString( "name", p.getString( "first" ).string() )
+                .addNumber( "age",  p.getNumber( "age" ).integer() ) ) );
+
+        assertEquals(
+            List.of(
+                "{\"name\":\"James\",\"age\":30}",
+                "{\"name\":\"Jacob\",\"age\":25}",
+                "{\"name\":\"Jayden\",\"age\":41}" ),
+            slimmed.stream().map( JsonObject::toJson ).toList() );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_constructedArray() {
+        JsonMixed root = searchPeople();
+
+        JsonArray materialised = Json.array( arr ->
+            root.queryMap( JsonSelector.of( "$.people[*]" ),
+                    p -> p.getString( "first" ).string() )
+                .forEach( arr::addString ) );
+
+        assertEquals( "[\"James\",\"Jacob\",\"Jayden\"]", materialised.toJson() );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_nested() {
+        JsonMixed fleet = searchFleet();
+
+        List<List<String>> nested = fleet.queryMap(
+            JsonSelector.of( "$.reservations[*]" ),
+            res -> res.queryMap(
+                JsonSelector.of( "@.instances[*]" ),
+                inst -> inst.getString( "state" ).string() ) );
+
+        assertEquals(
+            List.of(
+                List.of( "running", "stopped" ),
+                List.of( "terminated", "running" ) ),
+            nested );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_flat() {
+        JsonMixed fleet = searchFleet();
+
+        List<String> flat = fleet.queryMap(
+            JsonSelector.of( "$.reservations[*].instances[*]" ),
+            inst -> inst.getString( "state" ).string() );
+
+        assertEquals(
+            List.of( "running", "stopped", "terminated", "running" ),
+            flat );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_flatten() {
+        JsonMixed grid = JsonMixed.of( "{\"matrix\": [[1,2],[3,4]]}" );
+
+        List<Integer> numbers = grid.queryMap(
+            JsonSelector.of( "$.matrix" ).flatten(),
+            n -> n.as( JsonNumber.class ).integer() );
+
+        assertEquals( List.of( 1, 2, 3, 4 ), numbers );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_nullSkipped() {
+        JsonMixed mixed = searchMixedPeople();
+
+        List<String> names = mixed.queryMap(
+            JsonSelector.of( "$.people[*]" ),
+            p -> p.getString( "name" ).isUndefined()
+                ? null
+                : p.getString( "name" ).string() );
+
+        assertEquals( List.of( "James", "Jacob" ), names );
+    }
+
+    @Test
+    void jsonSearch_transformingMatches_nullPreservedViaStream() {
+        JsonMixed mixed = searchMixedPeople();
+
+        List<String> withNulls = mixed
+            .query( JsonSelector.of( "$.people[*]" ) )
+            .map( p -> p.getString( "name" ).isUndefined()
+                ? null
+                : p.getString( "name" ).string() )
+            .collect( java.util.stream.Collectors.toList() );
+
+        assertEquals( java.util.Arrays.asList( "James", null, "Jacob" ), withNulls );
+    }
 }

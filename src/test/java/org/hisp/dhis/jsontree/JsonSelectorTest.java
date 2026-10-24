@@ -290,4 +290,16 @@ class JsonSelectorTest {
     assertEquals(".x.y", JsonSelector.of(Text.of("x.y")).toString());
     assertEquals(".$..foo", JsonSelector.of(Text.of("$..foo")).toString());
   }
+
+  @Test
+  void testFlatten_ToString() {
+    assertEquals( "$[]", JsonSelector.$.flatten().toString() );
+    assertEquals( "$.foo[]", JsonSelector.$.key( "foo" ).flatten().toString() );
+  }
+
+  @Test
+  void testOfFlatten_RoundTrip() {
+    assertEquals( JsonSelector.$.flatten().toString(),
+        JsonSelector.of( "$[]" ).toString() );
+  }
 }

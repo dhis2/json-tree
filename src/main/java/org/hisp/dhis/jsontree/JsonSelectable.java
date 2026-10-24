@@ -2,6 +2,8 @@ package org.hisp.dhis.jsontree;
 
 import static java.util.Comparator.comparingInt;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.function.BinaryOperator;
@@ -155,6 +157,46 @@ public interface JsonSelectable<T> {
     Reducer res = new Reducer();
     query(selector, res);
     return res.value;
+  }
+
+  /**
+   * Applies a mapper to each match of the selector and returns the results as a
+   * list.
+   *
+   * <p>This is the transformation counterpart to {@link #query(JsonSelector)}:
+   * same traversal, but each match is passed through {@code mapper} before being
+   * collected. Use this when the shape of the result should differ from the shape
+   * of the matched nodes — a projection, a constructed JSON value, a POJO, or a
+   * nested list.
+   *
+   * <p>A mapper that returns {@code null} causes the match to be skipped; the
+   * returned list never contains {@code null}. This mirrors the projection
+   * semantics of query languages such as JMESPath, and keeps callers out of
+   * null-checking, at the cost of the result size not necessarily being equal to
+   * the number of matches. If {@code null} values are meaningful in the output,
+   * use the stream form instead:
+   *
+   * <pre>{@code
+   * query( selector ).map( mapper ).collect( Collectors.toList() )
+   * }</pre>
+   *
+   * <p>The returned list is immutable; attempts to modify it throw.
+   *
+   * @param selector the query to run
+   * @param mapper the transformation applied to each match; returning
+   *     {@code null} causes that match to be skipped
+   * @param <R> the result type produced by the mapper
+   * @return the mapped results, without {@code null} elements, in the order the
+   *     matches were produced
+   * @since 1.11
+   */
+  default <R> List<R> queryMap(JsonSelector selector, Function<T, R> mapper) {
+    List<R> result = new ArrayList<>();
+    query(selector, match -> {
+      R value = mapper.apply(match);
+      if (value != null) result.add(value);
+    });
+    return List.copyOf(result);
   }
 
   /**

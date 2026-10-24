@@ -93,6 +93,17 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     return new JsonSelector(new AnyMatcher(), null);
   }
 
+  /**
+   * A selector that starts with a {@link FlattenMatcher}, equivalent to beginning
+   * a chain with {@code $.flatten()}.
+   *
+   * @return a selector with a single flatten matcher
+   * @since 1.11
+   */
+  public static JsonSelector ofFlatten() {
+    return new JsonSelector(new FlattenMatcher(), null);
+  }
+
   public static JsonSelector ofDescendants() {
     return new JsonSelector(new DescendantsMatcher(), null);
   }
@@ -157,6 +168,10 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
 
   public JsonSelector any() {
     return select(ofAny());
+  }
+
+  public JsonSelector flatten() {
+    return select(ofFlatten());
   }
 
   public JsonSelector descendants() {
@@ -352,6 +367,46 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
     }
   }
 
+  /**
+   * A matcher that flattens one level of array nesting before continuing with the
+   * next selector segment.
+   *
+   * <p>When the current node is an array, each element is visited. If the element
+   * is itself an array, its elements are forwarded individually; otherwise, the
+   * element is forwarded unchanged. When the current node is not an array, it is
+   * forwarded unchanged — flattening a non-array is a no-op.
+   *
+   * <p>Only one level of nesting is flattened. To flatten recursively, chain
+   * {@code flatten()} as many times as there are levels, or iterate with
+   * {@link #descendants()}.
+   *
+   * <p>This mirrors the {@code []} flatten projection in JMESPath. It is reachable
+   * via {@link #flatten()} on a selector chain, or as the first segment via
+   * {@link #ofFlatten()}.
+   */
+  private record FlattenMatcher() implements Matcher {
+
+    @Override
+    public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
+      if (node.isArray()) {
+        for (JsonNode e : node.elements(AUTO_SKIP)) {
+          if (e.isArray()) {
+            for (JsonNode sub : e.elements(AUTO_SKIP)) next.match(sub, matches);
+          } else {
+            next.match(e, matches);
+          }
+        }
+      } else {
+        next.match(node, matches);
+      }
+    }
+
+    @Override
+    public String toString() {
+      return "[]";
+    }
+  }
+
   private record IndexMatcher(int index) implements Matcher {
     @Override
     public void match(JsonNode node, JsonSelector next, Matches<JsonNode> matches) {
@@ -481,6 +536,11 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
           offset = end + 1;
         }
         case '[' -> {
+          if (offset < expression.length() && expression.charAt(offset) == ']') {
+            res = res.flatten();
+            offset++; // skip ']'
+            break;
+          }
           int end = skipUntil(']', expression, offset);
           res = parseSelection(res, expression, offset, end - offset);
           offset = end + 1; // ]

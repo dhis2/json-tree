@@ -94,8 +94,8 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @param node non null
    * @return the provided {@link JsonNode} as virtual {@link JsonValue}
    */
-  static JsonValue of(JsonNode node) {
-    return node == null ? JsonVirtualTree.NULL : JsonMixed.of(node);
+  static JsonValue of(@NotNull JsonNode node) {
+    return JsonMixed.of(node);
   }
 
   /**
@@ -104,7 +104,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @param json a valid JSON string
    * @return virtual JSON tree root {@link JsonValue}
    */
-  static JsonValue of(CharSequence json) {
+  static JsonValue of(@CheckNull CharSequence json) {
     return of(json, JsonAccess.GLOBAL);
   }
 
@@ -117,7 +117,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    *     methods, when {@code null} default mapping is used
    * @return virtual JSON tree root {@link JsonValue}
    */
-  static JsonValue of(CharSequence json, @NotNull JsonAccessors accessors) {
+  static JsonValue of(@CheckNull CharSequence json, @NotNull JsonAccessors accessors) {
     return json == null || "null".contentEquals(json)
         ? JsonVirtualTree.NULL
         : JsonMixed.of(json, accessors);
@@ -128,7 +128,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @return root of the virtual tree representing the given JSON input
    * @since 1.0
    */
-  static JsonValue of(Path file) {
+  static JsonValue of(@NotNull Path file) {
     return of(JsonNode.of(file));
   }
 
