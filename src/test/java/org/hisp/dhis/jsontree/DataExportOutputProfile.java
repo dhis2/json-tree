@@ -129,7 +129,7 @@ public final class DataExportOutputProfile {
 
   /**
    * A box to avoid 1 lambda allocation per loop.
-   * A similar fix should be applied to DHIS2 data value export. 
+   * A similar fix should be applied to DHIS2 data value export.
    */
   private static final class DataValueEncoder implements Consumer<JsonBuilder.JsonObjectBuilder> {
 

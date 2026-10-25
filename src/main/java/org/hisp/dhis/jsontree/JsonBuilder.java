@@ -384,8 +384,55 @@ public interface JsonBuilder {
   /**
    * Builder API to add elements to JSON array node.
    *
+   * <p>Arrays are commonly driven from a loop — exporting data values, streaming events,
+   * building batch responses. When that loop runs to hundreds of thousands or millions of
+   * elements, the per-element call expression matters: a lambda that captures a loop variable
+   * is instantiated once per iteration, and at large element counts those transient instances
+   * can dominate the allocation profile even though each one is short-lived.
+   *
+   * <p>Prefer a reusable {@link Consumer} class with a mutable field, instantiated once
+   * outside the loop and re-configured per iteration. The same encoding logic then runs with
+   * zero per-element allocation. Compare:
+   *
+   * <pre>{@code
+   * // Captures `item` → one Consumer instance per iteration
+   * for (Item item : items) {
+   *   arr.addObject(val -> {
+   *     val.addNumber("id",   item.id());
+   *     val.addString("name", item.name());
+   *   });
+   * }
+   * }</pre>
+   *
+   * <p>with:
+   *
+   * <pre>{@code
+   * // One Consumer instance for the whole loop
+   * ItemEncoder encoder = new ItemEncoder();
+   * for (Item item : items) {
+   *   encoder.set(item);
+   *   arr.addObject(encoder);
+   * }
+   *
+   * static final class ItemEncoder implements Consumer<JsonObjectBuilder> {
+   *   private Item item;
+   *
+   *   void set(Item item) { this.item = item; }
+   *
+   *   @Override
+   *   public void accept(JsonObjectBuilder val) {
+   *     val.addNumber("id",   item.id());
+   *     val.addString("name", item.name());
+   *   }
+   * }
+   * }</pre>
+   *
+   * <p>The pattern applies to every {@code addX} method on this builder, not only
+   * {@link #addObject(Consumer)}. Reusing the instance is safe because the builder invokes
+   * the {@link Consumer} synchronously and does not retain it past the call, so a single
+   * instance can be used at every level of nesting as long as the calls do not overlap.
+   *
    * @author Jan Bernitt
-   * @apiNote beta (subject to change)
    * @since 0.11 (alpha overhaul)
    */
   interface JsonArrayBuilder {
