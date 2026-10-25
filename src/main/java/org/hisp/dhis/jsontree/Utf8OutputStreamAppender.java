@@ -44,6 +44,7 @@ import static org.hisp.dhis.jsontree.Appender.needsJsonEscaping;
  * @author Jan Bernitt (with AI support)
  * @see Appender#ofUTF8(OutputStream)
  * @see TextBuilder
+ * @since 1.12
  */
 final class Utf8OutputStreamAppender implements Appender {
 
@@ -98,6 +99,8 @@ final class Utf8OutputStreamAppender implements Appender {
     }
   }
 
+  private static final int MIN_CHUNK_BYTES = 8; // 2 chars × 4 bytes worst case
+
   /**
    * Writes the given span using {@link #appendEncoded(char)} semantics, so the UTF-8 encoding of
    * each character is produced directly into the buffer.
@@ -118,33 +121,43 @@ final class Utf8OutputStreamAppender implements Appender {
     checkRange(text, start, end);
     int i = start;
     while (i < end) {
-      if (pos >= BUFFER_SIZE - 4) flushBuffer(); // reserve 4 bytes
-      char c = text.charAt(i++);
-      if (c < 0x80) { // ASCII fast path
-        utf8[pos++] = (byte) c;
-      } else if (c < 0x800) { // 2-byte
-        utf8[pos++] = (byte) (0xC0 | (c >> 6));
-        utf8[pos++] = (byte) (0x80 | (c & 0x3F));
-      } else if (Character.isHighSurrogate(c)) {
-        if (i < end) {
-          char low = text.charAt(i);
-          if (Character.isLowSurrogate(low)) {
-            i++;
-            int cp = Character.toCodePoint(c, low);
-            utf8[pos++] = (byte) (0xF0 | (cp >> 18));
-            utf8[pos++] = (byte) (0x80 | ((cp >> 12) & 0x3F));
-            utf8[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
-            utf8[pos++] = (byte) (0x80 | (cp & 0x3F));
-            continue;
+      // always start a chunk with enough room for at least a surrogate pair
+      if (pos >= BUFFER_SIZE - MIN_CHUNK_BYTES) flushBuffer();
+      // conservative: assume every char may need up to 4 bytes
+      int chunk = Math.min(end - i, (BUFFER_SIZE - pos) >> 2);
+      int chunkEnd = i + chunk;
+      // never split a surrogate pair across chunks
+      if (chunkEnd < end && Character.isHighSurrogate(text.charAt(chunkEnd - 1))) {
+        chunkEnd--;
+      }
+      while (i < chunkEnd) {
+        char c = text.charAt(i++);
+        if (c < 0x80) {
+          utf8[pos++] = (byte) c;
+        } else if (c < 0x800) {
+          utf8[pos++] = (byte) (0xC0 | (c >> 6));
+          utf8[pos++] = (byte) (0x80 | (c & 0x3F));
+        } else if (Character.isHighSurrogate(c)) {
+          if (i < chunkEnd) {
+            char low = text.charAt(i);
+            if (Character.isLowSurrogate(low)) {
+              i++;
+              int cp = Character.toCodePoint(c, low);
+              utf8[pos++] = (byte) (0xF0 | (cp >> 18));
+              utf8[pos++] = (byte) (0x80 | ((cp >> 12) & 0x3F));
+              utf8[pos++] = (byte) (0x80 | ((cp >> 6) & 0x3F));
+              utf8[pos++] = (byte) (0x80 | (cp & 0x3F));
+              continue;
+            }
           }
+          writeReplacementChar();
+        } else if (Character.isLowSurrogate(c)) {
+          writeReplacementChar();
+        } else {
+          utf8[pos++] = (byte) (0xE0 | (c >> 12));
+          utf8[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+          utf8[pos++] = (byte) (0x80 | (c & 0x3F));
         }
-        writeReplacementChar(); // unpaired high surrogate
-      } else if (Character.isLowSurrogate(c)) {
-        writeReplacementChar(); // unpaired low surrogate
-      } else { // 3-byte BMP
-        utf8[pos++] = (byte) (0xE0 | (c >> 12));
-        utf8[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-        utf8[pos++] = (byte) (0x80 | (c & 0x3F));
       }
     }
   }
