@@ -52,19 +52,25 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   private final Appender json;
 
   private final boolean indent;
-  private final String indent1;
+  private final String indent1;            // null when !indent
+  private final String[] indentLevels;     // null when !indent; lazily filled
   private final String colon;
   private final boolean[] hasChildrenAtLevel = new boolean[128];
 
   private int level = 0;
-  private String indentLevel = "";
 
   JsonAppender(PrettyPrint config, Appender json) {
     this.config = config;
     this.json = json;
     this.indent = config.indentSpaces() > 0 || config.indentTabs() > 0;
-    this.indent1 = "\t".repeat(config.indentTabs()) + " ".repeat(config.indentSpaces());
     this.colon = config.spaceAfterColon() ? ": " : ":";
+    if (indent) {
+      this.indent1 = "\t".repeat(config.indentTabs()) + " ".repeat(config.indentSpaces());
+      this.indentLevels = new String[128];
+    } else {
+      this.indent1 = null;
+      this.indentLevels = null;
+    }
   }
 
   private void appendDouble(double value) {
@@ -81,26 +87,33 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     json.appendJsonEscaped(str);
   }
 
+  private String indentLevel(int level) {
+    String s = indentLevels[level];
+    if (s == null) {
+      s = "\n" + indent1.repeat(level);
+      indentLevels[level] = s;
+    }
+    return s;
+  }
+
+  private void beginLevel(char c) {
+    json.appendAscii(c);
+    hasChildrenAtLevel[++level] = false;
+  }
+
+  private void endLevel(char c) {
+    level--;
+    if (indent && hasChildrenAtLevel[level + 1]) json.appendAscii(indentLevel(level));
+    json.appendAscii(c);
+  }
+
   private void appendCommaWhenNeeded() {
     if (!hasChildrenAtLevel[level]) {
       hasChildrenAtLevel[level] = true;
     } else {
       json.appendAscii(',');
     }
-    if (indent) json.appendAscii(indentLevel);
-  }
-
-  private void beginLevel(char c) {
-    json.appendAscii(c);
-    hasChildrenAtLevel[++level] = false;
-    indentLevel = "\n" + indent1.repeat(level);
-  }
-
-  private void endLevel(char c) {
-    level--;
-    indentLevel = "\n" + indent1.repeat(level);
-    if (indent && hasChildrenAtLevel[level + 1]) json.appendAscii(indentLevel);
-    json.appendAscii(c);
+    if (indent) json.appendAscii(indentLevel(level));
   }
 
   @Override

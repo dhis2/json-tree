@@ -407,6 +407,23 @@ class Utf8OutputStreamAppenderTest {
     assertEquals("\"" + "x".repeat(10_000) + "\\n" + "y".repeat(10_000) + '"', encode(a -> a.appendJsonEscaped(big)));
   }
 
+  @Test
+  void testChunkBoundary_SurrogatePairStraddlingFirstChunk() {
+    // With a fresh buffer (pos = 0), the first chunk is exactly BUFFER_SIZE/4 = 2048 chars.
+    // Place a surrogate pair so the high surrogate would be the last char of that chunk.
+    String input = "x".repeat(2047) + "\uD83D\uDE00" + "y";
+    assertEquals(input, encode(a -> a.appendEncoded(input)));
+  }
+
+  @Test
+  void testChunkBoundary_SurrogatePairStraddlingRepeatedChunks() {
+    // Fill the buffer with pairs such that every 2048-char chunk boundary risks a split
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 5000; i++) sb.append("x").append("\uD83D\uDE00");
+    String input = sb.toString();
+    assertEquals(input, encode(a -> a.appendEncoded(input)));
+  }
+
   /*
    * close()
    */
