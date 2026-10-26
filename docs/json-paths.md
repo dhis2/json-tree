@@ -88,6 +88,6 @@ compare positions rather than values.
 
 ## Related
 
-- [Lazy parsing and the virtual tree](intro-2-lazy-parsing)
-- [JSON API](intro-3-json-from-text)
-- [API reference](json-api-overview)
+- [Lazy parsing and the virtual tree](intro-2-lazy-parsing.md)
+- [JSON API](intro-3-json-from-text.md)
+- [API reference](json-api-overview.md)

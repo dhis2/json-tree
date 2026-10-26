@@ -154,7 +154,7 @@ means queries run without any caching side effects at all. See
 
 ## Related
 
-- [Extending with user types](intro-6-user-types)
+- [Extending with user types](intro-6-user-types.md)
 - [Querying the tree](json-search.md) — `JsonSelector`, which uses skip-mode
   traversal internally
 - [Lazy parsing and the virtual tree](intro-2-lazy-parsing.md) — the offsets model

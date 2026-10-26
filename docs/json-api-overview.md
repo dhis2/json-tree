@@ -20,7 +20,7 @@ with nodes that can take multiple forms.
 Some of the key methods to work with the virtual tree API:
 
 - `exists()`, `isUndefined()`, `isNull()` — see
-  [Null, undefined and existence](intro-5-null-and-undefined).
+  [Null, undefined and existence](intro-5-null-and-undefined.md).
 - `isRoot()`, `path()` — path in tree checks and access
 - `isNumber()`, `isInteger()`, `isNaN()`, `isInfinity()` — number-value type checks
 - `isString()`, , `isBoolean()`, `isSimple()`, `type()`, more value-level type checks
@@ -87,7 +87,7 @@ Each operation is documented in depth on its own page:
   `.type`, `.filter`, `.find`.
 - `JsonSelectable` — `query(selector, matches)`, `query`, `queryCount`,
   `queryExists`, `queryFirst`, `queryReduce`, `queryTop`.
-- See [Querying the tree](json-search).
+- See [Querying the tree](json-search.md).
  
 
 ## Validation
@@ -98,9 +98,9 @@ test and assert specific shapes given as their Java interface type.
 - `as(Class<T>)` — view as type (not checked, always works).
 - `isA(Class<T>)` / `asA(Class<T>)` — checking and asserting shape conformity.
 - `validate(Class<T>)` — check against a user type.
-- `@Validation`, `@Required`, `Rule` — see [Validation](json-validation). 
+- `@Validation`, `@Required`, `Rule` — see [Validation](json-validation.md). 
 
-Full attribute list and semantics: see [Validation reference](json-validation-reference).
+Full attribute list and semantics: see [Validation reference](json-validation-reference.md).
 
 ## Diff
 
@@ -108,7 +108,7 @@ JSON can be compared to find the differences between two trees.
 This is exceptionally useful in test assertions or input validation.
 
 - `diff(JsonValue)` / `diff(JsonValue, JsonDiff.Mode)` —
-  see [Comparing JSON values](json-diff).
+  see [Comparing JSON values](json-diff.md).
 - `JsonDiff.Mode`, `@JsonDiff.AnyOrder`, `@JsonDiff.AnyAdditional`.
 
 ## Patch
@@ -125,6 +125,6 @@ conformance notes.
 
 ## Related
 
-- [Java API](intro-4-json-from-java)
-- [JSON API](intro-3-json-from-text)
+- [Java API](intro-4-json-from-java.md)
+- [JSON API](intro-3-json-from-text.md)
 - [JSON Patch](json-patch.md) — the RFC 6902-based patch feature.

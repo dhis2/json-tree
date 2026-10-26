@@ -25,11 +25,11 @@ RFC 8259 rejects both.
 name. The alternative bracketed notation `{}` — that is, `{<property>}` —
 selects the property with an empty name. A consequence is that property names
 beginning with `{` are read as path notation rather than as literal names.
-See [Navigating the tree](json-paths) for the path notation itself.
+See [Navigating the tree](json-paths.md) for the path notation itself.
 
 ## JSONPath — [RFC 9535](https://datatracker.ietf.org/doc/html/rfc9535)
 
-`JsonSelector` (see [Querying the tree](json-search)) is inspired by RFC 9535.
+`JsonSelector` (see [Querying the tree](json-search.md)) is inspired by RFC 9535.
 Most matchers behave as in the standard. The deviations are:
 
 - **Filters**: only Java `Predicate` expressions are supported, not the
@@ -46,7 +46,7 @@ The library implements only the
 part of the specification. Because the schema is declared via annotations on
 property methods rather than in a JSON schema document, every validation is
 declared on the property it affects — not on its parent (as `required` is in
-the spec). See [Validation reference](json-validation-reference) for the full
+the spec). See [Validation reference](json-validation-reference.md) for the full
 list.
 
 **Unsupported:** `minContains` and `maxContains` are not supported.
@@ -118,7 +118,7 @@ The design goal of JSON5* is that any accepted document can be converted to
 standard JSON **without inserting characters** — only deleting or replacing
 characters in place. That keeps the parser's offsets valid against the original
 source text, and preserves the lazy-parsing and memory characteristics described
-in [Lazy parsing](intro-2-lazy-parsing). Every restriction below follows from that
+in [Lazy parsing](intro-2-lazy-parsing.md). Every restriction below follows from that
 constraint.
 
 **JSON5 features not supported:**
@@ -146,8 +146,8 @@ constraint.
 
 ## Related
 
-- [Navigating the tree](json-paths) — `JsonPath`
-- [Querying the tree](json-search) — `JsonSelector` and RFC 9535
-- [Validation reference](json-validation-reference) — JSON Schema vocabulary
+- [Navigating the tree](json-paths.md) — `JsonPath`
+- [Querying the tree](json-search.md) — `JsonSelector` and RFC 9535
+- [Validation reference](json-validation-reference.md) — JSON Schema vocabulary
 - [JSON Patch](json-patch.md) — the patch feature in detail
 - [JSON5* notation](json5-star-reference.md) — the JSON5 variant
