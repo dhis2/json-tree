@@ -228,7 +228,10 @@ class JsonObjectBuilderAddObjectMembersTest {
               Map.of("a", new Item(1, "x")),
               (nested, item) -> nested.addNumber("id", item.id()));
           obj.addObjectMembers(
-              Map.of("b", new Item(2, "y"), "c", new Item(3, "z")),
+              Map.of("b", new Item(2, "y")),
+              (nested, item) -> nested.addNumber("id", item.id()));
+          obj.addObjectMembers(
+              Map.of("c", new Item(3, "z")),
               (nested, item) -> nested.addNumber("id", item.id()));
         }));
   }
