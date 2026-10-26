@@ -27,15 +27,9 @@
  */
 package org.hisp.dhis.jsontree;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.StreamSupport.stream;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.UncheckedIOException;
-import java.io.Writer;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -379,6 +373,46 @@ public interface JsonBuilder {
       value.forEach(e -> addMember.add(this, e.getKey(), e.getValue()));
       return this;
     }
+
+    /**
+     * @since 1.12
+     */
+    default <K extends CharSequence, V> JsonObjectBuilder addObjectMembers(
+        Map<K, V> values, BiConsumer<JsonObjectBuilder, ? super V> encoder) {
+      Box<V> box = new Box<>(encoder);
+      values.forEach((key, v) -> {
+        box.set(v);
+        addObject(key, box);
+      });
+      return this;
+    }
+
+    /**
+     * @since 1.12
+     */
+    default <K extends CharSequence, V> JsonObjectBuilder addObjectMembers(
+        Iterable<Map.Entry<K, V>> values, BiConsumer<JsonObjectBuilder, ? super V> encoder) {
+      Box<V> box = new Box<>(encoder);
+      for (Map.Entry<K, V> e : values) {
+        box.set(e.getValue());
+        addObject(e.getKey(), box);
+      }
+      return this;
+    }
+
+    /**
+     * @since 1.12
+     */
+    default <K extends CharSequence, V> JsonObjectBuilder addObjectMembers(
+        Stream<Map.Entry<K, V>> values,
+        BiConsumer<JsonObjectBuilder, ? super V> encoder) {
+      Box<V> box = new Box<>(encoder);
+      values.forEachOrdered(e -> {
+        box.set(e.getValue());
+        addObject(e.getKey(), box);
+      });
+      return this;
+    }
   }
 
   /**
@@ -386,54 +420,60 @@ public interface JsonBuilder {
    *
    * <p>Arrays are commonly driven from a loop — exporting data values, streaming events,
    * building batch responses. When that loop runs to hundreds of thousands or millions of
-   * elements, the per-element call expression matters: a lambda that captures a loop variable
-   * is instantiated once per iteration, and at large element counts those transient instances
-   * can dominate the allocation profile even though each one is short-lived.
+   * elements, per-element call expressions matter: a lambda that captures a loop variable is
+   * instantiated once per iteration, and those transient instances can dominate the allocation
+   * profile even though each one is short-lived.
    *
-   * <p>Prefer a reusable {@link Consumer} class with a mutable field, instantiated once
-   * outside the loop and re-configured per iteration. The same encoding logic then runs with
-   * zero per-element allocation. Compare:
+   * <p>For the common case of "add one object per element of a collection" use
+   * {@link #addObjects(Iterable, BiConsumer)} or {@link #addObjects(Stream, BiConsumer)},
+   * which reuse a single mutable encoder internally:
    *
    * <pre>{@code
-   * // Captures `item` → one Consumer instance per iteration
+   * arr.addObjects(items, (obj, item) -> {
+   *   obj.addNumber("id",   item.id());
+   *   obj.addString("name", item.name());
+   * });
+   * }</pre>
+   *
+   * <p>The {@code BiConsumer} here captures nothing — it only reads its own parameters — so the
+   * JVM instantiates it once. Compare with the equivalent loop, which instantiates a fresh
+   * {@link Consumer} per iteration:
+   *
+   * <pre>{@code
    * for (Item item : items) {
-   *   arr.addObject(val -> {
-   *     val.addNumber("id",   item.id());
-   *     val.addString("name", item.name());
+   *   arr.addObject(obj -> {                  // one instance per iteration
+   *     obj.addNumber("id",   item.id());
+   *     obj.addString("name", item.name());
    *   });
    * }
    * }</pre>
    *
-   * <p>with:
+   * <p>When your shape does not fit an {@code Iterable} or {@code Stream} — for example a
+   * cursor, a result set, or a custom iteration protocol — implement
+   * {@link Consumer}{@code <}{@link JsonObjectBuilder}{@code >} with a mutable field and reuse
+   * the instance across calls. Reuse is safe because the builder invokes the consumer
+   * synchronously and does not retain it past the call, so a single instance can be used at
+   * every level of nesting as long as the calls do not overlap:
    *
    * <pre>{@code
-   * // One Consumer instance for the whole loop
    * ItemEncoder encoder = new ItemEncoder();
-   * for (Item item : items) {
-   *   encoder.set(item);
+   * while (cursor.next()) {
+   *   encoder.set(cursor.item());
    *   arr.addObject(encoder);
    * }
    *
    * static final class ItemEncoder implements Consumer<JsonObjectBuilder> {
    *   private Item item;
-   *
    *   void set(Item item) { this.item = item; }
-   *
-   *   @Override
-   *   public void accept(JsonObjectBuilder val) {
-   *     val.addNumber("id",   item.id());
-   *     val.addString("name", item.name());
+   *   public void accept(JsonObjectBuilder obj) {
+   *     obj.addNumber("id",   item.id());
+   *     obj.addString("name", item.name());
    *   }
    * }
    * }</pre>
    *
-   * <p>The pattern applies to every {@code addX} method on this builder, not only
-   * {@link #addObject(Consumer)}. Reusing the instance is safe because the builder invokes
-   * the {@link Consumer} synchronously and does not retain it past the call, so a single
-   * instance can be used at every level of nesting as long as the calls do not overlap.
-   *
    * @author Jan Bernitt
-   * @since 0.11 (alpha overhaul)
+   * @since 0.11
    */
   interface JsonArrayBuilder {
 
@@ -527,6 +567,97 @@ public interface JsonBuilder {
     default <E, T> JsonArrayBuilder addElements(
         T[] values, BiConsumer<JsonArrayBuilder, ? super E> addElement, Function<T, E> map) {
       return addElements(Arrays.asList(values), addElement, map);
+    }
+
+    /**
+     * @see #addObjects(Iterable, BiConsumer)
+     * @since 1.12
+     */
+    default <T> JsonArrayBuilder addObjects(
+        T[] values, BiConsumer<JsonObjectBuilder, ? super T> encoder) {
+      return addObjects(Arrays.asList(values), encoder);
+    }
+
+    /**
+     * Adds an object element for each element of the given {@code values}, using the provided
+     * {@code encoder} to fill each object's members.
+     *
+     * <p>Prefer this over a {@code for} loop calling {@link #addObject(Consumer)} per element when
+     * the loop may run to large element counts — see the {@link JsonArrayBuilder class-level
+     * documentation} for the allocation difference and the equivalent reusable-encoder pattern for
+     * non-iterable data sources.
+     *
+     * @param values the elements to encode as JSON objects
+     * @param encoder invoked once per element to fill the object's members; {@code null} is passed
+     *     on to the encoder
+     * @return this builder
+     * @since 1.12
+     */
+    default <T> JsonArrayBuilder addObjects(
+        Iterable<T> values, BiConsumer<JsonObjectBuilder, ? super T> encoder) {
+      Box<T> box = new Box<>(encoder);
+      for (T v : values) {
+        box.set(v);
+        addObject(box);
+      }
+      return this;
+    }
+
+    /**
+     * Adds an object element for each element of the given {@code values}, using the provided
+     * {@code encoder} to fill each object's members.
+     *
+     * <p>Prefer this over a {@code for} loop calling {@link #addObject(Consumer)} per element
+     * when the loop may run to large element counts — see the {@link JsonArrayBuilder class-level
+     * documentation} for the allocation difference and the equivalent reusable-encoder pattern
+     * for non-iterable data sources.
+     *
+     * @param values the elements to encode as JSON objects
+     * @param encoder invoked once per element to fill the object's members; must not be
+     *     {@code null}
+     * @return this builder
+     * @since 1.12
+     */
+    default <T> JsonArrayBuilder addObjects(
+        Stream<T> values, BiConsumer<JsonObjectBuilder, ? super T> encoder) {
+      Box<T> box = new Box<>(encoder);
+      values.forEachOrdered(v -> {
+        box.set(v);
+        addObject(box);
+      });
+      return this;
+    }
+  }
+
+  /**
+   * Internal adapter that lets {@link JsonArrayBuilder#addObjects} reuse a single
+   * {@link Consumer}{@code <}{@link JsonObjectBuilder}{@code >} instance across a collection
+   * instead of allocating a fresh one per element.
+   *
+   * <p>Exposed so it can appear in the signature of the {@code addObjects} methods, but the
+   * constructor is package-private — instances are only obtainable through those methods.
+   * Callers who need the reusable-encoder pattern for a non-iterable data source should
+   * implement {@link Consumer}{@code <}{@link JsonObjectBuilder}{@code >} themselves, as shown
+   * in the {@link JsonArrayBuilder} Javadoc.
+   *
+   * @since 1.12
+   */
+  final class Box<T> implements Consumer<JsonObjectBuilder> {
+
+    private final BiConsumer<JsonObjectBuilder, ? super T> encoder;
+    private T value;
+
+    Box(BiConsumer<JsonObjectBuilder, ? super T> encoder) {
+      this.encoder = encoder;
+    }
+
+    void set(T value) {
+      this.value = value;
+    }
+
+    @Override
+    public void accept(JsonObjectBuilder obj) {
+      encoder.accept(obj, value);
     }
   }
 }
