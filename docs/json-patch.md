@@ -74,8 +74,8 @@ Inside a path array, a segment encodes targeting intent by its JSON shape:
 | _index_                         | `5`               | array index                  | array index                                |
 | _index from end_                | `-1`              | array index                  | index from end (`-0` = append)             |
 | _index range_                   | `[[0, 2]]`        | array index range            | inclusive range                            |
-| _index enumeration_ `[0, 2, 4]` | array indexes     | scattered indexes            |                                            |
-| _index condition_ `["=", 3]`    | array index       | first element equal to value |                                            |
+| _index enumeration_ | `[0, 2, 4]` | array indexes     | scattered indexes            |                                            
+| _index condition_ | `["=", 3]`    | array index       | first element equal to value |                                            
 | _index condition shorthand_     | `[true]`, `["a"]` | array index                  | shorthand for `["=", true]`, `["=", "a"]`  |
 | _index object condition_        | `[{"id": "x"}]`   | array of objects index       | first object element with matching members |
 
