@@ -149,5 +149,5 @@ members.
 
 ## Related
 
-- [User types as JSON tree](intro-6-user-types)
-- [Validation](json-validation)
+- [User types as JSON tree](intro-6-user-types.md)
+- [Validation](json-validation.md)

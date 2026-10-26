@@ -131,6 +131,6 @@ useful parent — it provides the generic object accessor methods (`get`,
 
 ## Related
 
-- [Null, undefined and existence](intro-5-null-and-undefined)
-- [API overview](json-api-overview) — most used API methods overview.
+- [Null, undefined and existence](intro-5-null-and-undefined.md)
+- [API overview](json-api-overview.md) — most used API methods overview.
 - [Performance considerations](intro-7-json-performance.md) — iterating or streaming data

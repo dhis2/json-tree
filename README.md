@@ -36,15 +36,15 @@ problems.
 
 ## Documentation
 
-- [Getting started](docs/intro-1-getting-started) — install and first example
-- [Lazy parsing and the virtual tree](docs/intro-2-lazy-parsing) — the idea behind the library
-- [Java API](docs/intro-4-json-from-java) — build a tree from Java types
-- [JSON API](docs/intro-3-json-from-text) — work from a JSON document
-- [Null, undefined and existence](docs/intro-5-null-and-undefined) — the subtle states
-- [User types as JSON tree](docs/intro-6-user-types) — extend the tree with your own types
-- [Validation](docs/json-validation) — check input against a target schema
-- [Comparing JSON values (diff)](docs/json-diff) — structural comparison
-- [API reference](docs/json-api-overview) — types and methods at a glance
+- [Getting started](docs/intro-1-getting-started.md) — install and first example
+- [Lazy parsing and the virtual tree](docs/intro-2-lazy-parsing.md) — the idea behind the library
+- [Java API](docs/intro-4-json-from-java.md) — build a tree from Java types
+- [JSON API](docs/intro-3-json-from-text.md) — work from a JSON document
+- [Null, undefined and existence](docs/intro-5-null-and-undefined.md) — the subtle states
+- [User types as JSON tree](docs/intro-6-user-types.md) — extend the tree with your own types
+- [Validation](docs/json-validation.md) — check input against a target schema
+- [Comparing JSON values (diff)](docs/json-diff.md) — structural comparison
+- [API reference](docs/json-api-overview.md) — types and methods at a glance
 - [Standards and RFCs](docs/rfc-reference.md) — conformance and deviations
 
 ## Maven

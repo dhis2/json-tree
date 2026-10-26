@@ -29,6 +29,6 @@ Arrays and objects can also be composed in various ways using a builder API.
 
 ## Related
 
-- [JSON from text](intro-3-json-from-text)
-- [Null, undefined and existence](intro-5-null-and-undefined)
-- [Extending with user types](intro-6-user-types)
+- [JSON from text](intro-3-json-from-text.md)
+- [Null, undefined and existence](intro-5-null-and-undefined.md)
+- [Extending with user types](intro-6-user-types.md)

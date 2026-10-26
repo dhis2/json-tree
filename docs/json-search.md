@@ -291,6 +291,6 @@ When `null` values are meaningful in the output, use the stream form.
 
 ## Related
 
-- [Navigating the tree](json-paths) — `JsonPath`, the fixed-location
+- [Navigating the tree](json-paths.md) — `JsonPath`, the fixed-location
   counterpart to `JsonSelector`.
-- [API reference](json-api-overview)
+- [API reference](json-api-overview.md)
