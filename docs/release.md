@@ -35,6 +35,7 @@ Commit the changes on a branch and open a pull request against `main`.
 Merge the pull request into `main`, then confirm that the GitHub Actions workflow
 triggered by the merge has successfully published the artifact to Maven Central.
 
+> [!WARNING]
 > **Do not proceed until the publication to Maven Central has succeeded.**
 
 #### 5. Create the release tag
