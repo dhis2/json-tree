@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 import org.hisp.dhis.jsontree.JsonBuilder;
 
@@ -120,42 +121,19 @@ public final class DataExportOutputProfile {
   }
 
   private static void writeDataValues(JsonBuilder.JsonArrayBuilder arr, int count) {
-    DataValueEncoder encoder = new DataValueEncoder();
-    for (int i = 0; i < count; i++) {
-      encoder.set(i, i % 100 == 0);
-      arr.addObject(encoder);
-    }
-  }
-
-  /**
-   * A box to avoid 1 lambda allocation per loop.
-   * A similar fix should be applied to DHIS2 data value export.
-   */
-  private static final class DataValueEncoder implements Consumer<JsonBuilder.JsonObjectBuilder> {
-
-    private int value;
-    private boolean deleted;
-
-    void set(int value, boolean deleted) {
-      this.value = value;
-      this.deleted = deleted;
-    }
-
-    @Override
-    public void accept(JsonBuilder.JsonObjectBuilder val) {
+    arr.addObjects(IntStream.range(0, count).boxed(), (val, e) -> {
       val.addString("dataElement",          DATA_ELEMENT);
       val.addString("period",               PERIOD);
       val.addString("orgUnit",              ORG_UNIT);
       val.addString("categoryOptionCombo",  CATEGORY_OPTION_COMBO);
       val.addString("attributeOptionCombo", ATTRIBUTE_OPTION_COMBO);
-      val.addNumber("value",                value);
+      val.addNumber("value",                e);
       val.addString("storedBy",             STORED_BY);
       val.addString("created",              CREATED);
       val.addString("lastUpdated",          LAST_UPDATED);
       val.addString("comment",              null);
       val.addBoolean("followup",            false);
-      if (deleted) val.addBoolean("deleted", true);
-    }
+      if (e % 2 == 0) val.addBoolean("deleted", true);
+    });
   }
-
 }
