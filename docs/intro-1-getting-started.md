@@ -8,7 +8,7 @@ Coordinates: [`org.hisp.dhis:json-tree`](https://search.maven.org/artifact/org.h
 <dependency>
     <groupId>org.hisp.dhis</groupId>
     <artifactId>json-tree</artifactId>
-    <version>1.11.0</version>
+    <version>1.12.0</version>
 </dependency>
 ```
 
