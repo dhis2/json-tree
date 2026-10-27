@@ -19,6 +19,7 @@ Start here.
 - [Navigating the tree](json-paths.md) — paths as a uniform way to drill down.
 - [Querying the tree](json-search.md) — finding nodes using matchers.
 - [Validation](json-validation.md) — check input against a target schema.
+- [Equivalence and identity](json-comp.md) — comparing two trees for sameness.
 - [Comparing JSON values (diff)](json-diff.md) — structural comparison of two trees.
 - [Modification](json-patch.md) — bulk patching JSON using patch operations 
 

@@ -251,6 +251,48 @@ public interface Text extends CharSequence, Comparable<Text> {
     return subSequence(left, right + 1);
   }
 
+  /**
+   * Reduces a number's text to its pure value digits so that equivalent
+   * integer representations compare equal as text.
+   *
+   * <p>The input is expected to be an integer value as per
+   * {@link #isNumericInteger()} — a plain integer, optionally signed, or a
+   * decimal with an all-zero fraction. The output is canonical: no sign on
+   * zero, no leading zeros, no trailing {@code .0+} fraction. A leading
+   * {@code '+'} or {@code '-'} is consumed; a {@code '-'} is preserved on
+   * non-zero results, and dropped entirely on zero.
+   *
+   * <p>Behaviour on non-integer input is unspecified: a non-zero fraction is
+   * silently dropped.
+   *
+   * <p>Examples:
+   * <ul>
+   *   <li>{@code "42"} → {@code "42"}
+   *   <li>{@code "+42"} → {@code "42"}
+   *   <li>{@code "-42"} → {@code "-42"}
+   *   <li>{@code "42.00"} → {@code "42"}
+   *   <li>{@code "0"} → {@code "0"}
+   *   <li>{@code "-0"} → {@code "0"}
+   *   <li>{@code "+0"} → {@code "0"}
+   *   <li>{@code "0.00"} → {@code "0"}
+   * </ul>
+   * @since 1.13
+   */
+  default Text trimInteger() {
+    int len = length();
+    if (len == 0) return this;
+    boolean negative = charAt(0) == '-';
+    int start = (negative || charAt(0) == '+') ? 1 : 0;
+    // The integer part ends at the dot if there is one, otherwise at the end.
+    int dot = indexOf('.', start);
+    int intEnd = dot < 0 ? len : dot;
+    while (start < intEnd - 1 && charAt(start) == '0') start++;
+    // An all-zero integer part collapses to "0" regardless of sign.
+    if (intEnd - start == 1 && charAt(start) == '0') return Text.of("0");
+    Text digits = subSequence(start, intEnd);
+    return negative ? Text.of("-").concat(digits) : digits;
+  }
+
   static boolean isTrim(char ch) {
     return ch == ' ' || ch == '\t';
   }

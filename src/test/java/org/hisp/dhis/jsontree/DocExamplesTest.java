@@ -790,4 +790,94 @@ class DocExamplesTest {
 
         assertEquals( java.util.Arrays.asList( "James", null, "Jacob" ), withNulls );
     }
+
+    // =========================================================================
+    // docs/json-equivalence.md
+    // =========================================================================
+
+    @Test
+    void jsonEquivalence_equivalent_ignoresMemberOrder() {
+        JsonMixed a = JsonMixed.of( "{\"a\": 1, \"b\": 2}" );
+        JsonMixed b = JsonMixed.of( "{\"b\": 2, \"a\": 1}" );
+        assertTrue( a.equivalentTo( b ) );
+        assertFalse( a.identicalTo( b ) );
+    }
+
+    @Test
+    void jsonEquivalence_equivalent_ignoresNumberForm() {
+        JsonMixed c = JsonMixed.of( "1" );
+        JsonMixed d = JsonMixed.of( "1.0" );
+        assertTrue( c.equivalentTo( d ) );
+        assertFalse( c.identicalTo( d ) );
+    }
+
+    @Test
+    void jsonEquivalence_arrays_arePositional() {
+        JsonMixed e = JsonMixed.of( "[1, 2]" );
+        JsonMixed f = JsonMixed.of( "[2, 1]" );
+        assertFalse( e.equivalentTo( f ) );
+        assertFalse( e.identicalTo( f ) );
+    }
+
+    @Test
+    void jsonEquivalence_whitespace_isIgnored() {
+        JsonMixed a = JsonMixed.of( "{\"a\": 1, \"b\": 2}" );
+        JsonMixed b = JsonMixed.of( "{ \"a\": 1, \"b\": 2 }" );
+        assertTrue( a.equivalentTo( b ) );
+        assertTrue( a.identicalTo( b ) );
+    }
+
+    @Test
+    void jsonEquivalence_null_and_undefined_differ() {
+        JsonMixed withNull = JsonMixed.of( "{\"x\": null}" ).get( "x" );
+        JsonMixed undefined = JsonMixed.of( "{}" ).get( "x" );
+        assertTrue( withNull.isNull() );
+        assertTrue( undefined.isUndefined() );
+        assertFalse( withNull.equivalentTo( undefined ) );
+        assertFalse( withNull.identicalTo( undefined ) );
+    }
+
+    @Test
+    void jsonEquivalence_undefined_matchesUndefined() {
+        JsonMixed a = JsonMixed.of( "{}" ).get( "x" );
+        JsonMixed b = JsonMixed.of( "{}" ).get( "x" );
+        assertTrue( a.equivalentTo( b ) );
+        assertTrue( a.identicalTo( b ) );
+    }
+
+    @Test
+    void jsonEquivalence_identical_implies_equivalent() {
+        JsonMixed a = JsonMixed.of( "{\"a\": 1, \"b\": [1, 2, 3]}" );
+        JsonMixed b = JsonMixed.of( "{\"a\": 1, \"b\": [1, 2, 3]}" );
+        assertTrue( a.identicalTo( b ) );
+        assertTrue( a.equivalentTo( b ) );
+    }
+
+    @Test
+    void jsonEquivalence_numberPrecision_distinctLargeIntegers() {
+        // 2^53 + 1 and 2^53 round to the same double, but they are distinct
+        // integer values — equivalentTo must not conflate them
+        JsonMixed a = JsonMixed.of( "9007199254740993" );
+        JsonMixed b = JsonMixed.of( "9007199254740992" );
+        assertFalse( a.equivalentTo( b ) );
+        assertFalse( a.identicalTo( b ) );
+    }
+
+    @Test
+    void jsonEquivalence_numberPrecision_sameLargeInteger() {
+        // the same integer in different textual forms
+        JsonMixed a = JsonMixed.of( "9007199254740993" );
+        JsonMixed b = JsonMixed.of( "9007199254740993.00" );
+        assertTrue( a.equivalentTo( b ) );
+        assertFalse( a.identicalTo( b ) );
+    }
+
+    @Test
+    void jsonEquivalence_numberPrecision_negativeZero() {
+        // -0 and 0 are the same integer value
+        JsonMixed a = JsonMixed.of( "0" );
+        JsonMixed b = JsonMixed.of( "-0" );
+        assertTrue( a.equivalentTo( b ) );
+        assertFalse( a.identicalTo( b ) );
+    }
 }
