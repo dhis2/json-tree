@@ -416,7 +416,17 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
     if (a.isUndefined()) return true; // types are same, must be either both null or both undefined
     if (a.isString()) return a.text().contentEquals(b.text());
     if (a.isBoolean()) return a.booleanValue() == b.booleanValue();
-    if (a.isNumber()) return a.doubleValue() == b.doubleValue();
+    if (a.isNumber()) {
+      if (a.isInteger() && b.isInteger()) {
+        // Text-based comparison for integer-valued numbers so values beyond
+        // the double precision range (2^53) don't round to equality.
+        return a.node()
+            .getDeclaration()
+            .trimInteger()
+            .contentEquals(b.node().getDeclaration().trimInteger());
+      }
+      return a.doubleValue() == b.doubleValue();
+    }
     if (a.isArray())
       return a.size() == b.size() && a.indexes().allMatch(i -> eqItems.test(a.get(i), b.get(i)));
     return a.size() == b.size() && a.keys().stream().allMatch(key -> eqItems.test(a.get(key), b.get(key)));

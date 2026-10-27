@@ -78,6 +78,56 @@ the "cast".
 Both `isA` and `asA` can also be limited to a given set of validation `Rule`
 types.
 
+## What you can validate
+
+`@Validation` covers the vocabulary for structural validation from
+[JSON Schema](https://json-schema.org/), adapted to annotation methods. The
+constraints group by target type:
+
+- **Any type** — `type`, `oneOfValues` / `enumeration` (enum / const),
+  `required`, `dependentRequired`
+- **Strings** — `minLength`, `maxLength`, `pattern`
+- **Numbers** — `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`,
+  `multipleOf`
+- **Arrays** — `minItems`, `maxItems`, `uniqueItems`
+- **Objects** — `minProperties`, `maxProperties`
+
+Multiple attributes can be combined on one method. A few behaviours differ
+from a JSON Schema document, and they're worth knowing up front:
+
+- Some constraints (`minLength`, `minItems`, `minProperties`) implicitly
+  make a property required unless `required = NO` is set explicitly.
+- A constraint on a target type has no effect if the property's declared
+  type is incompatible with that target (e.g. `maxLength` on a `JsonNumber`
+  property).
+- Method-level declarations override type-level declarations for the same
+  attribute; independent attributes are merged rather than replaced.
+
+The full attribute table, with per-attribute semantics and edge cases, is in
+the [validation reference](json-validation-reference.md#overview).
+
+## Beyond simple constraints
+
+The basics above cover the common cases. When they don't, three features
+extend the picture:
+
+- **[Item validation](json-validation-reference.md#item-validation)** —
+  apply constraints to each element of an array or member of an object,
+  nested to arbitrary depth. Either through `@Items` on the container, or
+  through return-type annotations like
+  `List<@Validation( maxLength = 20 ) String>`.
+- **[Custom validators](json-validation-reference.md#custom-validators)** —
+  implement `Validation.Validator` and reference it with `@Validator` for
+  format checks, cross-field rules, or anything the built-ins can't express.
+- **[Dependent required](json-validation-reference.md#dependent-required)** —
+  declare properties that become required based on another property's
+  presence, absence, or value. Groups can express mutual exclusion
+  (e.g. "email or oauth").
+
+The [validation reference](json-validation-reference.md) covers these in
+detail, along with the precedence algorithm and the RFC validations that
+are deliberately not supported.
+
 ## Related
 
 - [Validation reference](json-validation-reference.md) — full attribute table,

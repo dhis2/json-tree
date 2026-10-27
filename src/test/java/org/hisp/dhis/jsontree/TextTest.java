@@ -541,4 +541,123 @@ class TextTest {
     // this is with poor "randomisation" of the variation
     assertEquals(954, hashes.size());
   }
+
+  @DisplayName("trimInteger(): already canonical")
+  @Test
+  void testTrimInteger_plainIntegers() {
+    assertEquals(Text.of("42"), Text.of("42").trimInteger());
+    assertEquals(Text.of("-42"), Text.of("-42").trimInteger());
+    assertEquals(Text.of("0"), Text.of("0").trimInteger());
+    assertEquals(Text.of("0"), Text.of("-0").trimInteger()); // sign dropped on zero
+    assertEquals(Text.of("9007199254740993"), Text.of("9007199254740993").trimInteger());
+  }
+
+  @DisplayName("trimInteger(): zero forms collapse to \"0\"")
+  @Test
+  void testTrimInteger_zeroForms() {
+    assertEquals(Text.of("0"), Text.of("0.0").trimInteger());
+    assertEquals(Text.of("0"), Text.of("0.00").trimInteger());
+    assertEquals(Text.of("0"), Text.of("0.000000").trimInteger());
+    assertEquals(Text.of("0"), Text.of("-0.0").trimInteger());
+    assertEquals(Text.of("0"), Text.of("-0.00").trimInteger());
+    assertEquals(Text.of("0"), Text.of("00").trimInteger());
+    assertEquals(Text.of("0"), Text.of("-000").trimInteger());
+    assertEquals(Text.of("0"), Text.of("00.00").trimInteger());
+    assertEquals(Text.of("0"), Text.of("-00.00").trimInteger());
+  }
+
+  @DisplayName("trimInteger(): leading zeros stripped")
+  @Test
+  void testTrimInteger_leadingZeros() {
+    assertEquals(Text.of("7"), Text.of("007").trimInteger());
+    assertEquals(Text.of("-7"), Text.of("-007").trimInteger());
+    assertEquals(Text.of("100"), Text.of("00100").trimInteger());
+    assertEquals(Text.of("-100"), Text.of("-00100").trimInteger());
+    assertEquals(Text.of("9007199254740993"), Text.of("0009007199254740993").trimInteger());
+  }
+
+  @DisplayName("trimInteger(): trailing fraction zeros dropped")
+  @Test
+  void testTrimInteger_trailingFraction() {
+    assertEquals(Text.of("42"), Text.of("42.0").trimInteger());
+    assertEquals(Text.of("42"), Text.of("42.00").trimInteger());
+    assertEquals(Text.of("42"), Text.of("42.000000").trimInteger());
+    assertEquals(Text.of("-42"), Text.of("-42.0").trimInteger());
+    assertEquals(Text.of("-42"), Text.of("-42.00").trimInteger());
+    assertEquals(Text.of("100"), Text.of("100.0").trimInteger());
+    assertEquals(Text.of("100"), Text.of("00100.00").trimInteger());
+    assertEquals(Text.of("9007199254740993"), Text.of("9007199254740993.00").trimInteger());
+  }
+
+  @DisplayName("trimInteger(): equivalent forms compare equal")
+  @Test
+  void testTrimInteger_equivalence() {
+    // forms that represent the same integer must trim to identical text
+    assertTrue(Text.of("42").trimInteger().contentEquals(Text.of("42.0").trimInteger()));
+    assertTrue(Text.of("-42").trimInteger().contentEquals(Text.of("-42.00").trimInteger()));
+    assertTrue(Text.of("0").trimInteger().contentEquals(Text.of("-0").trimInteger()));
+    assertTrue(Text.of("0").trimInteger().contentEquals(Text.of("0.00").trimInteger()));
+    assertTrue(Text.of("7").trimInteger().contentEquals(Text.of("007").trimInteger()));
+
+    // the reason the helper exists: large integers that round to the same
+    // double must still be distinguishable as text
+    assertTrue(
+        Text.of("9007199254740993").trimInteger()
+            .contentEquals(Text.of("9007199254740993.00").trimInteger()));
+    assertFalse(
+        Text.of("9007199254740993").trimInteger()
+            .contentEquals(Text.of("9007199254740992").trimInteger()));
+  }
+
+  @DisplayName("trimInteger(): empty text returns self")
+  @Test
+  void testTrimInteger_empty() {
+    Text empty = Text.of("");
+    assertSame(empty, empty.trimInteger());
+  }
+
+  @DisplayName("trimInteger(): already-canonical returns equivalent text")
+  @Test
+  void testTrimInteger_noOpContent() {
+    // When nothing needs trimming the implementation may return the same
+    // instance (via the subSequence whole-range optimisation) or a copy;
+    // only content equality is part of the contract.
+    Text t = Text.of("42");
+    assertEquals(t, t.trimInteger());
+  }
+
+  @DisplayName("trimInteger(): leading + stripped")
+  @Test
+  void testTrimInteger_leadingPlus() {
+    // JSON numbers never carry a '+', but trimInteger treats both signs as
+    // sign so that numeric equivalence holds across all numeric text forms
+    assertEquals(Text.of("42"), Text.of("+42").trimInteger());
+    assertEquals(Text.of("7"), Text.of("+007").trimInteger());
+    assertEquals(Text.of("100"), Text.of("+00100").trimInteger());
+    assertEquals(Text.of("0"), Text.of("+0").trimInteger());
+    assertEquals(Text.of("0"), Text.of("+0.0").trimInteger());
+    assertEquals(Text.of("0"), Text.of("+0.00").trimInteger());
+    assertEquals(Text.of("42"), Text.of("+42.0").trimInteger());
+    assertEquals(Text.of("42"), Text.of("+42.00").trimInteger());
+    assertEquals(
+        Text.of("9007199254740993"), Text.of("+9007199254740993").trimInteger());
+  }
+
+  @DisplayName("trimInteger(): sign-equivalence across forms")
+  @Test
+  void testTrimInteger_signedEquivalence() {
+    // all forms of the same integer compare equal after trimming
+    assertTrue(
+        Text.of("42").trimInteger()
+            .contentEquals(Text.of("+42").trimInteger()));
+    assertTrue(
+        Text.of("+42").trimInteger()
+            .contentEquals(Text.of("42.00").trimInteger()));
+    assertTrue(
+        Text.of("+0").trimInteger()
+            .contentEquals(Text.of("-0").trimInteger()));
+    assertTrue(
+        Text.of("+0").trimInteger()
+            .contentEquals(Text.of("0").trimInteger()));
+  }
 }

@@ -1,5 +1,13 @@
 # Comparing JSON values (diff)
 
+**Looking for a simple "are these the same?" check?** If you only need a
+boolean answer, see [Equivalence and identity](json-comp.md). This page is
+about `diff`, which produces a list of *where* two trees differ. That's the
+right tool when the "no" answer needs to explain itself, but it's more work
+than necessary when a yes or no will do.
+
+---
+
 When asserting that the JSON returned by a service contains the expected
 information, a usual challenge is that the comparison cannot rely on
 particulars such as:
@@ -149,5 +157,8 @@ members.
 
 ## Related
 
+- [Equivalence and identity](json-comp.md) — the boolean
+  `equivalentTo` / `identicalTo` comparison, when you just want true or
+  false
 - [User types as JSON tree](intro-6-user-types.md)
 - [Validation](json-validation.md)
