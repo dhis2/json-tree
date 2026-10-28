@@ -72,9 +72,7 @@ final class CsvVirtualTree implements CsvMixed {
     /* ------------------------------------------------------------------ */
 
     private static CsvNode resolve(CsvNode root, CsvPath path) {
-        CsvNode n = root;
-        for (int i = 0; i < path.length(); i++) n = n.child(path.get(i));
-        return n;
+        return root.get(path);
     }
 
     @Override public boolean equals(Object o) {

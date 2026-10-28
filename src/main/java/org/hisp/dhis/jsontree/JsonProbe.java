@@ -88,6 +88,6 @@ public interface JsonProbe {
   @TerminalOp(canBeUndefined = true)
   default boolean isSimple() {
     JsonNodeType type = type();
-    return type != null && type != JsonNodeType.OBJECT && type != JsonNodeType.ARRAY;
+    return type != null && type.isSimple();
   }
 }

@@ -1,19 +1,21 @@
 package org.hisp.dhis.csvtree;
 
 public enum CsvNodeType {
-  DOCUMENT,
-  ROW,
-  COLUMN,
   ARRAY,
   STRING,
   NUMBER,
-  BOOLEAN;
+  BOOLEAN,
+  /**
+   * In CSV it is more of an "empty" value but we call it NULL
+   * to not be confused with {@link CsvNode#isEmpty}.
+   */
+  NULL;
 
   public boolean isSimple() {
-    return this == STRING || this == NUMBER || this == BOOLEAN;
+    return this != ARRAY;
   }
 
   public boolean isContainer() {
-    return !isSimple();
+    return this == ARRAY;
   }
 }

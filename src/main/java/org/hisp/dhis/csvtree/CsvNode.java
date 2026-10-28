@@ -2,16 +2,12 @@ package org.hisp.dhis.csvtree;
 
 import org.hisp.dhis.jsontree.Text;
 
-public interface CsvNode {
+public interface CsvNode extends CsvProbe {
 
   /* factories */
   static CsvNode of(CharSequence csv) {
     return CsvTree.parse(csv);
   }
-
-  CsvNodeType type();
-
-  CsvPath path();
 
   CsvNode getRoot();
 
@@ -23,10 +19,14 @@ public interface CsvNode {
 
   int endIndex();
 
-  /** The K-th child of this node (row/column/value/element depending on type). */
-  CsvNode child(int index) throws CsvPathException;
+  default CsvNode get(CsvPath path) {
+    return null; //TODO
+  }
 
-  CsvNode childIfExists(int index);
+  /** The K-th child of this node (row/column/value/element depending on type). */
+  CsvNode get(int index) throws CsvPathException;
+
+  CsvNode getIfExists(int index);
 
   int size();
 

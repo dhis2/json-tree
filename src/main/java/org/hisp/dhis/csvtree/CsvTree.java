@@ -213,9 +213,8 @@ final class CsvTree {
         @Override public CsvNode getRoot() { return state.cache.get(CsvPath.ROOT); }
         @Override public CsvNode getParent() {
             if (path.isEmpty()) return this;
-            CsvNode n = getRoot();
-            for (int i = 0; i < path.length() - 1; i++) n = n.child(path.get(i));
-            return n;
+            //TODO
+            return null;
         }
 
         protected abstract int computeEnd();
@@ -236,18 +235,18 @@ final class CsvTree {
     static final class LazyDocument extends LazyCsvNode {
         LazyDocument(State s, CsvPath p, int start) { super(s, p, start); }
 
-        @Override public CsvNodeType type() { return CsvNodeType.DOCUMENT; }
+        @Override public CsvNodeType type() { return CsvNodeType.ARRAY; }
         @Override protected int computeEnd() { return state.csv.length; }
 
         @Override public int size() { return countRows(state.csv); }
 
-        @Override public CsvNode child(int index) {
-            CsvNode n = childIfExists(index);
+        @Override public CsvNode get(int index) {
+            CsvNode n = getIfExists(index);
             if (n == null) throw CsvPathException.noSuchChild(path, index, size());
             return n;
         }
 
-        @Override public CsvNode childIfExists(int index) {
+        @Override public CsvNode getIfExists(int index) {
             if (index < 0) return null;
             CsvPath cp = path.chain(index);
             CsvNode cached = state.cache.get(cp);
@@ -265,7 +264,7 @@ final class CsvTree {
     static final class LazyRow extends LazyCsvNode {
         LazyRow(State s, CsvPath p, int start) { super(s, p, start); }
 
-        @Override public CsvNodeType type() { return CsvNodeType.ROW; }
+        @Override public CsvNodeType type() { return CsvNodeType.ARRAY; }
         @Override protected int computeEnd() { return skipToRowEnd(state.csv, start); }
 
         @Override public int size() {
@@ -281,13 +280,13 @@ final class CsvTree {
             return n;
         }
 
-        @Override public CsvNode child(int index) {
-            CsvNode n = childIfExists(index);
+        @Override public CsvNode get(int index) {
+            CsvNode n = getIfExists(index);
             if (n == null) throw CsvPathException.noSuchChild(path, index, size());
             return n;
         }
 
-        @Override public CsvNode childIfExists(int index) {
+        @Override public CsvNode getIfExists(int index) {
             if (index < 0) return null;
             CsvPath cp = path.chain(index);
             CsvNode cached = state.cache.get(cp);
@@ -306,7 +305,7 @@ final class CsvTree {
     static final class LazyColumn extends LazyCsvNode {
         LazyColumn(State s, CsvPath p, int start) { super(s, p, start); }
 
-        @Override public CsvNodeType type() { return CsvNodeType.COLUMN; }
+        @Override public CsvNodeType type() { return CsvNodeType.ARRAY; }
         @Override protected int computeEnd() {
             int rowEnd = skipToRowEnd(state.csv, start);
             return skipToColumnEnd(state.csv, start, rowEnd);
@@ -347,13 +346,13 @@ final class CsvTree {
             return n;
         }
 
-        @Override public CsvNode child(int index) {
-            CsvNode n = childIfExists(index);
+        @Override public CsvNode get(int index) {
+            CsvNode n = getIfExists(index);
             if (n == null) throw CsvPathException.noSuchChild(path, index, size());
             return n;
         }
 
-        @Override public CsvNode childIfExists(int index) {
+        @Override public CsvNode getIfExists(int index) {
             if (index < 0) return null;
             CsvPath cp = path.chain(index);
             CsvNode cached = state.cache.get(cp);
@@ -427,13 +426,13 @@ final class CsvTree {
             return n;
         }
 
-        @Override public CsvNode child(int index) {
-            CsvNode n = childIfExists(index);
+        @Override public CsvNode get(int index) {
+            CsvNode n = getIfExists(index);
             if (n == null) throw CsvPathException.noSuchChild(path, index, size());
             return n;
         }
 
-        @Override public CsvNode childIfExists(int index) {
+        @Override public CsvNode getIfExists(int index) {
             if (index < 0) return null;
             CsvPath cp = path.chain(index);
             CsvNode cached = state.cache.get(cp);
@@ -454,8 +453,8 @@ final class CsvTree {
         @Override public CsvNodeType type() { return CsvNodeType.STRING; }
         @Override protected int computeEnd() { return end; }
         @Override public int size() { return 0; }
-        @Override public CsvNode childIfExists(int index) { return null; }
-        @Override public CsvNode child(int index) { throw CsvPathException.noSuchChild(path, index, 0); }
+        @Override public CsvNode getIfExists(int index) { return null; }
+        @Override public CsvNode get(int index) { throw CsvPathException.noSuchChild(path, index, 0); }
         @Override public Text textValue() {
             char[] csv = state.csv;
             if (start < endIndex() && csv[start] == '"') {
@@ -478,8 +477,8 @@ final class CsvTree {
         @Override public CsvNodeType type() { return CsvNodeType.NUMBER; }
         @Override protected int computeEnd() { return end; }
         @Override public int size() { return 0; }
-        @Override public CsvNode childIfExists(int index) { return null; }
-        @Override public CsvNode child(int index) { throw CsvPathException.noSuchChild(path, index, 0); }
+        @Override public CsvNode getIfExists(int index) { return null; }
+        @Override public CsvNode get(int index) { throw CsvPathException.noSuchChild(path, index, 0); }
         @Override public Number numberValue() { return Double.parseDouble(getDeclaration().trim().toString()); }
         @Override public Text textValue() { return getDeclaration().trim(); }
     }
@@ -489,8 +488,8 @@ final class CsvTree {
         @Override public CsvNodeType type() { return CsvNodeType.BOOLEAN; }
         @Override protected int computeEnd() { return end; }
         @Override public int size() { return 0; }
-        @Override public CsvNode childIfExists(int index) { return null; }
-        @Override public CsvNode child(int index) { throw CsvPathException.noSuchChild(path, index, 0); }
+        @Override public CsvNode getIfExists(int index) { return null; }
+        @Override public CsvNode get(int index) { throw CsvPathException.noSuchChild(path, index, 0); }
         @Override public boolean booleanValue() { return "true".contentEquals(getDeclaration().trim()); }
         @Override public Text textValue() { return getDeclaration().trim(); }
     }
