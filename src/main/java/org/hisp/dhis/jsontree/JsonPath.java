@@ -94,7 +94,7 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
    * @since 1.13
    */
   static List<JsonPath> outermost(List<JsonPath> paths) {
-    if (paths.isEmpty()) return List.of();
+    if (paths.size() <= 1) return paths;
     List<JsonPath> result = new ArrayList<>();
     outer:
     for (JsonPath p : paths) {
@@ -184,10 +184,26 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     return res;
   }
 
-  public boolean startsWith(JsonPath prefix) {
-    if (prefix.isEmpty()) return true;
+  public boolean startsWith(JsonPath ancestor) {
+    if (ancestor.isEmpty()) return true;
     if (isEmpty()) return false;
-    return equals(prefix) || parent != null && parent.startsWith(prefix);
+    return equals(ancestor) || parent != null && parent.startsWith(ancestor);
+  }
+
+  /**
+   * @param ancestor an ancestor path of this path
+   * @return this path with {@code prefix}'s segments removed from the head
+   * @throws JsonPathException if {@code prefix} is not an ancestor of
+   *     this path (i.e. {@code !this.startsWith(prefix)})
+   * @since 1.13
+   */
+  @NotNull
+  public JsonPath relativeTo(JsonPath ancestor) {
+    if (!startsWith(ancestor)) throw new JsonPathException(this,
+        "Not an ancestor: " + ancestor + " of " + this);
+    if (equals(ancestor)) return JsonPath.SELF;
+    JsonPath p = parent == null ? JsonPath.SELF : parent;
+    return p.relativeTo(ancestor).chain(segment);
   }
 
   public boolean isSelf() {

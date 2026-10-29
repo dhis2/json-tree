@@ -585,16 +585,18 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * which rejects overlapping claims — masking expresses "these paths are
    * gone," so redundancy is tolerated rather than treated as a clash.
    *
-   * @param paths paths to remove, relative to this node
+   * @param subPaths paths to remove, relative to this node
    * @return a new value with the paths removed
    * @since 1.13
    */
-  default JsonMixed mask(List<JsonPath> paths) {
+  default JsonMixed mask(List<JsonPath> subPaths) {
     JsonNode self = nodeIfExists();
     if (self == null) return as(JsonMixed.class);
-    List<JsonPath> minimal = JsonPath.outermost(paths);
+    List<JsonPath> minimal = JsonPath.outermost(subPaths);
     if (minimal.size() == 1 && minimal.get(0).isEmpty())
       return JsonNode.NULL.lift(getAccessors());
+    // Primitive self has no descendants — any non-SELF path keeps the value as-is
+    if (self.isSimple()) return as(JsonMixed.class);
     return self.patch(minimal.stream().map(JsonNodeOp.Remove::new).toList())
         .lift(getAccessors());
   }
@@ -603,7 +605,52 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @see #mask(List)
    * @since 1.13
    */
-  default JsonMixed mask(JsonPath... paths) {
-    return mask(Arrays.asList(paths));
+  default JsonMixed mask(JsonPath... subPaths) {
+    return mask(Arrays.asList(subPaths));
+  }
+
+  /**
+   * Masks all paths matched by the given selector, returning the masked
+   * form of <em>this</em> node.
+   *
+   * <p>Self-relative selectors ({@code @}) are evaluated from this node;
+   * root-relative selectors ({@code $}) are evaluated from the tree root and
+   * matches are relativized before applying.
+   *
+   * <p>The three possible outcomes:
+   * <ul>
+   *   <li>If the selector matches a <em>strict ancestor</em> of this node, the
+   *       container was removed and this node ceases to exist → undefined.</li>
+   *   <li>If the selector matches this node itself, its content is replaced
+   *       with {@code null} (consistent with {@link #mask(JsonPath...)} and
+   *       {@link JsonPath#SELF}).</li>
+   *   <li>Otherwise, only descendants or siblings were matched — this node is
+   *       returned with its subtree modified accordingly.</li>
+   * </ul>
+   *
+   * <p>Selectors matching both an ancestor and this node yield the ancestor
+   * outcome (undefined); being gone is stronger than being null.
+   *
+   * @since 1.13
+   */
+  default JsonMixed mask(JsonSelector selector) {
+    JsonNode self = nodeIfExists();
+    if (self == null) return as(JsonMixed.class);
+    JsonPath selfPath = self.path();
+    List<JsonPath> selected = self.queryMap(selector, JsonNode::path);
+
+    // Strict ancestor of self matched → self (and everything under it) is gone.
+    // The container was removed, so self's path doesn't resolve to anything.
+    for (JsonPath p : selected)
+      if (selfPath.startsWith(p) && !selfPath.equals(p))
+        return JsonNode.EMPTY_OBJECT.lift(getAccessors()).get("undefined"); // undefined
+
+    // Otherwise relativize descendants and delegate.
+    // If self itself was matched, relativeTo yields SELF → mask(SELF) → NULL.
+    return mask(
+        selected.stream()
+            .filter(p -> p.startsWith(selfPath))
+            .map(p -> p.relativeTo(selfPath))
+            .toList());
   }
 }

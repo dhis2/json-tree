@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -257,11 +258,107 @@ class JsonPathTest {
     assertEquals(JsonPath.of("foo", "bar"), JsonPath.of("foo", "bar"));
   }
 
+  @Test
+  void relativeTo_simplePrefix() {
+    assertEquals(
+        List.of("b", "c"), segments(JsonPath.of("a", "b", "c").relativeTo(JsonPath.of("a"))));
+  }
+
+  @Test
+  void relativeTo_multilevelPrefix() {
+    assertEquals(
+        List.of("c"), segments(JsonPath.of("a", "b", "c").relativeTo(JsonPath.of("a", "b"))));
+  }
+
+  @Test
+  void relativeTo_fullMatch_yieldsEmpty() {
+    // Stripping the whole path gives an empty path (= SELF)
+    assertTrue(JsonPath.of("a", "b").relativeTo(JsonPath.of("a", "b")).isEmpty());
+  }
+
+  @Test
+  void relativeTo_emptyPrefix_isIdentity() {
+    JsonPath path = JsonPath.of("a", "b");
+    assertEquals(segments(path), segments(path.relativeTo(JsonPath.SELF)));
+  }
+
+  @Test
+  void relativeTo_notAncestor_throws() {
+    assertThrowsExactly(
+        JsonPathException.class, () -> JsonPath.of("a", "b").relativeTo(JsonPath.of("x")));
+  }
+
+  @Test
+  void relativeTo_partialSegmentMatch_throws() {
+    // "ab" is not a prefix of "abc" — segments are whole, not string prefixes
+    assertThrowsExactly(
+        JsonPathException.class, () -> JsonPath.of("abc").relativeTo(JsonPath.of("ab")));
+  }
+
+  @Test
+  void relativeTo_selfRelativeToSelf() {
+    assertTrue(JsonPath.SELF.relativeTo(JsonPath.SELF).isEmpty());
+  }
+
+  @Test
+  void relativeTo_deeperThanSelf_throws() {
+    // Prefix is longer than this — impossible prefix
+    assertThrowsExactly(
+        JsonPathException.class, () -> JsonPath.of("a").relativeTo(JsonPath.of("a", "b")));
+  }
+
+  @Test
+  void startsWith_selfIsPrefixOfEverything() {
+    for (JsonPath p : List.of(JsonPath.SELF, JsonPath.of("a"), JsonPath.of("a", "b"))) {
+      assertTrue(p.startsWith(JsonPath.SELF), "SELF must be prefix of: " + p);
+    }
+  }
+
+  @Test
+  void relativeTo_fullMatch_yieldsSelf() {
+    // Stripping the whole path gives SELF
+    assertTrue(JsonPath.of("a", "b").relativeTo(JsonPath.of("a", "b")).isEmpty());
+  }
+
+  @Test
+  void relativeTo_selfRelativeToSelf_yieldsSelf() {
+    assertTrue(JsonPath.SELF.relativeTo(JsonPath.SELF).isEmpty());
+  }
+
+  @Test
+  void relativeTo_selfRelativeToSelf_preservesIdentity() {
+    // SELF.relativeTo(SELF) should return the SELF singleton, not a copy
+    assertSame(JsonPath.SELF, JsonPath.SELF.relativeTo(JsonPath.SELF));
+  }
+
+  @Test
+  void relativeTo_selfPrefix_isStructuralIdentity() {
+    JsonPath original = JsonPath.of("a", "b");
+    JsonPath result = original.relativeTo(JsonPath.SELF);
+    assertEquals(original, result); // record equality, structural
+    // note: not assertSame — a fresh instance with equal content is fine
+  }
+
+  @Test
+  void relativeTo_singleSegmentRelativeToSelf() {
+    JsonPath path = JsonPath.of("a");
+    assertEquals(segments(path), segments(path.relativeTo(JsonPath.SELF)));
+  }
+
+  @Test
+  void relativeTo_singleSegmentRelativeToSelf_isEqual() {
+    assertEquals(JsonPath.of("a"), JsonPath.of("a").relativeTo(JsonPath.SELF));
+  }
+
   private void assertSegments(String path, List<String> expected) {
     assertEquals(expected.stream().map(Text::of).toList(), JsonPath.of(path).segments());
   }
 
   private void assertParent(String expected, String actual) {
     assertEquals(expected, JsonPath.of(actual).parentPath().toString());
+  }
+
+  private static List<String> segments(JsonPath path) {
+    return path.segments().stream().map(Text::toString).toList();
   }
 }

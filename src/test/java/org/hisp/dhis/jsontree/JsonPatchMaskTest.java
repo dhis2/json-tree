@@ -44,7 +44,7 @@ class JsonPatchMaskTest {
     void mask_singleTopLevelPath() {
         JsonMixed masked = sample().mask(JsonPath.of("password"));
         assertFalse(masked.exists(JsonPath.of("password")));
-        assertEquals("Alice", masked.get("name").text().toString());
+        assertEquals("Alice", masked.get("name").string());
         assertEquals(30, masked.get("age").intValue());
     }
 
@@ -53,14 +53,14 @@ class JsonPatchMaskTest {
         JsonMixed masked = sample().mask(JsonPath.of("contact", "email"));
         assertFalse(masked.exists(JsonPath.of("contact", "email")));
         assertEquals("+49-30-1234",
-            masked.get(JsonPath.of("contact", "phone")).text().toString());
+            masked.get(JsonPath.of("contact", "phone")).string());
     }
 
     @Test
     void mask_arrayElement_shrinksArray() {
         JsonMixed masked = sample().mask(JsonPath.of("users", "0"));
         assertEquals(1, masked.get("users").size());
-        assertEquals("b", masked.get(JsonPath.of("users", "0", "id")).text().toString());
+        assertEquals("b", masked.get(JsonPath.of("users", "0", "id")).string());
     }
 
     @Test
@@ -68,7 +68,7 @@ class JsonPatchMaskTest {
         JsonMixed masked = sample().mask(JsonPath.of("users", "1", "password"));
         // first user's password untouched
         assertEquals("s1",
-            masked.get(JsonPath.of("users", "0", "password")).text().toString());
+            masked.get(JsonPath.of("users", "0", "password")).string());
         // second user's password removed
         assertFalse(masked.exists(JsonPath.of("users", "1", "password")));
     }
@@ -93,7 +93,7 @@ class JsonPatchMaskTest {
             JsonPath.of("contact", "email"));
         assertFalse(masked.exists(JsonPath.of("password")));
         assertFalse(masked.exists(JsonPath.of("contact", "email")));
-        assertEquals("Alice", masked.get("name").text().toString());
+        assertEquals("Alice", masked.get("name").string());
     }
 
     @Test
@@ -159,7 +159,7 @@ class JsonPatchMaskTest {
         JsonMixed masked = contact.mask(JsonPath.of("email"));
         assertFalse(masked.exists(JsonPath.of("email")));
         assertEquals("+49-30-1234",
-            masked.get(JsonPath.of("phone")).text().toString());
+            masked.get(JsonPath.of("phone")).string());
     }
 
     @Test
@@ -324,7 +324,7 @@ class JsonPatchMaskTest {
             JsonPath.of("password"));
         assertFalse(masked.exists(JsonPath.of("contact")));
         assertFalse(masked.exists(JsonPath.of("password")));
-        assertEquals("Alice", masked.get("name").text().toString());
+        assertEquals("Alice", masked.get("name").string());
     }
 
     @Test
@@ -361,5 +361,151 @@ class JsonPatchMaskTest {
             JsonPath.of("password"),
             JsonPath.SELF);
         assertTrue(masked.isNull());
+    }
+
+    @Test
+    void mask_bySelector_onSubtree_returnsMaskedSubtree() {
+        JsonMixed contact = sample().get("contact");
+        JsonMixed masked = contact.mask(JsonSelector.of("@.email"));
+        // Result is the masked contact subtree, not the whole document
+        assertFalse(masked.exists(JsonPath.of("email")));
+        assertEquals("+49-30-1234", masked.get("phone").string());
+        // Not the whole root — "name" is a top-level property, not on contact
+        assertFalse(masked.exists(JsonPath.of("name")));
+    }
+
+    @Test
+    void mask_bySelector_consistentShapeWithJsonPathOverload() {
+        // Both overloads return the masked subtree, not the masked root
+        JsonMixed contact = sample().get("contact");
+        JsonMixed bySelector = contact.mask(JsonSelector.of("@.email"));
+        JsonMixed byPath = contact.mask(JsonPath.of("email"));
+        assertTrue(bySelector.equivalentTo(byPath));
+    }
+
+    @Test
+    void mask_bySelector_ancestorRemoved_subtreeUndefined() {
+        // On .contact.email's parent, mask .contact (the ancestor of this node)
+        JsonMixed email = sample().get(JsonPath.of("contact", "email"));
+        JsonMixed masked = email.mask(JsonSelector.of("$.contact"));  // adjust selector to address ancestor from root
+        // "contact" was removed, so the node we called mask on is gone
+        assertFalse(masked.exists());
+    }
+
+    @Test
+    void mask_bySelector_onRoot_works() {
+        JsonMixed masked = sample().mask(JsonSelector.of("$.password"));
+        assertFalse(masked.exists(JsonPath.of("password")));
+        assertEquals("Alice", masked.get("name").string());
+    }
+
+    @Test
+    void mask_bySelector_consistentWithJsonPathOverload() {
+        // mask(selector-for-x) and mask(JsonPath.of(x)) produce the same result
+        JsonMixed bySelector = sample().mask(JsonSelector.of("$.password"));
+        JsonMixed byPath = sample().mask(JsonPath.of("password"));
+        assertTrue(bySelector.equivalentTo(byPath));
+    }
+
+    @Test
+    void mask_bySelector_ancestorRemoved_yieldsUndefined() {
+        JsonMixed email = sample().get(JsonPath.of("contact", "email"));
+        JsonMixed masked = email.mask(JsonSelector.of("$.contact"));
+        assertFalse(masked.exists());
+    }
+
+    @Test
+    void mask_bySelector_selfMatched_yieldsNull() {
+        JsonMixed email = sample().get(JsonPath.of("contact", "email"));
+        JsonMixed masked = email.mask(JsonSelector.of("$.contact.email"));
+        assertTrue(masked.exists());
+        assertTrue(masked.isNull());
+    }
+
+    @Test
+    void mask_bySelector_descendantMatched_yieldsMaskedSelf() {
+        JsonMixed contact = sample().get("contact");
+        JsonMixed masked = contact.mask(JsonSelector.of("@.email"));
+        assertFalse(masked.exists(JsonPath.of("email")));
+        assertEquals("+49-30-1234", masked.get("phone").text().toString());
+    }
+
+    @Test
+    void mask_bySelector_siblingMatched_noOpOnSelf() {
+        JsonMixed contact = sample().get("contact");
+        JsonMixed masked = contact.mask(JsonSelector.of("$.name"));
+        assertTrue(contact.equivalentTo(masked));
+    }
+
+    @Test
+    void mask_bySelector_rootMatched_yieldsUndefined() {
+        // $ matches the whole tree — the root is a strict ancestor of everything
+        JsonMixed email = sample().get(JsonPath.of("contact", "email"));
+        JsonMixed masked = email.mask(JsonSelector.of("$"));
+        assertFalse(masked.exists());
+    }
+
+    @Test
+    void mask_pathThroughNull_noOp() {
+        JsonMixed masked = sample().mask(JsonPath.of("nothing", "x"));
+        assertTrue(sample().equivalentTo(masked));
+    }
+
+    @Test
+    void mask_onPrimitiveRoot_noOp() {
+        // Removing a missing path from a scalar root is a no-op
+        JsonMixed result = JsonMixed.of("5").mask(JsonPath.of("a"));
+        assertTrue(JsonMixed.of("5").equivalentTo(result));
+    }
+
+    @Test
+    void mask_onPrimitiveRoot_selfYieldsNull() {
+        // Remove SELF on a scalar root → NULL (not empty document)
+        JsonMixed result = JsonMixed.of("5").mask(JsonPath.SELF);
+        assertTrue(result.isNull());
+    }
+
+    @Test
+    void mask_bySelector_onPrimitiveRoot_noOpForDescendant() {
+        JsonMixed result = JsonMixed.of("5").mask(JsonSelector.of("$.a"));
+        assertTrue(JsonMixed.of("5").equivalentTo(result));
+    }
+
+    @Test
+    void mask_bySelector_onPrimitiveRoot_rootSelectorYieldsNull() {
+        JsonMixed result = JsonMixed.of("5").mask(JsonSelector.of("$"));
+        assertTrue(result.isNull());
+    }
+
+    @Test
+    void mask_onPrimitiveRoot_nestedPath_noOp() {
+        JsonMixed result = JsonMixed.of("5").mask(JsonPath.of("a", "b", "c"));
+        assertTrue(JsonMixed.of("5").equivalentTo(result));
+    }
+
+    @Test
+    void mask_onStringPrimitive_noOp() {
+        JsonMixed result = JsonMixed.of("\"hello\"").mask(JsonPath.of("a"));
+        assertEquals("hello", result.string());
+    }
+
+    @Test
+    void mask_onBooleanPrimitive_noOp() {
+        JsonMixed result = JsonMixed.of("true").mask(JsonPath.of("a"));
+        assertTrue(result.booleanValue());
+    }
+
+    @Test
+    void mask_onNullRoot_noOp() {
+        // JSON null — getIfExists on it also throws
+        JsonMixed result = JsonMixed.of("null").mask(JsonPath.of("a"));
+        assertTrue(result.isNull());
+    }
+
+    @Test
+    void mask_onNullRoot_selfYieldsNull() {
+        // mask(SELF) on null → NULL (idempotent)
+        JsonMixed result = JsonMixed.of("null").mask(JsonPath.SELF);
+        assertTrue(result.isNull());
     }
 }
