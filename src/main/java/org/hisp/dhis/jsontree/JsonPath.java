@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import org.hisp.dhis.jsontree.internal.CheckNull;
@@ -79,6 +81,30 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
    */
   public static JsonPath of(int index) {
     return new JsonPath(null, Text.of(index));
+  }
+
+  /**
+   * Reduces the given paths to the outermost paths among them — duplicates
+   * removed, and any path that is a descendant of another entry dropped.
+   *
+   * <p>If any input path is {@link JsonPath#SELF}, the result is
+   * {@code [SELF]} — SELF is the ancestor of every path, so it subsumes all
+   * other entries.
+   *
+   * @since 1.13
+   */
+  static List<JsonPath> outermost(List<JsonPath> paths) {
+    if (paths.isEmpty()) return List.of();
+    List<JsonPath> result = new ArrayList<>();
+    outer:
+    for (JsonPath p : paths) {
+      for (JsonPath kept : result) {
+        if (p.startsWith(kept)) continue outer;
+      }
+      result.removeIf(kept -> kept.startsWith(p));
+      result.add(p);
+    }
+    return result;
   }
 
   public JsonPath {
@@ -162,6 +188,10 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     if (prefix.isEmpty()) return true;
     if (isEmpty()) return false;
     return equals(prefix) || parent != null && parent.startsWith(prefix);
+  }
+
+  public boolean isSelf() {
+    return parent == null && segment == null;
   }
 
   /**

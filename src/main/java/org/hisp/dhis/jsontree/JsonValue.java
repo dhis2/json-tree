@@ -29,12 +29,14 @@ package org.hisp.dhis.jsontree;
 
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
 import org.hisp.dhis.jsontree.JsonSelector.Matches;
@@ -572,5 +574,36 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    */
   default JsonMixed patch(JsonPatch patch) throws JsonPatchException {
     return JsonPatch.patch(as(JsonMixed.class), patch);
+  }
+
+  /**
+   * Removes the given paths (and everything under them) from this value.
+   *
+   * <p>Overlapping paths are permitted and minimized: listing both {@code a}
+   * and {@code a.b} is equivalent to listing only {@code a}, and duplicate
+   * paths are deduplicated. This differs from a general {@link JsonPatch},
+   * which rejects overlapping claims — masking expresses "these paths are
+   * gone," so redundancy is tolerated rather than treated as a clash.
+   *
+   * @param paths paths to remove, relative to this node
+   * @return a new value with the paths removed
+   * @since 1.13
+   */
+  default JsonMixed mask(List<JsonPath> paths) {
+    JsonNode self = nodeIfExists();
+    if (self == null) return as(JsonMixed.class);
+    List<JsonPath> minimal = JsonPath.outermost(paths);
+    if (minimal.size() == 1 && minimal.get(0).isEmpty())
+      return JsonNode.NULL.lift(getAccessors());
+    return self.patch(minimal.stream().map(JsonNodeOp.Remove::new).toList())
+        .lift(getAccessors());
+  }
+
+  /**
+   * @see #mask(List)
+   * @since 1.13
+   */
+  default JsonMixed mask(JsonPath... paths) {
+    return mask(Arrays.asList(paths));
   }
 }
