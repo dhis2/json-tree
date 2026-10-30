@@ -134,4 +134,4 @@ are deliberately not supported.
   precedence, item validation, custom validators, `dependentRequired`
 - [User types as JSON tree](intro-6-user-types.md)
 - [API reference](json-api-overview.md)
-- [Input Expressions](input-expressions-reference.md) — a RegEx alternative that is simple, safe and fast
+- [Input Expressions](spec-input-expressions.md) — a RegEx alternative that is simple, safe and fast

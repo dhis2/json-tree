@@ -58,9 +58,9 @@ Overviews
 - [Standards and RFCs](docs/rfc-reference.md) — conformance and deviations
 
 Specifications
-- [JSON5* notation](docs/json5-star-reference.md) — the JSON5 variant accepted by the parser.
-- [JURL notation](docs/jurl-reference.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
-- [Input Expressions](docs/input-expressions-reference.md) — a RegEx alternative that is simple, safe and fast
+- [JSON5* notation](docs/spec-json5-star.md) — the JSON5 variant accepted by the parser.
+- [JURL notation](docs/spec-jurl.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
+- [Input Expressions](docs/spec-input-expressions.md) — a RegEx alternative that is simple, safe and fast
 
 ## Maven
 

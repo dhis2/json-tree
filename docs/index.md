@@ -27,9 +27,9 @@ Start here.
 ## Reference
 
 - [Standards and RFCs](rfc-reference.md) — implementations and deviations.
-- [JSON5* notation](json5-star-reference.md) — the JSON5 variant accepted by the parser.
-- [JURL notation](jurl-reference.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
-- [Input Expressions](input-expressions-reference.md) — a RegEx alternative that is simple, safe and fast
+- [JSON5* notation](spec-json5-star.md) — the JSON5 variant accepted by the parser.
+- [JURL notation](spec-jurl.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
+- [Input Expressions](spec-input-expressions.md) — a RegEx alternative that is simple, safe and fast
 
 APIs in depth
 

@@ -135,7 +135,7 @@ miss when reading "merge" in the name.
 JSON5 is not an IETF RFC. It is a community specification — *The JSON5 Data
 Interchange Format*, version 1.0.0 (March 2018) — describing a proposed
 extension to JSON. The library implements a restricted variant of it, called
-JSON5*, documented separately in [JSON5* notation](json5-star-reference.md).
+JSON5*, documented separately in [JSON5* notation](spec-json5-star.md).
 
 The design goal of JSON5* is that any accepted document can be converted to
 standard JSON **without inserting characters** — only deleting or replacing
@@ -173,4 +173,4 @@ constraint.
 - [Validation reference](json-validation-reference.md) — JSON Schema vocabulary
 - [JSON Patch](json-patch.md) — the patch feature in detail
 - [Masking and overlaying](json-mask-overlay.md) — `mask` and `overlay` (RFC 7386)
-- [JSON5* notation](json5-star-reference.md) — the JSON5 variant
+- [JSON5* notation](spec-json5-star.md) — the JSON5 variant
