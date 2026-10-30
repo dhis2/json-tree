@@ -99,7 +99,7 @@ from other JSON libraries.
 - JSON5* dialect accepts trailing commas, comments, and single-quoted strings
   — but only where the input can be rewritten to strict JSON *without
   inserting characters*, preserving the offset model. See
-  [JSON5* notation](json5-star-reference.md).
+  [JSON5* notation](spec-json5-star.md).
 - Special `double` values that aren't valid JSON numbers (`NaN`, `Infinity`)
   are readable transparently — either via the JSON5* route or by treating
   the JSON string as a number transparently via `doubleValue()`.

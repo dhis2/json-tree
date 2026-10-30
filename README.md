@@ -36,16 +36,31 @@ problems.
 
 ## Documentation
 
+Learn
 - [Getting started](docs/intro-1-getting-started.md) — install and first example
 - [Lazy parsing and the virtual tree](docs/intro-2-lazy-parsing.md) — the idea behind the library
 - [Java API](docs/intro-4-json-from-java.md) — build a tree from Java types
 - [JSON API](docs/intro-3-json-from-text.md) — work from a JSON document
 - [Null, undefined and existence](docs/intro-5-null-and-undefined.md) — the subtle states
 - [User types as JSON tree](docs/intro-6-user-types.md) — extend the tree with your own types
+
+Discover
+- [Navigating the tree](docs/json-paths.md) — paths as a uniform way to drill down.
+- [Querying the tree](docs/json-search.md) — finding nodes using matchers.
 - [Validation](docs/json-validation.md) — check input against a target schema
+- [Equivalence and identity](docs/json-comp.md) — comparing two trees for sameness.
 - [Comparing JSON values (diff)](docs/json-diff.md) — structural comparison
+- [Modification](docs/json-patch.md) — bulk patching JSON using patch operations
+- [Mask & Overlay](docs/json-mask-overlay.md) — masking JSON or patch merge with another JSON value
+
+Overviews
 - [API reference](docs/json-api-overview.md) — types and methods at a glance
 - [Standards and RFCs](docs/rfc-reference.md) — conformance and deviations
+
+Specifications
+- [JSON5* notation](docs/spec-json5-star.md) — the JSON5 variant accepted by the parser.
+- [JURL notation](docs/spec-jurl.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
+- [Input Expressions](docs/spec-input-expressions.md) — a RegEx alternative that is simple, safe and fast
 
 ## Maven
 

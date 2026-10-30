@@ -29,9 +29,12 @@ package org.hisp.dhis.jsontree;
 
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -41,6 +44,8 @@ import org.hisp.dhis.jsontree.JsonSelector.Matches;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which is representing an
@@ -572,5 +577,171 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    */
   default JsonMixed patch(JsonPatch patch) throws JsonPatchException {
     return JsonPatch.patch(as(JsonMixed.class), patch);
+  }
+
+  /**
+   * Removes the given paths (and everything under them) from this value.
+   *
+   * <p>Overlapping paths are permitted and minimized: listing both {@code a}
+   * and {@code a.b} is equivalent to listing only {@code a}, and duplicate
+   * paths are deduplicated. This differs from a general {@link JsonPatch},
+   * which rejects overlapping claims — masking expresses "these paths are
+   * gone," so redundancy is tolerated rather than treated as a clash.
+   *
+   * @param subPaths paths to remove, relative to this node
+   * @return a new value with the paths removed
+   * @since 1.13
+   */
+  default JsonMixed mask(List<JsonPath> subPaths) {
+    JsonNode self = nodeIfExists();
+    if (self == null) return as(JsonMixed.class);
+    List<JsonPath> minimal = JsonPath.outermost(subPaths);
+    if (minimal.size() == 1 && minimal.get(0).isEmpty())
+      return JsonNode.NULL.lift(getAccessors());
+    // Primitive self has no descendants — any non-SELF path keeps the value as-is
+    if (self.isSimple()) return as(JsonMixed.class);
+    return self.patch(minimal.stream().map(JsonNodeOp.Remove::new).toList())
+        .lift(getAccessors());
+  }
+
+  /**
+   * @see #mask(List)
+   * @since 1.13
+   */
+  default JsonMixed mask(JsonPath... subPaths) {
+    return mask(Arrays.asList(subPaths));
+  }
+
+  /**
+   * Masks all paths matched by the given selector, returning the masked
+   * form of <em>this</em> node.
+   *
+   * <p>Self-relative selectors ({@code @}) are evaluated from this node;
+   * root-relative selectors ({@code $}) are evaluated from the tree root and
+   * matches are relativized before applying.
+   *
+   * <p>The three possible outcomes:
+   * <ul>
+   *   <li>If the selector matches a <em>strict ancestor</em> of this node, the
+   *       container was removed and this node ceases to exist → undefined.</li>
+   *   <li>If the selector matches this node itself, its content is replaced
+   *       with {@code null} (consistent with {@link #mask(JsonPath...)} and
+   *       {@link JsonPath#SELF}).</li>
+   *   <li>Otherwise, only descendants or siblings were matched — this node is
+   *       returned with its subtree modified accordingly.</li>
+   * </ul>
+   *
+   * <p>Selectors matching both an ancestor and this node yield the ancestor
+   * outcome (undefined); being gone is stronger than being null.
+   *
+   * @since 1.13
+   */
+  default JsonMixed mask(JsonSelector selector) {
+    JsonNode self = nodeIfExists();
+    if (self == null) return as(JsonMixed.class);
+    JsonPath selfPath = self.path();
+    List<JsonPath> selected = self.queryMap(selector, JsonNode::path);
+
+    // Strict ancestor of self matched → self (and everything under it) is gone.
+    // The container was removed, so self's path doesn't resolve to anything.
+    for (JsonPath p : selected)
+      if (selfPath.isAncestor(p))
+        return JsonNode.EMPTY_OBJECT.lift(getAccessors()).get("undefined"); // undefined
+
+    // Otherwise relativize descendants and delegate.
+    // If self itself was matched, relativeTo yields SELF → mask(SELF) → NULL.
+    return mask(
+        selected.stream()
+            .filter(p -> p.startsWith(selfPath))
+            .map(p -> p.relativeTo(selfPath))
+            .toList());
+  }
+
+  enum OverlayNull {
+    /** RFC 7386 default: a null member removes that member. */
+    REMOVE,
+    /** A null member replaces the member's value with JSON null. */
+    REPLACE
+  }
+
+  /**
+   * @see #overlay(JsonValue, OverlayNull)
+   * @since 1.13
+   */
+  default JsonMixed overlay(JsonValue with) {
+    return overlay(with, OverlayNull.REMOVE);
+  }
+
+  /**
+   * Paints the given source JSON on top of this value using
+   * <a href="https://datatracker.ietf.org/doc/html/rfc7386">RFC 7386</a>
+   * merge-patch semantics.
+   *
+   * <p>When both this value and the source are objects, members are merged
+   * recursively. Otherwise the source replaces this value wholesale. Members
+   * of this value not mentioned in the source are kept. A {@code null} member
+   * in the source <b>removes</b> that member (see {@link #overlay(JsonValue,
+   * OverlayNull)} for the alternative).
+   *
+   * <p>Top-level non-object sources replace the whole document: {@code
+   * value.overlay(5)} yields {@code 5}, and {@code value.overlay(null)} yields
+   * JSON {@code null}.
+   *
+   * <p>An empty object source is a no-op, not a "clear" — RFC 7386 iterates
+   * the source's members, and {@code {}} has none. To clear a subtree, use
+   * {@link #mask} or a {@code null} member.
+   *
+   * <p>An undefined source is a no-op. On an undefined receiver the result is
+   * undefined. A Java {@code null} argument throws {@link NullPointerException}.   *
+   * <p>{@link OverlayNull#REMOVE} (the RFC 7386 default) removes the member;
+   * this is what the single-argument form uses.
+   *
+   * <p>{@link OverlayNull#REPLACE} replaces the member's value with JSON
+   * {@code null}. This is a deviation from RFC 7386, useful when {@code null}
+   * is meaningful data rather than a deletion marker.
+   *
+   * <p>At the top level the source is always a full replacement regardless of
+   * this parameter — {@code value.overlay(null, REPLACE)} and
+   * {@code value.overlay(null, REMOVE)} both yield JSON {@code null}, since
+   * there is no enclosing member to remove.
+   *
+   * @param with the merge-patch source; must not be {@code null}
+   * @param nullHandling how a {@code null} member in the source is applied;
+   *     must not be {@code null}
+   * @return a new value with the source painted on top of this value
+   * @throws NullPointerException if {@code with} or {@code nullHandling} is
+   *     {@code null}
+   * @see OverlayNull
+   * @since 1.13
+   */
+  default JsonMixed overlay(JsonValue with, OverlayNull nullHandling) {
+    requireNonNull(nullHandling);
+    JsonNode self = nodeIfExists();
+    if (self == null) return as(JsonMixed.class);
+    if (!with.exists()) return as(JsonMixed.class);
+    List<JsonNodeOp> ops = new ArrayList<>();
+    collectOverlayOps(with.node(), JsonPath.SELF, self, nullHandling, ops);
+    if (ops.isEmpty()) return as(JsonMixed.class);
+    return self.patch(ops).lift(getAccessors());
+  }
+
+  private static void collectOverlayOps(
+      JsonNode srcNode, JsonPath rel, JsonNode self,
+      OverlayNull nullHandling, List<JsonNodeOp> ops) {
+    if (srcNode.isObject()) {
+      JsonNode selfAt = rel.isEmpty() ? self : self.getIfExists(rel);
+      if (selfAt != null && selfAt.isObject()) {
+        for (JsonNode member : srcNode.members())
+          collectOverlayOps(member, rel.chain(member.getKey()), self, nullHandling, ops);
+        return;
+      }
+    }
+    if (srcNode.isNull() && !rel.isEmpty() && nullHandling == OverlayNull.REMOVE) {
+      ops.add(new JsonNodeOp.Remove(rel));
+      return;
+    }
+    boolean exists = rel.isEmpty() || self.exists(rel);
+    ops.add(exists ? new JsonNodeOp.Replace(rel, srcNode)
+        : new JsonNodeOp.Insert(rel, srcNode));
   }
 }

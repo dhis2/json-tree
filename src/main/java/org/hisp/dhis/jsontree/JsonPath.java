@@ -1,5 +1,7 @@
 package org.hisp.dhis.jsontree;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import org.hisp.dhis.jsontree.internal.CheckNull;
@@ -81,6 +83,30 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     return new JsonPath(null, Text.of(index));
   }
 
+  /**
+   * Reduces the given paths to the outermost paths among them — duplicates
+   * removed, and any path that is a descendant of another entry dropped.
+   *
+   * <p>If any input path is {@link JsonPath#SELF}, the result is
+   * {@code [SELF]} — SELF is the ancestor of every path, so it subsumes all
+   * other entries.
+   *
+   * @since 1.13
+   */
+  static List<JsonPath> outermost(List<JsonPath> paths) {
+    if (paths.size() <= 1) return paths;
+    List<JsonPath> result = new ArrayList<>();
+    outer:
+    for (JsonPath p : paths) {
+      for (JsonPath kept : result) {
+        if (p.startsWith(kept)) continue outer;
+      }
+      result.removeIf(kept -> kept.startsWith(p));
+      result.add(p);
+    }
+    return result;
+  }
+
   public JsonPath {
     if (segment == null && parent != null)
       throw new JsonPathException(parent, "Only root can have null segment but got: " + parent);
@@ -151,6 +177,11 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     return parent == null ? SELF : parent;
   }
 
+  /**
+   * Drops n segments from the end of this path
+   * @param n number of tail segments to drop
+   * @return the n-th parent of this path (or this for any n <= 0)
+   */
   public JsonPath drop(int n) {
     if (n <= 0) return this;
     JsonPath res = this;
@@ -158,10 +189,43 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     return res;
   }
 
-  public boolean startsWith(JsonPath prefix) {
-    if (prefix.isEmpty()) return true;
+  public boolean startsWith(JsonPath ancestor) {
+    if (ancestor.isEmpty()) return true;
     if (isEmpty()) return false;
-    return equals(prefix) || parent != null && parent.startsWith(prefix);
+    return equals(ancestor) || isAncestor(ancestor);
+  }
+
+  /**
+   * @param path any path
+   * @return true, when the given path is an ancestor of this path
+   * @since 1.13
+   */
+  public boolean isAncestor(JsonPath path) {
+    return parent != null && parent.startsWith(path);
+  }
+
+  /**
+   * @param ancestor an ancestor path of this path
+   * @return this path with {@code prefix}'s segments removed from the head
+   * @throws JsonPathException if {@code ancestor} is not an ancestor of
+   *     this path (i.e. {@code !this.startsWith(ancestor)})
+   * @since 1.13
+   */
+  @NotNull
+  public JsonPath relativeTo(JsonPath ancestor) {
+    if (!startsWith(ancestor)) throw new JsonPathException(this,
+        "Not an ancestor: " + ancestor + " of " + this);
+    if (equals(ancestor)) return JsonPath.SELF;
+    JsonPath p = parent == null ? JsonPath.SELF : parent;
+    return p.relativeTo(ancestor).chain(segment);
+  }
+
+  /**
+   * @return true, if this path is equal to {@link JsonPath#SELF}
+   * @since 1.13
+   */
+  public boolean isSelf() {
+    return parent == null && segment == null;
   }
 
   /**

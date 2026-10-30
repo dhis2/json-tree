@@ -514,12 +514,15 @@ public record JsonSelector(Matcher matcher, JsonSelector next) {
           if (offset < expression.length() && expression.charAt(offset) == '.') {
             res = res.descendants();
             offset++;
-            // RFC 9535: ..name == ..['name'] — allow a bare identifier after ..
             if (offset < expression.length() && isAlphanumeric(expression.charAt(offset))) {
               int end = skipAlphanumeric(expression, offset);
               res = res.key(expression.subSequence(offset, end));
               offset = end;
             }
+          } else if (offset < expression.length() && expression.charAt(offset) == '*') {
+            // extension: .* is sugar for [*]
+            res = res.any();
+            offset++;
           } else {
             int end = skipAlphanumeric(expression, offset);
             res = res.key(expression.subSequence(offset, end));

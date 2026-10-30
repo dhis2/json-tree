@@ -63,6 +63,8 @@ Descendants (`..`) accept either the RFC short form (`$..name`) or the
 bracketed form (`$..['name']`); both normalise to the same selector. Type
 filters use the RFC 9535 shape `[?(:type)]`.
 
+`.*` is accepted as an alias for `[*]` and canonicalizes to it on `toString()`.
+
 Type filters come in two shapes. Inside brackets — `$[?(:number)]` — this is
 the RFC 9535 child selector: apply the filter to each child of the current
 node, equivalent to `$.any().type(NUMBER)`. The non-bracketed top-level form

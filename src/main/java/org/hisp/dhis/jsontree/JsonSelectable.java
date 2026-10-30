@@ -20,7 +20,7 @@ import org.hisp.dhis.jsontree.JsonSelector.Matches;
  *
  * @since 1.9
  */
-public interface JsonSelectable<T> {
+public interface JsonSelectable<T extends JsonProbe> {
 
   /**
    * The essential method of the query API.
