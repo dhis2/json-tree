@@ -668,8 +668,8 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * @see #overlay(JsonValue, OverlayNull)
    * @since 1.13
    */
-  default JsonMixed overlay(JsonValue src) {
-    return overlay(src, OverlayNull.REMOVE);
+  default JsonMixed overlay(JsonValue with) {
+    return overlay(with, OverlayNull.REMOVE);
   }
 
   /**
@@ -705,22 +705,22 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    * {@code value.overlay(null, REMOVE)} both yield JSON {@code null}, since
    * there is no enclosing member to remove.
    *
-   * @param src the merge-patch source; must not be {@code null}
+   * @param with the merge-patch source; must not be {@code null}
    * @param nullHandling how a {@code null} member in the source is applied;
    *     must not be {@code null}
    * @return a new value with the source painted on top of this value
-   * @throws NullPointerException if {@code src} or {@code nullHandling} is
+   * @throws NullPointerException if {@code with} or {@code nullHandling} is
    *     {@code null}
    * @see OverlayNull
    * @since 1.13
    */
-  default JsonMixed overlay(JsonValue src, OverlayNull nullHandling) {
+  default JsonMixed overlay(JsonValue with, OverlayNull nullHandling) {
     requireNonNull(nullHandling);
     JsonNode self = nodeIfExists();
     if (self == null) return as(JsonMixed.class);
-    if (!src.exists()) return as(JsonMixed.class);
+    if (!with.exists()) return as(JsonMixed.class);
     List<JsonNodeOp> ops = new ArrayList<>();
-    collectOverlayOps(src.node(), JsonPath.SELF, self, nullHandling, ops);
+    collectOverlayOps(with.node(), JsonPath.SELF, self, nullHandling, ops);
     if (ops.isEmpty()) return as(JsonMixed.class);
     return self.patch(ops).lift(getAccessors());
   }

@@ -46,7 +46,7 @@ class JsonPatchOverlayTest {
              "contact":{"email":"alice@example.com","phone":"+49-30-1234"},
              "tags":["a","b","c"]}""",
         """
-                {"age": 31}""");
+            {"age": 31}""");
   }
 
   @Test
