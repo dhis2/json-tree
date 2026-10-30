@@ -346,10 +346,10 @@ class JsonPatchOverlayTest {
   }
 
   private static void assertOverlay(
-      @Language("json") String expected, @Language("json") String src, OverlayNull OverlayNull) {
+      @Language("json") String expected, @Language("json") String src, OverlayNull nullHandling) {
     JsonMixed srcValue = JsonMixed.of(src);
     JsonMixed result =
-        OverlayNull == null ? sample().overlay(srcValue) : sample().overlay(srcValue, OverlayNull);
+        nullHandling == null ? sample().overlay(srcValue) : sample().overlay(srcValue, nullHandling);
     assertTrue(
         JsonMixed.of(expected).equivalentTo(result),
         () -> "expected: " + expected + "\n  actual: " + result);
