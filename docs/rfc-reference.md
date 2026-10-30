@@ -106,6 +106,29 @@ path is a prefix of another. That covers the overwhelming majority of
 real-world RFC 6902 patches — the deviations only surface when array mutation
 ordering matters, or when a patch deliberately relies on sequential behaviour.
 
+## JSON Merge Patch — [RFC 7386](https://datatracker.ietf.org/doc/html/rfc7386)
+
+`JsonValue.overlay(JsonValue)` (see [Masking and overlaying](json-mask-overlay.md))
+implements RFC 7386 merge-patch semantics. The default behaviour is
+conformant: object sources recurse when the target is also an object, `null`
+members remove, everything else replaces, and members of the target not
+mentioned in the source are kept.
+
+**Extension — `OverlayNull.REPLACE`:** RFC 7386 has no way to express "set this
+member to `null`" — a `null` in the merge patch always removes the member. The
+optional `OverlayNull.REPLACE` mode adds this, treating a `null` member as data
+rather than a deletion marker. The default (`OverlayNull.REMOVE`) matches the
+RFC.
+
+**Clarification — empty objects:** an empty object in the merge patch is a
+no-op, not a "clear". RFC 7386 iterates the *source*'s members, and `{}` has
+none. To clear a subtree, use a `null` member or mask the path (see
+[Masking and overlaying](json-mask-overlay.md)).
+
+**Clarification — top-level non-object sources:** a non-object top-level source
+(array, scalar, `null`) replaces the whole document. Object-merge only applies
+when both source and target are objects. This is RFC-conformant but easy to
+miss when reading "merge" in the name.
 
 ## JSON5 — [official specification](https://json5.github.io/json5-spec/)
 
@@ -143,11 +166,11 @@ constraint.
   transparently — `doubleValue()` on such a node returns the number, not the
   string.
 
-
 ## Related
 
 - [Navigating the tree](json-paths.md) — `JsonPath`
 - [Querying the tree](json-search.md) — `JsonSelector` and RFC 9535
 - [Validation reference](json-validation-reference.md) — JSON Schema vocabulary
 - [JSON Patch](json-patch.md) — the patch feature in detail
+- [Masking and overlaying](json-mask-overlay.md) — `mask` and `overlay` (RFC 7386)
 - [JSON5* notation](json5-star-reference.md) — the JSON5 variant

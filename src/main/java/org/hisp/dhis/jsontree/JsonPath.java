@@ -177,6 +177,11 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     return parent == null ? SELF : parent;
   }
 
+  /**
+   * Drops n segments from the end of this path
+   * @param n number of tail segments to drop
+   * @return the n-th parent of this path (or this for any n <= 0)
+   */
   public JsonPath drop(int n) {
     if (n <= 0) return this;
     JsonPath res = this;
@@ -187,14 +192,23 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
   public boolean startsWith(JsonPath ancestor) {
     if (ancestor.isEmpty()) return true;
     if (isEmpty()) return false;
-    return equals(ancestor) || parent != null && parent.startsWith(ancestor);
+    return equals(ancestor) || isAncestor(ancestor);
+  }
+
+  /**
+   * @param path any path
+   * @return true, when the given path is an ancestor of this path
+   * @since 1.13
+   */
+  public boolean isAncestor(JsonPath path) {
+    return parent != null && parent.startsWith(path);
   }
 
   /**
    * @param ancestor an ancestor path of this path
    * @return this path with {@code prefix}'s segments removed from the head
-   * @throws JsonPathException if {@code prefix} is not an ancestor of
-   *     this path (i.e. {@code !this.startsWith(prefix)})
+   * @throws JsonPathException if {@code ancestor} is not an ancestor of
+   *     this path (i.e. {@code !this.startsWith(ancestor)})
    * @since 1.13
    */
   @NotNull

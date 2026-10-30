@@ -29,20 +29,23 @@ package org.hisp.dhis.jsontree;
 
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import org.hisp.dhis.jsontree.JsonDiff.Mode;
 import org.hisp.dhis.jsontree.JsonSelector.Matches;
 import org.hisp.dhis.jsontree.internal.CheckNull;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * The {@link JsonValue} is a virtual read-only view for {@link JsonNode}, which is representing an
@@ -642,7 +645,7 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
     // Strict ancestor of self matched → self (and everything under it) is gone.
     // The container was removed, so self's path doesn't resolve to anything.
     for (JsonPath p : selected)
-      if (selfPath.startsWith(p) && !selfPath.equals(p))
+      if (selfPath.isAncestor(p))
         return JsonNode.EMPTY_OBJECT.lift(getAccessors()).get("undefined"); // undefined
 
     // Otherwise relativize descendants and delegate.
@@ -652,5 +655,93 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
             .filter(p -> p.startsWith(selfPath))
             .map(p -> p.relativeTo(selfPath))
             .toList());
+  }
+
+  enum OverlayNull {
+    /** RFC 7386 default: a null member removes that member. */
+    REMOVE,
+    /** A null member replaces the member's value with JSON null. */
+    REPLACE
+  }
+
+  /**
+   * @see #overlay(JsonValue, OverlayNull)
+   * @since 1.13
+   */
+  default JsonMixed overlay(JsonValue src) {
+    return overlay(src, OverlayNull.REMOVE);
+  }
+
+  /**
+   * Paints the given source JSON on top of this value using
+   * <a href="https://datatracker.ietf.org/doc/html/rfc7386">RFC 7386</a>
+   * merge-patch semantics.
+   *
+   * <p>When both this value and the source are objects, members are merged
+   * recursively. Otherwise the source replaces this value wholesale. Members
+   * of this value not mentioned in the source are kept. A {@code null} member
+   * in the source <b>removes</b> that member (see {@link #overlay(JsonValue,
+   * OverlayNull)} for the alternative).
+   *
+   * <p>Top-level non-object sources replace the whole document: {@code
+   * value.overlay(5)} yields {@code 5}, and {@code value.overlay(null)} yields
+   * JSON {@code null}.
+   *
+   * <p>An empty object source is a no-op, not a "clear" — RFC 7386 iterates
+   * the source's members, and {@code {}} has none. To clear a subtree, use
+   * {@link #mask} or a {@code null} member.
+   *
+   * <p>An undefined source is a no-op. On an undefined receiver the result is
+   * undefined. A Java {@code null} argument throws {@link NullPointerException}.   *
+   * <p>{@link OverlayNull#REMOVE} (the RFC 7386 default) removes the member;
+   * this is what the single-argument form uses.
+   *
+   * <p>{@link OverlayNull#REPLACE} replaces the member's value with JSON
+   * {@code null}. This is a deviation from RFC 7386, useful when {@code null}
+   * is meaningful data rather than a deletion marker.
+   *
+   * <p>At the top level the source is always a full replacement regardless of
+   * this parameter — {@code value.overlay(null, REPLACE)} and
+   * {@code value.overlay(null, REMOVE)} both yield JSON {@code null}, since
+   * there is no enclosing member to remove.
+   *
+   * @param src the merge-patch source; must not be {@code null}
+   * @param nullHandling how a {@code null} member in the source is applied;
+   *     must not be {@code null}
+   * @return a new value with the source painted on top of this value
+   * @throws NullPointerException if {@code src} or {@code nullHandling} is
+   *     {@code null}
+   * @see OverlayNull
+   * @since 1.13
+   */
+  default JsonMixed overlay(JsonValue src, OverlayNull nullHandling) {
+    requireNonNull(nullHandling);
+    JsonNode self = nodeIfExists();
+    if (self == null) return as(JsonMixed.class);
+    if (!src.exists()) return as(JsonMixed.class);
+    List<JsonNodeOp> ops = new ArrayList<>();
+    collectOverlayOps(src.node(), JsonPath.SELF, self, nullHandling, ops);
+    if (ops.isEmpty()) return as(JsonMixed.class);
+    return self.patch(ops).lift(getAccessors());
+  }
+
+  private static void collectOverlayOps(
+      JsonNode srcNode, JsonPath rel, JsonNode self,
+      OverlayNull nullHandling, List<JsonNodeOp> ops) {
+    if (srcNode.isObject()) {
+      JsonNode selfAt = rel.isEmpty() ? self : self.getIfExists(rel);
+      if (selfAt != null && selfAt.isObject()) {
+        for (JsonNode member : srcNode.members())
+          collectOverlayOps(member, rel.chain(member.getKey()), self, nullHandling, ops);
+        return;
+      }
+    }
+    if (srcNode.isNull() && !rel.isEmpty() && nullHandling == OverlayNull.REMOVE) {
+      ops.add(new JsonNodeOp.Remove(rel));
+      return;
+    }
+    boolean exists = rel.isEmpty() || self.exists(rel);
+    ops.add(exists ? new JsonNodeOp.Replace(rel, srcNode)
+        : new JsonNodeOp.Insert(rel, srcNode));
   }
 }

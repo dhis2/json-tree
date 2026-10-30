@@ -302,4 +302,99 @@ class JsonSelectorTest {
     assertEquals( JsonSelector.$.flatten().toString(),
         JsonSelector.of( "$[]" ).toString() );
   }
+
+  // ---------------------------------------------------------------------------
+  // Extension: .* wildcard alias for [*]
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testOf_DotStar_AtEnd() {
+    assertEquals("$[*]", JsonSelector.of("$.*").toString());
+    assertEquals("$.foo[*]", JsonSelector.of("$.foo.*").toString());
+    assertEquals("@[*]", JsonSelector.of("@.*").toString());
+    assertEquals("@.contact[*]", JsonSelector.of("@.contact.*").toString());
+  }
+
+  @Test
+  void testOf_DotStar_InMiddle() {
+    assertEquals("$[*].bar", JsonSelector.of("$.*.bar").toString());
+    assertEquals("$.foo[*].bar", JsonSelector.of("$.foo.*.bar").toString());
+    assertEquals("$.a[*].b[*].c", JsonSelector.of("$.a.*.b.*.c").toString());
+  }
+
+  @Test
+  void testOf_DotStar_AfterBracket() {
+    assertEquals("$[1][*]", JsonSelector.of("$[1].*").toString());
+    assertEquals("$.foo[1][*]", JsonSelector.of("$.foo[1].*").toString());
+    assertEquals("$.foo[*]", JsonSelector.of("$['foo'].*").toString());
+  }
+
+  @Test
+  void testOf_DotStar_FollowedByBracket() {
+    assertEquals("$[*][0]", JsonSelector.of("$.*[0]").toString());
+    assertEquals("$[*][1,2]", JsonSelector.of("$.*[1,2]").toString());
+    assertEquals("$[*][*]", JsonSelector.of("$.*[*]").toString());
+  }
+
+  @Test
+  void testOf_DotStar_EquivToBracketStar() {
+    // the two spellings must produce identical selectors
+    assertEquals(JsonSelector.of("$.*"), JsonSelector.of("$[*]"));
+    assertEquals(JsonSelector.of("$.foo.*"), JsonSelector.of("$.foo[*]"));
+    assertEquals(JsonSelector.of("$.foo.*.bar"), JsonSelector.of("$.foo[*].bar"));
+  }
+
+  @Test
+  void testOf_DotStar_EquivalenceWithFluent() {
+    assertEquals($.any().toString(), JsonSelector.of("$.*").toString());
+    assertEquals($.key("foo").any().toString(), JsonSelector.of("$.foo.*").toString());
+    assertEquals($.key("foo").any().key("bar").toString(),
+        JsonSelector.of("$.foo.*.bar").toString());
+  }
+
+  @Test
+  void testOf_DotStar_RoundTrip() {
+    // toString canonicalises to [*], and that form re-parses to the same selector
+    JsonSelector s = JsonSelector.of("$.foo.*");
+    assertEquals(s, JsonSelector.of(s.toString()));
+    assertEquals(s, JsonSelector.of("$.foo[*]"));
+  }
+
+  @Test
+  void testOf_DotStar_Matching() {
+    JsonMixed json = JsonMixed.of( """
+        {"a": 1, "b": 2, "c": 3}""" );
+    assertEquals(3, json.queryCount(JsonSelector.of("$.*")));
+    assertEquals(
+        json.query(JsonSelector.of("$[*]")).toList(),
+        json.query(JsonSelector.of("$.*")).toList());
+  }
+
+  @Test
+  void testOf_DotStar_MatchingNested() {
+    JsonMixed json = JsonMixed.of( """
+        {"contact": {"email": "e", "phone": "p"}}""" );
+    assertEquals(2, json.queryCount(JsonSelector.of("$.contact.*")));
+    assertEquals(2, json.queryCount(JsonSelector.of("$.contact[*]")));
+  }
+
+  @Test
+  void testOf_DotStar_NestedObjectValues() {
+    JsonMixed json = JsonMixed.of( """
+        {"a": {"x": 1, "y": 2}, "b": {"z": 3}}""" );
+    // 2 children of a + 1 child of b + ... total 3 top-level object children, then each is an object
+    assertEquals(2, json.queryCount(JsonSelector.of("$.*")));
+    assertEquals(3, json.queryCount(JsonSelector.of("$.*.*")));
+  }
+
+  @Test
+  void testOf_DescendantsStar_NotSupported() {
+    // ..* is not part of the supported extension set — the RFC spelling is $..[*]
+    // (which does parse). Pinning this so the boundary is a deliberate decision,
+    // not an accident, if anyone later considers adding it.
+    assertThrows(IllegalArgumentException.class, () -> JsonSelector.of("$..*"));
+    assertThrows(IllegalArgumentException.class, () -> JsonSelector.of("$.foo..*"));
+    // and $..[*] remains the working form for the same effect
+    assertEquals("$..[*]", JsonSelector.of("$..[*]").toString());
+  }
 }

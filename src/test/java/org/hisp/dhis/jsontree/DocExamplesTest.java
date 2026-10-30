@@ -880,4 +880,187 @@ class DocExamplesTest {
         assertTrue( a.equivalentTo( b ) );
         assertFalse( a.identicalTo( b ) );
     }
+
+    // =========================================================================
+    // docs/json-mask-overlay.md — Masking
+    // =========================================================================
+
+    private static JsonMixed maskOverlayUser() {
+        return JsonMixed.of( """
+            {
+              "id": 42,
+              "name": "Alice",
+              "password": "secret",
+              "contact": {
+                "email": "alice@example.com",
+                "phone": "+49-30-1234"
+              }
+            }""" );
+    }
+
+    @Test
+    void masking_basic() {
+        JsonMixed user = maskOverlayUser();
+
+        JsonMixed safe = user.mask(
+            JsonPath.of( "password" ),
+            JsonPath.of( "contact", "email" ) );
+
+        assertTrue( safe.equivalentTo( JsonMixed.of( """
+            {"id": 42, "name": "Alice", "contact": { "phone": "+49-30-1234" }}""" ) ) );
+    }
+
+    @Test
+    void masking_fromSubtree() {
+        JsonMixed contact = maskOverlayUser().get( "contact" );
+
+        JsonMixed masked = contact.mask( JsonPath.of( "phone" ) );
+
+        assertTrue( masked.equivalentTo( JsonMixed.of( """
+            {"email": "alice@example.com"}""" ) ) );
+    }
+
+    @Test
+    void masking_bySelector() {
+        JsonMixed masked = maskOverlayUser().mask( JsonSelector.of( "@.contact.*" ) );
+
+        assertFalse( masked.exists( JsonPath.of( "contact", "email" ) ) );
+        assertFalse( masked.exists( JsonPath.of( "contact", "phone" ) ) );
+        assertTrue( masked.exists( JsonPath.of( "contact" ) ) );
+    }
+
+    @Test
+    void masking_overlappingPaths_minimized() {
+        JsonMixed user = maskOverlayUser();
+
+        JsonMixed masked = user.mask(
+            JsonPath.of( "contact" ),
+            JsonPath.of( "contact", "email" ),
+            JsonPath.of( "contact" ) );
+
+        JsonMixed single = maskOverlayUser().mask( JsonPath.of( "contact" ) );
+
+        assertFalse( masked.exists( JsonPath.of( "contact" ) ) );
+        assertTrue( masked.equivalentTo( single ) );
+    }
+
+    @Test
+    void masking_primitives() {
+        JsonMixed result = JsonMixed.of( "5" ).mask( JsonPath.of( "a" ) );
+        assertTrue( JsonMixed.of( "5" ).equivalentTo( result ) );
+
+        JsonMixed nulled = JsonMixed.of( "5" ).mask( JsonPath.SELF );
+        assertTrue( nulled.isNull() );
+    }
+
+    // =========================================================================
+    // docs/json-mask-overlay.md — Overlaying
+    // =========================================================================
+
+    private static JsonMixed overlayCurrent() {
+        return JsonMixed.of( """
+            {
+              "name": "Alice",
+              "age": 30,
+              "contact": {
+                "email": "alice@example.com",
+                "phone": "+49-30-1234"
+              }
+            }""" );
+    }
+
+    @Test
+    void overlay_basic() {
+        JsonMixed current = overlayCurrent();
+
+        JsonMixed merged = current.overlay( JsonMixed.of( """
+            {
+              "age": 31,
+              "contact": { "phone": "+49-30-5678" },
+              "city": "Berlin"
+            }""" ) );
+
+        assertTrue( merged.equivalentTo( JsonMixed.of( """
+            {
+              "name": "Alice",
+              "age": 31,
+              "contact": { "email": "alice@example.com", "phone": "+49-30-5678" },
+              "city": "Berlin"
+            }""" ) ) );
+    }
+
+    @Test
+    void overlay_nullRemoves() {
+        JsonMixed merged = overlayCurrent().overlay( JsonMixed.of( "{\"age\": null}" ) );
+
+        assertFalse( merged.exists( JsonPath.of( "age" ) ) );
+        assertTrue( merged.exists( JsonPath.of( "name" ) ) );
+    }
+
+    @Test
+    void overlay_nullReplaceMode() {
+        JsonMixed merged = overlayCurrent().overlay(
+            JsonMixed.of( "{\"age\": null}" ),
+            JsonValue.OverlayNull.REPLACE );
+
+        assertTrue( merged.exists( JsonPath.of( "age" ) ) );
+        assertTrue( merged.get( JsonPath.of( "age" ) ).isNull() );
+    }
+
+    @Test
+    void overlay_topLevelNonObject() {
+        JsonMixed current = overlayCurrent();
+
+        assertTrue( JsonMixed.of( "5" ).equivalentTo( current.overlay( JsonMixed.of( "5" ) ) ) );
+        assertTrue( JsonMixed.of( "[1,2,3]" ).equivalentTo(
+            current.overlay( JsonMixed.of( "[1,2,3]" ) ) ) );
+        assertTrue( current.overlay( JsonMixed.of( "null" ) ).isNull() );
+    }
+
+    @Test
+    void overlay_arraysAtomic() {
+        JsonMixed result = JsonMixed.of( "{\"tags\": [1, 2, 3]}" )
+            .overlay( JsonMixed.of( "{\"tags\": [9]}" ) );
+
+        assertTrue( result.equivalentTo( JsonMixed.of( "{\"tags\": [9]}" ) ) );
+    }
+
+    @Test
+    void overlay_emptyObject_noop() {
+        JsonMixed current = overlayCurrent();
+        JsonMixed merged = current.overlay( JsonMixed.of( "{\"contact\": {}}" ) );
+
+        assertTrue( current.equivalentTo( merged ) );
+    }
+
+    @Test
+    void overlay_undefinedSource_noop() {
+        JsonMixed current = overlayCurrent();
+        JsonMixed undefined = current.get( JsonPath.of( "missing" ) );
+
+        assertTrue( current.equivalentTo( current.overlay( undefined ) ) );
+    }
+
+    @Test
+    void overlay_maskComposition() {
+        JsonMixed current = JsonMixed.of( """
+            {"name": "Alice", "password": "x", "internal": "y"}""" );
+
+        JsonMixed desired = current
+            .mask( JsonPath.of( "password" ), JsonPath.of( "internal" ) )
+            .overlay( JsonMixed.of( """
+                { "name": "Bob", "status": "active" }""" ) );
+
+        assertTrue( desired.equivalentTo( JsonMixed.of( """
+            {"name": "Bob", "status": "active"}""" ) ) );
+    }
+
+    @Test
+    void overlay_maskConsistency_nullMemberEqualsMask() {
+        JsonMixed current = overlayCurrent();
+        JsonMixed byOverlay = current.overlay( JsonMixed.of( "{\"age\": null}" ) );
+        JsonMixed byMask    = current.mask( JsonPath.of( "age" ) );
+
+        assertTrue( byOverlay.equivalentTo( byMask ) );
+    }
 }

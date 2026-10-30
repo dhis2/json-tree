@@ -22,12 +22,13 @@ Start here.
 - [Equivalence and identity](json-comp.md) — comparing two trees for sameness.
 - [Comparing JSON values (diff)](json-diff.md) — structural comparison of two trees.
 - [Modification](json-patch.md) — bulk patching JSON using patch operations 
+- [Mask & Overlay](json-mask-overlay.md) — masking JSON or patch merge with another JSON value
 
 ## Reference
 
 - [Standards and RFCs](rfc-reference.md) — implementations and deviations.
 - [JSON5* notation](json5-star-reference.md) — the JSON5 variant accepted by the parser.
-- [JURL reference](jurl-reference.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
+- [JURL notation](jurl-reference.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
 - [Input Expressions](input-expressions-reference.md) — a RegEx alternative that is simple, safe and fast
 
 APIs in depth
