@@ -220,6 +220,10 @@ public record JsonPath(@CheckNull JsonPath parent, @CheckNull Text segment)
     return p.relativeTo(ancestor).chain(segment);
   }
 
+  /**
+   * @return true, if this path is equal to {@link JsonPath#SELF}
+   * @since 1.13
+   */
   public boolean isSelf() {
     return parent == null && segment == null;
   }
