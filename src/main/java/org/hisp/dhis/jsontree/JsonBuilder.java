@@ -144,7 +144,7 @@ public interface JsonBuilder {
   }
 
   /**
-   * Check if a double can be represented in JSON number or must become a JSON string
+   * Checks if a double can be represented in JSON number or must become a JSON string
    *
    * @param value a double value
    * @return true, if the double given needs to be quoted (made a JSON string)
@@ -152,6 +152,17 @@ public interface JsonBuilder {
    */
   static boolean requiresString(double value) {
     return Double.isNaN(value) || Double.isInfinite(value);
+  }
+
+  /**
+   * Checks if a float can be represented in JSON number or must become a JSON string
+   *
+   * @param value a double value
+   * @return true, if the double given needs to be quoted (made a JSON string)
+   * @since 1.13
+   */
+  static boolean requiresString(float value) {
+    return Float.isNaN(value) || Float.isInfinite(value);
   }
 
   /**
@@ -163,7 +174,7 @@ public interface JsonBuilder {
    */
   static boolean requiresString(Number value) {
     return value instanceof Double d && requiresString(d.doubleValue())
-        || value instanceof Float f && requiresString(f.doubleValue());
+        || value instanceof Float f && requiresString(f.floatValue());
   }
 
   /**
@@ -323,6 +334,11 @@ public interface JsonBuilder {
     JsonObjectBuilder addNumber(CharSequence name, int value);
 
     JsonObjectBuilder addNumber(CharSequence name, long value);
+
+    /**
+     * @since 1.13
+     */
+    JsonObjectBuilder addNumber(CharSequence name, float value);
 
     JsonObjectBuilder addNumber(CharSequence name, double value);
 
@@ -487,6 +503,11 @@ public interface JsonBuilder {
 
     JsonArrayBuilder addNumber(long value);
 
+    /**
+     * @since 1.13
+     */
+    JsonArrayBuilder addNumber(float value);
+
     JsonArrayBuilder addNumber(double value);
 
     JsonArrayBuilder addNumber(Number value);
@@ -532,6 +553,14 @@ public interface JsonBuilder {
 
     default JsonArrayBuilder addNumbers(long... values) {
       return addNumbers(LongStream.of(values));
+    }
+
+    /**
+     * @since 1.13
+     */
+    default JsonArrayBuilder addNumbers(float... values) {
+      for (float v : values) addNumber(v);
+      return this;
     }
 
     default JsonArrayBuilder addNumbers(double... values) {

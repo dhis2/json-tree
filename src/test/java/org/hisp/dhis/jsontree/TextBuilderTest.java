@@ -167,6 +167,97 @@ class TextBuilderTest {
   }
 
   @Test
+  void testAppendFloat() {
+    assertEquals(
+        str -> {
+          str.append(3.14159f);
+          str.append(-2.5f);
+          str.append(Float.NaN);
+          str.append(Float.POSITIVE_INFINITY);
+          str.append(Float.NEGATIVE_INFINITY);
+          str.append(1.1f);
+          str.append(-2.22f);
+          str.append(3.333f);
+          str.append(4.4444f);
+        },
+        txt -> {
+          txt.appendFloat(3.14159f);
+          txt.appendFloat(-2.5f);
+          txt.appendFloat(Float.NaN);
+          txt.appendFloat(Float.POSITIVE_INFINITY);
+          txt.appendFloat(Float.NEGATIVE_INFINITY);
+          txt.appendFloat(1.1f);
+          txt.appendFloat(-2.22f);
+          txt.appendFloat(3.333f);
+          txt.appendFloat(4.4444f);
+        });
+  }
+
+  @Test
+  void testAppendFloat_EdgeCases() {
+    assertEquals(
+        str -> {
+          str.append(-0f);
+          str.append(1f);
+          str.append(0.0f);
+          str.append(1.23456789e8f);
+          str.append(0.2f);
+          str.append(0.3f);
+          str.append(0.1f + 0.2f);
+        },
+        txt -> {
+          txt.appendFloat(-0f);
+          txt.appendFloat(1f);
+          txt.appendFloat(0.0f);
+          txt.appendFloat(1.23456789e8f);
+          txt.appendFloat(0.2f);
+          txt.appendFloat(0.3f);
+          txt.appendFloat(0.1f + 0.2f);
+        });
+  }
+
+  @Test
+  void testAppendFloat_ScientificNotation() {
+    assertEquals(
+        str -> {
+          str.append(1e7f);
+          str.append(1e8f);
+          str.append(1e-4f);
+          str.append(1.5e10f);
+          str.append(1.5e-10f);
+          str.append(-1e7f);
+          str.append(-1e-4f);
+        },
+        txt -> {
+          txt.appendFloat(1e7f);
+          txt.appendFloat(1e8f);
+          txt.appendFloat(1e-4f);
+          txt.appendFloat(1.5e10f);
+          txt.appendFloat(1.5e-10f);
+          txt.appendFloat(-1e7f);
+          txt.appendFloat(-1e-4f);
+        });
+  }
+
+  @Test
+  void testAppendFloat_IntegralBoundary() {
+    // boundary at |value| < 1e7: below prints via appendLong + ".0", at/above via String.valueOf
+    assertEquals(
+        str -> {
+          str.append(9999999.0f);
+          str.append(10000000.0f);
+          str.append(-9999999.0f);
+          str.append(-10000000.0f);
+        },
+        txt -> {
+          txt.appendFloat(9999999.0f);
+          txt.appendFloat(10000000.0f);
+          txt.appendFloat(-9999999.0f);
+          txt.appendFloat(-10000000.0f);
+        });
+  }
+
+  @Test
   void testAppendDouble() {
     assertEquals(
         str -> {

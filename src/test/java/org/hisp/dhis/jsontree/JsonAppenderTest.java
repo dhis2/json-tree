@@ -70,6 +70,33 @@ class JsonAppenderTest {
   }
 
   @Test
+  void testObject_Float() {
+    // 0.1f round-trips as "0.1" via Float.toString, but widened to double it becomes
+    // 0.10000000149011612 — so this value catches accidental widening anywhere on the path.
+    assertJson("{'float':0.1}", JsonBuilder.createObject(obj -> obj.addNumber("float", 0.1f)));
+  }
+
+  @Test
+  void testArray_Float() {
+    assertJson("[0.1]", JsonBuilder.createArray(arr -> arr.addNumber(0.1f)));
+  }
+
+  @Test
+  void testObject_FloatArray() {
+    // 0.2f likewise prints as "0.2" as float, "0.20000000298023224" if widened
+    assertJson(
+        "{'array':[0.1,0.2]}",
+        JsonBuilder.createObject(obj -> obj.addArray("array", arr -> arr.addNumbers(0.1f, 0.2f))));
+  }
+
+  @Test
+  void testArray_FloatArray() {
+    assertJson(
+        "[[0.1,0.2]]",
+        JsonBuilder.createArray(arr -> arr.addArray(a -> a.addNumbers(0.1f, 0.2f))));
+  }
+
+  @Test
   void testObject_Double() {
     assertJson("{'double':42.42}", JsonBuilder.createObject(obj -> obj.addNumber("double", 42.42)));
   }

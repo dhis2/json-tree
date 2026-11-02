@@ -308,6 +308,40 @@ public interface Appender extends AutoCloseable {
   }
 
   /**
+   * Writes the textual representation of the given {@code float}.
+   *
+   * <p>The output is unquoted. Finite values whose magnitude is below {@code 1e7} and which have
+   * no fractional part are written as their integral form followed by {@code .0}; all other
+   * finite values use {@link Float#toString(float)} and are written verbatim. {@link
+   * Float#NaN}, {@link Float#POSITIVE_INFINITY}, and {@link Float#NEGATIVE_INFINITY} are
+   * written as the ASCII sequences {@code NaN}, {@code Infinity}, and {@code -Infinity}.
+   *
+   * <p>None of these forms is a valid JSON number in the strict sense except the decimal and
+   * integral variants. The caller is responsible for wrapping the output in JSON quotes when
+   * needed — see {@link JsonBuilder#requiresString(double)}.
+   *
+   * @param value the value to write
+   * @since 1.13
+   */
+  default void appendFloat(float value) {
+    if (Float.isNaN(value)) {
+      appendAscii("NaN");
+    } else if (value == Float.POSITIVE_INFINITY) {
+      appendAscii("Infinity");
+    } else if (value == Float.NEGATIVE_INFINITY) {
+      appendAscii("-Infinity");
+    } else if (value == 0f) {
+      appendAscii(Float.compare(value, -0f) == 0 ? "-0.0" : "0.0");
+    } else if (value == Math.floor(value) && Math.abs(value) < 1e7) {
+      appendLong((long) value);
+      appendAscii(".0");
+    } else {
+      // let the JDK produce the shortest round-trip representation
+      appendAscii(String.valueOf(value));
+    }
+  }
+
+  /**
    * Writes the textual representation of the given {@code double}.
    *
    * <p>The output is unquoted. Finite values whose magnitude is below {@code 1e7} and which have

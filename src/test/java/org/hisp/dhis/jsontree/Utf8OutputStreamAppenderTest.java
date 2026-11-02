@@ -343,6 +343,43 @@ class Utf8OutputStreamAppenderTest {
   }
 
   @Test
+  void testAppendFloat() {
+    assertEquals("3.14159", encode(a -> a.appendFloat(3.14159f)));
+    assertEquals("-2.5", encode(a -> a.appendFloat(-2.5f)));
+    assertEquals("NaN", encode(a -> a.appendFloat(Float.NaN)));
+    assertEquals("Infinity", encode(a -> a.appendFloat(Float.POSITIVE_INFINITY)));
+    assertEquals("-Infinity", encode(a -> a.appendFloat(Float.NEGATIVE_INFINITY)));
+    assertEquals("1.1", encode(a -> a.appendFloat(1.1f)));
+    assertEquals("-2.22", encode(a -> a.appendFloat(-2.22f)));
+    assertEquals("3.333", encode(a -> a.appendFloat(3.333f)));
+    assertEquals("4.4444", encode(a -> a.appendFloat(4.4444f)));
+  }
+
+  @Test
+  void testAppendFloat_EdgeCases() {
+    assertEquals("-0.0", encode(a -> a.appendFloat(-0f)));
+    assertEquals("1.0", encode(a -> a.appendFloat(1f)));
+    assertEquals("0.0", encode(a -> a.appendFloat(0.0f)));
+    // |value| >= 1e7 so this goes through Float.toString; defer to JDK for exact form
+    assertEquals(
+        String.valueOf(1.23456789e8f), encode(a -> a.appendFloat(1.23456789e8f)));
+    assertEquals("0.2", encode(a -> a.appendFloat(0.2f)));
+    assertEquals("0.3", encode(a -> a.appendFloat(0.3f)));
+    // (0.1f + 0.2f) == 0.3f in Java, but delegate to JDK so the test documents this
+    assertEquals(
+        String.valueOf(0.1f + 0.2f), encode(a -> a.appendFloat(0.1f + 0.2f)));
+  }
+
+  @Test
+  void testAppendFloat_IntegralBoundary() {
+    // |value| < 1e7 → appendLong + ".0"; at/above 1e7 → String.valueOf (scientific notation)
+    assertEquals("9999999.0", encode(a -> a.appendFloat(9999999.0f)));
+    assertEquals("1.0E7", encode(a -> a.appendFloat(10000000.0f)));
+    assertEquals("-9999999.0", encode(a -> a.appendFloat(-9999999.0f)));
+    assertEquals("-1.0E7", encode(a -> a.appendFloat(-10000000.0f)));
+  }
+
+  @Test
   void testAppendDouble() {
     assertEquals("3.14159", encode(a -> a.appendDouble(3.14159)));
     assertEquals("-2.5", encode(a -> a.appendDouble(-2.5)));
