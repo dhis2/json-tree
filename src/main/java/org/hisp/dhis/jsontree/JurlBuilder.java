@@ -79,6 +79,13 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   }
 
   @Override
+  public JsonObjectBuilder addNumber(CharSequence name, float value) {
+    addMember(name);
+    appendFloat(value);
+    return this;
+  }
+
+  @Override
   public JsonObjectBuilder addNumber(CharSequence name, double value) {
     addMember(name);
     appendDouble(value);
@@ -90,7 +97,8 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
     if (value == null) return addRawMember(name, format.nullsInObjects().value);
     if (value instanceof Integer) return addNumber(name, value.intValue());
     if (value instanceof Long) return addNumber(name, value.longValue());
-    if (value instanceof Double || value instanceof Float) addNumber(name, value.doubleValue());
+    if (value instanceof Double) addNumber(name, value.doubleValue());
+    if (value instanceof Float) addNumber(name, value.floatValue());
     return addRawMember(name, value.toString());
   }
 
@@ -194,6 +202,13 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   }
 
   @Override
+  public JsonArrayBuilder addNumber(float value) {
+    appendCommaWhenNeeded();
+    appendFloat(value);
+    return this;
+  }
+
+  @Override
   public JsonArrayBuilder addNumber(double value) {
     appendCommaWhenNeeded();
     appendDouble(value);
@@ -201,13 +216,17 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
   }
 
   private void appendDouble(double value) {
-    if (JsonBuilder.requiresString(value)) {
-      if (Double.isNaN(value)) out.appendAscii("\"NaN\"");
-      if (value == Double.POSITIVE_INFINITY) out.appendAscii("\"Infinity\"");
-      if (value == Double.NEGATIVE_INFINITY) out.appendAscii("\"-Infinity\"");
-    } else {
-      out.appendDouble(value);
-    }
+    boolean quote = JsonBuilder.requiresString(value);
+    if (quote) out.appendAscii('"');
+    out.appendDouble(value);
+    if (quote) out.appendAscii('"');
+  }
+
+  private void appendFloat(float value) {
+    boolean quote = JsonBuilder.requiresString(value);
+    if (quote) out.appendAscii('"');
+    out.appendFloat(value);
+    if (quote) out.appendAscii('"');
   }
 
   @Override
@@ -215,7 +234,8 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
     if (value == null) return addRawElement(format.nullsInArrays().value);
     if (value instanceof Integer) return addNumber(value.intValue());
     if (value instanceof Long) return addNumber(value.longValue());
-    if (value instanceof Double || value instanceof Float) addNumber(value.doubleValue());
+    if (value instanceof Double) addNumber(value.doubleValue());
+    if (value instanceof Float) addNumber(value.floatValue());
     return addRawElement(value.toString());
   }
 
@@ -380,6 +400,11 @@ final class JurlBuilder implements JsonObjectBuilder, JsonArrayBuilder {
 
     @Override
     public JsonObjectBuilder addNumber(CharSequence name, long value) {
+      return count(value);
+    }
+
+    @Override
+    public JsonObjectBuilder addNumber(CharSequence name, float value) {
       return count(value);
     }
 

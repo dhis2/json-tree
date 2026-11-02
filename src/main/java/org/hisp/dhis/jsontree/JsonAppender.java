@@ -83,6 +83,16 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     }
   }
 
+  private void appendFloat(float value) {
+    if (JsonBuilder.requiresString(value)) {
+      json.appendAscii('"');
+      json.appendFloat(value);
+      json.appendAscii('"');
+    } else {
+      json.appendFloat(value);
+    }
+  }
+
   private void appendEscaped(CharSequence str) {
     json.appendJsonEscaped(str);
   }
@@ -203,6 +213,13 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   }
 
   @Override
+  public JsonObjectBuilder addNumber(CharSequence name, float value) {
+    appendMemberName(name);
+    appendFloat(value);
+    return this;
+  }
+
+  @Override
   public JsonObjectBuilder addNumber(CharSequence name, double value) {
     appendMemberName(name);
     appendDouble(value);
@@ -215,7 +232,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     if (value instanceof Integer) return addNumber(name, value.intValue());
     if (value instanceof Long) return addNumber(name, value.longValue());
     if (value instanceof Textual t) return addRawMember(name, t.textValue());
-    if (value instanceof Double || value instanceof Float) return addNumber(name, value.doubleValue());
+    if (value instanceof Double) return addNumber(name, value.doubleValue());
+    if (value instanceof Float) addNumber(value.floatValue());
     return addRawMember(name, value.toString());
   }
 
@@ -292,6 +310,13 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
   }
 
   @Override
+  public JsonArrayBuilder addNumber(float value) {
+    appendCommaWhenNeeded();
+    appendFloat(value);
+    return this;
+  }
+
+  @Override
   public JsonArrayBuilder addNumber(double value) {
     appendCommaWhenNeeded();
     appendDouble(value);
@@ -304,7 +329,8 @@ final class JsonAppender implements JsonBuilder, JsonObjectBuilder, JsonArrayBui
     if (value instanceof Integer) return addNumber(value.intValue());
     if (value instanceof Long) return addNumber(value.longValue());
     if (value instanceof Textual t) return addRawElement(t.textValue());
-    if (value instanceof Double || value instanceof Float) return addNumber(value.doubleValue());
+    if (value instanceof Double) return addNumber(value.doubleValue());
+    if (value instanceof Float) return addNumber(value.floatValue());
     return addRawElement(value.toString());
   }
 
