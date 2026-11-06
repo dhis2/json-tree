@@ -8,6 +8,7 @@ import static java.util.Objects.requireNonNull;
 import static org.hisp.dhis.jsontree.Appender.checkCodePoint;
 import static org.hisp.dhis.jsontree.Appender.checkRange;
 import static org.hisp.dhis.jsontree.Appender.needsJsonEscaping;
+import static org.hisp.dhis.jsontree.CharSeqFragment.checkSubSequence;
 
 import java.util.Arrays;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -25,7 +26,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @author Jan Bernitt
  * @since 1.9
  */
-public final class TextBuilder implements Appender, Textual, CharSequence {
+public final class TextBuilder implements Appender, Textual, CharSeqFragment<Text> {
 
   private char[] buffer;
   private int length = 0;
@@ -35,13 +36,13 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
   }
 
   public TextBuilder(int capacity) {
-    this.buffer = new char[Math.max(16, ceilingPowerOfTwo(capacity))];
+    this.buffer = new char[ceilingPowerOfTwo(capacity)];
   }
 
-  private static int ceilingPowerOfTwo(int x) {
-    if (x <= 0) return 16;
-    int highestBit = Integer.highestOneBit(x);
-    return (x == highestBit) ? highestBit : highestBit << 1;
+  private static int ceilingPowerOfTwo(int len) {
+    if (len <= 0) return 16;
+    int highestBit = Integer.highestOneBit(len);
+    return  len == highestBit ? highestBit : highestBit << 1;
   }
 
   /*
@@ -52,6 +53,10 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
     return buffer.length;
   }
 
+  /**
+   * @return numbers of characters in the buffer so far; in other words the offset where the next
+   *     character is written.
+   */
   @Override
   public int length() {
     return length;
@@ -63,16 +68,13 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
   }
 
   @Override
-  public @NotNull Text subSequence(int start, int end) {
-    return slice(start, end - start);
+  public Text self() {
+    return textValue();
   }
 
-  public Text slice(int offset, int length) {
-    return Text.of(buffer, offset, length);
-  }
-
-  public Text slice(int offset) {
-    return slice(offset, length - offset);
+  @Override
+  public Text empty() {
+    return Text.EMPTY;
   }
 
   @Override
@@ -81,13 +83,47 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
   }
 
   /**
-   * @param with the prototype used to create an instance
+   * @implNote Because the cursor position can only move forward it is always safe to expose
+   *     sections that are already written as {@link Text}-slices sharing a section of the written
+   *     {@link #buffer} without making a defensive copy.
+   */
+  @Override
+  public Text wrap(char[] buffer, int offset, int length) {
+    checkSubSequence(offset, offset+length, buffer.length);
+    if (buffer == this.buffer) {
+      if (offset >= this.length)
+        throw new IndexOutOfBoundsException("offset must not exceed the buffers content");
+      if (offset + length > this.length)
+        throw new IndexOutOfBoundsException("offset + length must not exceed the buffers content");
+    }
+    return Text.of(buffer, offset, length);
+  }
+
+  /**
+   * @implNote this will make a copy of this builders buffer to that it does not expose its internal
+   *     buffer to the {@link CharSeqFragment#wrap(char[], int, int)} receiver.
+   * @param proto the prototype used to create a new instance
    * @return this builders content as the given type
    * @param <T> type of result
    * @since 1.13
    */
-  public <T extends CharSeqFragment<T>> T wrap(T with) {
-    return with.wrap(buffer, 0, length);
+  public <T extends CharSeqFragment<T>> T wrap(T proto) {
+    return proto.wrap(toCharArray(), 0, length);
+  }
+
+  @Override
+  public char[] toCharArray() {
+    return Arrays.copyOf(buffer, length);
+  }
+
+  @Override
+  public void copyTo(char[] dest, int offset) {
+    System.arraycopy(buffer, 0, dest, offset, length);
+  }
+
+  @Override
+  public void copyTo(char[] dest, int offset, int from, int length) {
+    System.arraycopy(buffer, from, dest, offset, length);
   }
 
   @Override
@@ -97,12 +133,12 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
 
   @Override
   public boolean equals(Object obj) {
-    return  obj instanceof TextBuilder other && length == other.length && textValue().equals(other.textValue());
+    return  obj instanceof TextBuilder other && length == other.length && contentEquals(other);
   }
 
   @Override
   public int hashCode() {
-    return textValue().hashCode();
+    return CharSeq.hashCode(this);
   }
 
   /*

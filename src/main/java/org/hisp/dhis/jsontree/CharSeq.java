@@ -158,9 +158,9 @@ public interface CharSeq extends CharSequence {
    *
    * @param test the test to perform on each character
    * @param startIndex index in this sequence to start testing from
-   * @param endIndex the last index to check
+   * @param endIndex the end of the checked range (exclusive)
    * @return the first index that did not satisfy the given test starting from given start index;
-   *     returns {@code endIndex+1} if all characters from the start did not satisfy the test;
+   *     returns {@code endIndex} if all characters from the start did not satisfy the test;
    *     {@code -1} when start index is outside valid index range for this sequence. This is equal
    *     to the number of characters skipped if starting from zero or {@code startIndex + characters
    *     skipped}.
@@ -168,6 +168,7 @@ public interface CharSeq extends CharSequence {
    */
   default int skip(CharPredicate test, int startIndex, int endIndex) {
     if (startIndex < 0) return -1;
+    if (startIndex >= endIndex) return -1;
     int len = length();
     if (startIndex >= len) return -1;
     int e = Math.min(len, endIndex);

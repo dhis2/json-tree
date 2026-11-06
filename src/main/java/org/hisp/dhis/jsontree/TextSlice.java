@@ -2,10 +2,10 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.NotNull;
 
-import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import static java.lang.Math.abs;
+import static org.hisp.dhis.jsontree.CharSeqFragment.checkSubSequence;
 
 /**
  * A no-defensive-copy view of a slice from a {@code char[]} text sequence.
@@ -81,6 +81,7 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public Text wrap(char[] buffer, int offset, int length) {
+    checkSubSequence(offset, offset+length, buffer.length);
     return new TextSlice(buffer, offset, length);
   }
 
@@ -91,7 +92,7 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public @NotNull TextSlice subSequence(int start, int end) {
-    CharSeqFragment.checkSubSequence(start, end, length);
+    checkSubSequence(start, end, length);
     if (start == 0 && end == length) return this;
     return new TextSlice(buffer, offset + start, end - start);
   }
