@@ -170,7 +170,6 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
         if (buffer[offset + i] != other.buffer[i + other.offset]) return false;
       return true;
     }
-    // unreachable since TextSlice is the only permitted Text
     return Text.super.contentEquals(text);
   }
 
@@ -198,8 +197,8 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
     if (suffix.isEmpty()) return this;
     char[] res = new char[length + suffix.length()];
     System.arraycopy(buffer, offset, res, 0, length);
-    if (suffix instanceof TextSlice b) {
-      System.arraycopy(b.buffer, b.offset, res, length, b.length);
+    if (suffix instanceof CharSeq cs) {
+      cs.copyTo(res, length);
     } else {
       for (int i = 0; i < suffix.length(); i++) res[length + i] = suffix.charAt(i);
     }
