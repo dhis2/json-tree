@@ -768,4 +768,35 @@ class TextTest {
     assertEquals(-1, original.offsetIn(unrelated));
     assertEquals(-1, unrelated.offsetIn(original));
   }
+
+  @DisplayName("skip(CharPredicate)")
+  @Test
+  void testSkip() {
+    assertEquals(3, Text.of("abc").skip(c -> true));
+    assertEquals(0, Text.of("abc").skip(c -> false));
+    assertEquals(3, Text.of("   abc").skip(c -> c == ' '));
+    assertEquals(0, Text.of("abc   ").skip(c -> c == ' '));
+    assertEquals(3, Text.of("   ").skip(c -> true));
+    assertEquals(3, Text.of("123abc").skip(Character::isDigit));
+    assertEquals(-1, Text.of("").skip(c -> true));
+  }
+
+  @DisplayName("skip(CharPredicate, int)")
+  @Test
+  void testSkipWithStart() {
+    assertEquals(3, Text.of("123abc").skip(Character::isDigit, 1));
+    assertEquals(6, Text.of("123abc").skip(c -> true, 2));
+    assertEquals(-1, Text.of("abc").skip(c -> true, 3));
+    assertEquals(-1, Text.of("abc").skip(c -> true, -1));
+  }
+
+  @DisplayName("skip(CharPredicate, int, int)")
+  @Test
+  void testSkipWithRange() {
+    assertEquals(3, Text.of("abc").skip(c -> true, 0, 3));
+    assertEquals(3, Text.of("abc").skip(c -> true, 0, 100));
+    assertEquals(2, Text.of("abcdef").skip(c -> c != 'c', 0, 3));
+    assertEquals(0, Text.of("abcdef").skip(c -> c == 'c', 0, 3));
+    assertEquals(-1, Text.of("abc").skip(c -> true, 3, 100));
+  }
 }

@@ -1,18 +1,16 @@
 package org.hisp.dhis.jsontree;
 
 /**
- * All the utility that really should have been in {@link CharSequence}
- * providing all read-only utility that is common for {@link String} and beyond
- * solely based on methods already defined in {@link CharSequence}.
- * In other words: a type implementing {@link CharSequence} can switch to {@link CharSeq}
- * to bring in all the utility provided without any further changes.
- * <p>
- * In addition, the API provides methods to transfer the content of the sequence to {@code char[]}
- * as well as parsing it to numeric primitives (without going via {@link String}).
+ * All the utility that really should have been in {@link CharSequence} providing all read-only
+ * utility that is common for {@link String} and beyond solely based on methods already defined in
+ * {@link CharSequence}. In other words: a type implementing {@link CharSequence} can switch to
+ * {@link CharSeq} to bring in all the utility provided without any further changes.
+ *
+ * <p>In addition, the API provides methods to transfer the content of the sequence to {@code
+ * char[]} as well as parsing it to numeric primitives (without going via {@link String}).
  *
  * @author Jan Bernitt
  * @since 1.13 (methods without since originate from Text in 1.9)
- *
  * @see CharSeqFragment
  * @see Text
  */
@@ -68,8 +66,7 @@ public interface CharSeq extends CharSequence {
   default boolean contains(CharPredicate test) {
     if (isEmpty()) return false;
     int len = length();
-    for (int i = 0; i < len; i++)
-      if (test.test(charAt(i))) return true;
+    for (int i = 0; i < len; i++) if (test.test(charAt(i))) return true;
     return false;
   }
 
@@ -141,6 +138,44 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
+   * @see #skip(CharPredicate, int, int)
+   * @since 1.13
+   */
+  default int skip(CharPredicate test) {
+    return skip(test, 0, length());
+  }
+
+  /**
+   * @see #skip(CharPredicate, int, int)
+   * @since 1.13
+   */
+  default int skip(CharPredicate test, int startIndex) {
+    return skip(test, startIndex, length());
+  }
+
+  /**
+   * Find the first character index in this sequence that does not satisfy the given test.
+   *
+   * @param test the test to perform on each character
+   * @param startIndex index in this sequence to start testing from
+   * @param endIndex the last index to check
+   * @return the first index that did not satisfy the given test starting from given start index;
+   *     returns {@code endIndex+1} if all characters from the start did not satisfy the test;
+   *     {@code -1} when start index is outside valid index range for this sequence. This is equal
+   *     to the number of characters skipped if starting from zero or {@code startIndex + characters
+   *     skipped}.
+   * @since 1.13
+   */
+  default int skip(CharPredicate test, int startIndex, int endIndex) {
+    if (startIndex < 0) return -1;
+    int len = length();
+    if (startIndex >= len) return -1;
+    int e = Math.min(len, endIndex);
+    for (int i = startIndex; i < e; i++) if (!test.test(charAt(i))) return i;
+    return e;
+  }
+
+  /**
    * @see String#startsWith(String)
    */
   default boolean startsWith(CharSequence prefix) {
@@ -191,6 +226,8 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
+   * @implNote This is not RegEx matching like {@link String#matches(String)} but rather matching
+   *     using this sequence as {@link InputExpression} pattern.
    * @param input an input string
    * @return if this text as pattern matches the entirety of the given input
    */
@@ -200,8 +237,10 @@ public interface CharSeq extends CharSequence {
 
   /**
    * Match an input sub-sequence against this text as pattern.
-   * @see InputExpression
    *
+   * @implNote This is not RegEx matching like {@link String#matches(String)} but rather matching
+   *     using this sequence as {@link InputExpression} pattern.
+   * @see InputExpression
    * @param input an input string
    * @param offset the first character to match
    * @param len length from the first character to match
@@ -234,7 +273,7 @@ public interface CharSeq extends CharSequence {
    */
   default void copyTo(char[] dest, int offset) {
     int len = length();
-    for (int i = 0; i < len; i++) dest[i+offset] = charAt(i);
+    for (int i = 0; i < len; i++) dest[i + offset] = charAt(i);
   }
 
   /**
@@ -247,7 +286,7 @@ public interface CharSeq extends CharSequence {
    * @since 1.10
    */
   default void copyTo(char[] dest, int offset, int from, int length) {
-    int to = from+length;
+    int to = from + length;
     for (int i = from; i < to; i++) dest[offset++] = charAt(i);
   }
 
@@ -287,7 +326,8 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
-   * @return true, if this text is exactly "NaN", "Infinity" or "-Infinity" (Java double special number literals)
+   * @return true, if this text is exactly "NaN", "Infinity" or "-Infinity" (Java double special
+   *     number literals)
    */
   default boolean isSpecialDecimal() {
     return contentEquals("NaN") || contentEquals("Infinity") || contentEquals("-Infinity");

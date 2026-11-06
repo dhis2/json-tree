@@ -80,6 +80,16 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
     return Text.of(buffer,0, length);
   }
 
+  /**
+   * @param with the prototype used to create an instance
+   * @return this builders content as the given type
+   * @param <T> type of result
+   * @since 1.13
+   */
+  public <T extends CharSeqFragment<T>> T wrap(T with) {
+    return with.wrap(buffer, 0, length);
+  }
+
   @Override
   public @NotNull String toString() {
     return new String(buffer, 0, length);
@@ -176,7 +186,7 @@ public final class TextBuilder implements Appender, Textual, CharSequence {
   }
 
   private void appendSlice(CharSequence value, int start, int len) {
-    if (len > 16 && value instanceof Text t) {
+    if (len > 16 && value instanceof CharSeq t) {
       t.copyTo(buffer, length, start, len);
       length += len;
     } else {

@@ -550,4 +550,60 @@ class CharSeqFragmentTest {
     assertDoesNotThrow(() -> CharSeqFragment.checkSubSequence(2, 2, 5));
     assertDoesNotThrow(() -> CharSeqFragment.checkSubSequence(0, 0, 0));
   }
+
+  // ---------------------------------------------------------------------------
+  // skip
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testSkip() {
+    // skip past characters matching the predicate; return first non-matching index
+    assertEquals(3, seq("abc").skip(c -> true));
+    assertEquals(0, seq("abc").skip(c -> false));
+    assertEquals(3, seq("   abc").skip(c -> c == ' '));
+    assertEquals(0, seq("abc   ").skip(c -> c == ' '));
+    assertEquals(3, seq("   ").skip(c -> true));
+    assertEquals(3, seq("   ").skip(c -> c == ' '));
+    assertEquals(3, seq("123abc").skip(Character::isDigit));
+    assertEquals(1, seq("a.b.c").skip(c -> c != '.'));
+
+    // empty sequence -> -1 (startIndex 0 >= length 0)
+    assertEquals(-1, seq("").skip(c -> true));
+  }
+
+  @Test
+  void testSkipWithStartIndex() {
+    assertEquals(2, seq("  abc").skip(c -> c == ' ', 1));
+    assertEquals(3, seq("123abc").skip(Character::isDigit, 1));
+    assertEquals(3, seq("123abc").skip(Character::isDigit, 2));
+    assertEquals(6, seq("123abc").skip(c -> true, 2));
+
+    // start index == length or beyond -> -1
+    assertEquals(-1, seq("abc").skip(c -> true, 3));
+    assertEquals(-1, seq("abc").skip(c -> true, 4));
+    // negative start index -> -1
+    assertEquals(-1, seq("abc").skip(c -> true, -1));
+    // empty sequence with startIndex 0 -> -1
+    assertEquals(-1, seq("").skip(c -> true, 0));
+  }
+
+  @Test
+  void testSkipWithRange() {
+    // finds first non-matching char within the window
+    assertEquals(2, seq("abcdef").skip(c -> c != 'c', 0, 3));
+    assertEquals(0, seq("abcdef").skip(c -> c == 'c', 0, 3));
+    assertEquals(2, seq("abcdef").skip(c -> c != 'c', 2, 5));
+
+    // all characters in [startIndex, endIndex) match -> returns endIndex
+    assertEquals(3, seq("abcdef").skip(Character::isLetter, 0, 3));
+    assertEquals(5, seq("abcdef").skip(Character::isLetter, 2, 5));
+
+    // endIndex beyond length is clamped to length
+    assertEquals(3, seq("abc").skip(c -> true, 0, 100));
+    assertEquals(3, seq("abc").skip(c -> true, 1, 100));
+
+    // startIndex at/after length -> -1
+    assertEquals(-1, seq("abc").skip(c -> true, 3, 3));
+    assertEquals(-1, seq("abc").skip(c -> true, 3, 100));
+  }
 }
