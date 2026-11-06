@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -790,12 +791,12 @@ class TextBuilderTest {
 
     assertEquals(a, a);
     assertEquals(a, b);
-    Assertions.assertNotEquals(a, c);
+    assertNotEquals(a, c);
     assertEquals(new TextBuilder(), new TextBuilder());
 
     // deliberately not equal to a String or Text of the same content
-    Assertions.assertNotEquals(a, "hello");
-    Assertions.assertNotEquals(a, Text.of("hello"));
+    assertNotEquals("hello", a);
+    assertNotEquals(Text.of("hello"), a);
   }
 
   @Test
@@ -951,8 +952,6 @@ class TextBuilderTest {
 
   @Test
   void testSubSequence_FromZero_OnBuilder2() {
-    // regression: the dead `if (start == 0 && end == len)` in CharSeqFragment
-    // used to return `self` for every subSequence(0, n)
     TextBuilder b = new TextBuilder();
     b.appendAscii("hello");
     assertEquals("hel", b.subSequence(0, 3).toString());
