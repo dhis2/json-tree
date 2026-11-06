@@ -4,6 +4,8 @@ package org.hisp.dhis.jsontree;
  * All the utility that really should have been in {@link CharSequence}
  * providing all read-only utility that is common for {@link String} and beyond
  * solely based on methods already defined in {@link CharSequence}.
+ * In other words: a type implementing {@link CharSequence} can switch to {@link CharSeq}
+ * to bring in all the utility provided without any further changes.
  * <p>
  * In addition, the API provides methods to transfer the content of the sequence to {@code char[]}
  * as well as parsing it to numeric primitives (without going via {@link String}).

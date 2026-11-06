@@ -1,9 +1,8 @@
 package org.hisp.dhis.jsontree;
 
-import org.hisp.dhis.jsontree.internal.NotNull;
-
 import java.util.Arrays;
 import java.util.function.Consumer;
+import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
  * Is a {@link CharSeq} with manipulation methods all returning a consistent subtype.
@@ -58,7 +57,6 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
     checkSubSequence(start, end, length);
     if (start == 0 && end == length) return self();
     int len = end - start;
-    if (start == 0 && end == len) return self();
     char[] buffer = new char[len];
     for (int i = 0; i < len; i++) buffer[i] = charAt(start + i);
     return wrap(buffer, 0, len);
@@ -88,6 +86,7 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
   }
 
   /**
+   * @implNote This is not identical to {@link String#trim()} but trims ASCII indentation whitespace characters only
    * @return this text without left and right inline whitespace (tabs and spaces removed)
    */
   default T trim() {
@@ -95,6 +94,7 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
   }
 
   /**
+   * @implNote This is not identical to {@link String#strip()} but trims ASCII whitespace characters only
    * @return this text without leading or trailing whitespace (inline and newline/line-breaks)
    * @since 1.13
    */
@@ -185,10 +185,22 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
           "expected: 0 <= start(" + start + ") <= end (" + end + ") <= length(" + length + ')');
   }
 
+  /**
+   * The {@link CharPredicate} for {@link #trim()}.
+   *
+   * @param ch character to test
+   * @return true for ASCII indent whitespace
+   */
   static boolean isTrim(char ch) {
     return ch == ' ' || ch == '\t';
   }
 
+  /**
+   * The {@link CharPredicate} for {@link #strip()}.
+   *
+   * @param ch character to test
+   * @return true for ASCII whitespace
+   */
   static boolean isStrip(char ch) {
     return isTrim(ch) || ch == '\n' || ch == '\r';
   }

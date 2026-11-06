@@ -10,10 +10,11 @@ import org.hisp.dhis.jsontree.internal.NotNull;
 /**
  * A {@link String}-like API without requiring to manifest a {@link String} instance.
  *
- * @implNote The {@link Text} abstraction exists to enable views without defensive copying to allow
- *     for a very small memory overhead of sub-sequences found within a JSON document. Most
- *     prominent the JSON string node values and the names of object properties. This takes
- *     advantage of the fact that most such strings do not need JSON level decoding and can be
+ * @implNote The {@link Text} interface exists to hide the internals of {@link TextSlice} to enable
+ *     views without defensive copying.
+ *     <p>This allows for a very small memory overhead of sub-sequences found within a JSON
+ *     document. Most prominent the JSON string node values and the names of object properties. This
+ *     takes advantage of the fact that most such strings do not need JSON level decoding and can be
  *     direct views (slices) of the JSON document itself.
  * @author Jan Bernitt
  * @since 1.9
@@ -47,6 +48,9 @@ public sealed interface Text extends CharSeqFragment<Text> permits TextSlice {
   }
 
   /**
+   * Convert a {@link String} to {@link Text}. Caches short inputs under certain unspecified
+   * conditions.
+   *
    * @return The string's characters as {@link Text} mainly for user space API uses, tests and such.
    *     Internally it should be avoided to use this whenever a {@link Text} can be received from
    *     the {@link JsonNode} API instead.
@@ -70,6 +74,8 @@ public sealed interface Text extends CharSeqFragment<Text> permits TextSlice {
   }
 
   /**
+   * Convert a number to a {@link Text}. Caches 0-999.
+   *
    * @return {@link Text} for of any int number
    */
   static Text of(int value) {

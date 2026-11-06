@@ -123,7 +123,7 @@ public record InputExpression(List<Pattern> patterns) {
         break;
         case '(', ')': break; // these are NOOPs here, just mark block start/end for repeat/scan
         default:
-          if (opcode != input.charAt(pos++)) return -1;
+          if (pos >= len || opcode != input.charAt(pos++)) return -1;
       }
     }
     // ) at the end is special as it would be a NOOP
