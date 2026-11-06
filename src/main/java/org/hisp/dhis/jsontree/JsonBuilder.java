@@ -230,7 +230,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamObject(PrettyPrint config, OutputStream out, Consumer<JsonObjectBuilder> obj) {
-    try (Appender a =  Appender.ofUTF8(out)) {
+    try (IoAppender a =  Appender.ofUTF8(out)) {
       new JsonAppender(config, a).visitObject(obj);
     }
   }
@@ -250,7 +250,7 @@ public interface JsonBuilder {
    * @since 0.7
    */
   static void streamArray(PrettyPrint config, OutputStream out, Consumer<JsonArrayBuilder> arr) {
-    try (Appender a = Appender.ofUTF8(out)) {
+    try (IoAppender a = Appender.ofUTF8(out)) {
       new JsonAppender(config, a).visitArray(arr);
     }
   }

@@ -19,10 +19,6 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @apiNote Because the cursor position can only move forward it is always safe to expose sections
  *     that are already written as {@link Text}-slices sharing a section of the written {@link
  *     #buffer}.
- * @implNote The {@link TextBuilder} deliberately does not implement {@link Text} as it is a mutable
- *     value, whereas {@link Text} requires immutability. Instead, it implements {@link
- *     CharSequence} and {@link #slice(int, int)} to get immutable {@link Text} views on the current
- *     buffer that will not change even if the buffer is mutated later.
  * @author Jan Bernitt
  * @since 1.9
  */

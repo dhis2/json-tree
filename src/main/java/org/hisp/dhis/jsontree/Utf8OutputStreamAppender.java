@@ -46,7 +46,7 @@ import static org.hisp.dhis.jsontree.Appender.needsJsonEscaping;
  * @see TextBuilder
  * @since 1.12
  */
-final class Utf8OutputStreamAppender implements Appender {
+final class Utf8OutputStreamAppender implements IoAppender {
 
   private static final int BUFFER_SIZE = 8192;
 

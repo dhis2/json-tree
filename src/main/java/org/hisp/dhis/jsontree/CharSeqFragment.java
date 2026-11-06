@@ -25,12 +25,15 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
    */
 
   /**
-   * @return this in the right type (to avoid casting)
+   * @return an immutable view of this sequence in its current state, can be {@code this} in case no
+   *     changes can be observed later on.
+   * @since 1.13
    */
   T self();
 
   /**
    * @return a value representing the empty sequence with the right type
+   * @since 1.13
    */
   T empty();
 
@@ -44,6 +47,7 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
    * @param offset start of the sequence in the buffer represented by the returned sequence
    * @param length length of the returned sequence starting at offset in the given buffer
    * @return a new instance representing the sequence given by the slice from the buffer
+   * @since 1.13
    */
   T wrap(char[] buffer, int offset, int length);
 

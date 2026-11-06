@@ -468,7 +468,7 @@ class Utf8OutputStreamAppenderTest {
   @Test
   void testClose_FlushesAndClosesUnderlying() {
     RecordingStream out = new RecordingStream();
-    Appender a = Appender.ofUTF8(out);
+    IoAppender a = Appender.ofUTF8(out);
     a.appendAscii("hi");
     assertEquals(0, out.bytes.size(), "data should still be buffered in appender");
     assertFalse(out.closed, "underlying stream must not be closed before close()");
@@ -483,7 +483,7 @@ class Utf8OutputStreamAppenderTest {
 
   private static String encode(Consumer<Appender> actions) {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
-    try (Appender a = Appender.ofUTF8(out)) {
+    try (IoAppender a = Appender.ofUTF8(out)) {
       actions.accept(a);
     }
     return out.toString(StandardCharsets.UTF_8);
