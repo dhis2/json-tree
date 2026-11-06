@@ -21,7 +21,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
 public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Comparable<T> {
 
   /*
-  The 2 essential methods
+  The essential methods
    */
 
   /**
@@ -95,6 +95,14 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    */
   default T slice(int start, int end) {
     return subSequence(start, Math.max(start, end < 0 ? length()+end : end));
+  }
+
+  /**
+   * @see #slice(int, int)
+   * @since 1.13
+   */
+  default T slice(int start) {
+    return slice(start, length());
   }
 
   /**

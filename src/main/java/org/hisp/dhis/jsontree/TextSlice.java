@@ -91,7 +91,7 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   }
 
   @Override
-  public @NotNull TextSlice subSequence(int start, int end) {
+  public @NotNull Text subSequence(int start, int end) {
     checkSubSequence(start, end, length);
     if (start == 0 && end == length) return this;
     return new TextSlice(buffer, offset + start, end - start);
