@@ -5,7 +5,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
 import java.util.Arrays;
 
 import static java.lang.Math.abs;
-import static org.hisp.dhis.jsontree.CharSeqFragment.checkSubSequence;
+import static org.hisp.dhis.jsontree.CharFragment.checkSubSequence;
 
 /**
  * A no-defensive-copy view of a slice from a {@code char[]} text sequence.

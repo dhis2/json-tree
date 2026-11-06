@@ -713,11 +713,11 @@ class TextTest {
     assertEquals(Text.of("hello"), Text.of("hello").shrink(c -> c == 'x'));
     assertEquals(Text.of(""), Text.of("").shrink(c -> true));
     // strip/trim can be expressed via shrink
-    assertEquals(Text.of("hello"), Text.of(" hello ").shrink(CharSeqFragment::isStrip));
-    assertEquals(Text.of("hello"), Text.of(" hello ").shrink(CharSeqFragment::isTrim));
+    assertEquals(Text.of("hello"), Text.of(" hello ").shrink(CharFragment::isStrip));
+    assertEquals(Text.of("hello"), Text.of(" hello ").shrink(CharFragment::isTrim));
     // contrast: trim does not remove \n
-    assertEquals(Text.of("\nhello"), Text.of("\nhello").shrink(CharSeqFragment::isTrim));
-    assertEquals(Text.of("hello"), Text.of("\nhello").shrink(CharSeqFragment::isStrip));
+    assertEquals(Text.of("\nhello"), Text.of("\nhello").shrink(CharFragment::isTrim));
+    assertEquals(Text.of("hello"), Text.of("\nhello").shrink(CharFragment::isStrip));
   }
 
   @DisplayName("contentMemoryEquals(Text)")

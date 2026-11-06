@@ -11,7 +11,7 @@ package org.hisp.dhis.jsontree;
  *
  * @author Jan Bernitt
  * @since 1.13 (methods without since originate from Text in 1.9)
- * @see CharSeqFragment
+ * @see CharFragment
  * @see Text
  */
 public interface CharSeq extends CharSequence {

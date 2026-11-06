@@ -4,25 +4,25 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.DisplayName;
+
 import org.junit.jupiter.api.Test;
 
 /**
- * Tests the default API implementations of {@link CharSeq} and {@link CharSeqFragment} using a
+ * Tests the default API implementations of {@link CharSeq} and {@link CharFragment} using a
  * minimal implementation that only provides the abstract methods.
  *
  * <p>The {@link TestSeq} implementation deliberately provides nothing beyond {@link
- * CharSequence#length()}, {@link CharSequence#charAt(int)}, {@link CharSeqFragment#self()},
- * {@link CharSeqFragment#empty()} and {@link CharSeqFragment#wrap(char[], int, int)}. All other
+ * CharSequence#length()}, {@link CharSequence#charAt(int)}, {@link CharFragment#self()},
+ * {@link CharFragment#empty()} and {@link CharFragment#wrap(char[], int, int)}. All other
  * behaviour is exercised through the default methods of the base interfaces.
  */
-class CharSeqFragmentTest {
+class CharFragmentTest {
 
   /**
-   * Minimal implementation of {@link CharSeqFragment} that only provides the abstract methods.
+   * Minimal implementation of {@link CharFragment} that only provides the abstract methods.
    * Everything else is inherited from the base interfaces.
    */
-  private static final class TestSeq implements CharSeqFragment<TestSeq> {
+  private static final class TestSeq implements CharFragment<TestSeq> {
 
     private final char[] buffer;
     private final int offset;
@@ -219,23 +219,23 @@ class CharSeqFragmentTest {
     assertEquals("", seq("12345").shrink(Character::isDigit).toString());
     assertEquals("hello", seq("hello").shrink(c -> c == 'x').toString());
     assertEquals("", seq("").shrink(c -> true).toString());
-    assertEquals("hello", seq(" hello ").shrink(CharSeqFragment::isStrip).toString());
-    assertEquals("hello", seq(" hello ").shrink(CharSeqFragment::isTrim).toString());
+    assertEquals("hello", seq(" hello ").shrink(CharFragment::isStrip).toString());
+    assertEquals("hello", seq(" hello ").shrink(CharFragment::isTrim).toString());
   }
 
   @Test
   void testIsTrimAndIsStrip() {
-    assertTrue(CharSeqFragment.isTrim(' '));
-    assertTrue(CharSeqFragment.isTrim('\t'));
-    assertFalse(CharSeqFragment.isTrim('\n'));
-    assertFalse(CharSeqFragment.isTrim('\r'));
-    assertFalse(CharSeqFragment.isTrim('a'));
+    assertTrue(CharFragment.isTrim(' '));
+    assertTrue(CharFragment.isTrim('\t'));
+    assertFalse(CharFragment.isTrim('\n'));
+    assertFalse(CharFragment.isTrim('\r'));
+    assertFalse(CharFragment.isTrim('a'));
 
-    assertTrue(CharSeqFragment.isStrip(' '));
-    assertTrue(CharSeqFragment.isStrip('\t'));
-    assertTrue(CharSeqFragment.isStrip('\n'));
-    assertTrue(CharSeqFragment.isStrip('\r'));
-    assertFalse(CharSeqFragment.isStrip('a'));
+    assertTrue(CharFragment.isStrip(' '));
+    assertTrue(CharFragment.isStrip('\t'));
+    assertTrue(CharFragment.isStrip('\n'));
+    assertTrue(CharFragment.isStrip('\r'));
+    assertFalse(CharFragment.isStrip('a'));
   }
 
   // ---------------------------------------------------------------------------
@@ -538,17 +538,17 @@ class CharSeqFragmentTest {
   @Test
   void testCheckSubSequence() {
     assertThrows(
-        IndexOutOfBoundsException.class, () -> CharSeqFragment.checkSubSequence(-1, 0, 5));
+        IndexOutOfBoundsException.class, () -> CharFragment.checkSubSequence(-1, 0, 5));
     assertThrows(
-        IndexOutOfBoundsException.class, () -> CharSeqFragment.checkSubSequence(0, -1, 5));
+        IndexOutOfBoundsException.class, () -> CharFragment.checkSubSequence(0, -1, 5));
     assertThrows(
-        IndexOutOfBoundsException.class, () -> CharSeqFragment.checkSubSequence(0, 6, 5));
+        IndexOutOfBoundsException.class, () -> CharFragment.checkSubSequence(0, 6, 5));
     assertThrows(
-        IndexOutOfBoundsException.class, () -> CharSeqFragment.checkSubSequence(3, 2, 5));
+        IndexOutOfBoundsException.class, () -> CharFragment.checkSubSequence(3, 2, 5));
 
-    assertDoesNotThrow(() -> CharSeqFragment.checkSubSequence(0, 5, 5));
-    assertDoesNotThrow(() -> CharSeqFragment.checkSubSequence(2, 2, 5));
-    assertDoesNotThrow(() -> CharSeqFragment.checkSubSequence(0, 0, 0));
+    assertDoesNotThrow(() -> CharFragment.checkSubSequence(0, 5, 5));
+    assertDoesNotThrow(() -> CharFragment.checkSubSequence(2, 2, 5));
+    assertDoesNotThrow(() -> CharFragment.checkSubSequence(0, 0, 0));
   }
 
   // ---------------------------------------------------------------------------

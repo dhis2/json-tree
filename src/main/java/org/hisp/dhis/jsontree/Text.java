@@ -19,9 +19,9 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @author Jan Bernitt
  * @since 1.9
  * @see CharSeq
- * @see CharSeqFragment
+ * @see CharFragment
  */
-public sealed interface Text extends CharSeqFragment<Text> permits TextSlice {
+public sealed interface Text extends CharFragment<Text> permits TextSlice {
 
   /**
    * The empty {@link Text} (equivalent to {@code ""})

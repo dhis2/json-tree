@@ -7,9 +7,9 @@ import org.hisp.dhis.jsontree.internal.NotNull;
 /**
  * Is a {@link CharSeq} with manipulation methods all returning a consistent subtype.
  *
- * @implNote It is good practice to derive a sealed sub-interface of a {@link CharSeqFragment}
+ * @implNote It is good practice to derive a sealed sub-interface of a {@link CharFragment}
  * so that any call to its API will be monomorphic with a single implementation for said sub-interface.
- * This way the utility inherited from the abstract {@link CharSeq} and {@link CharSeqFragment}
+ * This way the utility inherited from the abstract {@link CharSeq} and {@link CharFragment}
  * comes without the overhead of polymorphic calls.
  *
  * @param <T> the subtype returned by manipulation (new immutable instances)
@@ -18,7 +18,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @since 1.13 (methods without since originate from Text in 1.9)
  * @see Text
  */
-public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, Comparable<T> {
+public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Comparable<T> {
 
   /*
   The 2 essential methods
@@ -102,7 +102,7 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
    * @return this text without left and right inline whitespace (tabs and spaces removed)
    */
   default T trim() {
-    return shrink(CharSeqFragment::isTrim);
+    return shrink(CharFragment::isTrim);
   }
 
   /**
@@ -111,7 +111,7 @@ public interface CharSeqFragment<T extends CharSeqFragment<T>> extends CharSeq, 
    * @since 1.13
    */
   default T strip() {
-    return shrink(CharSeqFragment::isStrip);
+    return shrink(CharFragment::isStrip);
   }
 
   /**
