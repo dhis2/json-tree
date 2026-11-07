@@ -149,7 +149,7 @@ class TextTemplateTest {
     @Test
     void ifWithoutArgumentFails() {
       IllegalStateException ex = assertThrows(IllegalStateException.class, () -> render("-- @if"));
-      assertEquals("@if requires ':name' argument: @if", ex.getMessage());
+      assertEquals("@if expression ends unexpectedly: ", ex.getMessage());
     }
 
     @Test
@@ -236,7 +236,7 @@ class TextTemplateTest {
     void trailingOperatorFails() {
       IllegalStateException ex =
           assertThrows(IllegalStateException.class, () -> render("-- @if :a &&\nA\n-- @end"));
-      assertEquals("Expression ends with operator: :a &&", ex.getMessage());
+      assertEquals("@if expression ends unexpectedly: :a &&", ex.getMessage());
     }
 
     @Test
@@ -428,7 +428,7 @@ class TextTemplateTest {
     void bareReplaceFails() {
       IllegalStateException ex =
           assertThrows(IllegalStateException.class, () -> render("-- @replace\nOLD"));
-      assertEquals("@replace requires ':name' argument: -- @replace", ex.getMessage());
+      assertEquals("@replace expression ends unexpectedly: ", ex.getMessage());
     }
 
     @Test

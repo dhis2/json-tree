@@ -9,24 +9,20 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
- * A general-purpose processor for {@code -- @directive} lines. Handles conditional blocks,
- * replacement blocks, reorder blocks and single-line insertions. Directives must be on their own
- * line as {@code -- @name}, except for {@code -- @end --@<any>} which resumes mid-line at the
- * embedded directive.
+ * A general-purpose text processor that uses {@code @directive} lines to handles conditional blocks,
+ * replacement blocks, reorder blocks and insertions.
  *
  * <h3>Built-in directives</h3>
  *
  * <pre>
- *   -- @if :name ... [-- @else ...] -- @end
- *   -- @replace :name [replacement] ... -- @end
+ *   -- @if {expr} ... [-- @else ...] -- @end
+ *   -- @replace {expr} [replacement] ... -- @end
  *   -- @reorder :name ... -- @end     (one or more consecutive siblings)
  *   -- @insert :name
  * </pre>
  *
- * <p>{@code @end} closes the innermost open block, whether the block was opened by {@code @if},
- * {@code @replace} or {@code @reorder}. {@code @endif} is accepted as an alias of {@code @end}. A
- * bare {@code @replace} (no {@code :condition}) is not valid; use {@code @end} to close a
- * replacement block.
+ * An <code>{expr}</code> are one or more <code>:name</code> references combined
+ * with <code>&&</code> and <code>||</code> (and binding stronger).
  *
  * <p>Consecutive {@code @reorder :name ... @end} blocks form a reorder sequence: they are emitted
  * in the order given by {@link #reorders} (name → ordinal), not in template order. The blocks must
@@ -103,7 +99,7 @@ public record TextTemplate(
     int pos = startPos;
     outer:
     while (pos < len) {
-      Text line = nextLine(input, pos);
+      Text line = lineOf(input, pos);
       int nextLineStart = Math.min(pos + line.length() + 1, len);
 
       Directive directive = null;
@@ -125,8 +121,9 @@ public record TextTemplate(
         }
         case ELSE, END -> {
           // resume after @else/@end
-          int space = line.indexOf(' ', line.indexOf('@'));
-          return new End(directive, space < 0 ? nextLineStart : pos + space);
+          int endPos = line.indexOf(' ', line.indexOf('@'));
+          endPos = endPos < 0 ? nextLineStart : pos + line.skip(TextTemplate::isNewline, endPos);
+          return new End(directive, endPos);
         }
         case INSERT -> processInsert(out, emit, line);
         case REPLACE -> {
@@ -165,11 +162,11 @@ public record TextTemplate(
    * started can only be closed by its own matching {@code @end}.
    */
   private End processIf(Text input, TextBuilder out, boolean emit, Text line, int nextLineStart) {
-    boolean cond = evalExpr(Directive.IF, line.subSequence(line.indexOf("@if ")+4));
-    End inner = processBlock(input, nextLineStart, out, emit && cond);
+    boolean satisfied = evalExpr(Directive.IF, line.subSequence(line.indexOf("@if")+3).trim());
+    End inner = processBlock(input, nextLineStart, out, emit && satisfied);
     if (inner.type() == Directive.END) return inner;
     if (inner.type() == Directive.ELSE) {
-      End after = processBlock(input, inner.pos(), out, emit && !cond);
+      End after = processBlock(input, inner.pos(), out, emit && !satisfied);
       if (after.type() == Directive.END) return after;
       throw new IllegalStateException(
           "@else block did not close with @end but with " + after.type() + ": " + line);
@@ -177,6 +174,82 @@ public record TextTemplate(
     throw new IllegalStateException(
         "@if block did not close with @end but with " + inner.type() + ": " + line);
   }
+
+  private End processReplace(
+      Text input, TextBuilder out, boolean emit, Text line, int nextLineStart) {
+    int assign = line.indexOf('=');
+    boolean noReplacement = assign < 0;
+    Text expr = line.subSequence(line.indexOf("@replace")+8, noReplacement ? line.length() : assign).trim();
+    if (noReplacement && (expr.contains('&') || expr.contains('|')))
+      throw new IllegalStateException("@replace without replacement must use a :name only but got: "+expr);
+    boolean replace = evalExpr(Directive.REPLACE, expr);
+
+    if (replace && emit) {
+      if (noReplacement) {
+        appendNonEmpty(out, inserts.apply(requireDirectiveNameRef(Directive.REPLACE, expr)));
+      } else {
+        appendNonEmpty(out, line.subSequence(assign+1).trim());
+      }
+    }
+
+    End inner = processBlock(input, nextLineStart, out, !replace && emit);
+    if (inner.type() != Directive.END) {
+      throw new IllegalStateException(
+          "@replace block did not close with @end but with " + inner.type() + ": " + line);
+    }
+    return inner;
+  }
+
+  private End processReorder(
+      Text input, TextBuilder out, boolean emit, Text line, int nextLineStart) {
+    int len = input.length();
+    List<ReorderBlock> blocks = new ArrayList<>();
+
+    String firstName = requireDirectiveNameRef(Directive.REORDER, line);
+    blocks.add(collectReorder(input, out, firstName, nextLineStart, line));
+
+    while (blocks.get(blocks.size() - 1).endPos() < len) {
+      int pos = blocks.get(blocks.size() - 1).endPos();
+      Text next = lineOf(input, pos);
+      if (!directives.test(next) || Directive.of(lineDirectiveName(next)) != Directive.REORDER) {
+        break;
+      }
+      String name = requireDirectiveNameRef(Directive.REORDER, next);
+      int startPos = Math.min(pos + next.length() + 1, len);
+      blocks.add(collectReorder(input, out, name, startPos, next));
+    }
+
+    // get end of last before reordering
+    int end = blocks.get(blocks.size() - 1).endPos();
+
+    if (emit) {
+      blocks.sort(Comparator.comparingInt(b -> reorders.applyAsInt(b.name())));
+      for (ReorderBlock block : blocks) {
+        processBlock(input, block.startPos(), out, true);
+      }
+    }
+    return new End(Directive.END, end);
+  }
+
+  /** Consumes a single {@code @reorder} body (from {@code startPos} through its {@code @end}). */
+  private ReorderBlock collectReorder(
+      Text input, TextBuilder out, String name, int startPos, Text opener) {
+    End end = processBlock(input, startPos, out, false);
+    if (end.type() != Directive.END) {
+      throw new IllegalStateException(
+          "@reorder block '"
+              + name
+              + "' did not close with @end but with "
+              + end.type()
+              + ": "
+              + opener);
+    }
+    return new ReorderBlock(name, startPos, end.pos());
+  }
+
+  /*
+  Expressions
+   */
 
   private boolean evalExpr(Directive directive, Text expr) {
     validateExpr(directive, expr);
@@ -225,106 +298,43 @@ public record TextTemplate(
       if (c == '&' || c == '|') {
         if (i >= len || expr.charAt(i) != c)
           throw new IllegalStateException(
-              "Single '" + c + "' in @if expression (use '" + c + c + "'): " + expr);
+              "Single '" + c + "' in "+directive+" expression (use '" + c + c + "'): " + expr);
         if (expectTerm)
           throw new IllegalStateException(
-              "Unexpected '" + c + c + "' at start of @if expression: " + expr);
+              "Unexpected '" + c + c + "' at start of "+directive+" expression: " + expr);
         expectTerm = true;
         inTerm = false;
         i ++; // skip second symbol
-       } else if (c == ' ' || c == '\t') {
+      } else if (c == ' ' || c == '\t') {
         if (inTerm) inTerm = false;
       } else {
         if (!expectTerm && !inTerm)
           throw new IllegalStateException(
-              "Missing operator between terms in @if (use && or ||): " + expr);
+              "Missing operator between terms in "+directive+" (use && or ||): " + expr);
         if (expectTerm && c != ':')
-          throw new IllegalStateException("@if requires ':name' argument: " + expr);
+          throw new IllegalStateException(directive+" requires ':name' argument: " + expr);
         expectTerm = false;
         inTerm = true;
       }
     }
     if (expectTerm)
-      throw new IllegalStateException("Expression ends with operator: " + expr);
-
-  }
-
-  private End processReplace(
-      Text input, TextBuilder out, boolean emit, Text line, int nextLineStart) {
-    String condition = requireDirectiveNameRef(Directive.REPLACE, line);
-    int assign = line.indexOf('=');
-    Text expr = line.subSequence(line.indexOf(':'), assign < 0 ? line.length() : assign);
-    boolean replace = evalExpr(Directive.REPLACE, expr);
-
-    if (replace && emit) {
-      if (assign < 0) {
-        appendNonEmpty(out, inserts.apply(condition));
-      } else {
-        appendNonEmpty(out, line.subSequence(assign+1).trim());
-      }
-    }
-
-    End inner = processBlock(input, nextLineStart, out, !replace && emit);
-    if (inner.type() != Directive.END) {
-      throw new IllegalStateException(
-          "@replace block did not close with @end but with " + inner.type() + ": " + line);
-    }
-    return inner;
-  }
-
-  private End processReorder(
-      Text input, TextBuilder out, boolean emit, Text line, int nextLineStart) {
-    int len = input.length();
-    List<ReorderBlock> blocks = new ArrayList<>();
-
-    String firstName = requireDirectiveNameRef(Directive.REORDER, line);
-    blocks.add(collectReorder(input, out, firstName, nextLineStart, line));
-
-    while (blocks.get(blocks.size() - 1).endPos() < len) {
-      int pos = blocks.get(blocks.size() - 1).endPos();
-      Text next = nextLine(input, pos);
-      if (!directives.test(next) || Directive.of(lineDirectiveName(next)) != Directive.REORDER) {
-        break;
-      }
-      String name = requireDirectiveNameRef(Directive.REORDER, next);
-      int startPos = Math.min(pos + next.length() + 1, len);
-      blocks.add(collectReorder(input, out, name, startPos, next));
-    }
-
-    // get end of last before reordering
-    int end = blocks.get(blocks.size() - 1).endPos();
-
-    if (emit) {
-      blocks.sort(Comparator.comparingInt(b -> reorders.applyAsInt(b.name())));
-      for (ReorderBlock block : blocks) {
-        processBlock(input, block.startPos(), out, true);
-      }
-    }
-    return new End(Directive.END, end);
-  }
-
-  /** Consumes a single {@code @reorder} body (from {@code startPos} through its {@code @end}). */
-  private ReorderBlock collectReorder(
-      Text input, TextBuilder out, String name, int startPos, Text opener) {
-    End end = processBlock(input, startPos, out, false);
-    if (end.type() != Directive.END) {
-      throw new IllegalStateException(
-          "@reorder block '"
-              + name
-              + "' did not close with @end but with "
-              + end.type()
-              + ": "
-              + opener);
-    }
-    return new ReorderBlock(name, startPos, end.pos());
+      throw new IllegalStateException(directive+ " expression ends unexpectedly: " + expr);
   }
 
   // ---- shared helpers ----
 
-  private static Text nextLine(Text input, int pos) {
+  /** Line content with any trailing {@code \r} removed. */
+  private static Text lineOf(Text input, int pos) {
     int nl = input.indexOf('\n', pos);
-    int lineEnd = nl < 0 ? input.length() : nl;
-    return input.subSequence(pos, lineEnd);
+    int end = nl < 0 ? input.length() : nl;
+    if (end > pos && input.charAt(end - 1) == '\r') end--;
+    return input.subSequence(pos, end);
+  }
+
+  /** Position just past the {@code \n} (or EOF). */
+  private static int nextLineStart(Text input, int pos) {
+    int nl = input.indexOf('\n', pos);
+    return nl < 0 ? input.length() : nl + 1;
   }
 
   /**
@@ -344,7 +354,7 @@ public record TextTemplate(
     int s = line.indexOf(':');
     if (s < 0) throw new IllegalStateException(name + " requires ':name' argument: " + line);
     int e = skipAlphanumeric(line, s + 1);
-    if (e == s) throw new IllegalStateException("@name argument must have a letter: " + line);
+    if (e == s + 1) throw new IllegalStateException("@name argument must have a letter: " + line);
     Text arg = line.subSequence(s + 1, e);
     return arg.toString();
   }
@@ -367,5 +377,9 @@ public record TextTemplate(
 
   private static boolean isIndent(char c) {
     return c == ' ' || c == '\t';
+  }
+
+  private static boolean isNewline(char c) {
+    return c == '\r' || c == '\n';
   }
 }
