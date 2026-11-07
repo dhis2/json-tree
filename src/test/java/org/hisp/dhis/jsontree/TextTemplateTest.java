@@ -531,6 +531,18 @@ class TextTemplateTest {
     }
   }
 
+  @Test void insertNameWithUnderscoreFails() {
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> render("-- @insert :foo_bar"));
+    assertEquals("@insert name must be alphanumeric: -- @insert :foo_bar", ex.getMessage());
+  }
+
+  @Test void ifNameWithUnderscoreFails() {
+    IllegalStateException ex = assertThrows(IllegalStateException.class,
+        () -> render("-- @if :foo_bar\nA\n-- @end"));
+    assertEquals("Name must be alphanumeric: :foo_bar", ex.getMessage());
+  }
+
   // ============================== Unknown directive ==============================
 
   @Nested
@@ -541,6 +553,117 @@ class TextTemplateTest {
       IllegalStateException ex =
           assertThrows(IllegalStateException.class, () -> render("-- @bogus\nA"));
       assertEquals("Unknown directive @bogus", ex.getMessage());
+    }
+  }
+
+  // ============================== CRLF ==============================
+
+  @Nested
+  class CRLF {
+
+    @Test
+    void ifWithCrlf() {
+      assertEquals("A\n", render("-- @if :x\r\nA\r\n-- @end\r\n", Set.of("x")));
+    }
+
+    @Test
+    void ifElseWithCrlf() {
+      assertEquals("A\n", render("-- @if :x\r\nA\r\n-- @else\r\nB\r\n-- @end\r\n", Set.of("x")));
+      assertEquals("B\n", render("-- @if :x\r\nA\r\n-- @else\r\nB\r\n-- @end\r\n"));
+    }
+
+    @Test
+    void insertWithCrlf() {
+      assertEquals(
+          "A\nX\nB\n", render("A\r\n-- @insert :x\r\nB\r\n", Set.of(), Map.of("x", "X")));
+    }
+
+    @Test
+    void contentIsNormalisedToLf() {
+      assertEquals("A\nB\n", render("A\r\nB"));
+    }
+
+    @Test
+    void mixedLfAndCrlfWork() {
+      assertEquals("A\nB\n", render("-- @if :x\r\nA\n-- @end\r\nB", Set.of("x")));
+    }
+
+    @Test
+    void topLevelEndWithCrlfFails() {
+      IllegalStateException ex =
+          assertThrows(IllegalStateException.class, () -> render("-- @end\r\nA"));
+      assertEquals("@end without opening directive", ex.getMessage());
+    }
+  }
+
+  // ============================== Tab separators ==============================
+
+  @Nested
+  class TabSeparated {
+
+    @Test
+    void ifWithTabArgument() {
+      assertEquals("A\n", render("-- @if\t:x\nA\n-- @end", Set.of("x")));
+    }
+
+    @Test
+    void insertWithTabArgument() {
+      assertEquals(
+          "A\nX\nB\n", render("A\n-- @insert\t:x\nB", Set.of(), Map.of("x", "X")));
+    }
+
+    @Test
+    void replaceWithTabArgument() {
+      assertEquals("X\n", render("-- @replace\t:x =X\nOLD\n-- @end", Set.of("x")));
+    }
+
+    @Test
+    void reorderWithTabArgument() {
+      assertEquals(
+          "A\n", render("-- @reorder\t:a\nA\n-- @end", Set.of(), Map.of(), Map.of()));
+    }
+
+    @Test
+    void endChainWithTabSeparator() {
+      assertEquals(
+          "B\n", render("-- @if :a\nA\n-- @end\t--@if :b\nB\n-- @end", Set.of("b")));
+    }
+
+    @Test
+    void endElseChainWithTabSeparator() {
+      assertEquals(
+          "E\n", render("-- @if :o\n-- @if :a\nA\n-- @end\t--@else\nE\n-- @end"));
+    }
+  }
+
+  // ============================== Trailing content ==============================
+
+  @Nested
+  class TrailingContent {
+
+    @Test
+    void textAfterEndIsEmittedAsContent() {
+      // After a true @if, " some note" is back in the enclosing context
+      assertEquals(
+          "A\n some note\n", render("-- @if :x\nA\n-- @end some note", Set.of("x")));
+      // After a false @if, "A" is skipped but " some note" is still emitted
+      assertEquals(" some note\n", render("-- @if :x\nA\n-- @end some note"));
+    }
+
+    @Test
+    void colonArgumentAfterEndIsEmittedAsContent() {
+      assertEquals("A\n :x\n", render("-- @if :x\nA\n-- @end :x", Set.of("x")));
+    }
+
+    @Test
+    void textAfterElseIsEmittedAsContent() {
+      // true branch: else branch never runs, so " some note" is not emitted
+      assertEquals(
+          "A\n", render("-- @if :x\nA\n-- @else some note\nB\n-- @end", Set.of("x")));
+      // false branch: " some note" is emitted at the start of the else branch
+      assertEquals(
+          " some note\nB\n",
+          render("-- @if :x\nA\n-- @else some note\nB\n-- @end"));
     }
   }
 }

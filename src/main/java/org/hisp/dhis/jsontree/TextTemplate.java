@@ -100,7 +100,7 @@ public record TextTemplate(
     outer:
     while (pos < len) {
       Text line = lineOf(input, pos);
-      int nextLineStart = Math.min(pos + line.length() + 1, len);
+      int nextLineStart = nextLineStart(input, pos);
 
       Directive directive = null;
       if (directives.test(line)) directive = Directive.of(lineDirectiveName(line));
@@ -120,10 +120,12 @@ public record TextTemplate(
           continue outer;
         }
         case ELSE, END -> {
-          // resume after @else/@end
-          int endPos = line.indexOf(' ', line.indexOf('@'));
-          endPos = endPos < 0 ? nextLineStart : pos + line.skip(TextTemplate::isNewline, endPos);
-          return new End(directive, endPos);
+          int nameEnd = line.indexOf('@') + 1;
+          while (nameEnd < line.length() && isAlphanumeric(line.charAt(nameEnd))) nameEnd++;
+          int resume = nameEnd < line.length() && isIndent(line.charAt(nameEnd))
+              ? pos + nameEnd
+              : nextLineStart(input, pos);
+          return new End(directive, resume);
         }
         case INSERT -> processInsert(out, emit, line);
         case REPLACE -> {
@@ -215,7 +217,7 @@ public record TextTemplate(
         break;
       }
       String name = requireDirectiveNameRef(Directive.REORDER, next);
-      int startPos = Math.min(pos + next.length() + 1, len);
+      int startPos = nextLineStart(input, pos);
       blocks.add(collectReorder(input, out, name, startPos, next));
     }
 
@@ -285,7 +287,11 @@ public record TextTemplate(
   }
 
   private boolean evalTest(Text ref) {
-    // cut of leading :
+    // ref is guaranteed by validateExpr to start with ':'
+    for (int i = 1; i < ref.length(); i++) {
+      if (!isAlphanumeric(ref.charAt(i)))
+        throw new IllegalStateException("Name must be alphanumeric: " + ref);
+    }
     return tests.test(ref.subSequence(1).toString());
   }
 
@@ -344,9 +350,9 @@ public record TextTemplate(
   public static Text lineDirectiveName(Text line) {
     int start = line.indexOf('@');
     if (start < 0) return null;
-    int end = line.indexOf(' ', start);
-    if (end < 0) end = line.length();
-    if (start + 1 == end) return null;
+    int end = start + 1;
+    while (end < line.length() && isAlphanumeric(line.charAt(end))) end++;
+    if (end == start + 1) return null;
     return line.subSequence(start + 1, end);
   }
 
@@ -354,9 +360,11 @@ public record TextTemplate(
     int s = line.indexOf(':');
     if (s < 0) throw new IllegalStateException(name + " requires ':name' argument: " + line);
     int e = skipAlphanumeric(line, s + 1);
-    if (e == s + 1) throw new IllegalStateException("@name argument must have a letter: " + line);
-    Text arg = line.subSequence(s + 1, e);
-    return arg.toString();
+    if (e == s + 1)
+      throw new IllegalStateException(name+" argument must have a letter: " + line);
+    if (e < line.length() && !isIndent(line.charAt(e)))
+      throw new IllegalStateException(name + " name must be alphanumeric: " + line);
+    return line.subSequence(s + 1, e).toString();
   }
 
   private static int skipAlphanumeric(Text line, int i) {
@@ -379,7 +387,4 @@ public record TextTemplate(
     return c == ' ' || c == '\t';
   }
 
-  private static boolean isNewline(char c) {
-    return c == '\r' || c == '\n';
-  }
 }

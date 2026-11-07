@@ -25,7 +25,7 @@ While designed with SQL in mind, `TextTemplate` is useful for many text-templati
 | `@end`     | … `@end`                            | close the innermost open block                                           |
 | `@insert`  | `@insert :name`                     | substitute text registered for the name                                  |
 | `@replace` | `@replace <expr> = <text>` … `@end` | replace the block with text when the expression is true                  |
-| `@replace` | `@replace :name` … `@end`           | replace the block with a substitude registered for the name              |
+| `@replace` | `@replace :name` … `@end`           | replace the block with a substitute registered for the name              |
 | `@reorder` | `@reorder :name` … `@end`           | position the block by a caller-supplied sort key for a cluster of blocks |
 
 Block directives (`@if`, `@replace`, `@reorder`) all close with `@end`. Blocks nest.
@@ -57,7 +57,7 @@ Opens a block that is emitted only when its condition holds:
 
 If the condition is true, the block is emitted; otherwise its contents are skipped. Nested blocks compose: an inner block is emitted only when both its condition and all enclosing `@if` conditions are true.
 
-### Conditions
+**Conditions**
 
 `@if` and `@replace` accept compound conditions:
 
@@ -155,18 +155,22 @@ The choice is two-way:
 - **Condition true** — the block body (between the opening directive and `@end`) is discarded; the opening line is replaced by the replacement text.
 - **Condition false** — the opening line is removed; the block body is emitted normally.
 
-The condition is an expression as for `@if` (see §@if). Replacement text has two forms:
+The condition is an expression as for `@if`. Replacement text has two forms:
 
     -- @replace :counting = count(*)     inline replacement
     -- @replace :counting                lookup by name (as @insert)
 
-When inline text follows `=`, it is emitted verbatim (surrounding whitespace trimmed). When no inline text is given, the replacement is looked up by name. If no text is registered for the name, the opening line is removed and the body is discarded — useful for making a whole block disappear.
+When inline text follows `=`, it is emitted verbatim (surrounding whitespace trimmed). 
+When no inline text is given, the replacement is looked up by name. 
+If no text is registered for the name, the opening line is removed and the body is discarded — useful for making a whole block disappear.
 
 The lookup form accepts only a single `:name`; using `&&` or `||` without an inline `= <text>` is an error. 
 Complex conditions only apply to the inline form (`@replace <expr> = <text>`) as `:name` doubles as the
 test and named insert when doing lookup by name. 
 
-The body is processed in both branches. In the true branch, output is suppressed but inner directives (their structure and arguments) are still validated. In the false branch, nested blocks are processed normally with the current emission state.
+The body is processed in both branches. 
+In the true branch, output is suppressed but inner directives (their structure and arguments) are still validated. 
+In the false branch, nested blocks are processed normally with the current emission state.
 
 `@replace :x =` (no text after the `=`) replaces the body with nothing and is equivalent to 
 `@replace :x` when an empty text is registered for `x`. The `=` form does not fall back to a lookup.
