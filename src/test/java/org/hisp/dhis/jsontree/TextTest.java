@@ -660,4 +660,143 @@ class TextTest {
         Text.of("+0").trimInteger()
             .contentEquals(Text.of("0").trimInteger()));
   }
+
+  @DisplayName("contains(CharPredicate)")
+  @Test
+  void testContains_CharPredicate() {
+    Text t = Text.of("hello");
+    assertTrue(t.contains(Character::isLetter));
+    assertTrue(t.contains(c -> c == 'h'));
+    assertTrue(t.contains(c -> c == 'o'));
+    assertFalse(t.contains(c -> c == 'z'));
+    assertFalse(t.contains(Character::isDigit));
+    assertFalse(Text.of("").contains(c -> true));
+    assertTrue(Text.of("a1").contains(Character::isDigit));
+    assertTrue(Text.of("a1").contains(c -> c == '1'));
+  }
+
+  @DisplayName("subSequence(int)")
+  @Test
+  void testSubSequence_int() {
+    Text t = Text.of("hello");
+    assertEquals(Text.of("hello"), t.subSequence(0));
+    assertEquals(Text.of("ello"), t.subSequence(1));
+    assertEquals(Text.of("o"), t.subSequence(4));
+    assertEquals(Text.of(""), t.subSequence(5));
+    assertSame(t, t.subSequence(0), "subSequence(0) should return this");
+    assertThrows(IndexOutOfBoundsException.class, () -> t.subSequence(-1));
+    assertThrows(IndexOutOfBoundsException.class, () -> t.subSequence(6));
+  }
+
+  @DisplayName("strip()")
+  @Test
+  void testStrip() {
+    assertEquals(Text.of("hello"), Text.of("hello").strip());
+    assertEquals(Text.of("hello"), Text.of(" hello ").strip());
+    assertEquals(Text.of("hello"), Text.of("\thello\t").strip());
+    assertEquals(Text.of("hello"), Text.of("\nhello\n").strip());
+    assertEquals(Text.of("hello"), Text.of("\rhello\r").strip());
+    assertEquals(Text.of("hello"), Text.of(" \t\n\r hello \r\n\t ").strip());
+    assertEquals(Text.of(""), Text.of(" \t\n\r ").strip());
+    assertEquals(Text.of("a b"), Text.of("  a b  ").strip());
+    // strip differs from trim: newlines are removed
+    assertEquals(Text.of("\nhello"), Text.of("\nhello").trim());
+    assertEquals(Text.of("hello"), Text.of("\nhello").strip());
+  }
+
+  @DisplayName("shrink(CharPredicate)")
+  @Test
+  void testShrink() {
+    assertEquals(Text.of("hello"), Text.of("xxhelloxx").shrink(c -> c == 'x'));
+    assertEquals(Text.of("hello"), Text.of("123hello456").shrink(Character::isDigit));
+    assertEquals(Text.of(""), Text.of("12345").shrink(Character::isDigit));
+    assertEquals(Text.of("hello"), Text.of("hello").shrink(c -> c == 'x'));
+    assertEquals(Text.of(""), Text.of("").shrink(c -> true));
+    // strip/trim can be expressed via shrink
+    assertEquals(Text.of("hello"), Text.of(" hello ").shrink(CharFragment::isStrip));
+    assertEquals(Text.of("hello"), Text.of(" hello ").shrink(CharFragment::isTrim));
+    // contrast: trim does not remove \n
+    assertEquals(Text.of("\nhello"), Text.of("\nhello").shrink(CharFragment::isTrim));
+    assertEquals(Text.of("hello"), Text.of("\nhello").shrink(CharFragment::isStrip));
+  }
+
+  @DisplayName("contentMemoryEquals(Text)")
+  @Test
+  void testContentMemoryEquals() {
+    Text original = Text.of("hello world");
+    Text slice = original.subSequence(0, 5);
+    assertTrue(original.contentMemoryEquals(original));
+    assertTrue(slice.contentMemoryEquals(slice));
+    assertTrue(original.contentMemoryEquals(slice));
+    assertTrue(slice.contentMemoryEquals(original));
+    assertTrue(slice.contentMemoryEquals(original.subSequence(2, 4)));
+
+    // different buffers
+    Text other = Text.of("abcdefghijklmnopqrstuvwxyz");
+    assertFalse(original.contentMemoryEquals(other));
+    assertFalse(other.contentMemoryEquals(original));
+
+    // EMPTY shares with EMPTY
+    assertTrue(Text.EMPTY.contentMemoryEquals(Text.EMPTY));
+  }
+
+  @DisplayName("offsetIn(Text)")
+  @Test
+  void testOffsetIn() {
+    Text original = Text.of("hello world");
+    assertEquals(0, original.offsetIn(original));
+
+    Text slice = original.subSequence(6); // "world"
+    assertEquals(6, slice.offsetIn(original));
+
+    Text prefix = original.subSequence(0, 5); // "hello"
+    assertEquals(0, prefix.offsetIn(original));
+
+    Text middle = original.subSequence(2, 8); // "llo wo"
+    assertEquals(2, middle.offsetIn(original));
+
+    // parent is not enclosed by children
+    assertEquals(-1, original.offsetIn(slice));
+    assertEquals(-1, original.offsetIn(prefix));
+
+    // siblings do not enclose each other
+    assertEquals(-1, prefix.offsetIn(slice));
+    assertEquals(-1, slice.offsetIn(prefix));
+
+    // different buffer
+    Text unrelated = Text.of("something entirely different");
+    assertEquals(-1, original.offsetIn(unrelated));
+    assertEquals(-1, unrelated.offsetIn(original));
+  }
+
+  @DisplayName("skip(CharPredicate)")
+  @Test
+  void testSkip() {
+    assertEquals(3, Text.of("abc").skip(c -> true));
+    assertEquals(0, Text.of("abc").skip(c -> false));
+    assertEquals(3, Text.of("   abc").skip(c -> c == ' '));
+    assertEquals(0, Text.of("abc   ").skip(c -> c == ' '));
+    assertEquals(3, Text.of("   ").skip(c -> true));
+    assertEquals(3, Text.of("123abc").skip(Character::isDigit));
+    assertEquals(-1, Text.of("").skip(c -> true));
+  }
+
+  @DisplayName("skip(CharPredicate, int)")
+  @Test
+  void testSkipWithStart() {
+    assertEquals(3, Text.of("123abc").skip(Character::isDigit, 1));
+    assertEquals(6, Text.of("123abc").skip(c -> true, 2));
+    assertEquals(-1, Text.of("abc").skip(c -> true, 3));
+    assertEquals(-1, Text.of("abc").skip(c -> true, -1));
+  }
+
+  @DisplayName("skip(CharPredicate, int, int)")
+  @Test
+  void testSkipWithRange() {
+    assertEquals(3, Text.of("abc").skip(c -> true, 0, 3));
+    assertEquals(3, Text.of("abc").skip(c -> true, 0, 100));
+    assertEquals(2, Text.of("abcdef").skip(c -> c != 'c', 0, 3));
+    assertEquals(0, Text.of("abcdef").skip(c -> c == 'c', 0, 3));
+    assertEquals(-1, Text.of("abc").skip(c -> true, 3, 100));
+  }
 }

@@ -67,7 +67,7 @@ import java.io.OutputStream;
  *
  * <p>{@code Appender} instances are not thread-safe. Each instance should be used from a single
  * thread. Since the interface extends {@link AutoCloseable}, instances can be used in a
- * try-with-resources block; {@link #close()} does not throw a checked exception.
+ * try-with-resources block; {@link IoAppender#close()} does not throw a checked exception.
  *
  * @author Jan Bernitt
  * @since 1.9 (revised in 1.12)
@@ -76,18 +76,18 @@ import java.io.OutputStream;
  * @see TextBuilder
  * @see Utf8OutputStreamAppender
  */
-public interface Appender extends AutoCloseable {
+public interface Appender {
 
   /**
    * Creates a UTF-8 encoding {@link Appender} that writes to the given {@link OutputStream}.
    *
-   * <p>The returned appender owns the stream: {@link #close()} flushes pending bytes and closes the
+   * <p>The returned appender owns the stream: {@link IoAppender#close()} flushes pending bytes and closes the
    * stream.
    *
    * @param out the target stream
    * @return a new UTF-8 appender that writes to {@code out}
    */
-  static Appender ofUTF8(OutputStream out) {
+  static IoAppender ofUTF8(OutputStream out) {
     return new Utf8OutputStreamAppender(out);
   }
 
@@ -182,21 +182,6 @@ public interface Appender extends AutoCloseable {
   default void appendEncoded(CharSequence text) {
     appendEncoded(text, 0, text == null ? 4 : text.length());
   }
-
-  /**
-   * Releases any resources held by this sink.
-   *
-   * <p>The default implementation is a no-op, appropriate for sinks that hold only in-memory
-   * state such as {@link TextBuilder}. Sinks that own an external resource — for example a
-   * {@link java.io.OutputStream} — must override this method to flush pending bytes and release
-   * the resource.
-   *
-   * <p>Unlike {@link AutoCloseable#close()} this method does not declare a checked exception.
-   * Sinks that wrap I/O are expected to translate failures into {@link
-   * java.io.UncheckedIOException}.
-   */
-  @Override
-  default void close() {}
 
   /**
    * Writes the given value as a JSON string literal.

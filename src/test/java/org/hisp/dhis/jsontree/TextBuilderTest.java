@@ -4,6 +4,13 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Unit tests for the {@link TextBuilder}.
  *
@@ -13,7 +20,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendChar() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append('a');
           str.append('b');
@@ -39,7 +46,7 @@ class TextBuilderTest {
   @Test
   void testAppendCharSequence() {
     String nonAscii = "A©\uD83D\uDE00";
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append("");
           str.append("Hello");
@@ -68,7 +75,7 @@ class TextBuilderTest {
     txt.appendAscii(null, 0, 4);
     txt.appendAscii("|");
     txt.appendEncoded(null, 0, 4);
-    Assertions.assertEquals("null|null|null|null", txt.toString());
+    assertEquals("null|null|null|null", txt.toString());
   }
 
   @Test
@@ -76,24 +83,24 @@ class TextBuilderTest {
     TextBuilder txt = new TextBuilder();
     txt.appendAscii(null, 0, 0);
     txt.appendEncoded(null, 0, 0);
-    Assertions.assertEquals("", txt.toString());
+    assertEquals("", txt.toString());
   }
 
   @Test
   void testAppendNullCharSequence_OutOfBounds() {
-    assertThrows(
+    assertAppendThrows(
         IndexOutOfBoundsException.class,
         str -> str.append((CharSequence) null, 0, 5),
         txt -> txt.appendAscii(null, 0, 5));
-    assertThrows(
+    assertAppendThrows(
         IndexOutOfBoundsException.class,
         str -> str.append((CharSequence) null, 0, 5),
         txt -> txt.appendEncoded(null, 0, 5));
-    assertThrows(
+    assertAppendThrows(
         IndexOutOfBoundsException.class,
         str -> str.append((CharSequence) null, -1, 3),
         txt -> txt.appendEncoded(null, -1, 3));
-    assertThrows(
+    assertAppendThrows(
         IndexOutOfBoundsException.class,
         str -> str.append((CharSequence) null, 3, 2),
         txt -> txt.appendEncoded(null, 3, 2));
@@ -101,16 +108,16 @@ class TextBuilderTest {
 
   @Test
   void testAppendCharSequenceRange() {
-    assertEquals(
+    assertAppendEquals(
         str -> str.append("Hello, world!", 0, 13),
         txt -> txt.appendAscii("Hello, world!", 0, 13));
-    assertEquals(
+    assertAppendEquals(
         str -> str.append("Hello, world!", 7, 13),
         txt -> txt.appendAscii("Hello, world!", 7, 13));
-    assertEquals(
+    assertAppendEquals(
         str -> str.append("Hello, world!", 1, 5),
         txt -> txt.appendAscii("Hello, world!", 1, 5));
-    assertEquals(
+    assertAppendEquals(
         str -> str.append("Hello, world!", 3, 3),
         txt -> txt.appendAscii("Hello, world!", 3, 3));
   }
@@ -118,7 +125,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendInt() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(0);
           str.append(42);
@@ -143,7 +150,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendLong() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(0L);
           str.append(9876543210L);
@@ -168,7 +175,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendFloat() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(3.14159f);
           str.append(-2.5f);
@@ -195,7 +202,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendFloat_EdgeCases() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(-0f);
           str.append(1f);
@@ -218,7 +225,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendFloat_ScientificNotation() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(1e7f);
           str.append(1e8f);
@@ -242,7 +249,7 @@ class TextBuilderTest {
   @Test
   void testAppendFloat_IntegralBoundary() {
     // boundary at |value| < 1e7: below prints via appendLong + ".0", at/above via String.valueOf
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(9999999.0f);
           str.append(10000000.0f);
@@ -259,7 +266,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendDouble() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(3.14159);
           str.append(-2.5);
@@ -286,7 +293,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendDouble_EdgeCases() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(-0d);
           str.append(1d);
@@ -310,7 +317,7 @@ class TextBuilderTest {
   @Test
   void testAppendCodePoint() {
     // 0x10FFFF is max range
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.appendCodePoint('A');
           str.appendCodePoint(0x20AC);
@@ -327,15 +334,15 @@ class TextBuilderTest {
 
   @Test
   void testAppendCharSequence_Errors() {
-    assertThrows(
+    assertAppendThrows(
         IndexOutOfBoundsException.class,
         str -> str.append("Hello", -1, 2),
         txt -> txt.appendAscii("Hello", -1, 2));
-    assertThrows(
+    assertAppendThrows(
         IndexOutOfBoundsException.class,
         str -> str.append("Hello", 1, 10),
         txt -> txt.appendAscii("Hello", 1, 10));
-    assertThrows(
+    assertAppendThrows(
         IndexOutOfBoundsException.class,
         str -> str.append("Hello", 3, 2),
         txt -> txt.appendAscii("Hello", 3, 2));
@@ -403,7 +410,7 @@ class TextBuilderTest {
     Text input = Text.of("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");  // 31 a's
     TextBuilder txt = new TextBuilder();
     txt.appendJsonEscaped(input);
-    Assertions.assertEquals(
+    assertEquals(
         "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
         txt.toString());
   }
@@ -415,14 +422,14 @@ class TextBuilderTest {
     Text input = Text.of("aaaaaaaaaaaaaaaa\"bbbbbbbbbbbbbbbb");  // 16 a's, ", 16 b's
     TextBuilder txt = new TextBuilder();
     txt.appendJsonEscaped(input);
-    Assertions.assertEquals(
+    assertEquals(
         "\"aaaaaaaaaaaaaaaa\\\"bbbbbbbbbbbbbbbb\"",
         txt.toString());
   }
 
   @Test
   void testAppendCodePoint_Surrogates() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.appendCodePoint(Character.MIN_SURROGATE);  // 0xD800
           str.appendCodePoint(0xDBFF);
@@ -439,7 +446,7 @@ class TextBuilderTest {
 
   @Test
   void testAppendCodePoint_SupplementaryBoundary() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.appendCodePoint(Character.MIN_SUPPLEMENTARY_CODE_POINT);  // 0x10000
           str.appendCodePoint(0x1F600);
@@ -454,23 +461,23 @@ class TextBuilderTest {
 
   @Test
   void testAppendCodePoint_InvalidValues() {
-    assertThrows(IllegalArgumentException.class,
+    assertAppendThrows(IllegalArgumentException.class,
         str -> str.appendCodePoint(-1),
         txt -> txt.appendCodePoint(-1));
-    assertThrows(IllegalArgumentException.class,
+    assertAppendThrows(IllegalArgumentException.class,
         str -> str.appendCodePoint(0x110000),
         txt -> txt.appendCodePoint(0x110000));
-    assertThrows(IllegalArgumentException.class,
+    assertAppendThrows(IllegalArgumentException.class,
         str -> str.appendCodePoint(Integer.MIN_VALUE),
         txt -> txt.appendCodePoint(Integer.MIN_VALUE));
-    assertThrows(IllegalArgumentException.class,
+    assertAppendThrows(IllegalArgumentException.class,
         str -> str.appendCodePoint(Integer.MAX_VALUE),
         txt -> txt.appendCodePoint(Integer.MAX_VALUE));
   }
 
   @Test
   void testAppendDouble_ScientificNotation() {
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(1e7);
           str.append(1e8);
@@ -494,7 +501,7 @@ class TextBuilderTest {
   @Test
   void testAppendDouble_IntegralBoundary() {
     // boundary at |value| < 1e7: below prints via appendLong + ".0", at/above via String.valueOf
-    assertEquals(
+    assertAppendEquals(
         str -> {
           str.append(9999999.0);
           str.append(10000000.0);
@@ -509,30 +516,519 @@ class TextBuilderTest {
         });
   }
 
-  private static void assertEquals(Consumer<StringBuilder> expected, Consumer<Appender> actual) {
+  // ---------------------------------------------------------------------------
+  // CharSeqFragment<Text> overrides: self / empty / textValue / toString
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testSelf() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    Text t = b.self();
+    assertEquals("hello", t.toString());
+    // appending after snapshot must not affect the earlier view
+    b.appendAscii(" world");
+    assertEquals("hello", t.toString());
+    assertEquals("hello world", b.toString());
+  }
+
+  @Test
+  void testSelf_SurvivesBufferGrowth() {
+    TextBuilder b = new TextBuilder(4);
+    b.appendAscii("hi");
+    Text t = b.self();
+    // force reallocation (buffer replaced, old buffer untouched)
+    for (int i = 0; i < 20; i++) b.appendAscii('x');
+    assertEquals("hi", t.toString());
+  }
+
+  @Test
+  void testEmpty() {
+    TextBuilder b = new TextBuilder();
+    assertSame(Text.EMPTY, b.empty());
+    b.appendAscii("hello");
+    assertSame(Text.EMPTY, b.empty());
+  }
+
+  @Test
+  void testTextValue() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    Text t = b.textValue();
+    assertEquals("hello", t.toString());
+    b.appendAscii(" world");
+    assertEquals("hello", t.toString());
+  }
+
+  @Test
+  void testToString() {
+    TextBuilder b = new TextBuilder();
+    assertEquals("", b.toString());
+    b.appendAscii("hello");
+    assertEquals("hello", b.toString());
+  }
+
+  // ---------------------------------------------------------------------------
+  // wrap(char[], int, int) — the "share internal buffer" factory
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testWrap_ValidRange() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = "ABCDE".toCharArray();
+    Text t = b.wrap(arr, 1, 3);
+    assertEquals("BCD", t.toString());
+  }
+
+  @Test
+  void testWrap_WholeRange() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = "WORLD".toCharArray();
+    assertEquals("WORLD", b.wrap(arr, 0, 5).toString());
+  }
+
+  @Test
+  void testWrap_ZeroLengthSlice() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = new char[10];
+    assertEquals("", b.wrap(arr, 2, 0).toString());
+  }
+
+  @Test
+  void testWrap_OffsetAtContentLength_Throws() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertThrows(IndexOutOfBoundsException.class, () -> b.slice(5, 6));
+    assertThrows(IndexOutOfBoundsException.class, () -> b.slice(5, 8));
+    assertThrows(IndexOutOfBoundsException.class, () -> b.slice(6, 6));
+  }
+
+  @Test
+  void testWrap_EndBeyondContentLength_Throws() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertThrows(IndexOutOfBoundsException.class, () -> b.slice( 0, 6));
+    assertThrows(IndexOutOfBoundsException.class, () -> b.slice(3, 6));
+    assertThrows(IndexOutOfBoundsException.class, () -> b.slice(4, 6));
+  }
+
+  @Test
+  void testWrap_EmptyBuilder_AlwaysThrows() {
+    TextBuilder b = new TextBuilder();
+    assertThrows(IndexOutOfBoundsException.class, () -> b.slice(0, 1));
+  }
+
+  @Test
+  void testWrap_ReturnsViewOfPassedBuffer() {
+    // The returned Text is a no-copy view of the passed array (the whole point
+    // of wrap: avoid defensive copies when sharing an existing buffer).
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = "AAAAA".toCharArray();
+    Text t = b.wrap(arr, 0, 5);
+    assertEquals("AAAAA", t.toString());
+    // mutation of the buffer is visible through the view (it is not a copy)
+    arr[0] = 'X';
+    assertEquals("XAAAA", t.toString());
+  }
+
+  // ---------------------------------------------------------------------------
+  // wrap(T proto) — the type-preserving factory (always copies)
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testWrapProto_CopiesContent() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    Text t = b.wrap(Text.EMPTY);
+    assertEquals("hello", t.toString());
+    // result is independent of subsequent builder mutations
+    b.appendAscii(" world");
+    assertEquals("hello", t.toString());
+    assertEquals("hello world", b.toString());
+  }
+
+  @Test
+  void testWrapProto_EmptyBuilder() {
+    TextBuilder b = new TextBuilder();
+    Text t = b.wrap(Text.of("x")); // proto's content is irrelevant, only its wrap impl matters
+    assertEquals(Text.EMPTY, t);
+    assertEquals("", t.toString());
+  }
+
+  @Test
+  void testWrapProto_IsIndependentCopy() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hi");
+    Text t = b.wrap(Text.of("x"));
+    b.appendAscii("there"); // mutate builder after taking the view
+    assertEquals("hi", t.toString());
+  }
+
+  // ---------------------------------------------------------------------------
+  // toCharArray()
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testToCharArray() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    Assertions.assertArrayEquals(
+        new char[] {'h', 'e', 'l', 'l', 'o'}, b.toCharArray());
+  }
+
+  @Test
+  void testToCharArray_Empty() {
+    TextBuilder b = new TextBuilder();
+    Assertions.assertArrayEquals(new char[0], b.toCharArray());
+  }
+
+  @Test
+  void testToCharArray_OnlyWrittenPortion() {
+    // capacity may be larger than length; only the written part is returned
+    TextBuilder b = new TextBuilder(100);
+    b.appendAscii("hi");
+    assertEquals(2, b.toCharArray().length);
+  }
+
+  @Test
+  void testToCharArray_IsCopy() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = b.toCharArray();
+    arr[0] = 'X';
+    assertEquals("hello", b.toString()); // builder unchanged
+    assertEquals('X', arr[0]);
+  }
+
+  // ---------------------------------------------------------------------------
+  // copyTo(char[], int)
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testCopyTo() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] dest = new char[10];
+    b.copyTo(dest, 2);
+    Assertions.assertArrayEquals(
+        new char[] {0, 0, 'h', 'e', 'l', 'l', 'o', 0, 0, 0}, dest);
+  }
+
+  @Test
+  void testCopyTo_Empty() {
+    TextBuilder b = new TextBuilder();
+    char[] dest = new char[5];
+    b.copyTo(dest, 0);
+    Assertions.assertArrayEquals(new char[5], dest);
+  }
+
+  @Test
+  void testCopyTo_ZeroDestOffset() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hi");
+    char[] dest = new char[4];
+    b.copyTo(dest, 0);
+    Assertions.assertArrayEquals(new char[] {'h', 'i', 0, 0}, dest);
+  }
+
+  // ---------------------------------------------------------------------------
+  // copyTo(char[], int, int, int)
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testCopyToSubrange() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello world");
+    char[] dest = new char[10];
+    b.copyTo(dest, 2, 1, 4); // copy "ello"
+    Assertions.assertArrayEquals(
+        new char[] {0, 0, 'e', 'l', 'l', 'o', 0, 0, 0, 0}, dest);
+  }
+
+  @Test
+  void testCopyToSubrange_Prefix() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] dest = new char[3];
+    b.copyTo(dest, 0, 0, 3);
+    Assertions.assertArrayEquals(new char[] {'h', 'e', 'l'}, dest);
+  }
+
+  @Test
+  void testCopyToSubrange_Suffix() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] dest = new char[2];
+    b.copyTo(dest, 0, 3, 2);
+    Assertions.assertArrayEquals(new char[] {'l', 'o'}, dest);
+  }
+
+  @Test
+  void testCopyToSubrange_Empty() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] dest = new char[5];
+    b.copyTo(dest, 0, 2, 0);
+    Assertions.assertArrayEquals(new char[5], dest);
+  }
+
+  // ---------------------------------------------------------------------------
+  // equals / hashCode
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testEquals() {
+    TextBuilder a = new TextBuilder();
+    a.appendAscii("hello");
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    TextBuilder c = new TextBuilder();
+    c.appendAscii("world");
+
+    assertEquals(a, a);
+    assertEquals(a, b);
+    assertNotEquals(a, c);
+    assertEquals(new TextBuilder(), new TextBuilder());
+
+    // deliberately not equal to a String or Text of the same content
+    assertNotEquals("hello", a);
+    assertNotEquals(Text.of("hello"), a);
+  }
+
+  @Test
+  void testHashCode() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertEquals(CharSeq.hashCode(b), b.hashCode());
+  }
+
+  // ---------------------------------------------------------------------------
+  // inherited defaults that route through the overrides
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testSubSequence_OnBuilder() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertEquals("ell", b.subSequence(1, 4).toString());
+    assertEquals("llo", b.subSequence(2).toString());
+    assertEquals("hello", b.subSequence(0, 5).toString());
+  }
+
+  @Test
+  void testTrim_OnBuilder() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("  hello  ");
+    assertEquals("hello", b.trim().toString());
+  }
+
+  @Test
+  void testStrip_OnBuilder() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("\nhello\n");
+    assertEquals("hello", b.strip().toString());
+  }
+
+  @Test
+  void testShrink_OnBuilder() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("xxhelloxx");
+    assertEquals("hello", b.shrink(c -> c == 'x').toString());
+  }
+
+  @Test
+  void testContentEquals_OnBuilder() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertTrue(b.contentEquals("hello"));
+    assertTrue(b.contentEquals(Text.of("hello")));
+    assertFalse(b.contentEquals("world"));
+  }
+
+  @Test
+  void testCompareTo_OnBuilder() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertTrue(b.compareTo(Text.of("world")) < 0);
+    assertEquals(0, b.compareTo(Text.of("hello")));
+    assertTrue(b.compareTo(Text.of("abc")) > 0);
+  }
+
+  @Test
+   void testConcat_OnBuilder() {
+     TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertEquals("hello world", b.concat(" world").toString());
+  }
+
+  @Test
+  void testSubSequence_FromZero_OnBuilder() {
+     TextBuilder b = new TextBuilder();
+     b.appendAscii("hello");
+    assertEquals("hel", b.subSequence(0, 3).toString());
+   }
+
+  // ---------------------------------------------------------------------------
+  // wrap(char[], int, int) — the "share internal buffer" factory
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testWrap_ValidRange2() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = "ABCDE".toCharArray();
+    Text t = b.wrap(arr, 1, 3);
+    assertEquals("BCD", t.toString());
+  }
+
+  @Test
+  void testWrap_ExternalArray_LargerThanContent() {
+    // external array: contract is a pure factory, only bounded by the array
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hi");
+    char[] arr = "MUCHLONGERCONTENT".toCharArray();
+    assertEquals("MUCHLONGERCONTENT", b.wrap(arr, 0, arr.length).toString());
+  }
+
+  @Test
+  void testWrap_EmptyBuilder_ExternalArray() {
+    TextBuilder b = new TextBuilder();
+    char[] arr = "hello".toCharArray();
+    assertEquals("hello", b.wrap(arr, 0, 5).toString());
+    assertEquals("", b.wrap(arr, 5, 0).toString());
+  }
+
+  @Test
+  void testWrap_ZeroLengthSlice2() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = new char[10];
+    assertEquals("", b.wrap(arr, 0, 0).toString());
+    assertEquals("", b.wrap(arr, 2, 0).toString());
+    assertEquals("", b.wrap(arr, 10, 0).toString());
+  }
+
+  @Test
+  void testWrap_NegativeOffset_Throws() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = new char[10];
+    assertThrows(IndexOutOfBoundsException.class, () -> b.wrap(arr, -1, 3));
+  }
+
+  @Test
+  void testWrap_NegativeLength_Throws() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = new char[10];
+    assertThrows(IndexOutOfBoundsException.class, () -> b.wrap(arr, 0, -1));
+  }
+
+  @Test
+  void testWrap_EndBeyondArray_Throws() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = new char[5];
+    assertThrows(IndexOutOfBoundsException.class, () -> b.wrap(arr, 0, 6));
+    assertThrows(IndexOutOfBoundsException.class, () -> b.wrap(arr, 3, 3));
+    assertThrows(IndexOutOfBoundsException.class, () -> b.wrap(arr, 6, 0));
+  }
+
+  @Test
+  void testWrap_ReturnsViewOfPassedBuffer2() {
+    // the whole point of wrap: no defensive copy, the returned Text is a view
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    char[] arr = "AAAAA".toCharArray();
+    Text t = b.wrap(arr, 0, 5);
+    assertEquals("AAAAA", t.toString());
+    arr[0] = 'X';
+    assertEquals("XAAAA", t.toString());
+  }
+
+  @Test
+  void testSubSequence_FromZero_OnBuilder2() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertEquals("hel", b.subSequence(0, 3).toString());
+    assertEquals("", b.subSequence(0, 0).toString());
+    assertEquals("hello", b.subSequence(0, 5).toString());
+  }
+
+  @Test
+  void testSlice_FromZero_OnBuilder() {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello world");
+    assertEquals("hell", b.slice(0, 4).toString());
+    assertEquals("hello worl", b.slice(0, -1).toString());
+  }
+
+  @Test
+  void testConcat_OnBuilder2() {
+    // regression: wrap used to reject the freshly-copied oversized array
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");
+    assertEquals("hello world", b.concat(" world").toString());
+    assertEquals("hello!", b.concat("!").toString());
+  }
+
+  @Test
+  void testConcat_OnEmptyBuilder() {
+    TextBuilder b = new TextBuilder();
+    assertEquals("hello", b.concat("hello").toString());
+  }
+
+  @Test
+  void testWrap_InternalBufferPastContent_Throws() throws Exception {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii("hello");           // capacity >= 32
+    var f = TextBuilder.class.getDeclaredField("buffer");
+    f.setAccessible(true);
+    char[] internal = (char[]) f.get(b);
+
+    // offset at content length -> throws (would expose unwritten tail)
+    assertThrows(IndexOutOfBoundsException.class,
+        () -> b.wrap(internal, b.length(), 0));
+    // offset + length past content -> throws
+    assertThrows(IndexOutOfBoundsException.class,
+        () -> b.wrap(internal, 3, 3));
+
+    // within content -> OK
+    assertEquals("ell", b.wrap(internal, 1, 3).toString());
+  }
+
+  /*
+  asserts
+   */
+
+  private static void assertAppendEquals(Consumer<StringBuilder> expected, Consumer<Appender> actual) {
     StringBuilder e = new StringBuilder();
     expected.accept(e);
 
     TextBuilder a = new TextBuilder();
     actual.accept(a);
-    Assertions.assertEquals(e.toString(), a.toString(), "StringBuilder != TextBuilder");
-    Assertions.assertEquals(e.length(), a.length());
+    assertEquals(e.toString(), a.toString(), "StringBuilder != TextBuilder");
+    assertEquals(e.length(), a.length());
   }
 
   private static void assertJsonEscaped(String expected, CharSequence input) {
     TextBuilder txt = new TextBuilder();
     txt.appendJsonEscaped(input);
-    Assertions.assertEquals(expected, txt.toString());
+    assertEquals(expected, txt.toString());
   }
 
-  private static void assertThrows(
+  private static void assertAppendThrows(
       Class<? extends Throwable> expectedType,
       Consumer<StringBuilder> expected,
       Consumer<Appender> actual) {
     StringBuilder e = new StringBuilder();
-    Assertions.assertThrows(expectedType, () -> expected.accept(e));
+    assertThrows(expectedType, () -> expected.accept(e));
 
     TextBuilder a = new TextBuilder();
-    Assertions.assertThrows(expectedType, () -> actual.accept(a));
+    assertThrows(expectedType, () -> actual.accept(a));
   }
 }

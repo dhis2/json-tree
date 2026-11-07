@@ -1,6 +1,7 @@
 package org.hisp.dhis.jsontree;
 
 import static java.lang.Math.abs;
+import static org.hisp.dhis.jsontree.CharFragment.checkSubSequence;
 
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -22,7 +23,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @author Jan Bernitt
  * @since 1.9
  */
-public final class TextualNumber extends Number implements Textual {
+public final class TextualNumber extends Number implements Textual, CharSeq {
 
   public static Number of(char @NotNull [] buffer) {
     return of(buffer, 0, buffer.length);
@@ -89,7 +90,7 @@ public final class TextualNumber extends Number implements Textual {
   }
 
   @Override
-  public String toString() {
+  public @NotNull String toString() {
     return new String(buffer, offset, length);
   }
 
@@ -107,6 +108,22 @@ public final class TextualNumber extends Number implements Textual {
     for (int i = 0; i < length; i++)
       if (buffer[offset+i] != n.buffer[n.offset+i]) return false;
     return true;
+  }
+
+  @Override
+  public int length() {
+    return length;
+  }
+
+  @Override
+  public char charAt(int i) {
+    return buffer[offset+i];
+  }
+
+  @Override
+  public @NotNull Text subSequence(int start, int end) {
+    checkSubSequence(start, end, length);
+    return Text.of(buffer, offset+start, end - start);
   }
 
   @Override

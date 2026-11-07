@@ -5,489 +5,36 @@ import java.io.UncheckedIOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
-
-import static java.lang.Math.abs;
 
 /**
  * A {@link String}-like API without requiring to manifest a {@link String} instance.
  *
- * @apiNote A {@link Text} must always be observed as if it is an immutable value. It is highly
- *     recommended to not extend the interface but instead use {@link Text#of(char[], int, int)} or
- *     on of the other {@code of}-methods to create instances.
- * @implNote The {@link Text} abstraction exists to enable views without defensive copying to allow
- *     for a very small memory overhead of sub-sequences found within a JSON document. Most
- *     prominent the JSON string node values and the names of object properties. This takes
- *     advantage of the fact that most such strings do not need JSON level decoding and can be
+ * @implNote The {@link Text} interface exists to hide the internals of {@link TextSlice} to enable
+ *     views without defensive copying.
+ *     <p>This allows for a very small memory overhead of sub-sequences found within a JSON
+ *     document. Most prominent the JSON string node values and the names of object properties. This
+ *     takes advantage of the fact that most such strings do not need JSON level decoding and can be
  *     direct views (slices) of the JSON document itself.
  * @author Jan Bernitt
  * @since 1.9
+ * @see CharSeq
+ * @see CharFragment
  */
-public interface Text extends CharSequence, Comparable<Text> {
+public sealed interface Text extends CharFragment<Text> permits TextSlice {
 
+  /**
+   * The empty {@link Text} (equivalent to {@code ""})
+   */
   Text EMPTY = Text.of(new char[0], 0, 0);
 
-  /**
-   * @see String#indexOf(int)
+  /*
+  Factories
    */
-  default int indexOf(char ch) {
-    return indexOf(ch, 0);
-  }
-
-  /**
-   * @see String#indexOf(int, int)
-   */
-  default int indexOf(char ch, int startIndex) {
-    return indexOf(ch, startIndex, length());
-  }
-
-  default int indexOf(char ch, int startIndex, int endIndex) {
-    for (int i = startIndex; i < endIndex; i++) if (charAt(i) == ch) return i;
-    return -1;
-  }
-
-  /**
-   * @see String#lastIndexOf(int)
-   */
-  default int lastIndexOf(char ch) {
-    return lastIndexOf(ch, length() - 1);
-  }
-
-  /**
-   * @see String#lastIndexOf(int, int)
-   */
-  default int lastIndexOf(char ch, int startIndex) {
-    return lastIndexOf(ch, startIndex, 0);
-  }
-
-  default int lastIndexOf(char ch, int startIndex, int endIndex) {
-    for (int i = startIndex; i >= endIndex; i--) if (charAt(i) == ch) return i;
-    return -1;
-  }
-
-  default boolean contains(char ch) {
-    return indexOf(ch) >= 0;
-  }
-
-  /**
-   * @see String#contains(CharSequence)
-   */
-  default boolean contains(CharSequence infix) {
-    return indexOf(infix) >= 0;
-  }
-
-  /**
-   * @see String#indexOf(String)
-   */
-  default int indexOf(CharSequence infix) {
-    return indexOf(infix, 0);
-  }
-
-  /**
-   * @see String#indexOf(String, int)
-   */
-  default int indexOf(CharSequence infix, int startIndex) {
-    return indexOf(infix, startIndex, length());
-  }
-
-  default int indexOf(CharSequence infix, int startIndex, int endIndex) {
-    if (startIndex < 0) return -1;
-    if (infix.isEmpty()) return 0;
-    // find + match
-    int fLen = infix.length();
-    int mLen = endIndex - startIndex;
-    if (fLen > mLen) return -1;
-    char f0 = infix.charAt(0);
-    int m0 = indexOf(f0, startIndex, endIndex);
-    while (m0 >= 0 && m0 + fLen <= endIndex) {
-      if (regionMatches(m0, infix)) return m0;
-      m0 = indexOf(f0, m0 + 1, endIndex);
-    }
-    return -1;
-  }
-
-  /**
-   * @see String#lastIndexOf(String)
-   */
-  default int lastIndexOf(CharSequence infix) {
-    return lastIndexOf(infix, length() - 1, 0);
-  }
-
-  /**
-   * @see String#lastIndexOf(String, int)
-   */
-  default int lastIndexOf(CharSequence infix, int startIndex) {
-    return lastIndexOf(infix, startIndex, 0);
-  }
-
-  default int lastIndexOf(CharSequence infix, int startIndex, int endIndex) {
-    if (startIndex < 0) return -1;
-    if (infix.isEmpty()) return 0;
-    // find + match
-    int fLen = infix.length();
-    int mLen = startIndex - endIndex + 1;
-    if (fLen > mLen) return -1;
-    char f0 = infix.charAt(0);
-    int m0 = lastIndexOf(f0, startIndex, endIndex);
-    while (m0 >= endIndex) {
-      if (regionMatches(m0, infix)) return m0;
-      m0 = lastIndexOf(f0, m0 - 1, endIndex);
-    }
-    return -1;
-  }
-
-  /**
-   * @see String#startsWith(String)
-   */
-  default boolean startsWith(CharSequence prefix) {
-    return startsWith(prefix, 0);
-  }
-
-  /**
-   * @see String#startsWith(String, int)
-   */
-  default boolean startsWith(CharSequence prefix, int startIndex) {
-    return regionMatches(startIndex, prefix);
-  }
-
-  /**
-   * @see String#endsWith(String)
-   */
-  default boolean endsWith(CharSequence suffix) {
-    return regionMatches(length() - suffix.length(), suffix);
-  }
-
-  /**
-   * @see String#contentEquals(CharSequence)
-   */
-  default boolean contentEquals(CharSequence text) {
-    if (text.isEmpty()) return isEmpty();
-    int len = text.length();
-    if (len != length()) return false;
-    for (int i = 0; i < len; i++) if (charAt(i) != text.charAt(i)) return false;
-    return true;
-  }
-
-  default boolean regionMatches(int startIndex, CharSequence sample) {
-    return regionMatches(startIndex, sample, 0, sample.length());
-  }
-
-  /**
-   * @see String#regionMatches(int, String, int, int)
-   */
-  default boolean regionMatches(int startIndex, CharSequence sample, int offset, int len) {
-    if (startIndex < 0
-        || offset < 0
-        || startIndex > length() - len
-        || offset > sample.length() - len) return false;
-    if (len <= 0) return true;
-    for (int i = 0; i < len; i++)
-      if (charAt(startIndex + i) != sample.charAt(offset + i)) return false;
-    return true;
-  }
-
-  /**
-   * @param input an input string
-   * @return if this text as pattern matches the entirety of the given input
-   */
-  default boolean matches(CharSequence input) {
-    return matches(input, 0, input.length());
-  }
-
-  /**
-   * Match an input sub-sequence against this text as pattern.
-   * @see InputExpression
-   *
-   * @param input an input string
-   * @param offset the first character to match
-   * @param len length from the first character to match
-   * @return if this text as pattern matches the subsequence of the given input
-   */
-  default boolean matches(CharSequence input, int offset, int len) {
-    return InputExpression.match(toCharArray(), 0, length(), input, offset) == offset + len;
-  }
-
-  @Override
-  default @NotNull Text subSequence(int start, int end) {
-    int length = length();
-    checkSubSequence(start, end, length);
-    if (start == 0 && end == length) return this;
-    int len = end - start;
-    if (start == 0 && end == len) return this;
-    char[] buffer = new char[len];
-    for (int i = 0; i < len; i++) buffer[i] = charAt(start + i);
-    return of(buffer, 0, len);
-  }
-
-  /**
-   * Same as {@link #subSequence(int, int)} except that negative end is slicing away that number of
-   * characters from the end and that any slice exceeding the limit of what is available results in
-   * an empty text not an error. The operation still fails if start or end are out of bounds (less
-   * than zero or larger than length).
-   *
-   * @param start offset or first character to include in the slice
-   * @param end first character to exclude from the slice or when negative number of characters to
-   *     drop from the end
-   * @return the slice
-   */
-  default Text slice(int start, int end) {
-    return subSequence(start, Math.max(start, end < 0 ? length()+end : end));
-  }
-
-  /**
-   * @return this text without left and right inline whitespace (tabs and spaces removed)
-   */
-  default Text trim() {
-    if (isEmpty()) return this;
-    int len = length();
-    int left = 0;
-    while (left < len && isTrim(charAt(left))) left++;
-    if (left == len) return Text.of("");
-    int right = len-1;
-    while (right > left && isTrim(charAt(right))) right--;
-    if (left == 0 && right == len-1) return this;
-    return subSequence(left, right + 1);
-  }
-
-  /**
-   * Reduces a number's text to its pure value digits so that equivalent
-   * integer representations compare equal as text.
-   *
-   * <p>The input is expected to be an integer value as per
-   * {@link #isNumericInteger()} — a plain integer, optionally signed, or a
-   * decimal with an all-zero fraction. The output is canonical: no sign on
-   * zero, no leading zeros, no trailing {@code .0+} fraction. A leading
-   * {@code '+'} or {@code '-'} is consumed; a {@code '-'} is preserved on
-   * non-zero results, and dropped entirely on zero.
-   *
-   * <p>Behaviour on non-integer input is unspecified: a non-zero fraction is
-   * silently dropped.
-   *
-   * <p>Examples:
-   * <ul>
-   *   <li>{@code "42"} → {@code "42"}
-   *   <li>{@code "+42"} → {@code "42"}
-   *   <li>{@code "-42"} → {@code "-42"}
-   *   <li>{@code "42.00"} → {@code "42"}
-   *   <li>{@code "0"} → {@code "0"}
-   *   <li>{@code "-0"} → {@code "0"}
-   *   <li>{@code "+0"} → {@code "0"}
-   *   <li>{@code "0.00"} → {@code "0"}
-   * </ul>
-   * @since 1.13
-   */
-  default Text trimInteger() {
-    int len = length();
-    if (len == 0) return this;
-    boolean negative = charAt(0) == '-';
-    int start = (negative || charAt(0) == '+') ? 1 : 0;
-    // The integer part ends at the dot if there is one, otherwise at the end.
-    int dot = indexOf('.', start);
-    int intEnd = dot < 0 ? len : dot;
-    while (start < intEnd - 1 && charAt(start) == '0') start++;
-    // An all-zero integer part collapses to "0" regardless of sign.
-    if (intEnd - start == 1 && charAt(start) == '0') return Text.of("0");
-    Text digits = subSequence(start, intEnd);
-    return negative ? Text.of("-").concat(digits) : digits;
-  }
-
-  static boolean isTrim(char ch) {
-    return ch == ' ' || ch == '\t';
-  }
-
-  /**
-   * @see String#concat(String)
-   */
-  default Text concat(CharSequence suffix) {
-    if (suffix.isEmpty()) return this;
-    char[] a = toCharArray();
-    int len = suffix.length();
-    char[] res = Arrays.copyOf(a, a.length+ len);
-    for (int i = 0; i < len; i++)
-      res[a.length+i] = suffix.charAt(i);
-    return of(res, 0, res.length);
-  }
-
-  /**
-   * Slices this text into segments based on a pattern.
-   * Note that in contrast to a split by regular expression this matches the pattern at the start of this text,
-   * slices of the section as the first segment and repeats the process on the remaining tail text.
-   * If the pattern does not match the beginning of the text the remaining tail is the last segment.
-   *
-   * @param pattern the prefix to extract into segments
-   * @param segments accepts the slices of segments in order left to right
-   */
-  default void slice(Text pattern, Consumer<Text> segments) {
-    if (isEmpty()) {
-      segments.accept(this);
-      return;
-    }
-    char[] p = pattern.toCharArray();
-    int pos = 0;
-    int len = length();
-    int end = InputExpression.match(p, 0, p.length, this, pos);
-    if (end < 0 || end >= len) {
-      segments.accept(this);
-    } else {
-      do {
-        segments.accept(subSequence(pos, end));
-        pos = end;
-        end = InputExpression.match(p, 0, p.length, this, pos);
-      } while (end >= 0 && end < len);
-      segments.accept(subSequence(pos, len));
-    }
-  }
-
-  /**
-   * @see String#toCharArray()
-   */
-  default char[] toCharArray() {
-    char[] arr = new char[length()];
-    for (int i = 0; i < arr.length; i++) arr[i] = charAt(i);
-    return arr;
-  }
-
-  /**
-   * Copies this entire text to the dest array.
-   *
-   * @param dest array to write to
-   * @param offset first index to write to in dest
-   * @since 1.10
-   */
-  default void copyTo(char[] dest, int offset) {
-    int len = length();
-    for (int i = 0; i < len; i++) dest[i+offset] = charAt(i);
-  }
-
-  /**
-   * Copies a slice of this text to the dest array.
-   *
-   * @param dest array to write to
-   * @param offset first index to write to in dest
-   * @param from first index to write in this text
-   * @param length number of characters to write
-   * @since 1.10
-   */
-  default void copyTo(char[] dest, int offset, int from, int length) {
-    int to = from+length;
-    for (int i = from; i < to; i++) dest[offset++] = charAt(i);
-  }
-
-  /**
-   * @return true, if this text is a valid integer value (of any range), or in other words if the
-   *     sequence only consists of digits except for the first character which may be a plus or
-   *     minus sign.
-   */
-  default boolean isTextualInteger() {
-    if (isEmpty()) return false;
-    int i = 0;
-    if (charAt(0) == '-' || charAt(0) == '+') i++;
-    int len = length();
-    for (; i < len; i++) if (charAt(i) < '0' || charAt(i) > '9') return false;
-    return true;
-  }
-
-  /**
-   * @return true, if this is either a {@link #isTextualInteger()} or a floating point number in
-   *     decimal notation with all decimals being zero.
-   */
-  default boolean isNumericInteger() {
-    return TextualNumber.isNumericInteger(toCharArray());
-  }
-
-  /**
-   * @return true, if this text is a valid decimal value (of any range), in other words if it is
-   *     either a {@link #isTextualInteger()} or a floating point number in decimal or exponential
-   *     notation.
-   */
-  default boolean isTextualDecimal() {
-    return TextualNumber.isTextualDecimal(toCharArray());
-  }
-
-  /**
-   * @return true, if this text is exactly "NaN", "Infinity" or "-Infinity" (Java double special number literals)
-   */
-  default boolean isSpecialDecimal() {
-    return contentEquals("NaN") || contentEquals("Infinity") || contentEquals("-Infinity");
-  }
-
-  /**
-   * In contrast to the JDK method this only accepts valid inputs.
-   *
-   * @throws IllegalArgumentException when text is neither "true" nor "false" (case-insensitive)
-   * @see Boolean#parseBoolean(String)
-   */
-  default boolean parseBoolean() {
-    return Chars.parseBoolean(toCharArray());
-  }
-
-  /**
-   * @see Integer#parseInt(String)
-   */
-  default int parseInt() {
-    return TextualNumber.parseIntExact(toCharArray(), 0, length());
-  }
-
-  /**
-   * @see Long#parseLong(String)
-   */
-  default long parseLong() {
-    return TextualNumber.parseLongExact(toCharArray(), 0, length());
-  }
-
-  /**
-   * @see Double#parseDouble(String)
-   */
-  default double parseDouble() {
-    return TextualNumber.parseDoubleCast(toCharArray());
-  }
-
-  default Number parseNumber() {
-    return TextualNumber.of(toCharArray());
-  }
-
-  /**
-   * @see String#compareTo(String)
-   */
-  @Override
-  default int compareTo(Text other) {
-    int n = Math.min(length(), other.length());
-    for (int k = 0; k < n; k++) {
-      int res = charAt(k) - other.charAt(k);
-      if (res != 0) return res;
-    }
-    return length() - other.length();
-  }
-
-  /**
-   * @implNote All classes implementing {@link Text} must implement {@code equals} using the
-   *     equivalent of {@link #contentEquals(CharSequence)} for instances of {@link Text}, arguments
-   *     not being {@link Text}s are not equal.
-   */
-  boolean equals(Object obj);
-
-  /**
-   * @implNote All classes implementing {@link Text} must implement {@code hashCode} using {@link
-   *     Text#hashCode(Text)}.
-   */
-  int hashCode();
-
-  /**
-   * @param other another instance to compare to
-   * @return true, if the characters of this and the given text are both backed by what the JVM
-   *     considers the same "object" instance. This does not imply that the characters exposed by
-   *     the two {@link Text} instances are observed as being equal. They only both prevent the GC
-   *     of the same underlying storage instance. Or in other words, they share memory without being
-   *     necessarily observed as equal.
-   */
-  default boolean contentMemoryEquals(@NotNull Text other) {
-    return this == other;
-  }
 
   static Text copyOf(@NotNull Text text) {
-    return of(text.toCharArray(), 0, text.length());
+    char[] chars = text.toCharArray();
+    return of(chars, 0, chars.length);
   }
 
   /**
@@ -497,32 +44,19 @@ public interface Text extends CharSequence, Comparable<Text> {
    * @since 1.9
    */
   static Text of(@NotNull CharSequence text) {
-    if (text instanceof Text t) return t;
-    if (text instanceof String s) return of(s);
-    int len = text.length();
-    if (len == 0) return EMPTY;
-    Text cached = Cache.get(text.charAt(0), len);
-    if (cached != null && cached.contentEquals(text)) return cached;
-    char[] buffer = new char[len];
-    for (int i = 0; i < len; i++) buffer[i] = text.charAt(i);
-    Text res = of(buffer, 0, len);
-    Cache.set(res);
-    return res;
+    return TextSlice.of(text);
   }
 
   /**
+   * Convert a {@link String} to {@link Text}. Caches short inputs under certain unspecified
+   * conditions.
+   *
    * @return The string's characters as {@link Text} mainly for user space API uses, tests and such.
    *     Internally it should be avoided to use this whenever a {@link Text} can be received from
    *     the {@link JsonNode} API instead.
    */
   static Text of(String text) {
-    if (text.isEmpty()) return EMPTY;
-    Text cached = Cache.get(text.charAt(0), text.length());
-    if (cached != null && cached.contentEquals(text)) return cached;
-    char[] buffer = text.toCharArray();
-    Text res = of(buffer, 0, buffer.length);
-    Cache.set(res);
-    return res;
+    return TextSlice.of(text);
   }
 
   /**
@@ -536,197 +70,16 @@ public interface Text extends CharSequence, Comparable<Text> {
    * @return A read-only view of the slice starting at offset (no defensive copy)
    */
   static Text of(char[] buffer, int offset, int length) {
-    record Slice(char[] buffer, int offset, int length) implements Text {
-
-      Slice {
-        if (length < 0) throw new IllegalArgumentException("length must be >= 0");
-        if (offset + length > buffer.length)
-          throw new IllegalArgumentException("offset + length must be <= buffer.length");
-      }
-
-      @Override
-      public char charAt(int index) {
-        return buffer[offset + index];
-      }
-
-      @Override
-      public @NotNull Slice subSequence(int start, int end) {
-        checkSubSequence(start, end, length);
-        if (start == 0 && end == length) return this;
-        return new Slice(buffer, offset + start, end - start);
-      }
-
-      private boolean isInteger() {
-        // if this buffer is the number cache
-        // we do know the contents to be an integer number
-        return buffer == Cache._100_TO_999;
-      }
-
-      @Override
-      public boolean isTextualInteger() {
-        return isInteger() || TextualNumber.isTextualInteger(buffer, offset, length);
-      }
-
-      @Override
-      public boolean isNumericInteger() {
-        return isInteger() || TextualNumber.isNumericInteger(buffer, offset, length);
-      }
-
-      @Override
-      public boolean isTextualDecimal() {
-        return isInteger() || TextualNumber.isTextualDecimal(buffer, offset, length);
-      }
-
-      @Override
-      public boolean parseBoolean() {
-        return Chars.parseBoolean(buffer, offset, length);
-      }
-
-      @Override
-      public int parseInt() {
-        return TextualNumber.parseIntExact(buffer, offset, length);
-      }
-
-      @Override
-      public long parseLong() {
-        return TextualNumber.parseLongExact(buffer, offset, length);
-      }
-
-      @Override
-      public double parseDouble() {
-        return TextualNumber.parseDoubleCast(buffer, offset, length);
-      }
-
-      @Override
-      public Number parseNumber() {
-        return TextualNumber.of(buffer, offset, length);
-      }
-
-      @Override
-      public boolean matches(CharSequence input, int offset, int len) {
-        return InputExpression.match(buffer, offset, length, input, offset) == offset+len;
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof Text text)) return false;
-        return contentEquals(text);
-      }
-
-      @Override
-      public int hashCode() {
-        return Text.hashCode(this);
-      }
-
-      @Override
-      public boolean contentEquals(CharSequence text) {
-        if (text instanceof Slice other) {
-          // optimization: avoid virtual method calls by comparing arrays directly
-          if (length != other.length) return false;
-          if (buffer == other.buffer && offset == other.offset) return true;
-          for (int i = 0; i < length; i++)
-            if (buffer[offset + i] != other.buffer[i + other.offset]) return false;
-          return true;
-        }
-        return Text.super.contentEquals(text);
-      }
-
-      @Override
-      public boolean contentMemoryEquals(@NotNull Text other) {
-        return other instanceof Slice s && s.buffer == buffer;
-      }
-
-      @Override
-      public Text concat(CharSequence suffix) {
-        if (isEmpty()) return of(suffix);
-        if (suffix.isEmpty()) return this;
-        char[] res = new char[length + suffix.length()];
-        System.arraycopy(buffer, offset, res, 0, length);
-        if (suffix instanceof Slice b) {
-          System.arraycopy(b.buffer, b.offset, res, length, b.length);
-        } else {
-          for (int i = 0; i < suffix.length(); i++) res[length + i] = suffix.charAt(i);
-        }
-        return of(res, 0, res.length);
-      }
-
-      @Override
-      public char[] toCharArray() {
-        return Arrays.copyOfRange(buffer, offset, offset + length);
-      }
-
-      @Override
-      public void copyTo(char[] dest, int offset) {
-        System.arraycopy(buffer, this.offset, dest, offset, length);
-      }
-
-      @Override
-      public void copyTo(char[] dest, int offset, int from, int length) {
-        System.arraycopy(buffer, this.offset+from, dest, offset, length);
-      }
-
-      @Override
-      public @NotNull String toString() {
-        return length == 1 ? String.valueOf(buffer[offset]) : new String(buffer, offset, length);
-      }
-    }
-    return new Slice(buffer, offset, length);
+    return new TextSlice(buffer, offset, length);
   }
 
   /**
-   * @apiNote should be considered private
-   */
-  record Cache() {
-    /**
-     * @implNote A private cache for digits of 0-999. It saves on allocation of a character buffer
-     *     and increases the chance of the characters already being in CPU cache as we reuse the
-     *     same memory region for small-ish indexes.
-     */
-    private static final char[] _100_TO_999 = new char[900 * 3];
-
-    static {
-      int j = 0;
-      for (int i = 100; i < 1000; i++) {
-        _100_TO_999[j++] = (char) ('0' + i / 100);
-        _100_TO_999[j++] = (char) ('0' + (i % 100 / 10));
-        _100_TO_999[j++] = (char) ('0' + i % 10);
-      }
-    }
-
-    /**
-     * A cache for short texts starting with a lower case letter like often used in path segment
-     * names. This avoids allocation in a loop where certain object members are accessed using
-     * {@link String}s. This is a typical use case of a JSON object API.
-     */
-    private static final Text[][] STARTING_A_Z_LENGTH_1_TO_16 = new Text[26][16];
-
-    static Text get(char c, int length) {
-      if (length < 1 || length > 16 || c < 'a' || c > 'z') return null;
-      return STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1];
-    }
-
-    static void set(Text text) {
-      char c = text.charAt(0);
-      int length = text.length();
-      if (length < 1 || length > 16 || c < 'a' || c > 'z') return;
-      STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1] = text;
-    }
-  }
-
-  /**
+   * Convert a number to a {@link Text}. Caches 0-999.
+   *
    * @return {@link Text} for of any int number
    */
   static Text of(int value) {
-    if (value >= 0) {
-      if (value < 10) return of(Cache._100_TO_999, value * 3 + 2, 1);
-      if (value < 100) return of(Cache._100_TO_999, value * 3 + 1, 2);
-      if (value < 1000) return of(Cache._100_TO_999, (value - 100) * 3, 3);
-    }
-    int len = characterCount(value);
-    char[] digits = new char[len];
-    appendInt(value, digits, 0, len);
-    return of(digits, 0, digits.length);
+    return TextSlice.of(value);
   }
 
   static Text of(Path file, Charset encoding) {
@@ -738,81 +91,29 @@ public interface Text extends CharSequence, Comparable<Text> {
     }
   }
 
-  private static void checkSubSequence(int start, int end, int length) {
-    if (start < 0 || end < 0 || end > length || start > end)
-      throw new IndexOutOfBoundsException(
-          "expected: 0 <= start(" + start + ") <= end (" + end + ") <= length(" + length + ')');
-  }
+  /*
+  API extensions
+   */
 
   /**
-   * @apiNote The exact hash code algorithm does not need to be specified as all classes
-   *     implementing {@link Text} must use this function to compute the hash code. As long as the
-   *     algorithm is deterministic (which it is) this will produce codes satisfying the
-   *     requirements of {@link Object#hashCode()}.
-   * @implNote Because a {@link Text} can be a view of a large slice of characters the hash-code
-   *     algorithm just samples characters from the content. This increases the risk of hash-code
-   *     collisions but makes computing the hash code cheap and fast O(1). This is particularly
-   *     important in the main use case of {@link Text} as the main component of a {@link JsonPath}
-   *     which is indexes in the {@link JsonNode} cache within a {@link JsonTree}.
-   * @param text the slice to compute the hash code for
-   * @return the computed hash code
+   * @param other another instance
+   * @return the relative offset to the given instance if and only if both share the same memory
+   *     ({@link #contentMemoryEquals(Text)}) and if the given text is enclosing this text,
+   *     otherwise -1
+   * @since 1.13
    */
-  static int hashCode(Text text) {
-    if (text.isEmpty()) return 0;
-    int hash = 1;
-    int sampleSize = 9;
-    int length = text.length();
-    if (length <= sampleSize) {
-      for (int i = 0; i < length; i++) hash = 31 * hash + text.charAt(i);
-    } else {
-      // take characters as evenly spaced as possible
-      // while including both ends though linear interpolation
-      int step = length - 1;
-      for (int i = 0; i < sampleSize; i++)
-        // index is equivalent to: i * step / (sampleSize - 1)
-        hash = 31 * hash + text.charAt(i * step >> 3);
-    }
-    return hash;
-  }
+  int offsetIn(Text other);
 
-  /*
-  Text(int) Helpers
+  /**
+   * @param other another instance to compare to
+   * @return true, if the characters of this and the given text are both backed by what the JVM
+   *     considers the same "object" instance. This does not imply that the characters exposed by
+   *     the two {@link Text} instances are observed as being equal. They only both prevent the GC
+   *     of the same underlying storage instance. Or in other words, they share memory without being
+   *     necessarily observed as equal.
    */
-
-  private static void appendInt(int value, char[] buffer, int offset, int length) {
-    boolean neg = value < 0;
-    boolean overflow = value == Integer.MIN_VALUE;
-    value = overflow ? value - 1 : abs(value);
-    int digit0 = neg ? 1 : 0;
-    if (neg) buffer[offset] = '-';
-    int rest = value;
-    for (int i = length - 1; i >= digit0; i--) {
-      buffer[offset + i] = (char) ('0' + (rest % 10));
-      rest /= 10;
-    }
-    if (overflow) buffer[offset + length - 1] += 1;
+  default boolean contentMemoryEquals(@NotNull Text other) {
+    return this == other;
   }
 
-  private static int characterCount(int value) {
-    if (value == 0) return 1;
-    int n = digitCount(value);
-    return value < 0 ? n + 1 : n;
-  }
-
-  private static int digitCount(int n) {
-    if (n < 0) {
-      if (n == Integer.MIN_VALUE) return 10;
-      n = -n;
-    }
-    if (n < 10) return 1;
-    if (n < 100) return 2;
-    if (n < 1000) return 3;
-    if (n < 10000) return 4;
-    if (n < 100000) return 5;
-    if (n < 1000000) return 6;
-    if (n < 10000000) return 7;
-    if (n < 100000000) return 8;
-    if (n < 1000000000) return 9;
-    return 10;
-  }
 }
