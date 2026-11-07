@@ -2,14 +2,14 @@
 
 `TextTemplate` uses _**directives**_, which are lines with "instructions" placed in a template text. 
 Each line is either a directive or otherwise part of the content of the template.
-A line is never mixed, both content and instruction.
 
 The design was motivated by SQL templating which lead to four central properties:
 
-- **Templates can be valid SQL** — directives can be ordinary SQL comments, so a template can be pasted into any SQL console and run unmodified.
+- **Templates can be authored as valid SQL** — directives are written as ordinary SQL comment lines, so the unprocessed template parses as SQL. A template can therefore be written so that its raw form runs unmodified in a SQL console (all branches present, concatenated); the processed form can differ.
 - **Freedom in content formatting** — because directives mark whole-line boundaries, the content can be formatted freely.
 - **No understanding of the content** — the templating does not require any knowledge about the content to work correctly.  
-- **Single Pass Processing** — The result can be produced by doing a simple pass over the template coping slices into a result text buffer making this templating very efficient.
+- **Single Pass Processing** — The template is scanned once, line by line. Each line is either copied, replaced, or skipped, and output is appended to a result buffer as the scan proceeds. 
+  `@reorder` groups are the one case where output is deferred: each block's slice is remembered, the blocks are sorted by key, before the sorted bodies are spliced into the result at the group's position. No second pass over the template text is required.
 
 While being designed with SQL in mind `TextTemplate`s are useful and adjustable for many text templating purposes
 as the directives vocabulary is universal.
@@ -25,28 +25,28 @@ as the directives vocabulary is universal.
 
 The directive vocabulary:
 
-| Directive  | Form                             | Purpose                                                                               |
-|------------|----------------------------------|---------------------------------------------------------------------------------------|
-| `@if`      | `@if <expr>` … `@end`            | emit the enclosed block only when the expression is true                              |
-| `@else`    | … `@else` …                      | alternative branch of the innermost `@if`                                             |
-| `@end`     | … `@end`                         | close the innermost open block                                                        |
-| `@insert`  | `@insert :name`                  | substitute with text registered for the name                                          |
-| `@replace` | `@replace :cond [text]` … `@end` | replace the block with text when the condition is true                                |
-| `@reorder` | `@reorder :name` … `@end`        | position the block by a caller-supplied sort key for the cluster of `@reorder` blocks |
+| Directive  | Form                              | Purpose                                                                               |
+|------------|-----------------------------------|---------------------------------------------------------------------------------------|
+| `@if`      | `@if <expr>` … `@end`             | emit the enclosed block only when the expression is true                              |
+| `@else`    | … `@else` …                       | alternative branch of the innermost `@if`                                             |
+| `@end`     | … `@end`                          | close the innermost open block                                                        |
+| `@insert`  | `@insert :name`                   | substitute with text registered for the name                                          |
+| `@replace` | `@replace <expr> [text]` … `@end` | replace the block with text when the condition is true                                |
+| `@reorder` | `@reorder :name` … `@end`         | position the block by a caller-supplied sort key for the cluster of `@reorder` blocks |
 
 The three block directives (`@if`, `@replace`, `@reorder`) all close with the same `@end` marker.
 Blocks can contain nested directives.
-Only directives without arguments (`@end`, `@else`) may be followed by another directive on the same line.
-Otherwise, each directive must be on its own line. Directive instruction cannot be split into multiple lines.
+Only a directive that takes no argument of its own (`@end`, `@else`) may be followed by another directive on the same line. 
+The trailing directive may itself have arguments.
 
 For directives with arguments the first argument is always a name (colon followed by 1 or more alphanumeric characters)
 The name refers to the condition to trigger the directive effect:
 
-    -- @if :expr
-    -- @insert :substitude
-    -- @replace :cond with
-    -- @replace :cond
-    -- @reorder :id
+    -- @if <expr>
+    -- @insert :name
+    -- @replace <expr> = <replacement>
+    -- @replace <expr>
+    -- @reorder :name
 
 `@replace` can be used with the substitute text hard-coded after the condition,
 or (when given without substitute text) it does a lookup for the text 
@@ -64,7 +64,7 @@ The block is emitted if the named condition resolves to true;
 otherwise every line between the opening directive and its matching `@end` is discarded. 
 Nested blocks compose: an inner block's content is emitted only when both the outer and inner conditions are true. 
 
-`@if` allows to test multiple conditions combined with logic operators `&&` and `||`:
+`@if` and `@replace` allow to test multiple conditions combined with logic operators `&&` and `||`:
 
     -- @if :a && :b          conjunction: both a and b must be true
     -- @if :a || :b          disjunction: either a or b must be true
@@ -75,16 +75,18 @@ There is no parenthesis syntax; to group a compound condition, nest `@if` blocks
 
 ## @else
 
-Inverts emission within the innermost open block.
+`@else` closes the current `@if` branch and opens its alternative branch. 
+It binds to the nearest open `@if` that has not yet seen an `@else` — the same dangling-else rule as in most languages. 
+Because `@end` closes an `@if` entirely, an `@else` written after `@end` belongs to an enclosing `@if`, if there is one.
 
-    -- @if :flag
+    -- @if :name
     A
     -- @else
     B
     -- @end
 
-Exactly one of the two branches is emitted. `@else` must be bare (no argument). 
-At most one `@else` may occur per block; a second is an error.
+Exactly one branch of an `@if` is emitted. At most one `@else` may occur per `@if`; a second is an error. 
+`@else` is only legal when the innermost open block is an `@if` — inside `@replace` or `@reorder` it is an error.
 
 The `@else` refers to the innermost open block. This means in:
 
@@ -154,7 +156,7 @@ This gives a simple way to compose SQL from fragments that may or may not be pre
 Opens a block that is either *replaced* (with replacement text) or *kept* (with its body emitted), depending on a condition.
 
     SELECT
-    -- @replace :counting count(*)
+    -- @replace :counting = count(*)
       a, b, c
     -- @end
     FROM x
@@ -166,7 +168,7 @@ The choice is two-way:
 
 Two forms of replacement text exist:
 
-    -- @replace :counting count(*)       inline replacement on the opening line
+    -- @replace :counting = count(*)     inline replacement on the opening line
     -- @replace :counting                falls back to @insert-style lookup
 
 When no inline text follows the condition, the text is looked up exactly as for `@insert`. If no text is registered, the opening line is removed and the body is discarded — a useful way to make a whole block disappear.
@@ -207,13 +209,3 @@ This lets a block be either a complete fragment (`x.created DESC`) or
 a template-driven one whose content depends on inputs (`x.created` followed by a piece of inserted text).
 
 `@reorder` takes no additional argument beyond its name.
-
-## Binding a `TextTemplate`
-
-The templating is unaware of any context.
-This context is provided through four caller-supplied callbacks when constructing the `TextTemplate` instance:
-
-- a predicate that decides whether a line is a directive line (note helper `isDirectiveLine` with prefix marker) 
-- a predicate `ifs(name)` that resolves a named `@if` condition to a boolean,
-- a function `inserts(name)` that resolves a named `@insert` to optional text,
-- a function `reorders(name)` that assigns a sort key to a named `@reorder` block.
