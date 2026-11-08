@@ -428,7 +428,7 @@ class TextTemplateTest {
     void bareReplaceFails() {
       IllegalStateException ex =
           assertThrows(IllegalStateException.class, () -> render("-- @replace\nOLD"));
-      assertEquals("@replace expression ends unexpectedly: ", ex.getMessage());
+      assertEquals("@replace requires ':name' argument: -- @replace", ex.getMessage());
     }
 
     @Test

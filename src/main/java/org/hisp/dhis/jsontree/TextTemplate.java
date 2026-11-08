@@ -324,29 +324,37 @@ public record TextTemplate(
     return new DirectiveLine(type, null, null, null, resumePos);
   }
 
+  /** {@code -- @insert :name} — a {@code :name} and nothing else. */
   private static DirectiveLine parseInsert(Text line, int nextLineStart) {
-    String name = requireDirectiveNameRef(Directive.INSERT, line);
+    int start = skipToArgumentStart(line);
+    String name = parseNameRef(Directive.INSERT, line, start);
+    requireEndOfLine(Directive.INSERT, line, start + 1 + name.length());
     return new DirectiveLine(Directive.INSERT, name, null, null, nextLineStart);
   }
 
+  /** {@code -- @reorder :name} — a {@code :name} and nothing else. */
   private static DirectiveLine parseReorder(Text line, int nextLineStart) {
-    String name = requireDirectiveNameRef(Directive.REORDER, line);
+    int start = skipToArgumentStart(line);
+    String name = parseNameRef(Directive.REORDER, line, start);
+    requireEndOfLine(Directive.REORDER, line, start + 1 + name.length());
     return new DirectiveLine(Directive.REORDER, name, null, null, nextLineStart);
   }
 
+  /**
+   * {@code -- @replace :name} (a {@code :name} and nothing else) or
+   * {@code -- @replace <expr> = <replacement>} (an expression, then {@code =}, then the replacement
+   * text, which may be empty).
+   */
   private static DirectiveLine parseReplace(Text line, int nextLineStart) {
-    int start = skipDirectiveName(line);
-    int assign = line.indexOf('=', start);
+    int afterName = skipDirectiveName(line);
+    int assign = line.indexOf('=', afterName);
     if (assign < 0) {
-      Text expr = line.subSequence(start, line.length()).trim();
-      if (expr.contains('&') || expr.contains('|'))
-        throw new IllegalStateException(
-            "@replace without replacement must use a :name only but got: " + expr);
-      parseExpr(Directive.REPLACE, expr);
-      String name = requireDirectiveNameRef(Directive.REPLACE, expr);
+      int start = skipToArgumentStart(line);
+      String name = parseNameRef(Directive.REPLACE, line, start);
+      requireEndOfLine(Directive.REPLACE, line, start + 1 + name.length());
       return new DirectiveLine(Directive.REPLACE, name, null, null, nextLineStart);
     }
-    Text expr = line.subSequence(start, assign).trim();
+    Text expr = line.subSequence(afterName, assign).trim();
     Text replacement = line.subSequence(assign + 1, line.length()).trim();
     parseExpr(Directive.REPLACE, expr);
     return new DirectiveLine(Directive.REPLACE, null, expr, replacement, nextLineStart);
@@ -391,6 +399,36 @@ public record TextTemplate(
       throw new IllegalStateException(directive + " expression ends unexpectedly: " + expr);
   }
 
+  /** @return the position of the first non-whitespace character after the directive name */
+  private static int skipToArgumentStart(Text line) {
+    return skipIndent(line, skipDirectiveName(line));
+  }
+
+  /** Fails unless everything from {@code pos} to the end of {@code line} is whitespace. */
+  private static void requireEndOfLine(Directive directive, Text line, int pos) {
+    if (skipIndent(line, pos) < line.length())
+      throw new IllegalStateException(directive + " unexpected content after ':name': " + line);
+  }
+
+  /**
+   * Parses a {@code :name} starting at {@code start} in {@code line}, validating that
+   * {@code line} has a {@code ':'} at {@code start} and a non-empty alphanumeric run after it. The
+   * character after the run must be whitespace or EOF, so {@code :foo-bar} is rejected as an
+   * invalid name (rather than silently parsing as {@code foo}).
+   *
+   * @return the name (without the leading {@code ':'})
+   */
+  private static String parseNameRef(Directive directive, Text line, int start) {
+    if (start >= line.length() || line.charAt(start) != ':')
+      throw new IllegalStateException(directive + " requires ':name' argument: " + line);
+    int end = skipAlphanumeric(line, start + 1);
+    if (end == start + 1)
+      throw new IllegalStateException(directive + " argument must have a letter: " + line);
+    if (end < line.length() && !isIndent(line.charAt(end)))
+      throw new IllegalStateException(directive + " name must be alphanumeric: " + line);
+    return line.subSequence(start + 1, end).toString();
+  }
+
   // ---- shared helpers ----
 
   /** Line content with any trailing {@code \r} removed. */
@@ -423,17 +461,6 @@ public record TextTemplate(
   /** @return the position just past the {@code @name} part of a directive line */
   private static int skipDirectiveName(Text line) {
     return skipAlphanumeric(line, line.indexOf('@') + 1);
-  }
-
-  private static String requireDirectiveNameRef(Directive name, Text line) {
-    int s = line.indexOf(':');
-    if (s < 0) throw new IllegalStateException(name + " requires ':name' argument: " + line);
-    int e = skipAlphanumeric(line, s + 1);
-    if (e == s + 1)
-      throw new IllegalStateException(name + " argument must have a letter: " + line);
-    if (e < line.length() && !isIndent(line.charAt(e)))
-      throw new IllegalStateException(name + " name must be alphanumeric: " + line);
-    return line.subSequence(s + 1, e).toString();
   }
 
   private static int skipAlphanumeric(Text line, int i) {
