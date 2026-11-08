@@ -543,14 +543,6 @@ class TextBuilderTest {
   }
 
   @Test
-  void testEmpty() {
-    TextBuilder b = new TextBuilder();
-    assertSame(Text.EMPTY, b.empty());
-    b.appendAscii("hello");
-    assertSame(Text.EMPTY, b.empty());
-  }
-
-  @Test
   void testTextValue() {
     TextBuilder b = new TextBuilder();
     b.appendAscii("hello");

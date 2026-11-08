@@ -69,11 +69,6 @@ public final class TextBuilder implements Appender, Textual, CharFragment<Text> 
   }
 
   @Override
-  public Text empty() {
-    return Text.EMPTY;
-  }
-
-  @Override
   public @NotNull Text textValue() {
     return Text.of(buffer,0, length);
   }

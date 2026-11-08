@@ -44,22 +44,22 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
       cs.copyTo(buffer, 0);
       return new TextSlice(buffer, 0, len);
     }
-    Text cached = getCached(text.charAt(0), len);
+    Text cached = cacheGet(text.charAt(0), len);
     if (cached != null && cached.contentEquals(text)) return cached;
     char[] buffer = new char[len];
     for (int i = 0; i < len; i++) buffer[i] = text.charAt(i);
     Text res = new TextSlice(buffer, 0, len);
-    setCached(res);
+    cacheUpdate(res);
     return res;
   }
 
   static Text of(String text) {
     if (text.isEmpty()) return EMPTY;
-    Text cached = getCached(text.charAt(0), text.length());
+    Text cached = cacheGet(text.charAt(0), text.length());
     if (cached != null && cached.contentEquals(text)) return cached;
     char[] buffer = text.toCharArray();
     Text res = new TextSlice(buffer, 0, buffer.length);
-    setCached(res);
+    cacheUpdate(res);
     return res;
   }
 
@@ -72,11 +72,6 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   @Override
   public Text self() {
     return this;
-  }
-
-  @Override
-  public Text empty() {
-    return EMPTY;
   }
 
   @Override
@@ -242,6 +237,11 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   }
 
   /**
+   * For no specific reason other than "attributeoptioncombo" being 20 letters
+   */
+  private static final int WORD_CACHE_MAX_LENGTH = 20;
+
+  /**
    * A cache for short texts starting with a lower case letter like often used in path segment
    * names. The lookup is very cheap with 2 simple index computations.
    * <p>
@@ -249,18 +249,19 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
    * non-{@link Text} {@link CharSequence}s like {@link String}s.
    * This is a typical use case of a JSON object API.
    */
-  private static final Text[][] STARTING_A_Z_LENGTH_1_TO_16 = new Text[26][16];
+  private static final Text[][] WORD_CACHE = new Text[26][WORD_CACHE_MAX_LENGTH];
 
-  private static Text getCached(char c, int length) {
-    if (length < 1 || length > 16 || c < 'a' || c > 'z') return null;
-    return STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1];
+  private static Text cacheGet(char c, int length) {
+    if (length < 1 || length > WORD_CACHE_MAX_LENGTH || c < 'a' || c > 'z') return null;
+    return WORD_CACHE[c - 'a'][length - 1];
   }
 
-  private static void setCached(Text text) {
+  private static void cacheUpdate(Text text) {
     char c = text.charAt(0);
+    if (c < 'a' || c > 'z') return;
     int length = text.length();
-    if (length < 1 || length > 16 || c < 'a' || c > 'z') return;
-    STARTING_A_Z_LENGTH_1_TO_16[c - 'a'][length - 1] = text;
+    if (length < 1 || length > WORD_CACHE_MAX_LENGTH) return;
+    WORD_CACHE[c - 'a'][length - 1] = text;
   }
 
       /*

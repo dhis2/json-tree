@@ -507,10 +507,10 @@ class TextTest {
 
   @Test
   void testOf_String_CacheLimit() {
-    Text cached = Text.of("a234567890123456");
-    assertSame(cached, Text.of("a234567890123456"));
-    Text tooLong = Text.of("a2345678901234567");
-    assertNotSame(tooLong, Text.of("a2345678901234567"));
+    Text cached = Text.of("attributeOptionCombo");
+    assertSame(cached, Text.of("attributeOptionCombo"));
+    Text tooLong = Text.of("attributeOptionCombo2");
+    assertNotSame(tooLong, Text.of("attributeOptionCombo2"));
   }
 
   @DisplayName("Text.hashCode(Text)")
