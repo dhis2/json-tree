@@ -24,6 +24,12 @@ import java.util.function.ToIntFunction;
  * An <code>{expr}</code> are one or more <code>:name</code> references combined
  * with <code>&&</code> and <code>||</code> (and binding stronger).
  *
+ * <p>Directive lines are recognised by their {@code prefix} (usually the line-comment marker of the
+ * host language, e.g. {@code "--"} for SQL). A directive may be chained onto the same line after a
+ * closing or branching directive by repeating the prefix, e.g. {@code --@end --@if :foo}. Anything
+ * other than whitespace or another prefixed directive after an {@code @else} or {@code @end} is an
+ * error.
+ *
  * <p>Consecutive {@code @reorder :name ... @end} blocks form a reorder sequence: they are emitted
  * in the order given by {@link #reorders} (name → ordinal), not in template order. The blocks must
  * be adjacent; any non-{@code @reorder} line ends the sequence.
@@ -32,13 +38,13 @@ import java.util.function.ToIntFunction;
  * @since 1.13
  */
 public record TextTemplate(
-    Predicate<Text> directives,
+    CharSequence prefix,
     Predicate<String> tests,
     Function<String, Text> inserts,
     ToIntFunction<String> reorders) {
 
   public Text render(Text template) {
-    TextBuilder out = new TextBuilder((int) (template.length() * 1.5));
+    TextBuilder out = new TextBuilder(template.length());
     DirectiveLine resume = renderBlock(template, 0, out, true);
     if (resume != null) {
       String msg =
@@ -48,21 +54,6 @@ public record TextTemplate(
       throw new IllegalStateException(msg);
     }
     return out.textValue();
-  }
-
-  public static Predicate<Text> isDirectiveLine(CharSequence prefix) {
-    return line -> {
-      int len = line.length();
-      int i = skipIndent(line, 0);
-      if (!line.startsWith(prefix, i)) return false;
-      i += prefix.length();
-      i = skipIndent(line, i);
-      if (i >= len || line.charAt(i) != '@') return false;
-      i++; // skip @
-      int s = i;
-      i = skipAlphanumeric(line, s);
-      return i > s && (i >= len || isIndent(line.charAt(i)));
-    };
   }
 
   private enum Directive {
@@ -297,8 +288,8 @@ public record TextTemplate(
    * past its {@code \n} (or EOF).
    */
   private DirectiveLine parseDirectiveLine(Text line, int pos, int nextLineStart) {
-    if (!directives.test(line)) return null;
-    Directive type = Directive.of(lineDirectiveName(line));
+    if (!isDirectiveLine(line)) return null;
+    Directive type = Directive.of(parseDirectiveName(line));
     if (type == null) return null;
     return switch (type) {
       case IF -> parseIf(line, nextLineStart);
@@ -309,24 +300,59 @@ public record TextTemplate(
     };
   }
 
+  public static Text parseDirectiveName(Text line) {
+    int start = line.indexOf('@');
+    if (start < 0) return null;
+    int end = start + 1;
+    while (end < line.length() && isAlphanumeric(line.charAt(end))) end++;
+    if (end == start + 1) return null;
+    return line.subSequence(start + 1, end);
+  }
+
+  private boolean isDirectiveLine(Text line) {
+    int len = line.length();
+    int i = skipIndent(line, 0);
+    if (!line.startsWith(prefix, i)) return false;
+    i += prefix.length();
+    i = skipIndent(line, i);
+    if (i >= len || line.charAt(i) != '@') return false;
+    i++; // skip @
+    int s = i;
+    i = skipAlphanumeric(line, s);
+    return i > s && (i >= len || isIndent(line.charAt(i)));
+  }
+
   private static DirectiveLine parseIf(Text line, int nextLineStart) {
     Text expr = line.subSequence(skipDirectiveName(line), line.length()).trim();
     parseExpr(Directive.IF, expr);
     return new DirectiveLine(Directive.IF, null, expr, null, nextLineStart);
   }
 
-  private static DirectiveLine parseElseEnd(Directive type, Text line, int pos, int nextLineStart) {
+  /**
+   * {@code @else} and {@code @end} are the only directives that may be chained onto the same line
+   * by repeating the {@code prefix}. Anything after them must therefore be either whitespace only,
+   * or another directive line (e.g. {@code --@end --@if :foo}); anything else is an error.
+   */
+  private DirectiveLine parseElseEnd(Directive type, Text line, int pos, int nextLineStart) {
     int nameEnd = skipDirectiveName(line);
-    // if there is trailing content, resume inside the line so "@else @if :name" chains work
-    int resumePos = nameEnd < line.length() && isIndent(line.charAt(nameEnd))
-        ? pos + nameEnd
-        : nextLineStart;
-    return new DirectiveLine(type, null, null, null, resumePos);
+    if (nameEnd >= line.length()) {
+      return new DirectiveLine(type, null, null, null, nextLineStart);
+    }
+    Text tail = line.subSequence(nameEnd, line.length());
+    if (skipIndent(tail, 0) >= tail.length()) {
+      // only trailing whitespace: nothing meaningful to emit, resume on the next line
+      return new DirectiveLine(type, null, null, null, nextLineStart);
+    }
+    if (!isDirectiveLine(tail)) {
+      throw new IllegalStateException(type + " unexpected content after directive: " + line);
+    }
+    // chained directive: resume at the start of the tail so renderBlock sees and parses it
+    return new DirectiveLine(type, null, null, null, pos + nameEnd);
   }
 
   /** {@code -- @insert :name} — a {@code :name} and nothing else. */
   private static DirectiveLine parseInsert(Text line, int nextLineStart) {
-    int start = skipToArgumentStart(line);
+    int start = directiveArgumentStart(line);
     String name = parseNameRef(Directive.INSERT, line, start);
     requireEndOfLine(Directive.INSERT, line, start + 1 + name.length());
     return new DirectiveLine(Directive.INSERT, name, null, null, nextLineStart);
@@ -334,7 +360,7 @@ public record TextTemplate(
 
   /** {@code -- @reorder :name} — a {@code :name} and nothing else. */
   private static DirectiveLine parseReorder(Text line, int nextLineStart) {
-    int start = skipToArgumentStart(line);
+    int start = directiveArgumentStart(line);
     String name = parseNameRef(Directive.REORDER, line, start);
     requireEndOfLine(Directive.REORDER, line, start + 1 + name.length());
     return new DirectiveLine(Directive.REORDER, name, null, null, nextLineStart);
@@ -349,7 +375,7 @@ public record TextTemplate(
     int afterName = skipDirectiveName(line);
     int assign = line.indexOf('=', afterName);
     if (assign < 0) {
-      int start = skipToArgumentStart(line);
+      int start = directiveArgumentStart(line);
       String name = parseNameRef(Directive.REPLACE, line, start);
       requireEndOfLine(Directive.REPLACE, line, start + 1 + name.length());
       return new DirectiveLine(Directive.REPLACE, name, null, null, nextLineStart);
@@ -400,7 +426,7 @@ public record TextTemplate(
   }
 
   /** @return the position of the first non-whitespace character after the directive name */
-  private static int skipToArgumentStart(Text line) {
+  private static int directiveArgumentStart(Text line) {
     return skipIndent(line, skipDirectiveName(line));
   }
 
@@ -443,19 +469,6 @@ public record TextTemplate(
   private static int nextLineStart(Text input, int pos) {
     int nl = input.indexOf('\n', pos);
     return nl < 0 ? input.length() : nl + 1;
-  }
-
-  /**
-   * @param line a line of text
-   * @return the directive name or null if no directive is contained
-   */
-  public static Text lineDirectiveName(Text line) {
-    int start = line.indexOf('@');
-    if (start < 0) return null;
-    int end = start + 1;
-    while (end < line.length() && isAlphanumeric(line.charAt(end))) end++;
-    if (end == start + 1) return null;
-    return line.subSequence(start + 1, end);
   }
 
   /** @return the position just past the {@code @name} part of a directive line */

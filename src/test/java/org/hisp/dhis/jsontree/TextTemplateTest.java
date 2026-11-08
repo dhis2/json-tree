@@ -36,7 +36,7 @@ class TextTemplateTest {
       Map<String, String> inserts,
       Map<String, Integer> orders) {
     return new TextTemplate(
-        TextTemplate.isDirectiveLine("--"),
+        "--",
             trueConditions::contains,
             name -> inserts.containsKey(name) ? Text.of(inserts.get(name)) : null,
             name -> orders.getOrDefault(name, 0))
@@ -297,7 +297,7 @@ class TextTemplateTest {
     void elseWithArgumentFails() {
       IllegalStateException ex =
           assertThrows(IllegalStateException.class, () -> render("-- @else :x\nA"));
-      assertEquals("Closing @end is missing for: @else", ex.getMessage());
+      assertEquals("@else unexpected content after directive: -- @else :x", ex.getMessage());
     }
   }
 
@@ -349,7 +349,7 @@ class TextTemplateTest {
     void endWithArgumentFails() {
       IllegalStateException ex =
           assertThrows(IllegalStateException.class, () -> render("-- @end :x"));
-      assertEquals("@end without opening directive", ex.getMessage());
+      assertEquals("@end unexpected content after directive: -- @end :x", ex.getMessage());
     }
 
     @Test
@@ -633,37 +633,6 @@ class TextTemplateTest {
     void endElseChainWithTabSeparator() {
       assertEquals(
           "E\n", render("-- @if :o\n-- @if :a\nA\n-- @end\t--@else\nE\n-- @end"));
-    }
-  }
-
-  // ============================== Trailing content ==============================
-
-  @Nested
-  class TrailingContent {
-
-    @Test
-    void textAfterEndIsEmittedAsContent() {
-      // After a true @if, " some note" is back in the enclosing context
-      assertEquals(
-          "A\n some note\n", render("-- @if :x\nA\n-- @end some note", Set.of("x")));
-      // After a false @if, "A" is skipped but " some note" is still emitted
-      assertEquals(" some note\n", render("-- @if :x\nA\n-- @end some note"));
-    }
-
-    @Test
-    void colonArgumentAfterEndIsEmittedAsContent() {
-      assertEquals("A\n :x\n", render("-- @if :x\nA\n-- @end :x", Set.of("x")));
-    }
-
-    @Test
-    void textAfterElseIsEmittedAsContent() {
-      // true branch: else branch never runs, so " some note" is not emitted
-      assertEquals(
-          "A\n", render("-- @if :x\nA\n-- @else some note\nB\n-- @end", Set.of("x")));
-      // false branch: " some note" is emitted at the start of the else branch
-      assertEquals(
-          " some note\nB\n",
-          render("-- @if :x\nA\n-- @else some note\nB\n-- @end"));
     }
   }
 }
