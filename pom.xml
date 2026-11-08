@@ -7,7 +7,7 @@
     <groupId>org.hisp.dhis</groupId>
     <artifactId>json-tree</artifactId>
     <packaging>jar</packaging>
-    <name>DHIS JSON Tree</name>
+    <name>JSON Tree</name>
     <url>https://github.com/dhis2/json-tree</url>
     <version>1.14.0-SNAPSHOT</version>
 
@@ -21,11 +21,10 @@
     </developers>
 
     <description>
-        This module provides a library to parse and browse JSON documents
-        provided as input string. It is build in particular to extract JSON
-        nodes by path with high performance. This is done by skipping nodes
-        that are not of interest and by only building a cheap low level node
-        representation for those nodes that are extracted.
+        **json-tree** is a zero-dependency Java JSON library for large payloads you process dynamically.
+        It lazily parses to a virtual tree, keeps memory close to the source text,
+        and gives you RFC 9535-style query, JSON Patch, diff, and schema validation
+        in one small package—without Jackson’s object graph or multiple separate dependencies.
     </description>
 
     <organization>
