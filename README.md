@@ -91,6 +91,7 @@ is needed:
 | Memory or allocation churn matters (classic server)                    | You think of unused memory as lost potential (cloud deploy)                             | 
 | You stream process large files that **still fit in memory**            | You stream **arbitrarily large** files (use a streaming parser)                         |
 | You want to **assert qualities of output** conveniently                | You want to **assert exact output** (e.g. via POJO mapping with Jackson)                |
+| You want **full control** over validation and error messages           | You are satisfied **tool dependent** mapping error messages                             |
 | You want **zero dependencies** or a small audit surface                | You need the full **Jackson ecosystem** (modules, integrations)                         |
 | You need seamless integration **query + patch + diff + validate**      | You need **strict** RFC 6902 sequential patch semantics or **full** RFC 9535 compliance |
 | You are in a **cold-start-sensitive** or dependency-averse environment | You need to interoperate with existing Jackson/Gson object models                       |

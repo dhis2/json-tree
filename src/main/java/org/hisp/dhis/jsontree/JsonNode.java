@@ -738,9 +738,29 @@ public interface JsonNode
   JsonPath path();
 
   /**
+   * In contrast to {@link #getRawInput()} this method returns the JSON
+   * of this node
+   *
+   * @see #getRawInput()
    * @return the plain JSON of this node as defined in the overall content
    */
   Text getDeclaration();
+
+  /**
+   * Note that this method will not ensure that the input was valid JSON when called on the root. It
+   * is simply a read-only reflection of the input as given to a factory method. When called on a
+   * non-root node this is equivalent to {@link #getDeclaration()} since finding the section in the
+   * JSON source requires at least skipping to it which also does validate the input.
+   *
+   * <p>Using this method over {@link #getDeclaration()} can be useful to avoid triggering parsing
+   * at all. For example, when loading a value from DB that is known to be JSON, wrapping it as
+   * {@link JsonNode} in case we want to work with it, but not parsing it at all if it is just
+   * passed down to the web API where it is rendered again.
+   *
+   * @return the JSON input as it was passed to a factory method.
+   * @since 1.14
+   */
+  Text getRawInput();
 
   /**
    * @return offset or index in the overall content where this node starts (inclusive, points to

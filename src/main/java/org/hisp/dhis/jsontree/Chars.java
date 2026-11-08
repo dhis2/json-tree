@@ -216,7 +216,7 @@ final class Chars {
 
   static <T> T decode(byte[] bytes, Charset encoding, BiFunction<char[], Integer, T> wrap) {
     if (StandardCharsets.UTF_8.equals(encoding)) return decodeUTF8(bytes, wrap);
-    if (StandardCharsets.ISO_8859_1.equals(encoding)) {
+    if (StandardCharsets.ISO_8859_1.equals(encoding) || StandardCharsets.US_ASCII.equals(encoding)) {
       char[] res = decodeIso88591(bytes);
       return wrap.apply(res, res.length);
     }
@@ -241,7 +241,7 @@ final class Chars {
     }
     int errors = 0;
     int offset = 0;
-    char[] dest = new char[length - i];
+    char[] dest = new char[countCharsUTF8(src, i, length)];
     while (i < length) {
       int b = src[i++] & 0xFF; // treat as unsigned
       if (b < 0x80) { // 0xxxxxxx (ASCII)
@@ -288,5 +288,44 @@ final class Chars {
     if (offset < dest.length) Arrays.fill(dest, offset, dest.length, ' ');
     if (errors > 0) log.log(WARNING, "UTF-8 contained %d illegal byte sequences".formatted(errors));
     return wrap.apply(dest, offset);
+  }
+
+  /**
+   * Counts the exact number of {@code char}s the UTF-8 decoder will produce.
+   *
+   * <p>Uses the leading byte of each sequence to determine its byte-length and jumps
+   * directly to the next code point, without inspecting continuation bytes. This
+   * mirrors what {@link #decodeUTF8(byte[], BiFunction)} actually does: it also does
+   * not validate continuation bytes, only checks that enough bytes remain. For
+   * truncated sequences the decoder writes a single replacement char and stops; this
+   * counter may count one extra char for a 4-byte sequence truncated at EOF, but
+   * since the decoder's caller uses the returned write offset rather than the array
+   * length, an over-estimate is harmless (it produces unused trailing slots that are
+   * never read). An under-estimate would cause an ArrayIndexOutOfBoundsException;
+   * this counter never under-counts.
+   */
+  private static int countCharsUTF8(byte[] src, int start, int length) {
+    int count = 0;
+    int i = start;
+    while (i < length) {
+      int b = src[i] & 0xFF;
+      if (b < 0xC0) {          // 0xxxxxxx (ASCII) or 10xxxxxx (stray continuation)
+        i += 1;
+        count += 1;
+      } else if (b < 0xE0) {   // 110xxxxx → 2-byte sequence
+        i += 2;
+        count += 1;
+      } else if (b < 0xF0) {   // 1110xxxx → 3-byte sequence
+        i += 3;
+        count += 1;
+      } else if (b < 0xF8) {   // 11110xxx → 4-byte sequence → surrogate pair
+        i += 4;
+        count += 2;
+      } else {                 // 0xF8-0xFF: invalid lead byte (RFC 3629)
+        i += 1;
+        count += 1;
+      }
+    }
+    return count;
   }
 }

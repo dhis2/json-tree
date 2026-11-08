@@ -155,6 +155,11 @@ record JsonTree(
     }
 
     @Override
+    public final Text getRawInput() {
+      return isRoot() ? Text.of(tree.json, 0, tree.json.length) : getDeclaration();
+    }
+
+    @Override
     public boolean exists(@NotNull JsonPath subPath) {
       return tree.exists(path.concat(subPath));
     }
