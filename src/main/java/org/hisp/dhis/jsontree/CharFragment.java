@@ -32,12 +32,6 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
   T self();
 
   /**
-   * @return a value representing the empty sequence with the right type
-   * @since 1.13
-   */
-  T empty();
-
-  /**
    * Note that wrap is a factory for new instances
    * to create new instances of the same implementation
    * class used by this text but otherwise is not dependent
@@ -132,7 +126,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
     int len = length();
     int left = 0;
     while (left < len && test.test(charAt(left))) left++;
-    if (left == len) return empty();
+    if (left == len) return subSequence(left, left);
     int right = len-1;
     while (right > left && test.test(charAt(right))) right--;
     if (left == 0 && right == len-1) return self();

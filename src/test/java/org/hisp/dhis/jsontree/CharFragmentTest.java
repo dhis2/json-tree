@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
  * minimal implementation that only provides the abstract methods.
  *
  * <p>The {@link TestSeq} implementation deliberately provides nothing beyond {@link
- * CharSequence#length()}, {@link CharSequence#charAt(int)}, {@link CharFragment#self()},
- * {@link CharFragment#empty()} and {@link CharFragment#wrap(char[], int, int)}. All other
+ * CharSequence#length()}, {@link CharSequence#charAt(int)}, {@link CharFragment#self()}
+ * and {@link CharFragment#wrap(char[], int, int)}. All other
  * behaviour is exercised through the default methods of the base interfaces.
  */
 class CharFragmentTest {
@@ -55,11 +55,6 @@ class CharFragmentTest {
     }
 
     @Override
-    public TestSeq empty() {
-      return new TestSeq(new char[0], 0, 0);
-    }
-
-    @Override
     public TestSeq wrap(char[] buffer, int offset, int length) {
       return new TestSeq(buffer, offset, length);
     }
@@ -92,11 +87,6 @@ class CharFragmentTest {
   void testSelfEmptyWrap() {
     TestSeq s = seq("hello");
     assertSame(s, s.self());
-    TestSeq e = s.empty();
-    assertEquals(0, e.length());
-    assertTrue(e.isEmpty());
-    assertSame(e, e.self());
-    assertEquals("", e.toString());
 
     char[] buf = "hello".toCharArray();
     TestSeq wrapped = s.wrap(buf, 1, 3);

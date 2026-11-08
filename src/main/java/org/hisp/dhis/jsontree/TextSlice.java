@@ -75,11 +75,6 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   }
 
   @Override
-  public Text empty() {
-    return EMPTY;
-  }
-
-  @Override
   public Text wrap(char[] buffer, int offset, int length) {
     checkSubSequence(offset, offset+length, buffer.length);
     return new TextSlice(buffer, offset, length);
