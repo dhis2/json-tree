@@ -14,8 +14,9 @@ This document describes the steps required to cut a new release of this project.
 Edit `pom.xml` and drop the `-SNAPSHOT` suffix from the version, so it reflects the
 final release version.
 
-```xml
-    <version>1.?.?</version>
+```diff
+-    <version>1.13.0-SNAPSHOT</version>
++    <version>1.13.0</version>
 ```
 
 #### 2. Update the version in the documentation
@@ -75,3 +76,11 @@ every local tag:
 5. Review the generated list and **remove entries that are not relevant to users**,
    such as build dependency bumps or internal Maven issues.
 6. Publish the release.
+
+#### 8. Bump the version in `pom.xml` to next SNAPSHOT
+Edit `pom.xml` and add the `-SNAPSHOT` suffix to the next version.
+
+```diff
+-    <version>1.13.0</version>
++    <version>1.14.0-SNAPSHOT</version>
+```
