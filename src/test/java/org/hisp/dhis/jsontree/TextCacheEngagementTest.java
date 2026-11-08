@@ -45,11 +45,8 @@ class TextCacheEngagementTest {
   void testTextOf_CacheHitForAllCommonMemberNames() {
     for (String name : List.of(
         "dataElement", "period", "orgUnit", "value", "storedBy", "created",
-        "lastUpdated", "comment", "followup", "deleted")) {
+        "lastUpdated", "comment", "followup", "deleted", "categoryOptionCombo", "attributeOptionCombo")) {
       assertSame(Text.of(name), Text.of(name), "cache miss for: " + name);
-    }
-    for (String name : List.of("categoryOptionCombo", "attributeOptionCombo")) {
-      assertNotSame(Text.of(name), Text.of(name), "cache miss for: " + name);
     }
   }
 
@@ -57,15 +54,15 @@ class TextCacheEngagementTest {
   void testTextOf_NoCacheForUppercaseStart() {
     Text a = Text.of("DataElement");
     Text b = Text.of("DataElement");
-    assertFalse(a == b, "uppercase-starting strings are not cached");
+    assertNotSame(a, b, "uppercase-starting strings are not cached");
   }
 
   @Test
   void testTextOf_NoCacheForLongStrings() {
-    String longName = "dataElementLongName";  // 20 chars > cache limit of 16
+    String longName = "attributeOptionComboLong";  // 24 chars > cache limit of 20
     Text a = Text.of(longName);
     Text b = Text.of(longName);
-    assertFalse(a == b, "strings longer than 16 characters are not cached");
+    assertNotSame(a, b, "strings longer than 20 characters are not cached");
   }
 
   // ——— Cache through JsonAppender ———
