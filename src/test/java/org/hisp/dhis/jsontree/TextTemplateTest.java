@@ -540,7 +540,7 @@ class TextTemplateTest {
   @Test void ifNameWithUnderscoreFails() {
     IllegalStateException ex = assertThrows(IllegalStateException.class,
         () -> render("-- @if :foo_bar\nA\n-- @end"));
-    assertEquals("Name must be alphanumeric: :foo_bar", ex.getMessage());
+    assertEquals("Name must be alphanumeric in @if expression: :foo_bar", ex.getMessage());
   }
 
   // ============================== Unknown directive ==============================
