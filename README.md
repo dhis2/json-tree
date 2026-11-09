@@ -1,6 +1,6 @@
 # json-tree
 
-**json-tree** is a zero-dependency Java JSON library for large payloads you process dynamically.
+**json-tree** is a zero-dependency Java JSON library that supports dynamic processing of large payloads.
 It lazily parses to a virtual tree, keeps memory close to the source text,
 and gives you RFC 9535-style query, JSON Patch, diff, and schema validation
 in one small package—without Jackson’s object graph or multiple separate dependencies.
@@ -15,7 +15,7 @@ in one small package—without Jackson’s object graph or multiple separate dep
 ## Why json-tree?
 
 `json-tree` started from a performance problem in a test suite: a JSON-heavy
-integration test was taking far too long because path-based lookups were
+integration test was taking far too long when path-based lookups were
 evaluated repeatedly against a large document.
 
 The `json-tree` lib was the answer: keep the source text, represent each node as
@@ -29,15 +29,6 @@ Three things follow from that design:
   all in-tree. Nothing to exclude, nothing to audit in addition.
 - **One artifact.** The jobs you'd normally assemble from Jackson + JsonPath +
   json-patch + a validator are in one small package and integrate without conversion.
-
-[![Memory: max payload at fixed heap](https://img.shields.io/badge/benchmark-pending-lightgrey)](https://github.com/dhis2/json-tree#benchmarks)
-
-<!--
-  BENCHMARK PLACEHOLDER — fill with the -Xmx max-payload chart.
-  One bar chart: largest input each library can process at -Xmx64m.
-  Caption: "At 64 MB heap, Jackson's tree model tops out at ~X MB;
-  json-tree handles ~Y MB." Reproducible harness: [link].
--->
 
 ---
 
@@ -84,19 +75,21 @@ is needed:
 
 ## When to use it — and when not to
 
-| Use `json-tree` when…                                                  | Reach for something else when…                                                          |
-|------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| You parse **large payloads** to process them dynamically               | You need **POJO databind** with annotations (use Jackson or Gson)                       |
-| You want to allow **alternative input formats** conveniently           | You only allow **singular input format** (maps well onto a POJO)                        |
-| Memory or allocation churn matters (classic server)                    | You think of unused memory as lost potential (cloud deploy)                             | 
-| You stream process large files that **still fit in memory**            | You stream **arbitrarily large** files (use a streaming parser)                         |
-| You want to **assert qualities of output** conveniently                | You want to **assert exact output** (e.g. via POJO mapping with Jackson)                |
-| You want **full control** over validation and error messages           | You are satisfied **tool dependent** mapping error messages                             |
-| You want **zero dependencies** or a small audit surface                | You need the full **Jackson ecosystem** (modules, integrations)                         |
-| You need seamless integration **query + patch + diff + validate**      | You need **strict** RFC 6902 sequential patch semantics or **full** RFC 9535 compliance |
-| You are in a **cold-start-sensitive** or dependency-averse environment | You need to interoperate with existing Jackson/Gson object models                       |
+| Use `json-tree` when…                                                   | Reach for something else when…                                                                        |
+|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| You need dynamic processing of **small to large payloads**              | You need **POJO databind** with annotations (use Jackson or Gson)                                     |
+| Memory or allocation churn matters (classic server deploy)              | You think of unused memory as lost potential (cloud deploy)                                           | 
+| You process inputs that **still fit in memory** (at 2-4x on UTF8 spike) | You stream **arbitrarily large** inputs (use a streaming parser)                                      |
+| You want to **assert qualities of content** conveniently                | You want to **assert exact content** (e.g. via POJO mapping with Jackson)                             |
+| You want to **inspect input** (validate, flexible formats, ...)         | You want **rigid mapping** to POJOs and deal with Java only (Jackson)                                 |
+| You want **user types + tree utility** (search, patch, transform, ...)  | You need **object model** only (classic databind)                                                     |                                                        
+| You want **cheap wrap/unwrap** (e.g. DB <-> Java <-> REST API)          | You accept to **pay to convert** between models at the boundaries (or add special pass-through-paths) |                                                                     
+| You want **zero dependencies** or a small audit surface                 | You need the full **Jackson ecosystem** (modules, integrations)                                       |
+| You need seamless integration **query + patch + diff + validate**       | You need **strict** RFC 6902 sequential patch semantics or **full** RFC 9535 compliance               |
+| You are in a **cold-start-sensitive** or dependency-averse environment  | You need to **interoperate** with existing Jackson/Gson object models                                 |
 
-`json-tree` is a process/query/transform tool for the jobs the popular libraries do badly or require multiple dependencies to do.
+`json-tree` is a wrap/query/transform tool for the jobs the popular libraries do badly or require multiple dependencies to do.
+
 
 ---
 

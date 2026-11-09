@@ -211,17 +211,12 @@ final class Chars {
    * @return the character in the file
    */
   static char[] decode(byte[] bytes, Charset encoding) {
-    return decode(bytes, encoding, (arr, length) -> arr);
-  }
-
-  static <T> T decode(byte[] bytes, Charset encoding, BiFunction<char[], Integer, T> wrap) {
-    if (StandardCharsets.UTF_8.equals(encoding)) return decodeUTF8(bytes, wrap);
+    if (StandardCharsets.UTF_8.equals(encoding)) return decodeUTF8(bytes);
     if (StandardCharsets.ISO_8859_1.equals(encoding) || StandardCharsets.US_ASCII.equals(encoding)) {
-      char[] res = decodeIso88591(bytes);
-      return wrap.apply(res, res.length);
+      return decodeIso88591(bytes);
     }
-    char[] res = new String(bytes, encoding).toCharArray();
-    return wrap.apply(res, res.length);
+    // fall-back for encodings not directly handled
+    return new String(bytes, encoding).toCharArray();
   }
 
   private static char[] decodeIso88591(byte[] src) {
@@ -230,7 +225,7 @@ final class Chars {
     return dest;
   }
 
-  private static <T> T decodeUTF8(byte[] src, BiFunction<char[], Integer, T> wrap) {
+  private static char[] decodeUTF8(byte[] src) {
     int i = 0;
     int length = src.length;
     if (length >= 3
@@ -241,7 +236,11 @@ final class Chars {
     }
     int errors = 0;
     int offset = 0;
-    char[] dest = new char[countCharsUTF8(src, i, length)];
+    int charCount = countCharsUTF8(src, i, length);
+    // if all chars only need 1 byte we are dealing with ASCII only
+    // and we can short-circuit to the simple loop
+    if (charCount == length) return decodeIso88591(src);
+    char[] dest = new char[charCount];
     while (i < length) {
       int b = src[i++] & 0xFF; // treat as unsigned
       if (b < 0x80) { // 0xxxxxxx (ASCII)
@@ -284,10 +283,8 @@ final class Chars {
         errors++;
       }
     }
-    // over-allocated slots become space
-    if (offset < dest.length) Arrays.fill(dest, offset, dest.length, ' ');
     if (errors > 0) log.log(WARNING, "UTF-8 contained %d illegal byte sequences".formatted(errors));
-    return wrap.apply(dest, offset);
+    return dest;
   }
 
   /**
@@ -295,7 +292,7 @@ final class Chars {
    *
    * <p>Uses the leading byte of each sequence to determine its byte-length and jumps
    * directly to the next code point, without inspecting continuation bytes. This
-   * mirrors what {@link #decodeUTF8(byte[], BiFunction)} actually does: it also does
+   * mirrors what {@link #decodeUTF8(byte[])} actually does: it also does
    * not validate continuation bytes, only checks that enough bytes remain. For
    * truncated sequences the decoder writes a single replacement char and stops; this
    * counter may count one extra char for a 4-byte sequence truncated at EOF, but
