@@ -715,22 +715,6 @@ class JsonArrayTest {
   // ---------------------------------------------------------------------------
 
   @Test
-  void testIntValuesVsValuesInt_Contrast() {
-    // the whole split, in one test, both directions
-    String json = "[1, 3.14, 2147483648]";
-
-    // parse: strict, throws on first non-conforming element
-    assertThrows(
-        NumberFormatException.class,
-        () -> JsonMixed.of(json).intValues().toArray());
-
-    // cast: coercing, truncates and wraps
-    assertEquals(
-        List.of(1, 3, Integer.MIN_VALUE),
-        JsonMixed.of(json).values(int.class).toList());
-  }
-
-  @Test
   void testValues_ToInt_Truncates() {
     // intValue() semantics, NOT parseInt(): "3.14" truncates to 3.
     // intValues() would throw NumberFormatException here — that's the split.
