@@ -69,10 +69,10 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
         return new TextualNumber(buffer, offset, length);
       }
     }
-    if (isNumericZero(buffer, offset, length))
-      return buffer[offset] == '-' ? -0d : 0d;
     if (!isTextualDecimal(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDecimal())
       throw nanError(buffer, offset, length, "Is neither an integer nor a decimal number: ");
+    if (isNumericZero(buffer, offset, length))
+      return buffer[offset] == '-' ? -0d : 0d;
     return new TextualNumber(buffer, offset, length);
   }
 
@@ -191,18 +191,20 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
 
   static boolean isNumericZero(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
-    char sign = buffer[offset];
+    // zero is zero regardless of the exponent, so only the significand matters
+    int eOffset = offsetExponent(buffer, offset, length);
+    int sigEnd = eOffset < 0 ? offset + length : eOffset;
     int i = offset;
+    char sign = buffer[i];
     if (sign == '-' || sign == '+') i++;
-    int end = offset + length;
     int d0 = i;
-    while (i < end && buffer[i] == '0') i++;
+    while (i < sigEnd && buffer[i] == '0') i++;
     boolean integerDigits = i > d0;
-    if (i >= end) return integerDigits;
+    if (i == sigEnd) return integerDigits;
     if (buffer[i++] != '.') return false;
     d0 = i;
-    while (i < end && buffer[i] == '0') i++;
-    return i == end && (integerDigits || i > d0);
+    while (i < sigEnd && buffer[i] == '0') i++;
+    return i == sigEnd && (integerDigits || i > d0);
   }
 
   static boolean isNumericInteger(char[] buffer) {
@@ -225,7 +227,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return i == end;
   }
 
-  private static boolean allDigits(char[] buffer, int offset, int length) {
+  private static boolean isAllDigits(char[] buffer, int offset, int length) {
     int end = offset+length;
     for (int i = offset; i < end; i++)
       if (!isDigit(buffer[i])) return false;
@@ -474,7 +476,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int digits = length - (i - offset);
     if (digits == 0) return 0;
     if (!overflow && (digits > 10 || digits == 10 && buffer[i] > '2')) {
-      if (!allDigits(buffer, offset+(length - digits), digits))
+      if (!isAllDigits(buffer, offset+(length - digits), digits))
         throw nanError(buffer, offset, length, "Number contains illegal character(s)");
       throw overflow(buffer, offset, length, "int");
     }
@@ -512,7 +514,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int digits = length - (i - offset);
     if (digits == 0) return 0L;
     if (!overflow && (digits > 19 || digits == 19 && buffer[i] == '9' && buffer[i + 1] > '2')) {
-      if (!allDigits(buffer, offset+(length - digits), digits))
+      if (!isAllDigits(buffer, offset+(length - digits), digits))
         throw nanError(buffer, offset, length, "Number contains illegal character(s)");
       throw overflow(buffer, offset, length, "long");
     }

@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -264,6 +265,31 @@ class TextualNumberTest {
     assertNotNumericZero("-0.00010");
     assertNotNumericZero("hello");
   }
+
+  @Test
+  @SuppressWarnings("SimplifiableAssertion")
+  void testOf_SignedZero_ExponentForm() {
+    // Note that we must use assertTrue(Double.valueOf(-0.0).equals(...)
+    // as assertEquals(-0.0, ...) would hide the sign significance as 0.0 = -0.0
+    assertTrue(Double.valueOf(-0.0).equals(TextualNumber.of("-0E-60".toCharArray()).doubleValue()));
+    assertTrue(Double.valueOf( 0.0).equals(TextualNumber.of( "0E-60".toCharArray()).doubleValue()));
+    assertTrue(Double.valueOf(-0.0).equals(TextualNumber.of("-0.00E+0".toCharArray()).doubleValue()));
+    assertTrue(Double.valueOf(-0.0).equals(TextualNumber.of("-00.0E-60".toCharArray()).doubleValue()));
+  }
+
+  @Test
+  void testOf_MalformedExponent_StillThrows() {
+    // regression guard for the reorder: a naive isNumericZero fix that only strips
+    // the exponent would return 0d for these and skip validation entirely
+    assertThrows(NumberFormatException.class, () -> TextualNumber.of("0E".toCharArray()));
+    assertThrows(NumberFormatException.class, () -> TextualNumber.of("-0E+".toCharArray()));
+    assertThrows(NumberFormatException.class, () -> TextualNumber.of("0.0E".toCharArray()));
+  }
+
+  /*
+  Asserts
+   */
+
 
   private static void assertNumericZero(String value) {
     assertTrue(TextualNumber.isNumericZero(value.toCharArray(), 0, value.length()));
