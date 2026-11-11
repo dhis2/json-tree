@@ -76,6 +76,17 @@ class TextualNumberTest {
   }
 
   @Test
+  void testTextualNumber_SignedZero_Fallback() {
+    // fallback path: exponent too large for fast path, significand all zeros
+    assertEquals(-0.0, TextualNumber.of("-0E-60".toCharArray()).doubleValue());
+    assertEquals( 0.0, TextualNumber.of( "0E-60".toCharArray()).doubleValue());
+    assertEquals(-0.0, TextualNumber.of("-0.00E+0".toCharArray()).doubleValue());
+    // make sure the sign is *not* wrongly applied to non-zero values reaching the fallback
+    assertEquals(-1e-60, TextualNumber.of("-1E-60".toCharArray()).doubleValue());
+    assertEquals( 1e-60, TextualNumber.of( "1E-60".toCharArray()).doubleValue());
+  }
+
+  @Test
   void testParseDouble_OverflowCases() {
     // if naively handled as long it would overflow and returns wrong value
     assertDoubleEquals("9999999999999999999.0");

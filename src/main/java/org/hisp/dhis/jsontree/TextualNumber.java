@@ -5,6 +5,8 @@ import static org.hisp.dhis.jsontree.CharFragment.checkSubSequence;
 
 import org.hisp.dhis.jsontree.internal.NotNull;
 
+import java.math.BigDecimal;
+
 /**
  * A number represented by its text form.
  *
@@ -410,6 +412,9 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       } else throw nanIllegalChar(buffer, i0, length, c);
     }
     if (digits == 0) throw nanError(buffer, i0, length, "Number has no digits before the exponent: ");
+    // All digits are zero => the value is ±0.0. BigDecimal cannot represent signed zero,
+    // so the fast path and fallback below cannot be used to produce -0.0.
+    if (digits == leadingZeros) return neg ? -0d : 0d;
     // fast path:
     // simple conservative pre-condition: 1-15 significand digits, 1-4 exp characters
     int expLen = eOffset < 0 ? 0 : length - 1 - (eOffset - offset);
@@ -425,7 +430,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       }
     }
     // fallback
-    return Double.parseDouble(new String(buffer, i0, length));
+    return new BigDecimal(buffer, i0, length).doubleValue();
   }
 
   private static double parseDoubleNaN(char[] buffer, int offset, int length) {
