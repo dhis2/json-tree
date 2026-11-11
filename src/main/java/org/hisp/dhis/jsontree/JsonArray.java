@@ -113,14 +113,28 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * Note that elements are not restricted to JSON-strings only.
+   *
    * @return the array elements as a uniform list of {@link String}
-   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   * @throws JsonTreeException in case the node is not an array
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<String> stringValues() {
+    return testValues().map(Text::toString).toList();
+  }
+
+  /**
+   * Note that elements are not restricted to JSON-strings only.
+   *
+   * @return all elements of this array as their underlying raw JSON {@link Text}
+   * @throws JsonTreeException in case the node is not an array
+   * @since 1.14
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Streamable<Text> testValues() {
     JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.values().map(Text::toString).toList();
+    if (node == null || node.isNull()) return Streamable.empty();
+    return node.values();
   }
 
   /**
