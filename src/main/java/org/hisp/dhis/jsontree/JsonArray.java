@@ -120,10 +120,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   default List<String> stringValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return List.of();
-    return node.elements(SKIP)
-        .map(JsonNode::textValue)
-        .map(Text::toString)
-        .toList();
+    return node.values().map(Text::toString).toList();
   }
 
   /**
@@ -138,36 +135,57 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * This is a parsing operation with {@link Integer#parseInt(String)} semantics, not a {@link
+   * Number#intValue()} cast for each value; access the elements as {@link Streamable} of {@link
+   * JsonMixed} or {@link JsonNode} and map via {@link JsonMixed#intValue()} or {@link
+   * JsonNode#intValue()} use if you want cast behaviour.
+   *
    * @return all array values as int values (cast from double if needed)
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException if any of the elements is not a number
+   * @throws ArithmeticException if any of the numbers overflows int-range
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default IntStream intValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return IntStream.empty();
-    return node.elements(SKIP).stream().mapToInt(JsonNode::intValue);
+    return node.values().stream().mapToInt(Text::parseInt);
   }
 
   /**
+   * This is a parsing operation with {@link Long#parseLong(String)} semantics, not a {@link
+   * Number#longValue()} cast for each value; access the elements as {@link Streamable} of {@link
+   * JsonMixed} or {@link JsonNode} and map via {@link JsonMixed#longValue()} or {@link
+   * JsonNode#longValue()} use if you want cast behaviour.
+   *
    * @return all array values as long values (cast from double if needed)
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException if any of the elements is not a number
+   * @throws ArithmeticException if any of the numbers overflows long-range
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default LongStream longValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return LongStream.empty();
-    return node.elements(SKIP).stream().mapToLong(JsonNode::longValue);
+    return node.values().stream().mapToLong(Text::parseLong);
   }
 
   /**
+   * This is a parsing operation with {@link Double#parseDouble(String)} semantics, not a {@link
+   * Number#doubleValue()} cast for each value;
+   *
    * @return all array values as double values
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException if any of the elements is not a number
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default DoubleStream doubleValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return DoubleStream.empty();
-    return node.elements(SKIP).stream().mapToDouble(JsonNode::doubleValue);
+    return node.values().stream().mapToDouble(Text::parseDouble);
   }
 
   default JsonMixed get(int index) {
