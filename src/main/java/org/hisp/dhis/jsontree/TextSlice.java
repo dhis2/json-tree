@@ -100,17 +100,17 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public boolean isTextualInteger() {
-    return isInteger() || TextualNumber.isTextualInteger(buffer, offset, length);
+    return isInteger() || TextualNumber.isIntegerLiteral(buffer, offset, length);
   }
 
   @Override
   public boolean isNumericInteger() {
-    return isInteger() || TextualNumber.isNumericInteger(buffer, offset, length);
+    return isInteger() || TextualNumber.isIntegerValue(buffer, offset, length);
   }
 
   @Override
   public boolean isTextualDecimal() {
-    return isInteger() || TextualNumber.isTextualDecimal(buffer, offset, length);
+    return isInteger() || TextualNumber.isNumberLiteral(buffer, offset, length);
   }
 
   @Override

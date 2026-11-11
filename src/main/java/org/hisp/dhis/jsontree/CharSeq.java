@@ -314,7 +314,7 @@ public interface CharSeq extends CharSequence {
    *     decimal notation with all decimals being zero.
    */
   default boolean isNumericInteger() {
-    return TextualNumber.isNumericInteger(toCharArray());
+    return TextualNumber.isIntegerValue(toCharArray());
   }
 
   /**
@@ -323,7 +323,7 @@ public interface CharSeq extends CharSequence {
    *     notation.
    */
   default boolean isTextualDecimal() {
-    return TextualNumber.isTextualDecimal(toCharArray());
+    return TextualNumber.isNumberLiteral(toCharArray());
   }
 
   /**

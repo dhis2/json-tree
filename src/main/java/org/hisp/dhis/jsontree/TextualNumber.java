@@ -52,9 +52,9 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     if (length < 0) throw nanError(buffer, offset, length, "length must be >= 0");
     if (offset + length > buffer.length)
       throw new NumberFormatException("offset + length must be <= buffer.length");
-    if (isTextualInteger(buffer, offset, length)) {
+    if (isIntegerLiteral(buffer, offset, length)) {
       // preserve -0 as distinct from 0 by using a double
-      if (buffer[offset] == '-' && isNumericZero(buffer, offset, length))
+      if (buffer[offset] == '-' && isZeroValue(buffer, offset, length))
         return -0d;
       // up to 9 digits is always in int range
       if (length <= 9) return parseIntExact(buffer, offset, length);
@@ -69,9 +69,9 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
         return new TextualNumber(buffer, offset, length);
       }
     }
-    if (!isTextualDecimal(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDecimal())
+    if (!isNumberLiteral(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDecimal())
       throw nanError(buffer, offset, length, "Is neither an integer nor a decimal number: ");
-    if (isNumericZero(buffer, offset, length))
+    if (isZeroValue(buffer, offset, length))
       return buffer[offset] == '-' ? -0d : 0d;
     return new TextualNumber(buffer, offset, length);
   }
@@ -148,20 +148,20 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return parseDouble(buffer, offset, length);
   }
 
-  static boolean isTextualDecimal(char[] buffer) {
-    return isTextualDecimal(buffer, 0, buffer.length);
+  static boolean isNumberLiteral(char[] buffer) {
+    return isNumberLiteral(buffer, 0, buffer.length);
   }
 
-  static boolean isTextualDecimal(char[] buffer, int offset, int length) {
+  static boolean isNumberLiteral(char[] buffer, int offset, int length) {
     if (length == 0) return false;
     int eOffset = offsetExponent(buffer, offset, length);
-    if (eOffset < 0) return isTextualDecimalBase(buffer, offset, length);
+    if (eOffset < 0) return isNumberBaseLiteral(buffer, offset, length);
     int baseLength = eOffset - offset;
-    return isTextualDecimalBase(buffer, offset, baseLength)
-        && isTextualInteger(buffer, eOffset + 1, length - 1 - baseLength);
+    return isNumberBaseLiteral(buffer, offset, baseLength)
+        && isIntegerLiteral(buffer, eOffset + 1, length - 1 - baseLength);
   }
 
-  static boolean isTextualDecimalBase(char[] buffer, int offset, int length) {
+  static boolean isNumberBaseLiteral(char[] buffer, int offset, int length) {
     int i = offset;
     if (buffer[i] == '-' || buffer[i] == '+') i++; // sign
     int end = offset+length;
@@ -179,7 +179,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return i == end;
   }
 
-  static boolean isTextualInteger(char[] buffer, int offset, int length) {
+  static boolean isIntegerLiteral(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
     char sign = buffer[offset];
     int i = 0;
@@ -189,7 +189,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return true;
   }
 
-  static boolean isNumericZero(char[] buffer, int offset, int length) {
+  static boolean isZeroValue(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
     // zero is zero regardless of the exponent, so only the significand matters
     int eOffset = offsetExponent(buffer, offset, length);
@@ -207,11 +207,11 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return i == sigEnd && (integerDigits || i > d0);
   }
 
-  static boolean isNumericInteger(char[] buffer) {
-    return isNumericInteger(buffer, 0, buffer.length);
+  static boolean isIntegerValue(char[] buffer) {
+    return isIntegerValue(buffer, 0, buffer.length);
   }
 
-  static boolean isNumericInteger(char[] buffer, int offset, int length) {
+  static boolean isIntegerValue(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
     char sign = buffer[offset];
     int i = offset;
@@ -251,7 +251,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isTextualInteger(buffer, offset, length))
+    if (isIntegerLiteral(buffer, offset, length))
         return parseInt(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
@@ -271,7 +271,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isTextualInteger(buffer, offset, length))
+    if (isIntegerLiteral(buffer, offset, length))
       return parseLong(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
@@ -291,7 +291,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isTextualInteger(buffer, offset, length)) {
+    if (isIntegerLiteral(buffer, offset, length)) {
       if (length <= 9) {
         int val = parseIntExact(buffer, offset, length);
         if (val != 0) return val;

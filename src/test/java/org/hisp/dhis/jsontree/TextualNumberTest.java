@@ -292,11 +292,11 @@ class TextualNumberTest {
 
 
   private static void assertNumericZero(String value) {
-    assertTrue(TextualNumber.isNumericZero(value.toCharArray(), 0, value.length()));
+    assertTrue(TextualNumber.isZeroValue(value.toCharArray(), 0, value.length()));
   }
 
   private static void assertNotNumericZero(String value) {
-    assertFalse(TextualNumber.isNumericZero(value.toCharArray(), 0, value.length()));
+    assertFalse(TextualNumber.isZeroValue(value.toCharArray(), 0, value.length()));
   }
 
   private static void assertDoubleThrows(String number) {
