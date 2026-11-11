@@ -1005,10 +1005,22 @@ class TextTest {
     assertSame(hello, hello.concat(""));
     assertEquals(0, hello.concat("").offsetIn(t));
 
-    // concat("") on an empty slice returns self -> offset preserved,
+    // concat("") on an empty slice now preserves the slice, and therefore the
+    // buffer + offset, so the position is retained in both directions
     Text concatResult = emptySlice.concat("");
-    assertTrue(concatResult.isEmpty());
+    assertSame(emptySlice, concatResult);
+    assertTrue(concatResult.contentMemoryEquals(t));
     assertEquals(2, concatResult.offsetIn(t));
     assertEquals(0, concatResult.offsetIn(emptySlice));
+    assertEquals(0, emptySlice.offsetIn(concatResult));
+
+    // a real suffix still allocates a fresh buffer -> offset is lost
+    Text appended = emptySlice.concat("x");
+    assertEquals("x", appended.toString());
+    assertEquals(-1, appended.offsetIn(t));
+
+    // Text.EMPTY is its own empty-slice identity
+    assertSame(Text.EMPTY, Text.EMPTY.concat(""));
+    assertEquals(0, Text.EMPTY.concat("").offsetIn(Text.EMPTY));
   }
 }
