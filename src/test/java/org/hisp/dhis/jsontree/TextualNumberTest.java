@@ -371,7 +371,7 @@ class TextualNumberTest {
     assertThrowsExactly(
         NumberFormatException.class,
         () -> TextualNumber.parseDouble(number.toCharArray()),
-        "parseDoubleCast() should throw for: " + number);
+        "TextualNumber.parseDouble should throw for: " + number);
     assertThrowsExactly(NumberFormatException.class,
         () -> TextualNumber.of(number.toCharArray()),
         "TextualNumber.of() should throw for: "+number);
