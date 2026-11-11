@@ -993,9 +993,140 @@ class TextBuilderTest {
     assertEquals("ell", b.wrap(internal, 1, 3).toString());
   }
 
+  // ---------------------------------------------------------------------------
+  // TextualNumber delegations: isIntegerLiteral / isIntegerValue / isZeroValue /
+  // isNumberLiteral — these exist on TextBuilder to avoid the toCharArray()
+  // allocation that the CharSeq defaults would incur. The tests below verify
+  // two things: (1) the expected predicate results for representative literals,
+  // and (2) that only the written slice [0, length) is considered, not the
+  // full capacity-sized buffer.
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void testIsIntegerLiteral() {
+    assertTrue(builder("0").isIntegerLiteral());
+    assertTrue(builder("1").isIntegerLiteral());
+    assertTrue(builder("123").isIntegerLiteral());
+    assertTrue(builder("-123").isIntegerLiteral());
+    assertTrue(builder("+123").isIntegerLiteral());
+    // form, not range: too large for int or long still is an integer literal
+    assertTrue(builder("2147483648").isIntegerLiteral());
+    assertTrue(builder("9223372036854775808").isIntegerLiteral());
+    // not integer literals
+    assertFalse(builder("").isIntegerLiteral());
+    assertFalse(builder("-").isIntegerLiteral());
+    assertFalse(builder("+").isIntegerLiteral());
+    assertFalse(builder("1.0").isIntegerLiteral());      // has decimal point
+    assertFalse(builder("1e5").isIntegerLiteral());      // has exponent
+    assertFalse(builder("abc").isIntegerLiteral());
+    assertFalse(builder(" 1").isIntegerLiteral());       // leading whitespace
+  }
+
+  @Test
+  void testIsIntegerValue() {
+    assertTrue(builder("0").isIntegerValue());
+    assertTrue(builder("123").isIntegerValue());
+    assertTrue(builder("-123").isIntegerValue());
+    // decimal with only zero fraction is still an integer value
+    assertTrue(builder("1.0").isIntegerValue());
+    assertTrue(builder("123.000").isIntegerValue());
+    assertTrue(builder("5.").isIntegerValue());
+    // real fraction -> not an integer value
+    assertFalse(builder("1.5").isIntegerValue());
+    assertFalse(builder("1.0001").isIntegerValue());
+    assertFalse(builder(".5").isIntegerValue());
+    // note: isIntegerValue does not (currently) parse exponents, so 1e5
+    // reports false even though its value 100000 is an integer. This matches
+    // the pre-existing TextualNumber semantics for the value predicate.
+    assertFalse(builder("1e5").isIntegerValue());
+    // not a valid number
+    assertFalse(builder("").isIntegerValue());
+    assertFalse(builder("-").isIntegerValue());
+    assertFalse(builder("abc").isIntegerValue());
+  }
+
+  @Test
+  void testIsZeroValue() {
+    assertTrue(builder("0").isZeroValue());
+    assertTrue(builder("-0").isZeroValue());
+    assertTrue(builder("+0").isZeroValue());
+    assertTrue(builder("0.0").isZeroValue());
+    assertTrue(builder("-0.0").isZeroValue());
+    // exponent form still represents zero (isZeroValue strips the exponent)
+    assertTrue(builder("0E5").isZeroValue());
+    assertTrue(builder("-0.0E-60").isZeroValue());
+    assertTrue(builder("00.00E+10").isZeroValue());
+    // non-zero
+    assertFalse(builder("1").isZeroValue());
+    assertFalse(builder("-1").isZeroValue());
+    assertFalse(builder("0.1").isZeroValue());
+    assertFalse(builder("1e5").isZeroValue());
+    // not a valid number
+    assertFalse(builder("").isZeroValue());
+    assertFalse(builder("abc").isZeroValue());
+  }
+
+  @Test
+  void testIsNumberLiteral() {
+    // integers are number literals
+    assertTrue(builder("0").isNumberLiteral());
+    assertTrue(builder("123").isNumberLiteral());
+    assertTrue(builder("-123").isNumberLiteral());
+    // decimals
+    assertTrue(builder("1.5").isNumberLiteral());
+    assertTrue(builder("-3.14").isNumberLiteral());
+    assertTrue(builder(".5").isNumberLiteral());
+    assertTrue(builder("5.").isNumberLiteral());
+    // exponent forms
+    assertTrue(builder("1e5").isNumberLiteral());
+    assertTrue(builder("1E5").isNumberLiteral());
+    assertTrue(builder("1.5e-3").isNumberLiteral());
+    assertTrue(builder("-1E+10").isNumberLiteral());
+    // not a number
+    assertFalse(builder("").isNumberLiteral());
+    assertFalse(builder("abc").isNumberLiteral());
+    assertFalse(builder("1e").isNumberLiteral());        // missing exponent
+    assertFalse(builder("1.2.3").isNumberLiteral());     // two decimal points
+  }
+
+  @Test
+  void testPredicates_EmptyBuilder() {
+    // length == 0: every predicate reports false regardless of capacity
+    TextBuilder b = new TextBuilder();
+    assertFalse(b.isIntegerLiteral());
+    assertFalse(b.isIntegerValue());
+    assertFalse(b.isZeroValue());
+    assertFalse(b.isNumberLiteral());
+  }
+
+  @Test
+  void testPredicates_OnlyConsiderWrittenPortion() {
+    // If any of the isX overrides mistakenly delegated to TextualNumber with
+    // buffer.length instead of the builder's written length, the trailing
+    // unwritten chars (null characters) would break the predicate. These tests
+    // pin that down explicitly even though the default capacity (16) already
+    // makes every other predicate test catch the same bug.
+    TextBuilder b = new TextBuilder(100); // capacity >> content
+    b.appendAscii("123");
+    assertTrue(b.isIntegerLiteral());
+    assertTrue(b.isIntegerValue());
+    assertTrue(b.isNumberLiteral());
+    assertFalse(b.isZeroValue());
+
+    TextBuilder z = new TextBuilder(100);
+    z.appendAscii("0");
+    assertTrue(z.isZeroValue());
+  }
+
   /*
   asserts
    */
+
+  private static TextBuilder builder(String text) {
+    TextBuilder b = new TextBuilder();
+    b.appendAscii(text);
+    return b;
+  }
 
   private static void assertAppendEquals(Consumer<StringBuilder> expected, Consumer<Appender> actual) {
     StringBuilder e = new StringBuilder();

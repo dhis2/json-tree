@@ -296,9 +296,21 @@ public interface CharSeq extends CharSequence {
    */
 
   /**
-   * @return true, if this text is a valid integer value (of any range), or in other words if the
-   *     sequence only consists of digits except for the first character which may be a plus or
-   *     minus sign.
+   * Tests if this sequence is the <em>form</em> of an integer literal: a sequence of one or more
+   * decimal digits, optionally preceded by a {@code +} or {@code -} sign, and containing no
+   * decimal point, exponent, or whitespace.
+   *
+   * <p>This is a purely <em>syntactic</em> check. Numeric range is not considered, so values that
+   * overflow {@code int} or {@code long} (for example {@code "2147483648"} or {@code
+   * "123456789012345678901234567890"}) are still integer literals. Range is only enforced by the
+   * corresponding parse methods: {@link #parseInt()}, {@link #parseLong()}, or {@link
+   * #parseNumber()} for arbitrary magnitude.
+   *
+   * <p>Returns {@code false} for the empty sequence and for a lone sign ({@code "+"} or {@code
+   * "-"}).
+   *
+   * @return true if this sequence is the form of an integer literal
+   * @see #isIntegerValue() for the corresponding value predicate
    * @apiNote renamed from isTextualInteger to isIntegerLiteral in 1.14
    */
   default boolean isIntegerLiteral() {
@@ -311,8 +323,26 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
-   * @return true, if this is either a {@link #isIntegerLiteral()} or a floating point number in
-   *     decimal notation with all decimals being zero.
+   * Tests if this sequence <em>represents</em> an integer value: either an {@link
+   * #isIntegerLiteral() integer literal}, or a decimal number whose fractional part, if present, is
+   * all zeros (for example {@code "1.0"}, {@code "123.000"}, or {@code "5."}).
+   *
+   * <p>At least one digit is required before the decimal point, so {@code "5."} is an integer value
+   * but {@code ".5"} is not, and neither is {@code ".0"}. This is a deliberate restriction, not an
+   * oversight: the primary use case is detecting the formatter artifact of appending {@code .0} to
+   * a value that is really an integer (e.g. {@code "42.0"}), and no common serialiser produces a
+   * leading-dot form like {@code ".0"} for zero. The one asymmetry this creates — {@link
+   * #isZeroValue()} does accept {@code ".0"} — is the price of that restriction, and is confined to
+   * an input shape that doesn't occur in practice.
+   *
+   * <p>Unlike {@link #isZeroValue()} this does <em>not</em> accept exponential notation. A value
+   * like {@code "1e5"} reports {@code false} here even though it denotes the integer {@code
+   * 100000}. Use {@link #isNumberLiteral()} to check the general number form.
+   *
+   * <p>Returns {@code false} for the empty sequence and for any input that is not a valid number.
+   *
+   * @return true if this sequence represents an integer value
+   * @see #isIntegerLiteral() for the corresponding form predicate
    * @apiNote renamed from isNumericInteger to isIntegerValue in 1.14
    */
   default boolean isIntegerValue() {
@@ -320,7 +350,18 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
-   * @return true, if this sequence is a number that is numerically zero (includes scientific notations)
+   * Tests if this sequence <em>represents</em> the numeric value zero: an optional sign, followed
+   * by digits that are all zero and optionally a decimal point with more zero digits, and
+   * optionally any exponent. Examples that return {@code true}: {@code "0"}, {@code "-0"}, {@code
+   * "0.0"}, {@code "-0.00"}, {@code "0E5"}, {@code "-0.0E-60"}.
+   *
+   * <p>Unlike {@link #isIntegerValue()} this <em>does</em> strip the exponent before checking,
+   * because the value zero is unaffected by the exponent. This is why {@code "0E5"} is a zero
+   * value but {@code "1e5"} is not an integer value.
+   *
+   * <p>Returns {@code false} for the empty sequence and for any input that is not a valid number.
+   *
+   * @return true if this sequence represents the numeric value zero
    * @since 1.14
    */
   default boolean isZeroValue() {
@@ -328,9 +369,24 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
-   * @return true, if this text is a valid decimal value (of any range), in other words if it is
-   *     either a {@link #isIntegerLiteral()} or a floating point number in decimal or exponential
-   *     notation.
+   * Tests if this sequence is the <em>form</em> of a number literal: an optional {@code +} or
+   * {@code -} sign, followed by digits and optionally a single decimal point with at least one
+   * digit on at least one side of the point, optionally followed by an exponent introduced by
+   * {@code e} or {@code E} with an optional sign and one or more digits. No whitespace is allowed
+   * anywhere.
+   *
+   * <p>This is a purely <em>syntactic</em> check. Numeric range is not considered, so arbitrarily
+   * large numbers (e.g. {@code "9999999999999999999999999999999999"}) are accepted; range
+   * semantics are applied by the parse methods ({@link #parseDouble()}, {@link #parseNumber()}).
+   *
+   * <p>The Java double special values {@code NaN}, {@code Infinity}, and {@code -Infinity} are not
+   * number literals in this sense; test those with {@link #isSpecialDoubleValue()}.
+   *
+   * <p>Returns {@code false} for the empty sequence and for input that does not match the number
+   * grammar (for example {@code "1e"}, {@code "1.2.3"}, or any input containing whitespace).
+   *
+   * @return true if this sequence is the form of a number literal
+   * @see #isIntegerLiteral() for the stricter integer-only form predicate
    * @apiNote renamed from isTextualDecimal to isNumberLiteral in 1.14
    */
   default boolean isNumberLiteral() {
@@ -338,8 +394,15 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
-   * @return true, if this text is exactly "NaN", "Infinity" or "-Infinity" (Java double special
-   *     number literals)
+   * Tests if this sequence is exactly one of the Java {@code double} special value literals: {@code
+   * "NaN"}, {@code "Infinity"}, or {@code "-Infinity"}.
+   *
+   * <p>The comparison is case-sensitive and does not accept surrounding whitespace, matching what
+   * {@link Double#parseDouble(String)} accepts for these values. A special double value is
+   * <em>not</em> a finite number literal, so {@link #isNumberLiteral()} returns {@code false} for
+   * these.
+   *
+   * @return true if this sequence is one of the Java double special value literals
    * @apiNote renamed from isSpecialDecimal to isSpecialDoubleValue in 1.14
    */
   default boolean isSpecialDoubleValue() {

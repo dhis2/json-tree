@@ -224,6 +224,9 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int end = offset + length;
     int d0 = i;
     while (i < end && isDigit(buffer[i])) i++;
+    // require at least one digit before '.', so ".0" is rejected even though
+    // it equals an integer value; the use case is formatter-appended ".0"
+    // suffixes like "42.0", and no real formatter emits a leading-dot form
     if (i == d0) return false;
     if (i == end) return true;
     if (buffer[i++] != '.') return false;
