@@ -423,6 +423,65 @@ class TextTest {
     assertThrows(NumberFormatException.class, () -> Text.of("12.3").parseLong());
   }
 
+  @DisplayName("parseInt()/parseLong() on int cache 0-999")
+  @Test
+  void testParseInt_IntCache_Loop() {
+    for (int i = 0; i < 1000; i++) {
+      Text t = Text.of(i);
+      assertEquals(i, t.parseInt(), "parseInt of " + i);
+      assertEquals(i, t.parseLong(), "parseLong of " + i);
+    }
+  }
+
+  @DisplayName("parseInt()/parseLong() on subSlices of the int cache")
+  @Test
+  void testParseInt_IntCache_Slices() {
+    for (int i = 0; i < 1000; i++) {
+      Text t = Text.of(i);
+      String s = String.valueOf(i);
+      for (int from = 0; from < s.length(); from++) {
+        for (int to = from + 1; to <= s.length(); to++) {
+          Text slice = t.subSequence(from, to);
+          String expected = s.substring(from, to);
+          Text slice2 = Text.of(expected);
+          String msg = "of(" + i + ").subSequence(" + from + "," + to + ") = " + expected;
+          assertEquals(Integer.parseInt(expected), slice.parseInt(), "parseInt " + msg);
+          assertEquals(Long.parseLong(expected), slice.parseLong(), "parseLong " + msg);
+          assertEquals(slice2.parseInt(), slice.parseInt());
+          assertTrue(slice.isTextualInteger(), "isTextualInteger " + msg);
+          assertTrue(slice.isNumericInteger(), "isNumericInteger " + msg);
+        }
+      }
+    }
+  }
+
+  @DisplayName("empty slice of the int cache")
+  @Test
+  void testEmptySlice_IntCache() {
+    // subSequence(0,0) of an of(int) keeps the ZERO_TO_999 buffer but is empty
+    Text empty = Text.of(5).subSequence(0, 0);
+    assertTrue(empty.isEmpty());
+    assertEquals(0, empty.length());
+    assertFalse(empty.isTextualInteger());
+    assertFalse(empty.isNumericInteger());
+    assertFalse(empty.isTextualDecimal());
+    assertThrows(NumberFormatException.class, empty::parseInt);
+    assertThrows(NumberFormatException.class, empty::parseLong);
+
+    // same on a 3-digit slice
+    Text emptyFromBig = Text.of(123).subSequence(2, 2);
+    assertTrue(emptyFromBig.isEmpty());
+    assertFalse(emptyFromBig.isTextualInteger());
+    assertThrows(NumberFormatException.class, emptyFromBig::parseInt);
+    assertThrows(NumberFormatException.class, emptyFromBig::parseLong);
+
+    // the 3-digit slice trimmed to nothing on both ends still works
+    Text trimmed = Text.of(999).subSequence(1, 1);
+    assertTrue(trimmed.isEmpty());
+    assertFalse(trimmed.isTextualInteger());
+    assertThrows(NumberFormatException.class, trimmed::parseInt);
+  }
+
   @Test
   void testParseBoolean() {
     assertTrue(Text.of("true").parseBoolean());

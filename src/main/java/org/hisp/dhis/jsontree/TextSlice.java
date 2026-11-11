@@ -95,7 +95,7 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   private boolean isInteger() {
     // if this buffer is the number cache
     // we do know the contents to be an integer number
-    return buffer == ZERO_TO_999;
+    return buffer == ZERO_TO_999 && length > 0;
   }
 
   @Override
@@ -120,11 +120,13 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public int parseInt() {
+    if (buffer == ZERO_TO_999) return parseIntCached();
     return TextualNumber.parseIntExact(buffer, offset, length);
   }
 
   @Override
   public long parseLong() {
+    if (buffer == ZERO_TO_999) return parseIntCached();
     return TextualNumber.parseLongExact(buffer, offset, length);
   }
 
@@ -142,6 +144,26 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   public boolean matches(CharSequence input, int offset, int len) {
     return InputExpression.match(buffer, offset, length, input, offset) == offset+len;
   }
+
+  /**
+   * Computes the integer value of a slice of the {@link #ZERO_TO_999} cache arithmetically from
+   * the slice's {@code offset} instead of reading and parsing its characters.
+   * <p>
+   * Every slice of the cache that can be produced by {@link #of(int)} or
+   * {@link #subSequence(int, int)} covers the digit block
+   * {@code [offset % 3, offset % 3 + length)} of the 3-digit number {@code 100 + offset / 3},
+   * so the value is that block extracted by division and modulo. Slices outside that shape (in
+   * particular the empty slice) fall back to the generic parser.
+   */
+  private int parseIntCached() {
+    int first = offset % 3;
+    if (length < 1 || length > 3 || first + length > 3)
+      return TextualNumber.parseIntExact(buffer, offset, length);
+    int n = 100 + offset / 3;
+    return n / POW10[3 - first - length] % POW10[length];
+  }
+
+  private static final int[] POW10 = {1, 10, 100, 1000};
 
   @Override
   public boolean equals(Object obj) {
