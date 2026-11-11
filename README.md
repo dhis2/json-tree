@@ -1,73 +1,114 @@
 # json-tree
 
-[![main](https://github.com/dhis2/json-tree/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/dhis2/json-tree/actions/workflows/main.yml)
+**json-tree** is a zero-dependency Java JSON library that supports dynamic processing of large payloads.
+It lazily parses to a virtual tree, keeps memory close to the source text,
+and gives you RFC 9535-style query, JSON Patch, diff, and schema validation
+in one small package—without Jackson’s object graph or multiple separate dependencies.
 
-A lazily parsed JSON virtual tree library for Java.
 
-*Virtual* here means it represents the "wanted" or "expected" tree structure.
-On leaf value access it is checked against the actual tree structure underneath,
-so navigation is painless and checks only happen when values are resolved
-(extracted) from the actual tree.
+[![Maven Central](https://img.shields.io/maven-central/v/org.hisp.dhis/json-tree)](https://search.maven.org/artifact/org.hisp.dhis/json-tree)
+[![Javadoc](https://img.shields.io/badge/javadoc-latest-blue)](https://javadoc.io/doc/org.hisp.dhis/json-tree)
+[![License](https://img.shields.io/github/license/dhis2/json-tree)](https://github.com/dhis2/json-tree/blob/main/LICENSE)
 
-*Lazily parsed* means only the parts of the underlying tree that are used during
-navigation get parsed into nodes which remember offsets ("pointers") into the
-original JSON input. Untouched parts are skipped over until they are used. This
-makes for a fast, memory-efficient implementation that is convenient to query
-and can be extended with user types, handling inputs in the MB range without
-problems.
+---
 
-## Quick start
+## Why json-tree?
+
+`json-tree` started from a performance problem in a test suite: a JSON-heavy
+integration test was taking far too long when path-based lookups were
+evaluated repeatedly against a large document.
+
+The `json-tree` lib was the answer: keep the source text, represent each node as
+a path + offset, and materialize nothing until someone asks for a value.
+
+Three things follow from that design:
+
+- **Lazy.** Untouched regions are skipped, not parsed. Memory stays close to the
+  size of the source string, not to an object graph derived from it.
+- **Zero dependencies.** Parsing, querying, patching, diffing, and validation are
+  all in-tree. Nothing to exclude, nothing to audit in addition.
+- **One artifact.** The jobs you'd normally assemble from Jackson + JsonPath +
+  json-patch + a validator are in one small package and integrate without conversion.
+
+---
+
+## Quick example
 
 ```java
-    // parsing JSON text
-    JsonArray numbers = JsonMixed.of("[1,2,3]");
-    int v1 = numbers.get(1).intValue(); // = 2
-    int[] values = numbers.intValues().toArray(); // = [1,2,3]
+    String json = """
+        {
+          "id": "abc",
+          "name": "Ada",
+          "roles": ["admin", "user"]
+        }""";
 
-    // programmatic Java => JSON
-    JsonString  s = Json.of( "hello" );   // note: no quotes
-    JsonInteger i = Json.of( 42 );
+    JsonObject root = JsonMixed.of(json);
 
-    // programmatic dynamic composition Java => JSON
-    JsonObject root = Json.object( obj ->
-        obj.addNumber( "x", 1 ).addNumber( "y", 5 ) );
-    root.toJson();   // {"x":1,"y":5}
+    String id = root.get("id").stringValue();   // "abc"
+    int roleCount = root.get("roles").size();   // 2
 ```
 
-## Documentation
+Navigation never throws. `root.get("a").get("b").get("c")` returns an *undefined*
+node rather than `null` or an exception, and distinguishes three states that
+`Map`-based APIs usually collapse: **missing**, **present but null**, and
+**present with a value**. Validation is eager only when you ask for it:
 
-Learn
-- [Getting started](docs/intro-1-getting-started.md) — install and first example
-- [Lazy parsing and the virtual tree](docs/intro-2-lazy-parsing.md) — the idea behind the library
-- [Java API](docs/intro-4-json-from-java.md) — build a tree from Java types
-- [JSON API](docs/intro-3-json-from-text.md) — work from a JSON document
-- [Null, undefined and existence](docs/intro-5-null-and-undefined.md) — the subtle states
-- [User types as JSON tree](docs/intro-6-user-types.md) — extend the tree with your own types
+```java
+    JsonMixed root = JsonMixed.of(json).getDeclaration();
+    // fail-fast on malformed input
+    // as soon as any value is accessed
+    // which is equivalent to finding the end of a JSON node in accessed the path
+```
 
-Discover
-- [Navigating the tree](docs/json-paths.md) — paths as a uniform way to drill down.
-- [Querying the tree](docs/json-search.md) — finding nodes using matchers.
-- [Validation](docs/json-validation.md) — check input against a target schema
-- [Equivalence and identity](docs/json-comp.md) — comparing two trees for sameness.
-- [Comparing JSON values (diff)](docs/json-diff.md) — structural comparison
-- [Modification](docs/json-patch.md) — bulk patching JSON using patch operations
-- [Mask & Overlay](docs/json-mask-overlay.md) — masking JSON or patch merge with another JSON value
+Typed access uses interfaces over the tree, so no annotations or reflection pass
+is needed:
 
-Overviews
-- [API reference](docs/json-api-overview.md) — types and methods at a glance
-- [Standards and RFCs](docs/rfc-reference.md) — conformance and deviations
+```java
+    interface User extends JsonObject {
+        String id();
+        String name();
+    }
+    User user = root.as(User.class);
+```
 
-Specifications
-- [JSON5* notation](docs/spec-json5-star.md) — the JSON5 variant accepted by the parser.
-- [JURL notation](docs/spec-jurl.md) — JURL = JSON in the URL; a notation to encode JSON data in URL parameters
-- [Input Expressions](docs/spec-input-expressions.md) — a RegEx alternative that is simple, safe and fast
-- [Text Templating](docs/spec-text-templating.md) — a directive based text templating solution
+---
 
-## Maven
+## When to use it — and when not to
 
-Coordinates: 
-- [`org.hisp.dhis:json-tree`](https://search.maven.org/artifact/org.hisp.dhis/json-tree).
-- [Sonartype-Central](https://central.sonatype.com/artifact/org.hisp.dhis/json-tree)
+| Use `json-tree` when…                                                   | Reach for something else when…                                                                        |
+|-------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| You need dynamic processing of **small to large payloads**              | You need **POJO databind** with annotations (use Jackson or Gson)                                     |
+| Memory or allocation churn matters (classic server deploy)              | You think of unused memory as lost potential (cloud deploy)                                           | 
+| You process inputs that **still fit in memory** (at 2-4x on UTF8 spike) | You stream **arbitrarily large** inputs (use a streaming parser)                                      |
+| You want to **assert qualities of content** conveniently                | You want to **assert exact content** (e.g. via POJO mapping with Jackson)                             |
+| You want to **inspect input** (validate, flexible formats, ...)         | You want **rigid mapping** to POJOs and deal with Java only (Jackson)                                 |
+| You want **user types + tree utility** (search, patch, transform, ...)  | You need **object model** only (classic databind)                                                     |                                                        
+| You want **cheap wrap/unwrap** (e.g. DB <-> Java <-> REST API)          | You accept to **pay to convert** between models at the boundaries (or add special pass-through-paths) |                                                                     
+| You want **zero dependencies** or a small audit surface                 | You need the full **Jackson ecosystem** (modules, integrations)                                       |
+| You need seamless integration **query + patch + diff + validate**       | You need **strict** RFC 6902 sequential patch semantics or **full** RFC 9535 compliance               |
+| You are in a **cold-start-sensitive** or dependency-averse environment  | You need to **interoperate** with existing Jackson/Gson object models                                 |
+
+`json-tree` is a wrap/query/transform tool for the jobs the popular libraries do badly or require multiple dependencies to do.
+
+
+---
+
+## What's in the box
+
+- **[Rich lazy virtual tree API](docs/json-api-overview.md)** — `JsonMixed`, `JsonObject`, `JsonArray`, and friends
+- **[Navigation](docs/json-paths.md)** — never-throwing `get()`, three-state existence (`missing` / `null` / value)
+- **[Search](docs/json-search.md)** — RFC 9535-*inspired* path queries
+- **[Patch](docs/json-search.md)** — JSON Patch (RFC 6902-*based*, order-independent by design
+- **[Diff](docs/json-diff.md)** — structural comparison of two documents
+- **[Validation](docs/json-validation.md)** — annotation-on-interface schema style
+- **Dialects** — RFC 8259 plus a [JSON5*](docs/spec-json5-star.md) dialect and `NaN`/`Infinity` handling
+- **Zero dependencies**, small codebase
+
+Also included, less central: [text templating](docs/spec-text-templating.md), [JURL notation](docs/spec-jurl.md), [input expressions](docs/spec-input-expressions.md).
+
+---
+
+## Installation
 
 ```xml
 <dependency>
@@ -76,6 +117,17 @@ Coordinates:
     <version>1.13.0</version>
 </dependency>
 ```
+
+Get the [full into →](docs/intro-1-getting-started.md)
+
+---
+
+## Learn more
+
+- **[Lazy parsing, in depth](docs/intro-2-lazy-parsing.md)** — how the virtual tree works and why it's small
+- **[Coming from Jackson or Gson](docs/coming-from-jackson.md)** — side-by-side equivalents
+- **[Conformance](docs/rfc-reference.md)** — what standards we support, what we deviate from, and why
+- **[Javadoc](https://javadoc.io/doc/org.hisp.dhis/json-tree)**
 
 ## License
 

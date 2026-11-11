@@ -2,17 +2,19 @@ package org.hisp.dhis.jsontree;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.math.BigInteger;
 import java.util.Random;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * While does only test {@link TextualNumber#parseDoubleCast(char[], int, int)} directly the function uses
+ * While does only test {@link TextualNumber#parseDouble(char[], int, int)} directly the function uses
  * {@link TextualNumber#parseIntExact(char[], int, int)} and {@link TextualNumber#parseLongExact(char[], int, int)} internally
  * to parse exponents and doubles without decimals. That way these do have coverage.
  *
@@ -73,6 +75,17 @@ class TextualNumberTest {
 
       assertDoubleEquals(num.toString());
     }
+  }
+
+  @Test
+  void testTextualNumber_SignedZero_Fallback() {
+    // fallback path: exponent too large for fast path, significand all zeros
+    assertEquals(-0.0, TextualNumber.of("-0E-60".toCharArray()).doubleValue());
+    assertEquals( 0.0, TextualNumber.of( "0E-60".toCharArray()).doubleValue());
+    assertEquals(-0.0, TextualNumber.of("-0.00E+0".toCharArray()).doubleValue());
+    // make sure the sign is *not* wrongly applied to non-zero values reaching the fallback
+    assertEquals(-1e-60, TextualNumber.of("-1E-60".toCharArray()).doubleValue());
+    assertEquals( 1e-60, TextualNumber.of( "1E-60".toCharArray()).doubleValue());
   }
 
   @Test
@@ -254,12 +267,177 @@ class TextualNumberTest {
     assertNotNumericZero("hello");
   }
 
+  @Test
+  @SuppressWarnings("SimplifiableAssertion")
+  void testOf_SignedZero_ExponentForm() {
+    // Note that we must use assertTrue(Double.valueOf(-0.0).equals(...)
+    // as assertEquals(-0.0, ...) would hide the sign significance as 0.0 = -0.0
+    assertTrue(Double.valueOf(-0.0).equals(TextualNumber.of("-0E-60".toCharArray()).doubleValue()));
+    assertTrue(Double.valueOf( 0.0).equals(TextualNumber.of( "0E-60".toCharArray()).doubleValue()));
+    assertTrue(Double.valueOf(-0.0).equals(TextualNumber.of("-0.00E+0".toCharArray()).doubleValue()));
+    assertTrue(Double.valueOf(-0.0).equals(TextualNumber.of("-00.0E-60".toCharArray()).doubleValue()));
+  }
+
+  @Test
+  void testOf_MalformedExponent_StillThrows() {
+    // regression guard for the reorder: a naive isNumericZero fix that only strips
+    // the exponent would return 0d for these and skip validation entirely
+    assertThrows(NumberFormatException.class, () -> TextualNumber.of("0E".toCharArray()));
+    assertThrows(NumberFormatException.class, () -> TextualNumber.of("-0E+".toCharArray()));
+    assertThrows(NumberFormatException.class, () -> TextualNumber.of("0.0E".toCharArray()));
+  }
+
+  /*
+   * Regression guards for the Double.parseDouble-faithful fallback in TextualNumber.
+   *
+   * The fallback uses the allocation-free
+   *   new BigDecimal(buffer, offset, length).doubleValue()
+   * to convert a numeric literal to double. BigDecimal's scale is a 32-bit int,
+   * so its constructor rejects literals whose exponent exceeds Integer.MAX_VALUE
+   * with a NumberFormatException, whereas Double.parseDouble saturates to
+   * +/-Infinity (or to +/-0.0 on underflow). TextualNumber detects an exponent
+   * that cannot fit an int and routes those literals through Double.parseDouble
+   * instead. Without that check these tests fail with a NumberFormatException.
+   */
+
+  @Test
+  void testOf_DoubleValue_HugeExponent_Overflow() {
+    // 12-digit exponent, far beyond Integer.MAX_VALUE. Double.parseDouble
+    // accepts it and saturates; a naked BigDecimal constructor would throw.
+    assertEquals(
+        Double.POSITIVE_INFINITY,
+        TextualNumber.of("1e999999999999".toCharArray()).doubleValue());
+    assertEquals(
+        Double.NEGATIVE_INFINITY,
+        TextualNumber.of("-1e999999999999".toCharArray()).doubleValue());
+  }
+
+  @Test
+  @SuppressWarnings("SimplifiableAssertion")
+  void testOf_DoubleValue_HugeExponent_Underflow() {
+    assertEquals(
+        0.0,
+        TextualNumber.of("1e-999999999999".toCharArray()).doubleValue());
+    // underflow must preserve sign like Double.parseDouble does
+    assertTrue(
+        Double.valueOf(-0.0).equals(
+            TextualNumber.of("-1e-999999999999".toCharArray()).doubleValue()));
+  }
+
+  @Test
+  void testOf_DoubleValue_ExponentBoundary() {
+    // Integer.MAX_VALUE = 2147483647 (10 digits) fits BigDecimal's int scale
+    // and would succeed through the BigDecimal path too.
+    assertEquals(
+        Double.POSITIVE_INFINITY,
+        TextualNumber.of("1e2147483647".toCharArray()).doubleValue());
+    // Integer.MAX_VALUE + 1 = 2147483648 (also 10 digits) does NOT fit; the
+    // raw BigDecimal constructor throws NumberFormatException here.
+    assertEquals(
+        Double.POSITIVE_INFINITY,
+        TextualNumber.of("1e2147483648".toCharArray()).doubleValue());
+    assertEquals(
+        Double.NEGATIVE_INFINITY,
+        TextualNumber.of("-1e2147483649".toCharArray()).doubleValue());
+  }
+
+  @Test
+  void testOf_DoubleValue_NormalExponent_StillWorks() {
+    // sanity: the detection must not disturb the common path
+    assertEquals(1000.0, TextualNumber.of("1e3".toCharArray()).doubleValue());
+    assertEquals(0.001, TextualNumber.of("1e-3".toCharArray()).doubleValue());
+    assertEquals(-3.14, TextualNumber.of("-3.14".toCharArray()).doubleValue());
+    assertEquals(3.14, TextualNumber.of("3.14".toCharArray()).doubleValue());
+  }
+
+  @Test
+  @SuppressWarnings("UnnecessaryBoxing")
+  void testOf_IntegerPromotion() {
+    // fits in int
+    assertEquals(Integer.valueOf(0), TextualNumber.of("0".toCharArray()));
+    assertEquals(Integer.valueOf(42), TextualNumber.of("42".toCharArray()));
+    assertEquals(Integer.valueOf(Integer.MIN_VALUE), TextualNumber.of("-2147483648".toCharArray()));
+    // fits in long but not int
+    assertEquals(Long.valueOf(2147483648L), TextualNumber.of("2147483648".toCharArray()));
+    assertEquals(Long.valueOf(Long.MAX_VALUE), TextualNumber.of("9223372036854775807".toCharArray()));
+    assertEquals(Long.valueOf(Long.MIN_VALUE), TextualNumber.of("-9223372036854775808".toCharArray()));
+    // just past long
+    assertEquals(new BigInteger("9223372036854775808"), TextualNumber.of("9223372036854775808".toCharArray()));
+    assertEquals(new BigInteger("-9223372036854775809"), TextualNumber.of("-9223372036854775809".toCharArray()));
+    // very large
+    assertEquals(new BigInteger("123456789012345678901234567890"),
+        TextualNumber.of("123456789012345678901234567890".toCharArray()));
+  }
+
+  @Test
+  @SuppressWarnings("UnnecessaryBoxing")
+  void testOf_IntegerPromotion_LeadingZeros() {
+    // regression: the old length > 20 shortcut would have promoted these to BigInteger
+    // even though the values fit in int
+    assertEquals(Integer.valueOf(1), TextualNumber.of("0000000000000000000001".toCharArray()));
+    assertEquals(Integer.valueOf(0), TextualNumber.of("0000000000000000000000".toCharArray()));
+    assertEquals(Integer.valueOf(1),
+        TextualNumber.of("0000000000000000000000000000001".toCharArray()));
+    // but a genuine 21-digit value still promotes
+    assertEquals(new BigInteger("123456789012345678901"),
+        TextualNumber.of("123456789012345678901".toCharArray()));
+  }
+
+  @Test
+  @SuppressWarnings("UnnecessaryBoxing")
+  void testOf_NegativeZero() {
+    // -0 stays Double (preserves sign); 0 goes through the integer path
+    assertEquals(Double.valueOf(-0.0), TextualNumber.of("-0".toCharArray()));
+    assertEquals(Integer.valueOf(0), TextualNumber.of("0".toCharArray()));
+  }
+
+  @Test
+  void testFitsInLong() {
+    // straightforward fits
+    assertTrue(TextualNumber.fitsInLong("0".toCharArray(), 0, 1));
+    assertTrue(TextualNumber.fitsInLong("9223372036854775807".toCharArray(), 0, 19));   // MAX
+    assertTrue(TextualNumber.fitsInLong("-9223372036854775808".toCharArray(), 0, 20));  // MIN
+    // just past the boundary
+    assertFalse(TextualNumber.fitsInLong("9223372036854775808".toCharArray(), 0, 19));  // MAX+1
+    assertFalse(TextualNumber.fitsInLong("-9223372036854775809".toCharArray(), 0, 20)); // MIN-1
+    // same digit count, prefix comparison decides (this is the case the old early check missed)
+    assertFalse(TextualNumber.fitsInLong("9240000000000000000".toCharArray(), 0, 19));
+    assertTrue (TextualNumber.fitsInLong("9200000000000000000".toCharArray(), 0, 19));
+    // leading zeros don't count
+    assertTrue (TextualNumber.fitsInLong("0000000000000000000001".toCharArray(), 0, 22));
+    // sign-only and empty: caller guarantees isIntegerLiteral, but predicate still sane
+    assertTrue (TextualNumber.fitsInLong("-0".toCharArray(), 0, 2));
+  }
+
+  @Test
+  void testOf_PromotionWithoutExceptions() {
+    // the fitsInLong path must not throw for any valid integer literal
+    TextualNumber.of("9223372036854775807".toCharArray());   // fits
+    TextualNumber.of("9223372036854775808".toCharArray());   // overflow → BigInteger
+    TextualNumber.of("123456789012345678901234567890".toCharArray());  // far overflow → BigInteger
+  }
+
+  @Test
+  void testParseDouble_19DigitBoundary() {
+    // fits in long: goes via parseLongExact, no String allocation
+    assertEquals(9223372036854775807L, (long) TextualNumber.parseDouble("9223372036854775807".toCharArray()));
+    // 1 past long: goes via Double.parseDouble(String), still round-to-nearest-even
+    assertEquals(9.223372036854776E18, TextualNumber.parseDouble("9223372036854775808".toCharArray()));
+    // 19 nines: also doesn't fit, same fallback
+    assertEquals(1.0E19, TextualNumber.parseDouble("9999999999999999999".toCharArray()));
+  }
+
+  /*
+  Asserts
+   */
+
+
   private static void assertNumericZero(String value) {
-    assertTrue(TextualNumber.isNumericZero(value.toCharArray(), 0, value.length()));
+    assertTrue(TextualNumber.isZeroValue(value.toCharArray(), 0, value.length()));
   }
 
   private static void assertNotNumericZero(String value) {
-    assertFalse(TextualNumber.isNumericZero(value.toCharArray(), 0, value.length()));
+    assertFalse(TextualNumber.isZeroValue(value.toCharArray(), 0, value.length()));
   }
 
   private static void assertDoubleThrows(String number) {
@@ -269,8 +447,8 @@ class TextualNumberTest {
         () -> "Number is valid for Double.parseDouble: `" + number + "`");
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> TextualNumber.parseDoubleCast(number.toCharArray()),
-        "parseDoubleCast() should throw for: " + number);
+        () -> TextualNumber.parseDouble(number.toCharArray()),
+        "TextualNumber.parseDouble should throw for: " + number);
     assertThrowsExactly(NumberFormatException.class,
         () -> TextualNumber.of(number.toCharArray()),
         "TextualNumber.of() should throw for: "+number);
@@ -303,7 +481,7 @@ class TextualNumberTest {
 
   private static void assertDoubleCast(double expected, char[] buf, int off, int len, String display) {
     try {
-      double actual = TextualNumber.parseDoubleCast(buf, off, len);
+      double actual = TextualNumber.parseDouble(buf, off, len);
       assertEquals(expected, actual, "Failed for: " + display);
     } catch (NumberFormatException ex) {
       fail("Number valid for Double.parseDouble was rejected: "

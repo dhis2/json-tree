@@ -84,3 +84,6 @@ Edit `pom.xml` and add the `-SNAPSHOT` suffix to the next version.
 -    <version>1.13.0</version>
 +    <version>1.14.0-SNAPSHOT</version>
 ```
+
+#### 9. Update Javadoc 
+Goto https://javadoc.io/versions/org.hisp.dhis/json-tree and sync the newly published version

@@ -189,7 +189,7 @@ class JsonNodeOpPatch {
   }
 
   private static void editsInsertArr(JsonNode arr, Text index, Iterable<Text> values, List<Edit> edits) {
-    if (!index.isTextualInteger())
+    if (!index.isIntegerLiteral())
       throw new JsonPatchException.JsonPatchEditException(
           "Cannot insert into array at non-integer path segment `" + index + "`");
     int idx = index.parseInt();
@@ -269,7 +269,7 @@ class JsonNodeOpPatch {
           "Cannot auto-create parent: deepest existing ancestor is not an object: " + existing);
 
     for (Text seg : missing)
-      if (seg.isTextualInteger())
+      if (seg.isIntegerLiteral())
         throw new JsonPatchException.JsonPatchEditException(
             "Cannot auto-create array parent at segment `" + seg + "`: " + path);
 

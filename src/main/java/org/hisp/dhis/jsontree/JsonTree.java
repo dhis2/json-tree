@@ -40,9 +40,9 @@ import static org.hisp.dhis.jsontree.JsonPathException.noSuchNode;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
@@ -152,6 +152,11 @@ record JsonTree(
     @Override
     public final Text getDeclaration() {
       return Text.of(tree.json, start, endIndex() - start);
+    }
+
+    @Override
+    public final Text getRawInput() {
+      return isRoot() ? Text.of(tree.json, 0, tree.json.length) : getDeclaration();
     }
 
     @Override
@@ -455,13 +460,13 @@ record JsonTree(
 
     @Override
     public JsonNode get(Text name) throws JsonPathException, JsonTreeException {
-      if (name.isTextualInteger()) return element(name.parseInt(), name, false);
+      if (name.isIntegerLiteral()) return element(name.parseInt(), name, false);
       return super.get(name);
     }
 
     @Override
     public JsonNode getIfExists(Text name) throws JsonTreeException {
-      if (name.isTextualInteger()) return element(name.parseInt(), name, true);
+      if (name.isIntegerLiteral()) return element(name.parseInt(), name, true);
       return super.getIfExists(name);
     }
 
@@ -501,7 +506,7 @@ record JsonTree(
     @NotNull
     @Override
     public JsonNode element(Text index) {
-      if (!index.isTextualInteger()) return super.get(index);
+      if (!index.isIntegerLiteral()) return super.get(index);
       return element(index.parseInt(), index, false);
     }
 
@@ -512,7 +517,7 @@ record JsonTree(
 
     @Override
     public JsonNode elementIfExists(Text index) {
-      if (!index.isTextualInteger()) return super.get(index);
+      if (!index.isIntegerLiteral()) return super.get(index);
       return element(index.parseInt(), index, true);
     }
 
@@ -668,9 +673,18 @@ record JsonTree(
       return JsonNodeType.NUMBER;
     }
 
+    private int textLength() {
+      return endIndex() - start;
+    }
+
     @Override
     public Number numberValue() {
-      return TextualNumber.of(tree.json, start, endIndex() - start);
+      return TextualNumber.of(tree.json, start, textLength());
+    }
+
+    @Override
+    public BigDecimal bigDecimalValue() {
+      return new BigDecimal(tree.json, start, textLength());
     }
 
     @Override
@@ -680,17 +694,17 @@ record JsonTree(
 
     @Override
     public int intValue() {
-      return TextualNumber.parseIntCast(tree.json, start, endIndex() - start);
+      return TextualNumber.parseIntCast(tree.json, start, textLength());
     }
 
     @Override
     public long longValue() {
-      return TextualNumber.parseLongCast(tree.json, start, endIndex() - start);
+      return TextualNumber.parseLongCast(tree.json, start, textLength());
     }
 
     @Override
     public double doubleValue() {
-      return TextualNumber.parseDoubleCast(tree.json, start, endIndex() - start);
+      return TextualNumber.parseDouble(tree.json, start, textLength());
     }
   }
 
@@ -733,6 +747,11 @@ record JsonTree(
     @Override
     public double doubleValue() {
       return textValue().parseDouble();
+    }
+
+    @Override
+    public BigDecimal bigDecimalValue() {
+      return textValue().parseBigDecimal();
     }
   }
 

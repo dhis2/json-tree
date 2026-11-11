@@ -293,102 +293,102 @@ class TextTest {
   @DisplayName("isTextualInteger()")
   @Test
   void testIsTextualInteger() {
-    assertTrue(Text.of(123).isTextualInteger());
-    assertTrue(Text.of("123").isTextualInteger());
-    assertTrue(Text.of(-123).isTextualInteger());
-    assertTrue(Text.of("+123").isTextualInteger());
-    assertTrue(Text.of("0").isTextualInteger());
-    assertTrue(Text.of("-0").isTextualInteger());
-    assertTrue(Text.of("+0").isTextualInteger());
-    assertTrue(Text.of("007").isTextualInteger());
-    assertTrue(Text.of("9999999999999999999999999999").isTextualInteger());
+    assertTrue(Text.of(123).isIntegerLiteral());
+    assertTrue(Text.of("123").isIntegerLiteral());
+    assertTrue(Text.of(-123).isIntegerLiteral());
+    assertTrue(Text.of("+123").isIntegerLiteral());
+    assertTrue(Text.of("0").isIntegerLiteral());
+    assertTrue(Text.of("-0").isIntegerLiteral());
+    assertTrue(Text.of("+0").isIntegerLiteral());
+    assertTrue(Text.of("007").isIntegerLiteral());
+    assertTrue(Text.of("9999999999999999999999999999").isIntegerLiteral());
 
-    assertFalse(Text.of("").isTextualInteger());
-    assertFalse(Text.of(".01").isTextualInteger());
-    assertFalse(Text.of("12a").isTextualInteger());
-    assertFalse(Text.of("12.3").isTextualInteger());
-    assertFalse(Text.of("--1").isTextualInteger());
+    assertFalse(Text.of("").isIntegerLiteral());
+    assertFalse(Text.of(".01").isIntegerLiteral());
+    assertFalse(Text.of("12a").isIntegerLiteral());
+    assertFalse(Text.of("12.3").isIntegerLiteral());
+    assertFalse(Text.of("--1").isIntegerLiteral());
   }
 
   @DisplayName("isNumericInteger()")
   @Test
   void testIsNumericInteger() {
-    assertTrue(Text.of(123).isNumericInteger());
-    assertTrue(Text.of("123").isNumericInteger());
-    assertTrue(Text.of(-123).isNumericInteger());
-    assertTrue(Text.of("+123").isNumericInteger());
-    assertTrue(Text.of("0").isNumericInteger());
-    assertTrue(Text.of("-0").isNumericInteger());
-    assertTrue(Text.of("+0").isNumericInteger());
-    assertTrue(Text.of("007").isNumericInteger());
-    assertTrue(Text.of("9999999999999999999999999999").isNumericInteger());
+    assertTrue(Text.of(123).isIntegerValue());
+    assertTrue(Text.of("123").isIntegerValue());
+    assertTrue(Text.of(-123).isIntegerValue());
+    assertTrue(Text.of("+123").isIntegerValue());
+    assertTrue(Text.of("0").isIntegerValue());
+    assertTrue(Text.of("-0").isIntegerValue());
+    assertTrue(Text.of("+0").isIntegerValue());
+    assertTrue(Text.of("007").isIntegerValue());
+    assertTrue(Text.of("9999999999999999999999999999").isIntegerValue());
 
-    assertFalse(Text.of("").isNumericInteger());
-    assertFalse(Text.of(".01").isNumericInteger());
-    assertFalse(Text.of("12a").isNumericInteger());
-    assertFalse(Text.of("12.3").isNumericInteger());
-    assertFalse(Text.of("--1").isNumericInteger());
-    assertFalse(Text.of("1.0000001").isNumericInteger());
+    assertFalse(Text.of("").isIntegerValue());
+    assertFalse(Text.of(".01").isIntegerValue());
+    assertFalse(Text.of("12a").isIntegerValue());
+    assertFalse(Text.of("12.3").isIntegerValue());
+    assertFalse(Text.of("--1").isIntegerValue());
+    assertFalse(Text.of("1.0000001").isIntegerValue());
 
-    assertTrue(Text.of("0.0").isNumericInteger());
-    assertTrue(Text.of("+1.0").isNumericInteger());
-    assertTrue(Text.of("-1.0").isNumericInteger());
-    assertTrue(Text.of("1.0").isNumericInteger());
-    assertTrue(Text.of("12.00").isNumericInteger());
+    assertTrue(Text.of("0.0").isIntegerValue());
+    assertTrue(Text.of("+1.0").isIntegerValue());
+    assertTrue(Text.of("-1.0").isIntegerValue());
+    assertTrue(Text.of("1.0").isIntegerValue());
+    assertTrue(Text.of("12.00").isIntegerValue());
   }
 
   @DisplayName("isTextualDecimal()")
   @Test
   void testIsTextualDecimal() {
-    assertTrue(Text.of("0").isTextualDecimal());
-    assertTrue(Text.of(".0").isTextualDecimal());
-    assertTrue(Text.of("0.").isTextualDecimal());
-    assertTrue(Text.of("-0").isTextualDecimal());
-    assertTrue(Text.of("-.0").isTextualDecimal());
-    assertTrue(Text.of("-0.").isTextualDecimal());
-    assertTrue(Text.of("+0").isTextualDecimal());
-    assertTrue(Text.of("+.0").isTextualDecimal());
-    assertTrue(Text.of("+0.").isTextualDecimal());
-    assertTrue(Text.of("123").isTextualDecimal());
-    assertTrue(Text.of("123.0").isTextualDecimal());
-    assertTrue(Text.of("-123.0").isTextualDecimal());
-    assertTrue(Text.of("123e-2").isTextualDecimal());
-    assertTrue(Text.of("123.0e234").isTextualDecimal());
-    assertTrue(Text.of("-123.0001E-23").isTextualDecimal());
+    assertTrue(Text.of("0").isNumberLiteral());
+    assertTrue(Text.of(".0").isNumberLiteral());
+    assertTrue(Text.of("0.").isNumberLiteral());
+    assertTrue(Text.of("-0").isNumberLiteral());
+    assertTrue(Text.of("-.0").isNumberLiteral());
+    assertTrue(Text.of("-0.").isNumberLiteral());
+    assertTrue(Text.of("+0").isNumberLiteral());
+    assertTrue(Text.of("+.0").isNumberLiteral());
+    assertTrue(Text.of("+0.").isNumberLiteral());
+    assertTrue(Text.of("123").isNumberLiteral());
+    assertTrue(Text.of("123.0").isNumberLiteral());
+    assertTrue(Text.of("-123.0").isNumberLiteral());
+    assertTrue(Text.of("123e-2").isNumberLiteral());
+    assertTrue(Text.of("123.0e234").isNumberLiteral());
+    assertTrue(Text.of("-123.0001E-23").isNumberLiteral());
 
-    assertFalse(Text.of("").isTextualDecimal());
-    assertFalse(Text.of("0a").isTextualDecimal());
-    assertFalse(Text.of("-0a").isTextualDecimal());
-    assertFalse(Text.of("--0").isTextualDecimal());
-    assertFalse(Text.of("+-0").isTextualDecimal());
-    assertFalse(Text.of("++0").isTextualDecimal());
-    assertFalse(Text.of("-+0").isTextualDecimal());
-    assertFalse(Text.of("+0a").isTextualDecimal());
-    assertFalse(Text.of("+").isTextualDecimal());
-    assertFalse(Text.of("-").isTextualDecimal());
-    assertFalse(Text.of(".").isTextualDecimal());
-    assertFalse(Text.of(".0e").isTextualDecimal());
-    assertFalse(Text.of(".0E").isTextualDecimal());
-    assertFalse(Text.of("0.e").isTextualDecimal());
-    assertFalse(Text.of("0.E").isTextualDecimal());
-    assertFalse(Text.of("x0").isTextualDecimal());
-    assertFalse(Text.of("x").isTextualDecimal());
-    assertFalse(Text.of("5.x").isTextualDecimal());
-    assertFalse(Text.of("5.0ex").isTextualDecimal());
+    assertFalse(Text.of("").isNumberLiteral());
+    assertFalse(Text.of("0a").isNumberLiteral());
+    assertFalse(Text.of("-0a").isNumberLiteral());
+    assertFalse(Text.of("--0").isNumberLiteral());
+    assertFalse(Text.of("+-0").isNumberLiteral());
+    assertFalse(Text.of("++0").isNumberLiteral());
+    assertFalse(Text.of("-+0").isNumberLiteral());
+    assertFalse(Text.of("+0a").isNumberLiteral());
+    assertFalse(Text.of("+").isNumberLiteral());
+    assertFalse(Text.of("-").isNumberLiteral());
+    assertFalse(Text.of(".").isNumberLiteral());
+    assertFalse(Text.of(".0e").isNumberLiteral());
+    assertFalse(Text.of(".0E").isNumberLiteral());
+    assertFalse(Text.of("0.e").isNumberLiteral());
+    assertFalse(Text.of("0.E").isNumberLiteral());
+    assertFalse(Text.of("x0").isNumberLiteral());
+    assertFalse(Text.of("x").isNumberLiteral());
+    assertFalse(Text.of("5.x").isNumberLiteral());
+    assertFalse(Text.of("5.0ex").isNumberLiteral());
   }
 
   @DisplayName("isSpecialDecimal()")
   @Test
   void testIsSpecialDecimal() {
-    assertTrue(Text.of("NaN").isSpecialDecimal());
-    assertTrue(Text.of("Infinity").isSpecialDecimal());
-    assertTrue(Text.of("-Infinity").isSpecialDecimal());
-    assertFalse(Text.of("").isSpecialDecimal());
-    assertFalse(Text.of("Nan").isSpecialDecimal());
-    assertFalse(Text.of("nan").isSpecialDecimal());
-    assertFalse(Text.of("NaNa").isSpecialDecimal());
-    assertFalse(Text.of("infinity").isSpecialDecimal());
-    assertFalse(Text.of("-infinity").isSpecialDecimal());
+    assertTrue(Text.of("NaN").isSpecialDoubleValue());
+    assertTrue(Text.of("Infinity").isSpecialDoubleValue());
+    assertTrue(Text.of("-Infinity").isSpecialDoubleValue());
+    assertFalse(Text.of("").isSpecialDoubleValue());
+    assertFalse(Text.of("Nan").isSpecialDoubleValue());
+    assertFalse(Text.of("nan").isSpecialDoubleValue());
+    assertFalse(Text.of("NaNa").isSpecialDoubleValue());
+    assertFalse(Text.of("infinity").isSpecialDoubleValue());
+    assertFalse(Text.of("-infinity").isSpecialDoubleValue());
   }
 
   @DisplayName("parseInt()")
@@ -421,6 +421,65 @@ class TextTest {
     assertThrows(NumberFormatException.class, () -> Text.of("").parseLong());
     assertThrows(NumberFormatException.class, () -> Text.of("12a").parseLong());
     assertThrows(NumberFormatException.class, () -> Text.of("12.3").parseLong());
+  }
+
+  @DisplayName("parseInt()/parseLong() on int cache 0-999")
+  @Test
+  void testParseInt_IntCache_Loop() {
+    for (int i = 0; i < 1000; i++) {
+      Text t = Text.of(i);
+      assertEquals(i, t.parseInt(), "parseInt of " + i);
+      assertEquals(i, t.parseLong(), "parseLong of " + i);
+    }
+  }
+
+  @DisplayName("parseInt()/parseLong() on subSlices of the int cache")
+  @Test
+  void testParseInt_IntCache_Slices() {
+    for (int i = 0; i < 1000; i++) {
+      Text t = Text.of(i);
+      String s = String.valueOf(i);
+      for (int from = 0; from < s.length(); from++) {
+        for (int to = from + 1; to <= s.length(); to++) {
+          Text slice = t.subSequence(from, to);
+          String expected = s.substring(from, to);
+          Text slice2 = Text.of(expected);
+          String msg = "of(" + i + ").subSequence(" + from + "," + to + ") = " + expected;
+          assertEquals(Integer.parseInt(expected), slice.parseInt(), "parseInt " + msg);
+          assertEquals(Long.parseLong(expected), slice.parseLong(), "parseLong " + msg);
+          assertEquals(slice2.parseInt(), slice.parseInt());
+          assertTrue(slice.isIntegerLiteral(), "isTextualInteger " + msg);
+          assertTrue(slice.isIntegerValue(), "isNumericInteger " + msg);
+        }
+      }
+    }
+  }
+
+  @DisplayName("empty slice of the int cache")
+  @Test
+  void testEmptySlice_IntCache() {
+    // subSequence(0,0) of an of(int) keeps the ZERO_TO_999 buffer but is empty
+    Text empty = Text.of(5).subSequence(0, 0);
+    assertTrue(empty.isEmpty());
+    assertEquals(0, empty.length());
+    assertFalse(empty.isIntegerLiteral());
+    assertFalse(empty.isIntegerValue());
+    assertFalse(empty.isNumberLiteral());
+    assertThrows(NumberFormatException.class, empty::parseInt);
+    assertThrows(NumberFormatException.class, empty::parseLong);
+
+    // same on a 3-digit slice
+    Text emptyFromBig = Text.of(123).subSequence(2, 2);
+    assertTrue(emptyFromBig.isEmpty());
+    assertFalse(emptyFromBig.isIntegerLiteral());
+    assertThrows(NumberFormatException.class, emptyFromBig::parseInt);
+    assertThrows(NumberFormatException.class, emptyFromBig::parseLong);
+
+    // the 3-digit slice trimmed to nothing on both ends still works
+    Text trimmed = Text.of(999).subSequence(1, 1);
+    assertTrue(trimmed.isEmpty());
+    assertFalse(trimmed.isIntegerLiteral());
+    assertThrows(NumberFormatException.class, trimmed::parseInt);
   }
 
   @Test
@@ -798,5 +857,170 @@ class TextTest {
     assertEquals(2, Text.of("abcdef").skip(c -> c != 'c', 0, 3));
     assertEquals(0, Text.of("abcdef").skip(c -> c == 'c', 0, 3));
     assertEquals(-1, Text.of("abc").skip(c -> true, 3, 100));
+  }
+
+  @DisplayName("offsetIn(Text) of zero-length subSequence")
+  @Test
+  void testOffsetIn_EmptySubSequence() {
+    Text t = Text.of("hello world"); // [0, 11)
+
+    // subSequence(k, k) is empty at k
+    assertEquals(0, t.subSequence(0, 0).offsetIn(t));
+    assertEquals(5, t.subSequence(5, 5).offsetIn(t));
+    assertEquals(11, t.subSequence(11, 11).offsetIn(t));
+    // subSequence(k) === subSequence(k, length) -> empty at length for k == length
+    assertEquals(11, t.subSequence(11).offsetIn(t));
+
+    // all empty slices share the backing buffer
+    assertTrue(t.subSequence(0, 0).contentMemoryEquals(t));
+    assertTrue(t.subSequence(5, 5).contentMemoryEquals(t));
+    assertTrue(t.subSequence(11, 11).contentMemoryEquals(t));
+
+    // zero-length slices at different offsets don't contain each other
+    assertEquals(-1, t.subSequence(3, 3).offsetIn(t.subSequence(7, 7)));
+    assertEquals(-1, t.subSequence(7, 7).offsetIn(t.subSequence(3, 3)));
+    // but each contains itself (position-wise, even when instances differ)
+    assertEquals(0, t.subSequence(5, 5).offsetIn(t.subSequence(5, 5)));
+
+    // nested: empty inside a sub-slice is correctly located in the root
+    Text word = t.subSequence(6); // "world" = [6, 11)
+    assertEquals(0, word.subSequence(0, 0).offsetIn(word));
+    assertEquals(6, word.subSequence(0, 0).offsetIn(t));
+    assertEquals(5, word.subSequence(5, 5).offsetIn(word));
+    assertEquals(11, word.subSequence(5, 5).offsetIn(t));
+
+    // an empty at the end of a parent is inside it (boundary semantics)...
+    assertEquals(11, t.subSequence(11, 11).offsetIn(t));
+    // ...but not inside a shorter prefix
+    assertEquals(-1, t.subSequence(11, 11).offsetIn(t.subSequence(0, 5)));
+  }
+
+  @DisplayName("offsetIn(Text) of zero-length slice")
+  @Test
+  void testOffsetIn_EmptySlice() {
+    Text t = Text.of("hello world"); // [0, 11)
+
+    // slice(k) = subSequence(k, length); empty at length for k == length
+    assertEquals(11, t.slice(11).offsetIn(t));
+
+    // slice(k, k) is empty at k
+    assertEquals(0, t.slice(0, 0).offsetIn(t));
+    assertEquals(5, t.slice(5, 5).offsetIn(t));
+
+    // slice(k, e) with e < k clamps to subSequence(k, k) -> empty at k (start)
+    assertEquals(5, t.slice(5, 3).offsetIn(t));
+    assertEquals(5, t.slice(5, 0).offsetIn(t));
+    // ...including when negative e would extend past start
+    assertEquals(5, t.slice(5, -10).offsetIn(t));
+    assertEquals(5, t.slice(5, -20).offsetIn(t));
+
+    // slice(0, -length) -> empty at start
+    assertEquals(0, t.slice(0, -11).offsetIn(t));
+  }
+
+  @DisplayName("offsetIn(Text) of trim/strip/shrink to empty")
+  @Test
+  void testOffsetIn_ShrunkToEmpty() {
+    // when every character is removed by shrink, the resulting empty slice
+    // points to the END of the shrunk region
+    Text spaces = Text.of("   "); // [0, 3)
+    assertEquals(3, spaces.trim().offsetIn(spaces));
+    assertEquals(3, spaces.strip().offsetIn(spaces));
+    assertEquals(3, spaces.shrink(c -> true).offsetIn(spaces));
+    assertTrue(spaces.trim().contentMemoryEquals(spaces));
+
+    Text tabs = Text.of("\t\t"); // [0, 2)
+    assertEquals(2, tabs.trim().offsetIn(tabs));
+    assertEquals(2, tabs.strip().offsetIn(tabs));
+
+    Text newlines = Text.of("\n\n"); // [0, 2)
+    // trim only strips spaces and tabs -> \n kept -> returns self
+    assertSame(newlines, newlines.trim());
+    assertEquals(0, newlines.trim().offsetIn(newlines));
+    // strip removes \n -> empty at end
+    assertEquals(2, newlines.strip().offsetIn(newlines));
+
+    Text abc = Text.of("abc"); // [0, 3)
+    assertEquals(3, abc.shrink(c -> true).offsetIn(abc));
+    // nothing to trim/strip -> self() kept, offset preserved
+    assertSame(abc, abc.trim());
+    assertSame(abc, abc.strip());
+    assertEquals(0, abc.trim().offsetIn(abc));
+
+    // trim/strip/shrink on an already-empty slice returns the same slice
+    Text t = Text.of("hello");
+    Text empty = t.subSequence(2, 2);
+    assertSame(empty, empty.trim());
+    assertSame(empty, empty.strip());
+    assertSame(empty, empty.shrink(c -> true));
+    assertEquals(2, empty.trim().offsetIn(t));
+
+    // Text.EMPTY is its own trimmed/stripped/shrunk self
+    Text e = Text.EMPTY;
+    assertSame(e, e.trim());
+    assertSame(e, e.strip());
+    assertSame(e, e.shrink(c -> true));
+    assertEquals(0, e.trim().offsetIn(e));
+  }
+
+  @DisplayName("offsetIn(Text) of zero-length int cache slices")
+  @Test
+  void testOffsetIn_EmptyIntCache() {
+    // Text.of(int) returns new instances sharing the ZERO_TO_999 buffer
+    Text fiveA = Text.of(5);
+    Text fiveB = Text.of(5);
+    Text emptyA = fiveA.subSequence(0, 0);
+    Text emptyB = fiveB.subSequence(0, 0);
+    assertTrue(emptyA.isEmpty());
+    assertTrue(emptyB.isEmpty());
+
+    // same buffer position -> each contains the other (position-wise)
+    assertEquals(0, emptyA.offsetIn(fiveA));
+    assertEquals(0, emptyA.offsetIn(fiveB));
+    assertEquals(0, emptyB.offsetIn(fiveA));
+    assertEquals(0, emptyA.offsetIn(emptyB));
+    assertEquals(0, emptyB.offsetIn(emptyA));
+
+    // empty at end of the int slice
+    Text emptyEnd = fiveA.subSequence(1, 1);
+    assertEquals(1, emptyEnd.offsetIn(fiveA));
+    // empty at start vs empty at end don't contain each other
+    assertEquals(-1, emptyA.offsetIn(emptyEnd));
+    assertEquals(-1, emptyEnd.offsetIn(emptyA));
+
+    // 3-digit cache value behaves the same
+    Text n = Text.of(123);
+    assertEquals(0, n.subSequence(0, 0).offsetIn(n));
+    assertEquals(3, n.subSequence(3, 3).offsetIn(n));
+  }
+
+  @DisplayName("offsetIn(Text) and concat on empty")
+  @Test
+  void testOffsetIn_EmptyConcat() {
+    Text t = Text.of("hello");
+    Text emptySlice = t.subSequence(2, 2);
+
+    // concat("") on a non-empty slice returns self -> offset preserved
+    Text hello = t.subSequence(0, 5);
+    assertSame(hello, hello.concat(""));
+    assertEquals(0, hello.concat("").offsetIn(t));
+
+    // concat("") on an empty slice now preserves the slice, and therefore the
+    // buffer + offset, so the position is retained in both directions
+    Text concatResult = emptySlice.concat("");
+    assertSame(emptySlice, concatResult);
+    assertTrue(concatResult.contentMemoryEquals(t));
+    assertEquals(2, concatResult.offsetIn(t));
+    assertEquals(0, concatResult.offsetIn(emptySlice));
+    assertEquals(0, emptySlice.offsetIn(concatResult));
+
+    // a real suffix still allocates a fresh buffer -> offset is lost
+    Text appended = emptySlice.concat("x");
+    assertEquals("x", appended.toString());
+    assertEquals(-1, appended.offsetIn(t));
+
+    // Text.EMPTY is its own empty-slice identity
+    assertSame(Text.EMPTY, Text.EMPTY.concat(""));
+    assertEquals(0, Text.EMPTY.concat("").offsetIn(Text.EMPTY));
   }
 }

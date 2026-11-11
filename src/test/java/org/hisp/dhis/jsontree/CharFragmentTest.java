@@ -421,49 +421,49 @@ class CharFragmentTest {
 
   @Test
   void testIsTextualInteger() {
-    assertTrue(seq("123").isTextualInteger());
-    assertTrue(seq("-123").isTextualInteger());
-    assertTrue(seq("+123").isTextualInteger());
-    assertTrue(seq("0").isTextualInteger());
-    assertTrue(seq("007").isTextualInteger());
-    assertFalse(seq("").isTextualInteger());
-    assertFalse(seq("12.3").isTextualInteger());
-    assertFalse(seq("12a").isTextualInteger());
-    assertFalse(seq("--1").isTextualInteger());
+    assertTrue(seq("123").isIntegerLiteral());
+    assertTrue(seq("-123").isIntegerLiteral());
+    assertTrue(seq("+123").isIntegerLiteral());
+    assertTrue(seq("0").isIntegerLiteral());
+    assertTrue(seq("007").isIntegerLiteral());
+    assertFalse(seq("").isIntegerLiteral());
+    assertFalse(seq("12.3").isIntegerLiteral());
+    assertFalse(seq("12a").isIntegerLiteral());
+    assertFalse(seq("--1").isIntegerLiteral());
   }
 
   @Test
   void testIsNumericInteger() {
-    assertTrue(seq("123").isNumericInteger());
-    assertTrue(seq("-123").isNumericInteger());
-    assertTrue(seq("0.0").isNumericInteger());
-    assertTrue(seq("+1.0").isNumericInteger());
-    assertTrue(seq("12.00").isNumericInteger());
-    assertFalse(seq("").isNumericInteger());
-    assertFalse(seq("12.3").isNumericInteger());
-    assertFalse(seq("1.0000001").isNumericInteger());
+    assertTrue(seq("123").isIntegerValue());
+    assertTrue(seq("-123").isIntegerValue());
+    assertTrue(seq("0.0").isIntegerValue());
+    assertTrue(seq("+1.0").isIntegerValue());
+    assertTrue(seq("12.00").isIntegerValue());
+    assertFalse(seq("").isIntegerValue());
+    assertFalse(seq("12.3").isIntegerValue());
+    assertFalse(seq("1.0000001").isIntegerValue());
   }
 
   @Test
   void testIsTextualDecimal() {
-    assertTrue(seq("0").isTextualDecimal());
-    assertTrue(seq(".0").isTextualDecimal());
-    assertTrue(seq("123.0").isTextualDecimal());
-    assertTrue(seq("123e-2").isTextualDecimal());
-    assertTrue(seq("-123.0001E-23").isTextualDecimal());
-    assertFalse(seq("").isTextualDecimal());
-    assertFalse(seq(".").isTextualDecimal());
-    assertFalse(seq("--0").isTextualDecimal());
-    assertFalse(seq("5.x").isTextualDecimal());
+    assertTrue(seq("0").isNumberLiteral());
+    assertTrue(seq(".0").isNumberLiteral());
+    assertTrue(seq("123.0").isNumberLiteral());
+    assertTrue(seq("123e-2").isNumberLiteral());
+    assertTrue(seq("-123.0001E-23").isNumberLiteral());
+    assertFalse(seq("").isNumberLiteral());
+    assertFalse(seq(".").isNumberLiteral());
+    assertFalse(seq("--0").isNumberLiteral());
+    assertFalse(seq("5.x").isNumberLiteral());
   }
 
   @Test
   void testIsSpecialDecimal() {
-    assertTrue(seq("NaN").isSpecialDecimal());
-    assertTrue(seq("Infinity").isSpecialDecimal());
-    assertTrue(seq("-Infinity").isSpecialDecimal());
-    assertFalse(seq("nan").isSpecialDecimal());
-    assertFalse(seq("").isSpecialDecimal());
+    assertTrue(seq("NaN").isSpecialDoubleValue());
+    assertTrue(seq("Infinity").isSpecialDoubleValue());
+    assertTrue(seq("-Infinity").isSpecialDoubleValue());
+    assertFalse(seq("nan").isSpecialDoubleValue());
+    assertFalse(seq("").isSpecialDoubleValue());
   }
 
   @Test

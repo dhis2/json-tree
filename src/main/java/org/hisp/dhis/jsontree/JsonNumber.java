@@ -32,6 +32,9 @@ import static org.hisp.dhis.jsontree.Validation.NodeType.NUMBER;
 import org.hisp.dhis.jsontree.internal.NotNull;
 import org.hisp.dhis.jsontree.internal.TerminalOp;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 /**
  * Represents a numeric JSON node.
  *
@@ -69,6 +72,7 @@ public interface JsonNumber extends JsonValue {
   }
 
   /**
+   * @apiNote since 1.14 this covers {@link BigInteger} and {@link BigDecimal} too
    * @param orDefault value to use if this node is undefined or defined null
    * @return the value of this number node as the type of the provided default
    * @throws JsonTreeException in case this node is not a number node (or null)
@@ -82,7 +86,29 @@ public interface JsonNumber extends JsonValue {
     if (orDefault instanceof Long) return (T) Long.valueOf(longValue());
     if (orDefault instanceof Float) return (T) Float.valueOf(floatValue());
     if (orDefault instanceof Double) return (T) Double.valueOf(doubleValue());
+    if (orDefault instanceof BigDecimal) return (T) bigDecimal();
+    if (orDefault instanceof BigInteger) return (T) bigInteger();
     return (T) orDefault.getClass().cast(number());
+  }
+
+  /**
+   * @return this node as {@link BigDecimal}
+   * @throws JsonTreeException in case this node is not a number or string node (or null/undefined)
+   * @since 1.14
+   */
+  @TerminalOp(canBeUndefined = true)
+  default BigDecimal bigDecimal() {
+    return isUndefined() ? null : node().bigDecimalValue();
+  }
+
+  /**
+   * @return this node as {@link BigInteger}
+   * @throws JsonTreeException in case this node is not a number or string node (or null/undefined)
+   * @since 1.14
+   */
+  @TerminalOp(canBeUndefined = true)
+  default BigInteger bigInteger() {
+    return isUndefined() ? null : node().bigDecimalValue().toBigIntegerExact();
   }
 
   /**

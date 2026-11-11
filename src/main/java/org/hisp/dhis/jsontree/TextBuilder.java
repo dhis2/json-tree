@@ -118,6 +118,26 @@ public final class TextBuilder implements Appender, Textual, CharFragment<Text> 
   }
 
   @Override
+  public boolean isIntegerLiteral() {
+    return TextualNumber.isIntegerLiteral(buffer, 0, length);
+  }
+
+  @Override
+  public boolean isIntegerValue() {
+    return TextualNumber.isIntegerValue(buffer, 0, length);
+  }
+
+  @Override
+  public boolean isZeroValue() {
+    return TextualNumber.isZeroValue(buffer, 0, length);
+  }
+
+  @Override
+  public boolean isNumberLiteral() {
+    return TextualNumber.isNumberLiteral(buffer, 0, length);
+  }
+
+  @Override
   public @NotNull String toString() {
     return new String(buffer, 0, length);
   }

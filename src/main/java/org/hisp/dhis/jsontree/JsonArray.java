@@ -30,6 +30,8 @@ package org.hisp.dhis.jsontree;
 import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -92,9 +94,15 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * <p>JSON {@code null} elements are preserved as Java {@code null} for
+   * reference types (for example {@link Integer}, {@link BigInteger},
+   * {@link BigDecimal}). For primitive {@code T} (such as {@code int.class})
+   * null cannot be represented and the conversion throws.
+   *
    * @see #values()
    * @since 1.9
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> Streamable<T> values(Class<T> to) {
     return values().map(e -> e.to(to));
   }
@@ -113,20 +121,6 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
-   * @return the array elements as a uniform list of {@link String}
-   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
-   */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default List<String> stringValues() {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.elements(SKIP)
-        .map(JsonNode::textValue)
-        .map(Text::toString)
-        .toList();
-  }
-
-  /**
    * @return the array elements as a uniform list of {@link Boolean}
    * @throws JsonTreeException in case the node is not an array or the array has mixed elements
    */
@@ -138,36 +132,116 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * Note that elements are not restricted to JSON-strings only.
+   *
+   * @return the array elements as a uniform list of {@link String}
+   * @throws JsonTreeException in case the node is not an array
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default List<String> stringValues() {
+    return textValues().map(Text::toString).toList();
+  }
+
+  /**
+   * Note that elements are not restricted to JSON-strings only.
+   *
+   * @return all elements of this array as their underlying raw JSON {@link Text}
+   * @throws JsonTreeException in case the node is not an array
+   * @since 1.14
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Streamable<Text> textValues() {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.isNull()) return Streamable.empty();
+    return node.values();
+  }
+
+  /**
+   * <p>This is a strict parse of each element's raw text, so a JSON {@code null}
+   * element (whose raw text is the literal {@code "null"}) throws
+   * {@link NumberFormatException}. For a null-preserving variant use
+   * {@link #values(Class)} with {@code BigInteger.class} — that path goes
+   * through the node type system and maps JSON {@code null} to Java {@code null}.
+   *
+   * @return all elements of this array parsed as {@link BigDecimal}
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException in case an element text in this array is not valid {@link BigDecimal}
+   * @since 1.14
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Streamable<BigDecimal> bigDecimalValues() {
+    return textValues().map(Text::parseBigDecimal);
+  }
+
+  /**
+   * <p>This is a strict parse of each element's raw text, so a JSON {@code null}
+   * element (whose raw text is the literal {@code "null"}) throws
+   * {@link NumberFormatException}. For a null-preserving variant use
+   * {@link #values(Class)} with {@code BigInteger.class} — that path goes
+   * through the node type system and maps JSON {@code null} to Java {@code null}.
+   *
+   * @return all elements of this array parsed as {@link BigInteger}
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException in case an element text in this array is not valid {@link BigInteger}
+   * @since 1.14
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Streamable<BigInteger> bigIntegerValues() {
+    return textValues().map(Text::parseBigInteger);
+  }
+
+  /**
+   * This is a parsing operation with {@link Integer#parseInt(String)} semantics, not a {@link
+   * Number#intValue()} cast for each value; access the elements as {@link Streamable} of {@link
+   * JsonMixed} or {@link JsonNode} and map via {@link JsonMixed#intValue()} or {@link
+   * JsonNode#intValue()} use if you want cast behaviour.
+   *
    * @return all array values as int values (cast from double if needed)
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException if any of the elements is not a number
+   * @throws ArithmeticException if any of the numbers overflows int-range
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default IntStream intValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return IntStream.empty();
-    return node.elements(SKIP).stream().mapToInt(JsonNode::intValue);
+    return node.values().stream().mapToInt(Text::parseInt);
   }
 
   /**
+   * This is a parsing operation with {@link Long#parseLong(String)} semantics, not a {@link
+   * Number#longValue()} cast for each value; access the elements as {@link Streamable} of {@link
+   * JsonMixed} or {@link JsonNode} and map via {@link JsonMixed#longValue()} or {@link
+   * JsonNode#longValue()} use if you want cast behaviour.
+   *
    * @return all array values as long values (cast from double if needed)
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException if any of the elements is not a number
+   * @throws ArithmeticException if any of the numbers overflows long-range
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default LongStream longValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return LongStream.empty();
-    return node.elements(SKIP).stream().mapToLong(JsonNode::longValue);
+    return node.values().stream().mapToLong(Text::parseLong);
   }
 
   /**
+   * This is a parsing operation with {@link Double#parseDouble(String)} semantics, not a {@link
+   * Number#doubleValue()} cast for each value;
+   *
    * @return all array values as double values
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException if any of the elements is not a number
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default DoubleStream doubleValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return DoubleStream.empty();
-    return node.elements(SKIP).stream().mapToDouble(JsonNode::doubleValue);
+    return node.values().stream().mapToDouble(Text::parseDouble);
   }
 
   default JsonMixed get(int index) {

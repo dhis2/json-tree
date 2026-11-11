@@ -5,6 +5,8 @@ import static org.hisp.dhis.jsontree.CharFragment.checkSubSequence;
 
 import org.hisp.dhis.jsontree.internal.NotNull;
 
+import java.math.BigDecimal;
+
 /**
  * A number represented by its text form.
  *
@@ -22,10 +24,12 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  *
  * @author Jan Bernitt
  * @since 1.9
+ * @apiNote package-private since 1.14, access via {@link Text#of(char[], int, int)} and {@link
+ *     Text#parseNumber()}
  */
-public final class TextualNumber extends Number implements Textual, CharSeq {
+final class TextualNumber extends Number implements Textual, CharSeq {
 
-  public static Number of(char @NotNull [] buffer) {
+  static Number of(char @NotNull [] buffer) {
     return of(buffer, 0, buffer.length);
   }
 
@@ -46,32 +50,60 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
    * @throws NumberFormatException in case the buffer does not contain a valid number or if offset
    *     or length do not form a valid slice of characters for the given buffer
    */
-  public static Number of(char @NotNull [] buffer, int offset, int length) {
+  static Number of(char @NotNull [] buffer, int offset, int length) {
     if (length < 0) throw nanError(buffer, offset, length, "length must be >= 0");
     if (offset + length > buffer.length)
       throw new NumberFormatException("offset + length must be <= buffer.length");
-    if (isTextualInteger(buffer, offset, length)) {
+    if (isIntegerLiteral(buffer, offset, length)) {
       // preserve -0 as distinct from 0 by using a double
-      if (buffer[offset] == '-' && isNumericZero(buffer, offset, length))
+      if (buffer[offset] == '-' && isZeroValue(buffer, offset, length))
         return -0d;
-      // up to 9 digits is always in int range
+      // up to 9 chars (≤8 digits with sign) is always in int range
       if (length <= 9) return parseIntExact(buffer, offset, length);
-      // will overflow for sure
-      if (length > 20) return new TextualNumber(buffer, offset, length);
-      try {
-        long value = parseLongExact(buffer, offset, length);
+      if (fitsInLong(buffer, offset, length)) {
+        long value = parseLongExact(buffer, offset, length);  // guaranteed not to throw
         if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) return (int) value;
         return value;
-      } catch (ArithmeticException ex) {
-        // we did overflow, fall back to let the user take it
-        return new TextualNumber(buffer, offset, length);
       }
+      // doesn't fit in long: smallest type is BigInteger (the Integer/Long shortcut rule generalised)
+      return new BigDecimal(buffer, offset, length).toBigIntegerExact();
     }
-    if (isNumericZero(buffer, offset, length))
-      return buffer[offset] == '-' ? -0d : 0d;
-    if (!isTextualDecimal(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDecimal())
+    if (!isNumberLiteral(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDoubleValue())
       throw nanError(buffer, offset, length, "Is neither an integer nor a decimal number: ");
+    if (isZeroValue(buffer, offset, length))
+      return buffer[offset] == '-' ? -0d : 0d;
     return new TextualNumber(buffer, offset, length);
+  }
+
+  /** First 18 digits of Long.MAX_VALUE, used to compare 19-digit candidates in place. */
+  private static final char[] LONG_MAX_PREFIX = "922337203685477580".toCharArray();
+
+  /**
+   * Tests if a valid integer literal fits in a {@code long}. O(1) in the literal's length (bounded
+   * by 19) and allocation-free. Does not throw.
+   *
+   * @param buffer    buffer containing the literal (must already pass {@link #isIntegerLiteral})
+   * @param offset    start of the literal
+   * @param length    length of the literal
+   * @return true if the literal's value fits in a {@code long} without overflow
+   */
+  static boolean fitsInLong(char[] buffer, int offset, int length) {
+    int i = offset;
+    int end = offset + length;
+    if (i < end && (buffer[i] == '-' || buffer[i] == '+')) i++;
+    // strip leading zeros: they don't contribute to magnitude
+    while (i < end && buffer[i] == '0') i++;
+    int digits = end - i;
+    if (digits < 19) return true;   // includes 0 digits (all zeros)
+    if (digits > 19) return false;
+    // 19 digits: compare against Long.MAX_VALUE (or Long.MIN_VALUE's magnitude for negatives)
+    char maxLast = buffer[offset] == '-' ? '8' : '7';
+    for (int k = 0; k < 18; k++) {
+      char c = buffer[i + k];
+      char m = LONG_MAX_PREFIX[k];
+      if (c != m) return c < m;
+    }
+    return buffer[i + 18] <= maxLast;
   }
 
   private final char[] buffer;
@@ -143,23 +175,23 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
 
   @Override
   public double doubleValue() {
-    return parseDouble(buffer, offset, length);
+    return parseDoubleDecimal(buffer, offset, length);
   }
 
-  static boolean isTextualDecimal(char[] buffer) {
-    return isTextualDecimal(buffer, 0, buffer.length);
+  static boolean isNumberLiteral(char[] buffer) {
+    return isNumberLiteral(buffer, 0, buffer.length);
   }
 
-  static boolean isTextualDecimal(char[] buffer, int offset, int length) {
+  static boolean isNumberLiteral(char[] buffer, int offset, int length) {
     if (length == 0) return false;
     int eOffset = offsetExponent(buffer, offset, length);
-    if (eOffset < 0) return isTextualDecimalBase(buffer, offset, length);
+    if (eOffset < 0) return isNumberBaseLiteral(buffer, offset, length);
     int baseLength = eOffset - offset;
-    return isTextualDecimalBase(buffer, offset, baseLength)
-        && isTextualInteger(buffer, eOffset + 1, length - 1 - baseLength);
+    return isNumberBaseLiteral(buffer, offset, baseLength)
+        && isIntegerLiteral(buffer, eOffset + 1, length - 1 - baseLength);
   }
 
-  static boolean isTextualDecimalBase(char[] buffer, int offset, int length) {
+  static boolean isNumberBaseLiteral(char[] buffer, int offset, int length) {
     int i = offset;
     if (buffer[i] == '-' || buffer[i] == '+') i++; // sign
     int end = offset+length;
@@ -177,7 +209,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return i == end;
   }
 
-  static boolean isTextualInteger(char[] buffer, int offset, int length) {
+  static boolean isIntegerLiteral(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
     char sign = buffer[offset];
     int i = 0;
@@ -187,27 +219,33 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return true;
   }
 
-  static boolean isNumericZero(char[] buffer, int offset, int length) {
+  static boolean isZeroValue(char[] buffer) {
+    return isZeroValue(buffer, 0, buffer.length);
+  }
+
+  static boolean isZeroValue(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
-    char sign = buffer[offset];
+    // zero is zero regardless of the exponent, so only the significand matters
+    int eOffset = offsetExponent(buffer, offset, length);
+    int sigEnd = eOffset < 0 ? offset + length : eOffset;
     int i = offset;
+    char sign = buffer[i];
     if (sign == '-' || sign == '+') i++;
-    int end = offset + length;
     int d0 = i;
-    while (i < end && buffer[i] == '0') i++;
+    while (i < sigEnd && buffer[i] == '0') i++;
     boolean integerDigits = i > d0;
-    if (i >= end) return integerDigits;
+    if (i == sigEnd) return integerDigits;
     if (buffer[i++] != '.') return false;
     d0 = i;
-    while (i < end && buffer[i] == '0') i++;
-    return i == end && (integerDigits || i > d0);
+    while (i < sigEnd && buffer[i] == '0') i++;
+    return i == sigEnd && (integerDigits || i > d0);
   }
 
-  static boolean isNumericInteger(char[] buffer) {
-    return isNumericInteger(buffer, 0, buffer.length);
+  static boolean isIntegerValue(char[] buffer) {
+    return isIntegerValue(buffer, 0, buffer.length);
   }
 
-  static boolean isNumericInteger(char[] buffer, int offset, int length) {
+  static boolean isIntegerValue(char[] buffer, int offset, int length) {
     if (length <= 0) return false;
     char sign = buffer[offset];
     int i = offset;
@@ -216,6 +254,9 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int end = offset + length;
     int d0 = i;
     while (i < end && isDigit(buffer[i])) i++;
+    // require at least one digit before '.', so ".0" is rejected even though
+    // it equals an integer value; the use case is formatter-appended ".0"
+    // suffixes like "42.0", and no real formatter emits a leading-dot form
     if (i == d0) return false;
     if (i == end) return true;
     if (buffer[i++] != '.') return false;
@@ -223,7 +264,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     return i == end;
   }
 
-  private static boolean allDigits(char[] buffer, int offset, int length) {
+  private static boolean isAllDigits(char[] buffer, int offset, int length) {
     int end = offset+length;
     for (int i = offset; i < end; i++)
       if (!isDigit(buffer[i])) return false;
@@ -247,14 +288,14 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isTextualInteger(buffer, offset, length))
+    if (isIntegerLiteral(buffer, offset, length))
         return parseInt(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
       if (dpOffset > 0)
         return parseIntCast(buffer, offset, dpOffset - offset);
     }
-    return (int) parseDouble(buffer, offset, length);
+    return (int) parseDoubleDecimal(buffer, offset, length);
   }
 
   /**
@@ -267,14 +308,14 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isTextualInteger(buffer, offset, length))
+    if (isIntegerLiteral(buffer, offset, length))
       return parseLong(buffer, offset, length, true);
     if (offsetExponent(buffer, offset, length) < 0) {
       int dpOffset = offsetDecimalPoint(buffer, offset, length);
       if (dpOffset > 0)
         return parseLongCast(buffer, offset, dpOffset - offset);
     }
-    return (long) parseDouble(buffer, offset, length);
+    return (long) parseDoubleDecimal(buffer, offset, length);
   }
 
   /**
@@ -283,27 +324,31 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
    * @return the double value of the given number (possibly cast from an int or long if no decimal
    *     or exponential part was present and if the base was in range)
    */
-  static double parseDoubleCast(char[] buffer, int offset, int length) {
+  static double parseDouble(char[] buffer, int offset, int length) {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
-    if (isTextualInteger(buffer, offset, length)) {
+    if (isIntegerLiteral(buffer, offset, length)) {
       if (length <= 9) {
         int val = parseIntExact(buffer, offset, length);
         if (val != 0) return val;
         return buffer[offset] == '-' ? -0d : 0d;
       }
-      if (length <= 18) {
+      // handles up to 19 digits
+      if (fitsInLong(buffer, offset, length)) {
         long val = parseLongExact(buffer, offset, length);
         if (val != 0L) return val;
         return buffer[offset] == '-' ? -0d : 0d;
       }
+      // 20+ digit integer: cannot fit in long; Double.parseDouble still rounds
+      // it correctly (round-to-nearest-even) to the nearest double
+      return Double.parseDouble(new String(buffer, offset, length));
     }
-    return parseDouble(buffer, offset, length);
+    return parseDoubleDecimal(buffer, offset, length);
   }
 
-  static double parseDoubleCast(char[] buffer) {
-    return parseDoubleCast(buffer, 0, buffer.length);
+  static double parseDouble(char[] buffer) {
+    return parseDouble(buffer, 0, buffer.length);
   }
 
   /**
@@ -338,9 +383,11 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
   }
 
   /**
+   * We only call this if the double has a fraction.
+   *
    * @see Double#parseDouble(String)
    */
-  private static double parseDouble(char[] buffer, int offset, int length) {
+  private static double parseDoubleDecimal(char[] buffer, int offset, int length) {
     // strip tailing whitespace
     while (length > 0 && buffer[offset + length - 1] <= ' ') length--;
     // strip leading whitespace
@@ -410,6 +457,9 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       } else throw nanIllegalChar(buffer, i0, length, c);
     }
     if (digits == 0) throw nanError(buffer, i0, length, "Number has no digits before the exponent: ");
+    // All digits are zero => the value is ±0.0. BigDecimal cannot represent signed zero,
+    // so the fast path and fallback below cannot be used to produce -0.0.
+    if (digits == leadingZeros) return neg ? -0d : 0d;
     // fast path:
     // simple conservative pre-condition: 1-15 significand digits, 1-4 exp characters
     int expLen = eOffset < 0 ? 0 : length - 1 - (eOffset - offset);
@@ -469,7 +519,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int digits = length - (i - offset);
     if (digits == 0) return 0;
     if (!overflow && (digits > 10 || digits == 10 && buffer[i] > '2')) {
-      if (!allDigits(buffer, offset+(length - digits), digits))
+      if (!isAllDigits(buffer, offset+(length - digits), digits))
         throw nanError(buffer, offset, length, "Number contains illegal character(s)");
       throw overflow(buffer, offset, length, "int");
     }
@@ -507,7 +557,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     int digits = length - (i - offset);
     if (digits == 0) return 0L;
     if (!overflow && (digits > 19 || digits == 19 && buffer[i] == '9' && buffer[i + 1] > '2')) {
-      if (!allDigits(buffer, offset+(length - digits), digits))
+      if (!isAllDigits(buffer, offset+(length - digits), digits))
         throw nanError(buffer, offset, length, "Number contains illegal character(s)");
       throw overflow(buffer, offset, length, "long");
     }

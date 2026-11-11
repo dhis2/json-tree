@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.NotNull;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 
 import static java.lang.Math.abs;
@@ -92,25 +93,30 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
     return new TextSlice(buffer, offset + start, end - start);
   }
 
-  private boolean isInteger() {
+  private boolean isKnownInteger() {
     // if this buffer is the number cache
     // we do know the contents to be an integer number
-    return buffer == ZERO_TO_999;
+    return buffer == ZERO_TO_999 && length > 0;
   }
 
   @Override
-  public boolean isTextualInteger() {
-    return isInteger() || TextualNumber.isTextualInteger(buffer, offset, length);
+  public boolean isIntegerLiteral() {
+    return isKnownInteger() || TextualNumber.isIntegerLiteral(buffer, offset, length);
   }
 
   @Override
-  public boolean isNumericInteger() {
-    return isInteger() || TextualNumber.isNumericInteger(buffer, offset, length);
+  public boolean isIntegerValue() {
+    return isKnownInteger() || TextualNumber.isIntegerValue(buffer, offset, length);
   }
 
   @Override
-  public boolean isTextualDecimal() {
-    return isInteger() || TextualNumber.isTextualDecimal(buffer, offset, length);
+  public boolean isZeroValue() {
+    return TextualNumber.isZeroValue(buffer, offset, length);
+  }
+
+  @Override
+  public boolean isNumberLiteral() {
+    return isKnownInteger() || TextualNumber.isNumberLiteral(buffer, offset, length);
   }
 
   @Override
@@ -120,17 +126,19 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public int parseInt() {
+    if (buffer == ZERO_TO_999) return parseIntCached();
     return TextualNumber.parseIntExact(buffer, offset, length);
   }
 
   @Override
   public long parseLong() {
+    if (buffer == ZERO_TO_999) return parseIntCached();
     return TextualNumber.parseLongExact(buffer, offset, length);
   }
 
   @Override
   public double parseDouble() {
-    return TextualNumber.parseDoubleCast(buffer, offset, length);
+    return TextualNumber.parseDouble(buffer, offset, length);
   }
 
   @Override
@@ -139,9 +147,34 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   }
 
   @Override
+  public BigDecimal parseBigDecimal() {
+    return new BigDecimal(buffer, offset, length);
+  }
+
+  @Override
   public boolean matches(CharSequence input, int offset, int len) {
     return InputExpression.match(buffer, offset, length, input, offset) == offset+len;
   }
+
+  /**
+   * Computes the integer value of a slice of the {@link #ZERO_TO_999} cache arithmetically from
+   * the slice's {@code offset} instead of reading and parsing its characters.
+   * <p>
+   * Every slice of the cache that can be produced by {@link #of(int)} or
+   * {@link #subSequence(int, int)} covers the digit block
+   * {@code [offset % 3, offset % 3 + length)} of the 3-digit number {@code 100 + offset / 3},
+   * so the value is that block extracted by division and modulo. Slices outside that shape (in
+   * particular the empty slice) fall back to the generic parser.
+   */
+  private int parseIntCached() {
+    int first = offset % 3;
+    if (length < 1 || length > 3 || first + length > 3)
+      return TextualNumber.parseIntExact(buffer, offset, length);
+    int n = 100 + offset / 3;
+    return n / POW10[3 - first - length] % POW10[length];
+  }
+
+  private static final int[] POW10 = {1, 10, 100, 1000};
 
   @Override
   public boolean equals(Object obj) {
@@ -188,8 +221,8 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public Text concat(CharSequence suffix) {
-    if (isEmpty()) return Text.of(suffix);
     if (suffix.isEmpty()) return this;
+    if (isEmpty()) return Text.of(suffix);
     char[] res = new char[length + suffix.length()];
     System.arraycopy(buffer, offset, res, 0, length);
     if (suffix instanceof CharSeq cs) {

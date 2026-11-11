@@ -432,8 +432,8 @@ record ObjectValidator(@NotNull Class<?> schema, @NotNull Map<JsonPath, Validato
           // accept number given as string
           if (!strictNumbers
               && acceptNumbers
-              && (text.isTextualDecimal() || text.isSpecialDecimal())) return;
-          if (!strictNumbers && acceptIntegers && text.isTextualInteger()) return;
+              && (text.isNumberLiteral() || text.isSpecialDoubleValue())) return;
+          if (!strictNumbers && acceptIntegers && text.isIntegerLiteral()) return;
         }
       }
 
