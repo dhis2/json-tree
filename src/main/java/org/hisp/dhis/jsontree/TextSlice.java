@@ -210,8 +210,8 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public Text concat(CharSequence suffix) {
-    if (isEmpty()) return Text.of(suffix);
     if (suffix.isEmpty()) return this;
+    if (isEmpty()) return Text.of(suffix);
     char[] res = new char[length + suffix.length()];
     System.arraycopy(buffer, offset, res, 0, length);
     if (suffix instanceof CharSeq cs) {

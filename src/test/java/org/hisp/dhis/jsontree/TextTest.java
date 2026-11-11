@@ -858,4 +858,157 @@ class TextTest {
     assertEquals(0, Text.of("abcdef").skip(c -> c == 'c', 0, 3));
     assertEquals(-1, Text.of("abc").skip(c -> true, 3, 100));
   }
+
+  @DisplayName("offsetIn(Text) of zero-length subSequence")
+  @Test
+  void testOffsetIn_EmptySubSequence() {
+    Text t = Text.of("hello world"); // [0, 11)
+
+    // subSequence(k, k) is empty at k
+    assertEquals(0, t.subSequence(0, 0).offsetIn(t));
+    assertEquals(5, t.subSequence(5, 5).offsetIn(t));
+    assertEquals(11, t.subSequence(11, 11).offsetIn(t));
+    // subSequence(k) === subSequence(k, length) -> empty at length for k == length
+    assertEquals(11, t.subSequence(11).offsetIn(t));
+
+    // all empty slices share the backing buffer
+    assertTrue(t.subSequence(0, 0).contentMemoryEquals(t));
+    assertTrue(t.subSequence(5, 5).contentMemoryEquals(t));
+    assertTrue(t.subSequence(11, 11).contentMemoryEquals(t));
+
+    // zero-length slices at different offsets don't contain each other
+    assertEquals(-1, t.subSequence(3, 3).offsetIn(t.subSequence(7, 7)));
+    assertEquals(-1, t.subSequence(7, 7).offsetIn(t.subSequence(3, 3)));
+    // but each contains itself (position-wise, even when instances differ)
+    assertEquals(0, t.subSequence(5, 5).offsetIn(t.subSequence(5, 5)));
+
+    // nested: empty inside a sub-slice is correctly located in the root
+    Text word = t.subSequence(6); // "world" = [6, 11)
+    assertEquals(0, word.subSequence(0, 0).offsetIn(word));
+    assertEquals(6, word.subSequence(0, 0).offsetIn(t));
+    assertEquals(5, word.subSequence(5, 5).offsetIn(word));
+    assertEquals(11, word.subSequence(5, 5).offsetIn(t));
+
+    // an empty at the end of a parent is inside it (boundary semantics)...
+    assertEquals(11, t.subSequence(11, 11).offsetIn(t));
+    // ...but not inside a shorter prefix
+    assertEquals(-1, t.subSequence(11, 11).offsetIn(t.subSequence(0, 5)));
+  }
+
+  @DisplayName("offsetIn(Text) of zero-length slice")
+  @Test
+  void testOffsetIn_EmptySlice() {
+    Text t = Text.of("hello world"); // [0, 11)
+
+    // slice(k) = subSequence(k, length); empty at length for k == length
+    assertEquals(11, t.slice(11).offsetIn(t));
+
+    // slice(k, k) is empty at k
+    assertEquals(0, t.slice(0, 0).offsetIn(t));
+    assertEquals(5, t.slice(5, 5).offsetIn(t));
+
+    // slice(k, e) with e < k clamps to subSequence(k, k) -> empty at k (start)
+    assertEquals(5, t.slice(5, 3).offsetIn(t));
+    assertEquals(5, t.slice(5, 0).offsetIn(t));
+    // ...including when negative e would extend past start
+    assertEquals(5, t.slice(5, -10).offsetIn(t));
+    assertEquals(5, t.slice(5, -20).offsetIn(t));
+
+    // slice(0, -length) -> empty at start
+    assertEquals(0, t.slice(0, -11).offsetIn(t));
+  }
+
+  @DisplayName("offsetIn(Text) of trim/strip/shrink to empty")
+  @Test
+  void testOffsetIn_ShrunkToEmpty() {
+    // when every character is removed by shrink, the resulting empty slice
+    // points to the END of the shrunk region
+    Text spaces = Text.of("   "); // [0, 3)
+    assertEquals(3, spaces.trim().offsetIn(spaces));
+    assertEquals(3, spaces.strip().offsetIn(spaces));
+    assertEquals(3, spaces.shrink(c -> true).offsetIn(spaces));
+    assertTrue(spaces.trim().contentMemoryEquals(spaces));
+
+    Text tabs = Text.of("\t\t"); // [0, 2)
+    assertEquals(2, tabs.trim().offsetIn(tabs));
+    assertEquals(2, tabs.strip().offsetIn(tabs));
+
+    Text newlines = Text.of("\n\n"); // [0, 2)
+    // trim only strips spaces and tabs -> \n kept -> returns self
+    assertSame(newlines, newlines.trim());
+    assertEquals(0, newlines.trim().offsetIn(newlines));
+    // strip removes \n -> empty at end
+    assertEquals(2, newlines.strip().offsetIn(newlines));
+
+    Text abc = Text.of("abc"); // [0, 3)
+    assertEquals(3, abc.shrink(c -> true).offsetIn(abc));
+    // nothing to trim/strip -> self() kept, offset preserved
+    assertSame(abc, abc.trim());
+    assertSame(abc, abc.strip());
+    assertEquals(0, abc.trim().offsetIn(abc));
+
+    // trim/strip/shrink on an already-empty slice returns the same slice
+    Text t = Text.of("hello");
+    Text empty = t.subSequence(2, 2);
+    assertSame(empty, empty.trim());
+    assertSame(empty, empty.strip());
+    assertSame(empty, empty.shrink(c -> true));
+    assertEquals(2, empty.trim().offsetIn(t));
+
+    // Text.EMPTY is its own trimmed/stripped/shrunk self
+    Text e = Text.EMPTY;
+    assertSame(e, e.trim());
+    assertSame(e, e.strip());
+    assertSame(e, e.shrink(c -> true));
+    assertEquals(0, e.trim().offsetIn(e));
+  }
+
+  @DisplayName("offsetIn(Text) of zero-length int cache slices")
+  @Test
+  void testOffsetIn_EmptyIntCache() {
+    // Text.of(int) returns new instances sharing the ZERO_TO_999 buffer
+    Text fiveA = Text.of(5);
+    Text fiveB = Text.of(5);
+    Text emptyA = fiveA.subSequence(0, 0);
+    Text emptyB = fiveB.subSequence(0, 0);
+    assertTrue(emptyA.isEmpty());
+    assertTrue(emptyB.isEmpty());
+
+    // same buffer position -> each contains the other (position-wise)
+    assertEquals(0, emptyA.offsetIn(fiveA));
+    assertEquals(0, emptyA.offsetIn(fiveB));
+    assertEquals(0, emptyB.offsetIn(fiveA));
+    assertEquals(0, emptyA.offsetIn(emptyB));
+    assertEquals(0, emptyB.offsetIn(emptyA));
+
+    // empty at end of the int slice
+    Text emptyEnd = fiveA.subSequence(1, 1);
+    assertEquals(1, emptyEnd.offsetIn(fiveA));
+    // empty at start vs empty at end don't contain each other
+    assertEquals(-1, emptyA.offsetIn(emptyEnd));
+    assertEquals(-1, emptyEnd.offsetIn(emptyA));
+
+    // 3-digit cache value behaves the same
+    Text n = Text.of(123);
+    assertEquals(0, n.subSequence(0, 0).offsetIn(n));
+    assertEquals(3, n.subSequence(3, 3).offsetIn(n));
+  }
+
+  @DisplayName("offsetIn(Text) and concat on empty")
+  @Test
+  void testOffsetIn_EmptyConcat() {
+    Text t = Text.of("hello");
+    Text emptySlice = t.subSequence(2, 2);
+
+    // concat("") on a non-empty slice returns self -> offset preserved
+    Text hello = t.subSequence(0, 5);
+    assertSame(hello, hello.concat(""));
+    assertEquals(0, hello.concat("").offsetIn(t));
+
+    // concat("") on an empty slice returns self -> offset preserved,
+    Text concatResult = emptySlice.concat("");
+    assertTrue(concatResult.isEmpty());
+    assertEquals(2, concatResult.offsetIn(t));
+    assertEquals(0, concatResult.offsetIn(emptySlice));
+  }
 }
