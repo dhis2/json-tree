@@ -27,6 +27,8 @@ import java.math.BigDecimal;
  */
 public final class TextualNumber extends Number implements Textual, CharSeq {
 
+  //TODO make package private and expose of method only
+
   public static Number of(char @NotNull [] buffer) {
     return of(buffer, 0, buffer.length);
   }
@@ -332,11 +334,15 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
         if (val != 0) return val;
         return buffer[offset] == '-' ? -0d : 0d;
       }
-      if (length <= 18) {
+      // handles up to 19 digits
+      if (fitsInLong(buffer, offset, length)) {
         long val = parseLongExact(buffer, offset, length);
         if (val != 0L) return val;
         return buffer[offset] == '-' ? -0d : 0d;
       }
+      // 20+ digit integer: cannot fit in long; Double.parseDouble still rounds
+      // it correctly (round-to-nearest-even) to the nearest double
+      return Double.parseDouble(new String(buffer, offset, length));
     }
     return parseDoubleDecimal(buffer, offset, length);
   }
@@ -469,19 +475,6 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       }
     }
     // fallback
-    int expDigits = 0;
-    if (expLen > 0) {
-      char c = buffer[eOffset + 1];
-      expDigits = (c == '-' || c == '+') ? expLen - 1 : expLen;
-    }
-    // BigDecimal's scale is an int, so the constructor rejects literals whose
-    // exponent exceeds Integer.MAX_VALUE. 10-digit exponents are right at the
-    // boundary (2147483647 parses, 2147483648 does not); route those through
-    // Double.parseDouble, which saturates to Infinity for both.
-    if (expDigits <= 9) {
-      return new BigDecimal(buffer, i0, length).doubleValue();
-    }
-    // must use parseDouble because of overflow to infinity
     return Double.parseDouble(new String(buffer, i0, length));
   }
 

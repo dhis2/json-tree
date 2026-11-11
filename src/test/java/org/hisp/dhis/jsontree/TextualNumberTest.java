@@ -417,6 +417,16 @@ class TextualNumberTest {
     TextualNumber.of("123456789012345678901234567890".toCharArray());  // far overflow → BigInteger
   }
 
+  @Test
+  void testParseDouble_19DigitBoundary() {
+    // fits in long: goes via parseLongExact, no String allocation
+    assertEquals(9223372036854775807L, (long) TextualNumber.parseDouble("9223372036854775807".toCharArray()));
+    // 1 past long: goes via Double.parseDouble(String), still round-to-nearest-even
+    assertEquals(9.223372036854776E18, TextualNumber.parseDouble("9223372036854775808".toCharArray()));
+    // 19 nines: also doesn't fit, same fallback
+    assertEquals(1.0E19, TextualNumber.parseDouble("9999999999999999999".toCharArray()));
+  }
+
   /*
   Asserts
    */
