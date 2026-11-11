@@ -102,6 +102,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    * @see #values()
    * @since 1.9
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> Streamable<T> values(Class<T> to) {
     return values().map(e -> e.to(to));
   }
@@ -167,6 +168,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    * @throws NumberFormatException in case an element text in this array is not valid {@link BigDecimal}
    * @since 1.14
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Streamable<BigDecimal> bigDecimalValues() {
     return textValues().map(Text::parseBigDecimal);
   }
@@ -183,6 +185,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    * @throws NumberFormatException in case an element text in this array is not valid {@link BigInteger}
    * @since 1.14
    */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Streamable<BigInteger> bigIntegerValues() {
     return textValues().map(Text::parseBigInteger);
   }
