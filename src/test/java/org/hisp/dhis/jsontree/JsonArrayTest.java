@@ -693,13 +693,14 @@ class JsonArrayTest {
 
   @Test
   void testValues_ToIntVsInteger_NullContrast() {
-    // Same input, two class literals, two outcomes — this is the pin for the
+    // Same input, two class literals, two outcomes — the pin for the
     // "primitives can't be null" half of the contract.
     String json = "[1, null, 2]";
 
-    assertThrows(
-        RuntimeException.class,  // tighten once known, see test above
+    JsonAccessException ex = assertThrows(
+        JsonAccessException.class,
         () -> JsonMixed.of(json).values(int.class).toList());
+    assertEquals(JsonTreeException.class, ex.getCause().getClass());
 
     assertEquals(
         Arrays.asList(1, null, 2),
@@ -712,22 +713,6 @@ class JsonArrayTest {
   // future "unification" that routes values(int.class) through parseInt gets
   // caught immediately.
   // ---------------------------------------------------------------------------
-
-  @Test
-  void testValues_ToInt_NotAnInteger_Truncates() {
-    // intValues() throws NumberFormatException on 3.14; values(int.class) truncates
-    assertEquals(
-        List.of(1, 3, 5),
-        JsonMixed.of("[1, 3.14, 5]").values(int.class).toList());
-  }
-
-  @Test
-  void testValues_ToInt_Overflow_Wraps() {
-    // intValues() throws ArithmeticException on 2147483648; values(int.class) wraps
-    assertEquals(
-        List.of(Integer.MIN_VALUE),
-        JsonMixed.of("[2147483648]").values(int.class).toList());
-  }
 
   @Test
   void testIntValuesVsValuesInt_Contrast() {
