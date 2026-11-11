@@ -92,25 +92,30 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
     return new TextSlice(buffer, offset + start, end - start);
   }
 
-  private boolean isInteger() {
+  private boolean isKnownInteger() {
     // if this buffer is the number cache
     // we do know the contents to be an integer number
     return buffer == ZERO_TO_999 && length > 0;
   }
 
   @Override
-  public boolean isTextualInteger() {
-    return isInteger() || TextualNumber.isIntegerLiteral(buffer, offset, length);
+  public boolean isIntegerLiteral() {
+    return isKnownInteger() || TextualNumber.isIntegerLiteral(buffer, offset, length);
   }
 
   @Override
-  public boolean isNumericInteger() {
-    return isInteger() || TextualNumber.isIntegerValue(buffer, offset, length);
+  public boolean isIntegerValue() {
+    return isKnownInteger() || TextualNumber.isIntegerValue(buffer, offset, length);
   }
 
   @Override
-  public boolean isTextualDecimal() {
-    return isInteger() || TextualNumber.isNumberLiteral(buffer, offset, length);
+  public boolean isZeroValue() {
+    return TextualNumber.isZeroValue(buffer, offset, length);
+  }
+
+  @Override
+  public boolean isNumberLiteral() {
+    return isKnownInteger() || TextualNumber.isNumberLiteral(buffer, offset, length);
   }
 
   @Override
@@ -132,7 +137,7 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public double parseDouble() {
-    return TextualNumber.parseDoubleCast(buffer, offset, length);
+    return TextualNumber.parseDouble(buffer, offset, length);
   }
 
   @Override

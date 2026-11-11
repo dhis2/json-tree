@@ -427,7 +427,7 @@ public interface JsonPatch extends JsonArray {
     }
 
     if (parent.isArray()) {
-      if (!p.segment().isTextualInteger())
+      if (!p.segment().isIntegerLiteral())
         throw new JsonPatchTargetException(
             "Operation %s: cannot address array `%s` with non-integer segment `%s`"
                 .formatted(name, parentPath, p.segment()));

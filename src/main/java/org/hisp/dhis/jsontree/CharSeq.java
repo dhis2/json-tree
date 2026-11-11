@@ -299,8 +299,9 @@ public interface CharSeq extends CharSequence {
    * @return true, if this text is a valid integer value (of any range), or in other words if the
    *     sequence only consists of digits except for the first character which may be a plus or
    *     minus sign.
+   * @apiNote renamed from isTextualInteger to isIntegerLiteral in 1.14
    */
-  default boolean isTextualInteger() {
+  default boolean isIntegerLiteral() {
     if (isEmpty()) return false;
     int i = 0;
     if (charAt(0) == '-' || charAt(0) == '+') i++;
@@ -310,27 +311,38 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
-   * @return true, if this is either a {@link #isTextualInteger()} or a floating point number in
+   * @return true, if this is either a {@link #isIntegerLiteral()} or a floating point number in
    *     decimal notation with all decimals being zero.
+   * @apiNote renamed from isNumericInteger to isIntegerValue in 1.14
    */
-  default boolean isNumericInteger() {
+  default boolean isIntegerValue() {
     return TextualNumber.isIntegerValue(toCharArray());
   }
 
   /**
-   * @return true, if this text is a valid decimal value (of any range), in other words if it is
-   *     either a {@link #isTextualInteger()} or a floating point number in decimal or exponential
-   *     notation.
+   * @return true, if this sequence is a number that is numerically zero (includes scientific notations)
+   * @since 1.14
    */
-  default boolean isTextualDecimal() {
+  default boolean isZeroValue() {
+    return TextualNumber.isZeroValue(toCharArray());
+  }
+
+  /**
+   * @return true, if this text is a valid decimal value (of any range), in other words if it is
+   *     either a {@link #isIntegerLiteral()} or a floating point number in decimal or exponential
+   *     notation.
+   * @apiNote renamed from isTextualDecimal to isNumberLiteral in 1.14
+   */
+  default boolean isNumberLiteral() {
     return TextualNumber.isNumberLiteral(toCharArray());
   }
 
   /**
    * @return true, if this text is exactly "NaN", "Infinity" or "-Infinity" (Java double special
    *     number literals)
+   * @apiNote renamed from isSpecialDecimal to isSpecialDoubleValue in 1.14
    */
-  default boolean isSpecialDecimal() {
+  default boolean isSpecialDoubleValue() {
     return contentEquals("NaN") || contentEquals("Infinity") || contentEquals("-Infinity");
   }
 
@@ -362,7 +374,7 @@ public interface CharSeq extends CharSequence {
    * @see Double#parseDouble(String)
    */
   default double parseDouble() {
-    return TextualNumber.parseDoubleCast(toCharArray());
+    return TextualNumber.parseDouble(toCharArray());
   }
 
   default Number parseNumber() {

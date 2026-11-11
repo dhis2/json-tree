@@ -42,7 +42,6 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
@@ -460,13 +459,13 @@ record JsonTree(
 
     @Override
     public JsonNode get(Text name) throws JsonPathException, JsonTreeException {
-      if (name.isTextualInteger()) return element(name.parseInt(), name, false);
+      if (name.isIntegerLiteral()) return element(name.parseInt(), name, false);
       return super.get(name);
     }
 
     @Override
     public JsonNode getIfExists(Text name) throws JsonTreeException {
-      if (name.isTextualInteger()) return element(name.parseInt(), name, true);
+      if (name.isIntegerLiteral()) return element(name.parseInt(), name, true);
       return super.getIfExists(name);
     }
 
@@ -506,7 +505,7 @@ record JsonTree(
     @NotNull
     @Override
     public JsonNode element(Text index) {
-      if (!index.isTextualInteger()) return super.get(index);
+      if (!index.isIntegerLiteral()) return super.get(index);
       return element(index.parseInt(), index, false);
     }
 
@@ -517,7 +516,7 @@ record JsonTree(
 
     @Override
     public JsonNode elementIfExists(Text index) {
-      if (!index.isTextualInteger()) return super.get(index);
+      if (!index.isIntegerLiteral()) return super.get(index);
       return element(index.parseInt(), index, true);
     }
 
@@ -695,7 +694,7 @@ record JsonTree(
 
     @Override
     public double doubleValue() {
-      return TextualNumber.parseDoubleCast(tree.json, start, endIndex() - start);
+      return TextualNumber.parseDouble(tree.json, start, endIndex() - start);
     }
   }
 

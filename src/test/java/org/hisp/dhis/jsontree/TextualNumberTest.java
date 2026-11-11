@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * While does only test {@link TextualNumber#parseDoubleCast(char[], int, int)} directly the function uses
+ * While does only test {@link TextualNumber#parseDouble(char[], int, int)} directly the function uses
  * {@link TextualNumber#parseIntExact(char[], int, int)} and {@link TextualNumber#parseLongExact(char[], int, int)} internally
  * to parse exponents and doubles without decimals. That way these do have coverage.
  *
@@ -306,7 +306,7 @@ class TextualNumberTest {
         () -> "Number is valid for Double.parseDouble: `" + number + "`");
     assertThrowsExactly(
         NumberFormatException.class,
-        () -> TextualNumber.parseDoubleCast(number.toCharArray()),
+        () -> TextualNumber.parseDouble(number.toCharArray()),
         "parseDoubleCast() should throw for: " + number);
     assertThrowsExactly(NumberFormatException.class,
         () -> TextualNumber.of(number.toCharArray()),
@@ -340,7 +340,7 @@ class TextualNumberTest {
 
   private static void assertDoubleCast(double expected, char[] buf, int off, int len, String display) {
     try {
-      double actual = TextualNumber.parseDoubleCast(buf, off, len);
+      double actual = TextualNumber.parseDouble(buf, off, len);
       assertEquals(expected, actual, "Failed for: " + display);
     } catch (NumberFormatException ex) {
       fail("Number valid for Double.parseDouble was rejected: "

@@ -293,102 +293,102 @@ class TextTest {
   @DisplayName("isTextualInteger()")
   @Test
   void testIsTextualInteger() {
-    assertTrue(Text.of(123).isTextualInteger());
-    assertTrue(Text.of("123").isTextualInteger());
-    assertTrue(Text.of(-123).isTextualInteger());
-    assertTrue(Text.of("+123").isTextualInteger());
-    assertTrue(Text.of("0").isTextualInteger());
-    assertTrue(Text.of("-0").isTextualInteger());
-    assertTrue(Text.of("+0").isTextualInteger());
-    assertTrue(Text.of("007").isTextualInteger());
-    assertTrue(Text.of("9999999999999999999999999999").isTextualInteger());
+    assertTrue(Text.of(123).isIntegerLiteral());
+    assertTrue(Text.of("123").isIntegerLiteral());
+    assertTrue(Text.of(-123).isIntegerLiteral());
+    assertTrue(Text.of("+123").isIntegerLiteral());
+    assertTrue(Text.of("0").isIntegerLiteral());
+    assertTrue(Text.of("-0").isIntegerLiteral());
+    assertTrue(Text.of("+0").isIntegerLiteral());
+    assertTrue(Text.of("007").isIntegerLiteral());
+    assertTrue(Text.of("9999999999999999999999999999").isIntegerLiteral());
 
-    assertFalse(Text.of("").isTextualInteger());
-    assertFalse(Text.of(".01").isTextualInteger());
-    assertFalse(Text.of("12a").isTextualInteger());
-    assertFalse(Text.of("12.3").isTextualInteger());
-    assertFalse(Text.of("--1").isTextualInteger());
+    assertFalse(Text.of("").isIntegerLiteral());
+    assertFalse(Text.of(".01").isIntegerLiteral());
+    assertFalse(Text.of("12a").isIntegerLiteral());
+    assertFalse(Text.of("12.3").isIntegerLiteral());
+    assertFalse(Text.of("--1").isIntegerLiteral());
   }
 
   @DisplayName("isNumericInteger()")
   @Test
   void testIsNumericInteger() {
-    assertTrue(Text.of(123).isNumericInteger());
-    assertTrue(Text.of("123").isNumericInteger());
-    assertTrue(Text.of(-123).isNumericInteger());
-    assertTrue(Text.of("+123").isNumericInteger());
-    assertTrue(Text.of("0").isNumericInteger());
-    assertTrue(Text.of("-0").isNumericInteger());
-    assertTrue(Text.of("+0").isNumericInteger());
-    assertTrue(Text.of("007").isNumericInteger());
-    assertTrue(Text.of("9999999999999999999999999999").isNumericInteger());
+    assertTrue(Text.of(123).isIntegerValue());
+    assertTrue(Text.of("123").isIntegerValue());
+    assertTrue(Text.of(-123).isIntegerValue());
+    assertTrue(Text.of("+123").isIntegerValue());
+    assertTrue(Text.of("0").isIntegerValue());
+    assertTrue(Text.of("-0").isIntegerValue());
+    assertTrue(Text.of("+0").isIntegerValue());
+    assertTrue(Text.of("007").isIntegerValue());
+    assertTrue(Text.of("9999999999999999999999999999").isIntegerValue());
 
-    assertFalse(Text.of("").isNumericInteger());
-    assertFalse(Text.of(".01").isNumericInteger());
-    assertFalse(Text.of("12a").isNumericInteger());
-    assertFalse(Text.of("12.3").isNumericInteger());
-    assertFalse(Text.of("--1").isNumericInteger());
-    assertFalse(Text.of("1.0000001").isNumericInteger());
+    assertFalse(Text.of("").isIntegerValue());
+    assertFalse(Text.of(".01").isIntegerValue());
+    assertFalse(Text.of("12a").isIntegerValue());
+    assertFalse(Text.of("12.3").isIntegerValue());
+    assertFalse(Text.of("--1").isIntegerValue());
+    assertFalse(Text.of("1.0000001").isIntegerValue());
 
-    assertTrue(Text.of("0.0").isNumericInteger());
-    assertTrue(Text.of("+1.0").isNumericInteger());
-    assertTrue(Text.of("-1.0").isNumericInteger());
-    assertTrue(Text.of("1.0").isNumericInteger());
-    assertTrue(Text.of("12.00").isNumericInteger());
+    assertTrue(Text.of("0.0").isIntegerValue());
+    assertTrue(Text.of("+1.0").isIntegerValue());
+    assertTrue(Text.of("-1.0").isIntegerValue());
+    assertTrue(Text.of("1.0").isIntegerValue());
+    assertTrue(Text.of("12.00").isIntegerValue());
   }
 
   @DisplayName("isTextualDecimal()")
   @Test
   void testIsTextualDecimal() {
-    assertTrue(Text.of("0").isTextualDecimal());
-    assertTrue(Text.of(".0").isTextualDecimal());
-    assertTrue(Text.of("0.").isTextualDecimal());
-    assertTrue(Text.of("-0").isTextualDecimal());
-    assertTrue(Text.of("-.0").isTextualDecimal());
-    assertTrue(Text.of("-0.").isTextualDecimal());
-    assertTrue(Text.of("+0").isTextualDecimal());
-    assertTrue(Text.of("+.0").isTextualDecimal());
-    assertTrue(Text.of("+0.").isTextualDecimal());
-    assertTrue(Text.of("123").isTextualDecimal());
-    assertTrue(Text.of("123.0").isTextualDecimal());
-    assertTrue(Text.of("-123.0").isTextualDecimal());
-    assertTrue(Text.of("123e-2").isTextualDecimal());
-    assertTrue(Text.of("123.0e234").isTextualDecimal());
-    assertTrue(Text.of("-123.0001E-23").isTextualDecimal());
+    assertTrue(Text.of("0").isNumberLiteral());
+    assertTrue(Text.of(".0").isNumberLiteral());
+    assertTrue(Text.of("0.").isNumberLiteral());
+    assertTrue(Text.of("-0").isNumberLiteral());
+    assertTrue(Text.of("-.0").isNumberLiteral());
+    assertTrue(Text.of("-0.").isNumberLiteral());
+    assertTrue(Text.of("+0").isNumberLiteral());
+    assertTrue(Text.of("+.0").isNumberLiteral());
+    assertTrue(Text.of("+0.").isNumberLiteral());
+    assertTrue(Text.of("123").isNumberLiteral());
+    assertTrue(Text.of("123.0").isNumberLiteral());
+    assertTrue(Text.of("-123.0").isNumberLiteral());
+    assertTrue(Text.of("123e-2").isNumberLiteral());
+    assertTrue(Text.of("123.0e234").isNumberLiteral());
+    assertTrue(Text.of("-123.0001E-23").isNumberLiteral());
 
-    assertFalse(Text.of("").isTextualDecimal());
-    assertFalse(Text.of("0a").isTextualDecimal());
-    assertFalse(Text.of("-0a").isTextualDecimal());
-    assertFalse(Text.of("--0").isTextualDecimal());
-    assertFalse(Text.of("+-0").isTextualDecimal());
-    assertFalse(Text.of("++0").isTextualDecimal());
-    assertFalse(Text.of("-+0").isTextualDecimal());
-    assertFalse(Text.of("+0a").isTextualDecimal());
-    assertFalse(Text.of("+").isTextualDecimal());
-    assertFalse(Text.of("-").isTextualDecimal());
-    assertFalse(Text.of(".").isTextualDecimal());
-    assertFalse(Text.of(".0e").isTextualDecimal());
-    assertFalse(Text.of(".0E").isTextualDecimal());
-    assertFalse(Text.of("0.e").isTextualDecimal());
-    assertFalse(Text.of("0.E").isTextualDecimal());
-    assertFalse(Text.of("x0").isTextualDecimal());
-    assertFalse(Text.of("x").isTextualDecimal());
-    assertFalse(Text.of("5.x").isTextualDecimal());
-    assertFalse(Text.of("5.0ex").isTextualDecimal());
+    assertFalse(Text.of("").isNumberLiteral());
+    assertFalse(Text.of("0a").isNumberLiteral());
+    assertFalse(Text.of("-0a").isNumberLiteral());
+    assertFalse(Text.of("--0").isNumberLiteral());
+    assertFalse(Text.of("+-0").isNumberLiteral());
+    assertFalse(Text.of("++0").isNumberLiteral());
+    assertFalse(Text.of("-+0").isNumberLiteral());
+    assertFalse(Text.of("+0a").isNumberLiteral());
+    assertFalse(Text.of("+").isNumberLiteral());
+    assertFalse(Text.of("-").isNumberLiteral());
+    assertFalse(Text.of(".").isNumberLiteral());
+    assertFalse(Text.of(".0e").isNumberLiteral());
+    assertFalse(Text.of(".0E").isNumberLiteral());
+    assertFalse(Text.of("0.e").isNumberLiteral());
+    assertFalse(Text.of("0.E").isNumberLiteral());
+    assertFalse(Text.of("x0").isNumberLiteral());
+    assertFalse(Text.of("x").isNumberLiteral());
+    assertFalse(Text.of("5.x").isNumberLiteral());
+    assertFalse(Text.of("5.0ex").isNumberLiteral());
   }
 
   @DisplayName("isSpecialDecimal()")
   @Test
   void testIsSpecialDecimal() {
-    assertTrue(Text.of("NaN").isSpecialDecimal());
-    assertTrue(Text.of("Infinity").isSpecialDecimal());
-    assertTrue(Text.of("-Infinity").isSpecialDecimal());
-    assertFalse(Text.of("").isSpecialDecimal());
-    assertFalse(Text.of("Nan").isSpecialDecimal());
-    assertFalse(Text.of("nan").isSpecialDecimal());
-    assertFalse(Text.of("NaNa").isSpecialDecimal());
-    assertFalse(Text.of("infinity").isSpecialDecimal());
-    assertFalse(Text.of("-infinity").isSpecialDecimal());
+    assertTrue(Text.of("NaN").isSpecialDoubleValue());
+    assertTrue(Text.of("Infinity").isSpecialDoubleValue());
+    assertTrue(Text.of("-Infinity").isSpecialDoubleValue());
+    assertFalse(Text.of("").isSpecialDoubleValue());
+    assertFalse(Text.of("Nan").isSpecialDoubleValue());
+    assertFalse(Text.of("nan").isSpecialDoubleValue());
+    assertFalse(Text.of("NaNa").isSpecialDoubleValue());
+    assertFalse(Text.of("infinity").isSpecialDoubleValue());
+    assertFalse(Text.of("-infinity").isSpecialDoubleValue());
   }
 
   @DisplayName("parseInt()")
@@ -448,8 +448,8 @@ class TextTest {
           assertEquals(Integer.parseInt(expected), slice.parseInt(), "parseInt " + msg);
           assertEquals(Long.parseLong(expected), slice.parseLong(), "parseLong " + msg);
           assertEquals(slice2.parseInt(), slice.parseInt());
-          assertTrue(slice.isTextualInteger(), "isTextualInteger " + msg);
-          assertTrue(slice.isNumericInteger(), "isNumericInteger " + msg);
+          assertTrue(slice.isIntegerLiteral(), "isTextualInteger " + msg);
+          assertTrue(slice.isIntegerValue(), "isNumericInteger " + msg);
         }
       }
     }
@@ -462,23 +462,23 @@ class TextTest {
     Text empty = Text.of(5).subSequence(0, 0);
     assertTrue(empty.isEmpty());
     assertEquals(0, empty.length());
-    assertFalse(empty.isTextualInteger());
-    assertFalse(empty.isNumericInteger());
-    assertFalse(empty.isTextualDecimal());
+    assertFalse(empty.isIntegerLiteral());
+    assertFalse(empty.isIntegerValue());
+    assertFalse(empty.isNumberLiteral());
     assertThrows(NumberFormatException.class, empty::parseInt);
     assertThrows(NumberFormatException.class, empty::parseLong);
 
     // same on a 3-digit slice
     Text emptyFromBig = Text.of(123).subSequence(2, 2);
     assertTrue(emptyFromBig.isEmpty());
-    assertFalse(emptyFromBig.isTextualInteger());
+    assertFalse(emptyFromBig.isIntegerLiteral());
     assertThrows(NumberFormatException.class, emptyFromBig::parseInt);
     assertThrows(NumberFormatException.class, emptyFromBig::parseLong);
 
     // the 3-digit slice trimmed to nothing on both ends still works
     Text trimmed = Text.of(999).subSequence(1, 1);
     assertTrue(trimmed.isEmpty());
-    assertFalse(trimmed.isTextualInteger());
+    assertFalse(trimmed.isIntegerLiteral());
     assertThrows(NumberFormatException.class, trimmed::parseInt);
   }
 

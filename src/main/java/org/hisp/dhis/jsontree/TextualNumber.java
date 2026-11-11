@@ -69,7 +69,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
         return new TextualNumber(buffer, offset, length);
       }
     }
-    if (!isNumberLiteral(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDecimal())
+    if (!isNumberLiteral(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDoubleValue())
       throw nanError(buffer, offset, length, "Is neither an integer nor a decimal number: ");
     if (isZeroValue(buffer, offset, length))
       return buffer[offset] == '-' ? -0d : 0d;
@@ -145,7 +145,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
 
   @Override
   public double doubleValue() {
-    return parseDouble(buffer, offset, length);
+    return parseDoubleDecimal(buffer, offset, length);
   }
 
   static boolean isNumberLiteral(char[] buffer) {
@@ -187,6 +187,10 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
     if (i > 0 && length == 1) return false;
     for (; i < length; i++) if (!isDigit(buffer[offset + i])) return false;
     return true;
+  }
+
+  static boolean isZeroValue(char[] buffer) {
+    return isZeroValue(buffer, 0, buffer.length);
   }
 
   static boolean isZeroValue(char[] buffer, int offset, int length) {
@@ -258,7 +262,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       if (dpOffset > 0)
         return parseIntCast(buffer, offset, dpOffset - offset);
     }
-    return (int) parseDouble(buffer, offset, length);
+    return (int) parseDoubleDecimal(buffer, offset, length);
   }
 
   /**
@@ -278,7 +282,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       if (dpOffset > 0)
         return parseLongCast(buffer, offset, dpOffset - offset);
     }
-    return (long) parseDouble(buffer, offset, length);
+    return (long) parseDoubleDecimal(buffer, offset, length);
   }
 
   /**
@@ -287,7 +291,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
    * @return the double value of the given number (possibly cast from an int or long if no decimal
    *     or exponential part was present and if the base was in range)
    */
-  static double parseDoubleCast(char[] buffer, int offset, int length) {
+  static double parseDouble(char[] buffer, int offset, int length) {
     int len = lengthInsignificantZeros(buffer, offset, length);
     offset += len;
     length -= len;
@@ -303,11 +307,11 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
         return buffer[offset] == '-' ? -0d : 0d;
       }
     }
-    return parseDouble(buffer, offset, length);
+    return parseDoubleDecimal(buffer, offset, length);
   }
 
-  static double parseDoubleCast(char[] buffer) {
-    return parseDoubleCast(buffer, 0, buffer.length);
+  static double parseDouble(char[] buffer) {
+    return parseDouble(buffer, 0, buffer.length);
   }
 
   /**
@@ -342,9 +346,11 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
   }
 
   /**
+   * We only call this if the double has a fraction.
+   *
    * @see Double#parseDouble(String)
    */
-  private static double parseDouble(char[] buffer, int offset, int length) {
+  private static double parseDoubleDecimal(char[] buffer, int offset, int length) {
     // strip tailing whitespace
     while (length > 0 && buffer[offset + length - 1] <= ' ') length--;
     // strip leading whitespace

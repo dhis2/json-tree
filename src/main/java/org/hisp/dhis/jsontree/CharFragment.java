@@ -197,7 +197,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * Reduces a number's text to its pure value digits so that equivalent integer representations
    * compare equal as text.
    *
-   * <p>The input is expected to be an integer value as per {@link #isNumericInteger()} — a plain
+   * <p>The input is expected to be an integer value as per {@link #isIntegerValue()} — a plain
    * integer, optionally signed, or a decimal with an all-zero fraction. The output is canonical: no
    * sign on zero, no leading zeros, no trailing {@code .0+} fraction. A leading {@code '+'} or
    * {@code '-'} is consumed; a {@code '-'} is preserved on non-zero results, and dropped entirely
