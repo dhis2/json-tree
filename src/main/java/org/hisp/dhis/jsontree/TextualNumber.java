@@ -24,12 +24,12 @@ import java.math.BigDecimal;
  *
  * @author Jan Bernitt
  * @since 1.9
+ * @apiNote package-private since 1.14, access via {@link Text#of(char[], int, int)} and {@link
+ *     Text#parseNumber()}
  */
-public final class TextualNumber extends Number implements Textual, CharSeq {
+final class TextualNumber extends Number implements Textual, CharSeq {
 
-  //TODO make package private and expose of method only
-
-  public static Number of(char @NotNull [] buffer) {
+  static Number of(char @NotNull [] buffer) {
     return of(buffer, 0, buffer.length);
   }
 
@@ -50,7 +50,7 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
    * @throws NumberFormatException in case the buffer does not contain a valid number or if offset
    *     or length do not form a valid slice of characters for the given buffer
    */
-  public static Number of(char @NotNull [] buffer, int offset, int length) {
+  static Number of(char @NotNull [] buffer, int offset, int length) {
     if (length < 0) throw nanError(buffer, offset, length, "length must be >= 0");
     if (offset + length > buffer.length)
       throw new NumberFormatException("offset + length must be <= buffer.length");

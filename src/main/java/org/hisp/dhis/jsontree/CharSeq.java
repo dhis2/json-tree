@@ -443,6 +443,30 @@ public interface CharSeq extends CharSequence {
     return TextualNumber.parseDouble(toCharArray());
   }
 
+  /**
+   * Parses this sequence as a number, choosing the smallest type that can represent the value
+   * without loss.
+   *
+   * <p>Integer literals become {@link Integer}, {@link Long} or {@link BigInteger} (in that
+   * order, whichever fits). The numeric value zero and the special double values ({@code NaN},
+   * {@code ±Infinity}) become {@link Double} — which preserves the {@code 0.0} vs {@code -0.0}
+   * distinction that {@link java.math.BigDecimal} cannot. Any other decimal literal becomes a
+   * lazily-parsed {@link Number} that preserves the exact input text; the {@link Textual} and
+   * {@link CharSeq} interfaces may be used to recover that text from the returned instance:
+   *
+   * <pre>{@code
+   * Number n = someText.parseNumber();
+   * if (n instanceof Textual t) {
+   *     Text original = t.textValue();  // exact input form, e.g. "1.50" not "1.5"
+   * }
+   * }</pre>
+   *
+   * <p>This method does not allow whitespace at the start or end of the sequence.
+   *
+   * @return this sequence parsed as a number
+   * @throws NumberFormatException if this sequence is not a valid number literal or special
+   *     double value
+   */
   default Number parseNumber() {
     return TextualNumber.of(toCharArray());
   }
