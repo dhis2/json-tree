@@ -1,6 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -8,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrowsExactly;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.math.BigInteger;
 import java.util.Random;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
@@ -348,6 +348,73 @@ class TextualNumberTest {
     assertEquals(0.001, TextualNumber.of("1e-3".toCharArray()).doubleValue());
     assertEquals(-3.14, TextualNumber.of("-3.14".toCharArray()).doubleValue());
     assertEquals(3.14, TextualNumber.of("3.14".toCharArray()).doubleValue());
+  }
+
+  @Test
+  @SuppressWarnings("UnnecessaryBoxing")
+  void testOf_IntegerPromotion() {
+    // fits in int
+    assertEquals(Integer.valueOf(0), TextualNumber.of("0".toCharArray()));
+    assertEquals(Integer.valueOf(42), TextualNumber.of("42".toCharArray()));
+    assertEquals(Integer.valueOf(Integer.MIN_VALUE), TextualNumber.of("-2147483648".toCharArray()));
+    // fits in long but not int
+    assertEquals(Long.valueOf(2147483648L), TextualNumber.of("2147483648".toCharArray()));
+    assertEquals(Long.valueOf(Long.MAX_VALUE), TextualNumber.of("9223372036854775807".toCharArray()));
+    assertEquals(Long.valueOf(Long.MIN_VALUE), TextualNumber.of("-9223372036854775808".toCharArray()));
+    // just past long
+    assertEquals(new BigInteger("9223372036854775808"), TextualNumber.of("9223372036854775808".toCharArray()));
+    assertEquals(new BigInteger("-9223372036854775809"), TextualNumber.of("-9223372036854775809".toCharArray()));
+    // very large
+    assertEquals(new BigInteger("123456789012345678901234567890"),
+        TextualNumber.of("123456789012345678901234567890".toCharArray()));
+  }
+
+  @Test
+  @SuppressWarnings("UnnecessaryBoxing")
+  void testOf_IntegerPromotion_LeadingZeros() {
+    // regression: the old length > 20 shortcut would have promoted these to BigInteger
+    // even though the values fit in int
+    assertEquals(Integer.valueOf(1), TextualNumber.of("0000000000000000000001".toCharArray()));
+    assertEquals(Integer.valueOf(0), TextualNumber.of("0000000000000000000000".toCharArray()));
+    assertEquals(Integer.valueOf(1),
+        TextualNumber.of("0000000000000000000000000000001".toCharArray()));
+    // but a genuine 21-digit value still promotes
+    assertEquals(new BigInteger("123456789012345678901"),
+        TextualNumber.of("123456789012345678901".toCharArray()));
+  }
+
+  @Test
+  @SuppressWarnings("UnnecessaryBoxing")
+  void testOf_NegativeZero() {
+    // -0 stays Double (preserves sign); 0 goes through the integer path
+    assertEquals(Double.valueOf(-0.0), TextualNumber.of("-0".toCharArray()));
+    assertEquals(Integer.valueOf(0), TextualNumber.of("0".toCharArray()));
+  }
+
+  @Test
+  void testFitsInLong() {
+    // straightforward fits
+    assertTrue(TextualNumber.fitsInLong("0".toCharArray(), 0, 1));
+    assertTrue(TextualNumber.fitsInLong("9223372036854775807".toCharArray(), 0, 19));   // MAX
+    assertTrue(TextualNumber.fitsInLong("-9223372036854775808".toCharArray(), 0, 20));  // MIN
+    // just past the boundary
+    assertFalse(TextualNumber.fitsInLong("9223372036854775808".toCharArray(), 0, 19));  // MAX+1
+    assertFalse(TextualNumber.fitsInLong("-9223372036854775809".toCharArray(), 0, 20)); // MIN-1
+    // same digit count, prefix comparison decides (this is the case the old early check missed)
+    assertFalse(TextualNumber.fitsInLong("9240000000000000000".toCharArray(), 0, 19));
+    assertTrue (TextualNumber.fitsInLong("9200000000000000000".toCharArray(), 0, 19));
+    // leading zeros don't count
+    assertTrue (TextualNumber.fitsInLong("0000000000000000000001".toCharArray(), 0, 22));
+    // sign-only and empty: caller guarantees isIntegerLiteral, but predicate still sane
+    assertTrue (TextualNumber.fitsInLong("-0".toCharArray(), 0, 2));
+  }
+
+  @Test
+  void testOf_PromotionWithoutExceptions() {
+    // the fitsInLong path must not throw for any valid integer literal
+    TextualNumber.of("9223372036854775807".toCharArray());   // fits
+    TextualNumber.of("9223372036854775808".toCharArray());   // overflow → BigInteger
+    TextualNumber.of("123456789012345678901234567890".toCharArray());  // far overflow → BigInteger
   }
 
   /*

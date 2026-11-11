@@ -1,5 +1,8 @@
 package org.hisp.dhis.jsontree;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 /**
  * All the utility that really should have been in {@link CharSequence} providing all read-only
  * utility that is common for {@link String} and beyond solely based on methods already defined in
@@ -442,6 +445,22 @@ public interface CharSeq extends CharSequence {
 
   default Number parseNumber() {
     return TextualNumber.of(toCharArray());
+  }
+
+  /**
+   * @see BigDecimal#BigDecimal(String)
+   * @since 1.14
+   */
+  default BigDecimal parseBigDecimal() {
+    return new BigDecimal(toCharArray());
+  }
+
+  /**
+   * @see BigInteger#BigInteger(String)
+   * @since 1.14
+   */
+  default BigInteger parseBigInteger() {
+    return parseBigDecimal().toBigIntegerExact();
   }
 
   /**

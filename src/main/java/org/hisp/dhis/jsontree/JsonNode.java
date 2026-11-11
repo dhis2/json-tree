@@ -42,6 +42,8 @@ import static org.hisp.dhis.jsontree.JsonTreeException.notAnObject;
 import java.io.IOException;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -539,16 +541,38 @@ public interface JsonNode
 
   /**
    * @apiNote If the actual numeric exact value is within int range, an {@link Integer} is returned.
-   * If it is within long range, a {@link Long} is returned. Otherwise, the type of {@link Number}
-   * is unspecified. In any case it is recommended to use the {@link Number} API methods, not
-   * unbox (cast) the result to any specific subtype.
-   *
+   *     If it is within long range, a {@link Long} is returned. If it is an integer number but
+   *     beyond {@link Long} an {@link BigInteger} is returned (since 1.14).
+   *     <p>Otherwise, the type of {@link Number} is unspecified. In any case it is recommended to
+   *     use the {@link Number} API methods, not unbox (cast) the result to any specific subtype.
+   * @throws JsonTreeException if this node is not a number (or string) node
    * @throws NumberFormatException if this node is a string node but the value is not a valid number
    * @return This node value as a number (JSON number or string node)
    * @since 1.9
    */
   default Number numberValue() {
     throw notA(NUMBER, this, "numberValue()");
+  }
+
+  /**
+   * @throws JsonTreeException if this node is not a number (or string) node
+   * @throws NumberFormatException if this node is a string node but the value is not a valid number
+   * @return This node value as a {@link BigDecimal} number (JSON number or string node)
+   * @since 1.14
+   */
+  default BigDecimal bigDecimalValue() {
+    throw notA(NUMBER, this, "bigDecimalValue()");
+  }
+
+  /**
+   * @throws JsonTreeException if this node is not a number (or string) node
+   * @throws NumberFormatException if this node is a string node but the value is not a valid number
+   * @throws ArithmeticException if this node is a number but not an exact integer number
+   * @return This node value as a {@link BigInteger} number (JSON number or string node)
+   * @since 1.14
+   */
+  default BigInteger bigIntegerValue() {
+    return bigDecimalValue().toBigIntegerExact();
   }
 
   /**

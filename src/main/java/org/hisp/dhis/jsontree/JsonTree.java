@@ -40,6 +40,7 @@ import static org.hisp.dhis.jsontree.JsonPathException.noSuchNode;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -672,9 +673,18 @@ record JsonTree(
       return JsonNodeType.NUMBER;
     }
 
+    private int textLength() {
+      return endIndex() - start;
+    }
+
     @Override
     public Number numberValue() {
-      return TextualNumber.of(tree.json, start, endIndex() - start);
+      return TextualNumber.of(tree.json, start, textLength());
+    }
+
+    @Override
+    public BigDecimal bigDecimalValue() {
+      return new BigDecimal(tree.json, start, textLength());
     }
 
     @Override
@@ -684,17 +694,17 @@ record JsonTree(
 
     @Override
     public int intValue() {
-      return TextualNumber.parseIntCast(tree.json, start, endIndex() - start);
+      return TextualNumber.parseIntCast(tree.json, start, textLength());
     }
 
     @Override
     public long longValue() {
-      return TextualNumber.parseLongCast(tree.json, start, endIndex() - start);
+      return TextualNumber.parseLongCast(tree.json, start, textLength());
     }
 
     @Override
     public double doubleValue() {
-      return TextualNumber.parseDouble(tree.json, start, endIndex() - start);
+      return TextualNumber.parseDouble(tree.json, start, textLength());
     }
   }
 
@@ -737,6 +747,11 @@ record JsonTree(
     @Override
     public double doubleValue() {
       return textValue().parseDouble();
+    }
+
+    @Override
+    public BigDecimal bigDecimalValue() {
+      return textValue().parseBigDecimal();
     }
   }
 

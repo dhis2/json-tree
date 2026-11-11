@@ -2,6 +2,7 @@ package org.hisp.dhis.jsontree;
 
 import org.hisp.dhis.jsontree.internal.NotNull;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 
 import static java.lang.Math.abs;
@@ -143,6 +144,11 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   @Override
   public Number parseNumber() {
     return TextualNumber.of(buffer, offset, length);
+  }
+
+  @Override
+  public BigDecimal parseBigDecimal() {
+    return new BigDecimal(buffer, offset, length);
   }
 
   @Override

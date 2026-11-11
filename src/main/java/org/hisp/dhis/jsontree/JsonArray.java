@@ -30,6 +30,8 @@ package org.hisp.dhis.jsontree;
 import static org.hisp.dhis.jsontree.JsonNode.Index.AUTO;
 import static org.hisp.dhis.jsontree.JsonNode.Index.SKIP;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -113,6 +115,17 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * @return the array elements as a uniform list of {@link Boolean}
+   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default List<Boolean> booleanValues() {
+    JsonNode node = nodeIfExists();
+    if (node == null || node.isNull()) return List.of();
+    return node.elements(SKIP).map(JsonNode::booleanValue).toList();
+  }
+
+  /**
    * Note that elements are not restricted to JSON-strings only.
    *
    * @return the array elements as a uniform list of {@link String}
@@ -120,7 +133,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<String> stringValues() {
-    return testValues().map(Text::toString).toList();
+    return textValues().map(Text::toString).toList();
   }
 
   /**
@@ -131,21 +144,30 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    * @since 1.14
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Streamable<Text> testValues() {
+  default Streamable<Text> textValues() {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return Streamable.empty();
     return node.values();
   }
 
   /**
-   * @return the array elements as a uniform list of {@link Boolean}
-   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   * @return all elements of this array parsed as {@link BigDecimal}
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException in case an element text in this array is not valid {@link BigDecimal}
+   * @since 1.14
    */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default List<Boolean> booleanValues() {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.elements(SKIP).map(JsonNode::booleanValue).toList();
+  default Streamable<BigDecimal> bigDecimalValues() {
+    return textValues().map(Text::parseBigDecimal);
+  }
+
+  /**
+   * @return all elements of this array parsed as {@link BigInteger}
+   * @throws JsonTreeException in case the node is not an array
+   * @throws NumberFormatException in case an element text in this array is not valid {@link BigInteger}
+   * @since 1.14
+   */
+  default Streamable<BigInteger> bigIntegerValues() {
+    return textValues().map(Text::parseBigInteger);
   }
 
   /**

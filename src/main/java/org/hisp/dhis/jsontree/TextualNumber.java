@@ -56,24 +56,52 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       // preserve -0 as distinct from 0 by using a double
       if (buffer[offset] == '-' && isZeroValue(buffer, offset, length))
         return -0d;
-      // up to 9 digits is always in int range
+      // up to 9 chars (≤8 digits with sign) is always in int range
       if (length <= 9) return parseIntExact(buffer, offset, length);
-      // will overflow for sure
-      if (length > 20) return new TextualNumber(buffer, offset, length);
-      try {
-        long value = parseLongExact(buffer, offset, length);
+      if (fitsInLong(buffer, offset, length)) {
+        long value = parseLongExact(buffer, offset, length);  // guaranteed not to throw
         if (value >= Integer.MIN_VALUE && value <= Integer.MAX_VALUE) return (int) value;
         return value;
-      } catch (ArithmeticException ex) {
-        // we did overflow, fall back to let the user take it
-        return new TextualNumber(buffer, offset, length);
       }
+      // doesn't fit in long: smallest type is BigInteger (the Integer/Long shortcut rule generalised)
+      return new BigDecimal(buffer, offset, length).toBigIntegerExact();
     }
     if (!isNumberLiteral(buffer, offset, length) && !Text.of(buffer, offset, length).isSpecialDoubleValue())
       throw nanError(buffer, offset, length, "Is neither an integer nor a decimal number: ");
     if (isZeroValue(buffer, offset, length))
       return buffer[offset] == '-' ? -0d : 0d;
     return new TextualNumber(buffer, offset, length);
+  }
+
+  /** First 18 digits of Long.MAX_VALUE, used to compare 19-digit candidates in place. */
+  private static final char[] LONG_MAX_PREFIX = "922337203685477580".toCharArray();
+
+  /**
+   * Tests if a valid integer literal fits in a {@code long}. O(1) in the literal's length (bounded
+   * by 19) and allocation-free. Does not throw.
+   *
+   * @param buffer    buffer containing the literal (must already pass {@link #isIntegerLiteral})
+   * @param offset    start of the literal
+   * @param length    length of the literal
+   * @return true if the literal's value fits in a {@code long} without overflow
+   */
+  static boolean fitsInLong(char[] buffer, int offset, int length) {
+    int i = offset;
+    int end = offset + length;
+    if (i < end && (buffer[i] == '-' || buffer[i] == '+')) i++;
+    // strip leading zeros: they don't contribute to magnitude
+    while (i < end && buffer[i] == '0') i++;
+    int digits = end - i;
+    if (digits < 19) return true;   // includes 0 digits (all zeros)
+    if (digits > 19) return false;
+    // 19 digits: compare against Long.MAX_VALUE (or Long.MIN_VALUE's magnitude for negatives)
+    char maxLast = buffer[offset] == '-' ? '8' : '7';
+    for (int k = 0; k < 18; k++) {
+      char c = buffer[i + k];
+      char m = LONG_MAX_PREFIX[k];
+      if (c != m) return c < m;
+    }
+    return buffer[i + 18] <= maxLast;
   }
 
   private final char[] buffer;
