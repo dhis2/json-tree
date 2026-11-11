@@ -94,6 +94,11 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * <p>JSON {@code null} elements are preserved as Java {@code null} for
+   * reference types (for example {@link Integer}, {@link BigInteger},
+   * {@link BigDecimal}). For primitive {@code T} (such as {@code int.class})
+   * null cannot be represented and the conversion throws.
+   *
    * @see #values()
    * @since 1.9
    */
@@ -151,6 +156,12 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * <p>This is a strict parse of each element's raw text, so a JSON {@code null}
+   * element (whose raw text is the literal {@code "null"}) throws
+   * {@link NumberFormatException}. For a null-preserving variant use
+   * {@link #values(Class)} with {@code BigInteger.class} — that path goes
+   * through the node type system and maps JSON {@code null} to Java {@code null}.
+   *
    * @return all elements of this array parsed as {@link BigDecimal}
    * @throws JsonTreeException in case the node is not an array
    * @throws NumberFormatException in case an element text in this array is not valid {@link BigDecimal}
@@ -161,6 +172,12 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * <p>This is a strict parse of each element's raw text, so a JSON {@code null}
+   * element (whose raw text is the literal {@code "null"}) throws
+   * {@link NumberFormatException}. For a null-preserving variant use
+   * {@link #values(Class)} with {@code BigInteger.class} — that path goes
+   * through the node type system and maps JSON {@code null} to Java {@code null}.
+   *
    * @return all elements of this array parsed as {@link BigInteger}
    * @throws JsonTreeException in case the node is not an array
    * @throws NumberFormatException in case an element text in this array is not valid {@link BigInteger}

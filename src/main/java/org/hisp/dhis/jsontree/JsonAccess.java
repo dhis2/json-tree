@@ -37,6 +37,8 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.RecordComponent;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -135,8 +137,10 @@ public final class JsonAccess implements JsonAccessors {
         .add(Number.class, JsonNumber::number)
         .add(Integer.class, JsonNumber::integer)
         .add(Long.class, JsonNumber::number, Number::longValue)
+        .add(BigInteger.class, JsonNumber::bigInteger)
         .add(Float.class, JsonNumber::number, Number::floatValue)
         .add(Double.class, JsonNumber::number, Number::doubleValue)
+        .add(BigDecimal.class, JsonNumber::bigDecimal)
         .add(URL.class, value -> value.as(JsonURL.class).url())
         .add(UUID.class, value -> value.parsed(UUID::fromString))
         .add(LocalDateTime.class, value -> value.as(JsonDate.class).date())
