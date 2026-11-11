@@ -1,5 +1,6 @@
 package org.hisp.dhis.jsontree;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -284,6 +285,69 @@ class TextualNumberTest {
     assertThrows(NumberFormatException.class, () -> TextualNumber.of("0E".toCharArray()));
     assertThrows(NumberFormatException.class, () -> TextualNumber.of("-0E+".toCharArray()));
     assertThrows(NumberFormatException.class, () -> TextualNumber.of("0.0E".toCharArray()));
+  }
+
+  /*
+   * Regression guards for the Double.parseDouble-faithful fallback in TextualNumber.
+   *
+   * The fallback uses the allocation-free
+   *   new BigDecimal(buffer, offset, length).doubleValue()
+   * to convert a numeric literal to double. BigDecimal's scale is a 32-bit int,
+   * so its constructor rejects literals whose exponent exceeds Integer.MAX_VALUE
+   * with a NumberFormatException, whereas Double.parseDouble saturates to
+   * +/-Infinity (or to +/-0.0 on underflow). TextualNumber detects an exponent
+   * that cannot fit an int and routes those literals through Double.parseDouble
+   * instead. Without that check these tests fail with a NumberFormatException.
+   */
+
+  @Test
+  void testOf_DoubleValue_HugeExponent_Overflow() {
+    // 12-digit exponent, far beyond Integer.MAX_VALUE. Double.parseDouble
+    // accepts it and saturates; a naked BigDecimal constructor would throw.
+    assertEquals(
+        Double.POSITIVE_INFINITY,
+        TextualNumber.of("1e999999999999".toCharArray()).doubleValue());
+    assertEquals(
+        Double.NEGATIVE_INFINITY,
+        TextualNumber.of("-1e999999999999".toCharArray()).doubleValue());
+  }
+
+  @Test
+  @SuppressWarnings("SimplifiableAssertion")
+  void testOf_DoubleValue_HugeExponent_Underflow() {
+    assertEquals(
+        0.0,
+        TextualNumber.of("1e-999999999999".toCharArray()).doubleValue());
+    // underflow must preserve sign like Double.parseDouble does
+    assertTrue(
+        Double.valueOf(-0.0).equals(
+            TextualNumber.of("-1e-999999999999".toCharArray()).doubleValue()));
+  }
+
+  @Test
+  void testOf_DoubleValue_ExponentBoundary() {
+    // Integer.MAX_VALUE = 2147483647 (10 digits) fits BigDecimal's int scale
+    // and would succeed through the BigDecimal path too.
+    assertEquals(
+        Double.POSITIVE_INFINITY,
+        TextualNumber.of("1e2147483647".toCharArray()).doubleValue());
+    // Integer.MAX_VALUE + 1 = 2147483648 (also 10 digits) does NOT fit; the
+    // raw BigDecimal constructor throws NumberFormatException here.
+    assertEquals(
+        Double.POSITIVE_INFINITY,
+        TextualNumber.of("1e2147483648".toCharArray()).doubleValue());
+    assertEquals(
+        Double.NEGATIVE_INFINITY,
+        TextualNumber.of("-1e2147483649".toCharArray()).doubleValue());
+  }
+
+  @Test
+  void testOf_DoubleValue_NormalExponent_StillWorks() {
+    // sanity: the detection must not disturb the common path
+    assertEquals(1000.0, TextualNumber.of("1e3".toCharArray()).doubleValue());
+    assertEquals(0.001, TextualNumber.of("1e-3".toCharArray()).doubleValue());
+    assertEquals(-3.14, TextualNumber.of("-3.14".toCharArray()).doubleValue());
+    assertEquals(3.14, TextualNumber.of("3.14".toCharArray()).doubleValue());
   }
 
   /*

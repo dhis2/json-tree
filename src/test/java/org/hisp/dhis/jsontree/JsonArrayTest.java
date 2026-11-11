@@ -278,4 +278,15 @@ class JsonArrayTest {
         new double[] {Double.POSITIVE_INFINITY},
         JsonMixed.of("[1e400]").doubleValues().toArray());
   }
+
+  @Test
+  void testDoubleValues_HugeExponent() {
+    // JSON numbers have no exponent range limit; the array helper must not throw
+    // for exponents beyond BigDecimal's int scale
+    assertArrayEquals(
+        new double[] {Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0},
+        JsonMixed.of("[1e999999999999, -1e999999999999, 1e-999999999999]")
+            .doubleValues()
+            .toArray());
+  }
 }

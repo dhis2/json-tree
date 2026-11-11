@@ -438,7 +438,20 @@ public final class TextualNumber extends Number implements Textual, CharSeq {
       }
     }
     // fallback
-    return new BigDecimal(buffer, i0, length).doubleValue();
+    int expDigits = 0;
+    if (expLen > 0) {
+      char c = buffer[eOffset + 1];
+      expDigits = (c == '-' || c == '+') ? expLen - 1 : expLen;
+    }
+    // BigDecimal's scale is an int, so the constructor rejects literals whose
+    // exponent exceeds Integer.MAX_VALUE. 10-digit exponents are right at the
+    // boundary (2147483647 parses, 2147483648 does not); route those through
+    // Double.parseDouble, which saturates to Infinity for both.
+    if (expDigits <= 9) {
+      return new BigDecimal(buffer, i0, length).doubleValue();
+    }
+    // must use parseDouble because of overflow to infinity
+    return Double.parseDouble(new String(buffer, i0, length));
   }
 
   private static double parseDoubleNaN(char[] buffer, int offset, int length) {
