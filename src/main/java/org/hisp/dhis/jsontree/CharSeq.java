@@ -211,6 +211,35 @@ public interface CharSeq extends CharSequence {
     return true;
   }
 
+  /**
+   * Tests if this sequence's content equals the given text, ignoring case of ASCII letters only.
+   *
+   * <p>This is an <em>ASCII-only</em> case-insensitive comparison. Characters outside {@code
+   * A-Z}/{@code a-z} are compared exactly, so this is well-suited for JSON keywords, HTTP header
+   * names, and similar ASCII-only domains — but not for user-facing text comparison where Unicode
+   * case folding (Turkish dotless {@code ı}, German {@code ß}, {@code İ} vs {@code i}, …) matters.
+   * For Unicode-aware comparison use {@link String#equalsIgnoreCase(String)} on {@link #toString()}.
+   *
+   * @param text the sequence to compare to
+   * @return true if the sequences have equal length and corresponding characters are equal or
+   *     differ only in ASCII case
+   * @since 1.14
+   */
+  default boolean contentEqualsIgnoreCaseAscii(CharSequence text) {
+    int len = length();
+    if (len != text.length()) return false;
+    for (int i = 0; i < len; i++) {
+      char a = charAt(i);
+      char b = text.charAt(i);
+      if (a != b && asciiToLowerCase(a) != asciiToLowerCase(b)) return false;
+    }
+    return true;
+  }
+
+  private static char asciiToLowerCase(char c) {
+    return (c >= 'A' && c <= 'Z') ? (char) (c | 0b10_0000) : c;
+  }
+
   default boolean regionMatches(int startIndex, CharSequence sample) {
     return regionMatches(startIndex, sample, 0, sample.length());
   }
@@ -419,7 +448,9 @@ public interface CharSeq extends CharSequence {
    * @see Boolean#parseBoolean(String)
    */
   default boolean parseBoolean() {
-    return CharDecoder.parseBoolean(toCharArray());
+    if (contentEqualsIgnoreCaseAscii("true")) return true;
+    if (contentEqualsIgnoreCaseAscii("false")) return false;
+    throw new IllegalArgumentException("Not a boolean: " + this);
   }
 
   /**

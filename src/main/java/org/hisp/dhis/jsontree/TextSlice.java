@@ -120,11 +120,6 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
   }
 
   @Override
-  public boolean parseBoolean() {
-    return CharDecoder.parseBoolean(buffer, offset, length);
-  }
-
-  @Override
   public int parseInt() {
     if (buffer == ZERO_TO_999) return parseIntCached();
     return TextualNumber.parseIntExact(buffer, offset, length);

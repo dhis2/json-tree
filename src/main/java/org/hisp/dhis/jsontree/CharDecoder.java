@@ -7,7 +7,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Utility class for {@code char[]} based helper functions.
+ * Utility class for decoding bytes to {@code char[]}.
  *
  * @author Jan Bernitt
  * @since 1.9
@@ -15,28 +15,6 @@ import java.nio.charset.StandardCharsets;
 final class CharDecoder {
 
   private static final System.Logger log = System.getLogger(CharDecoder.class.getName());
-
-  static boolean parseBoolean(char[] val) {
-    return parseBoolean(val, 0, val.length);
-  }
-
-  static boolean parseBoolean(char[] val, int offset, int length) {
-    if (length < 4 || length > 5)
-      throw new IllegalArgumentException("Not a boolean: " + new String(val, offset, length));
-    int i = offset;
-    int c0 = val[i] | 0b10_0000;
-    if (c0 == 't') {
-      if ((val[i + 1] | 0b10_0000) == 'r'
-          && (val[i + 2] | 0b10_0000) == 'u'
-          && (val[i + 3] | 0b10_0000) == 'e') return true;
-    } else if (c0 == 'f') {
-      if ((val[i + 1] | 0b10_0000) == 'a'
-          && (val[i + 2] | 0b10_0000) == 'l'
-          && (val[i + 3] | 0b10_0000) == 's'
-          && (val[i + 4] | 0b10_0000) == 'e') return false;
-    }
-    throw new IllegalArgumentException("Not a boolean: " + new String(val, offset, length));
-  }
 
   /**
    * @implNote With lazy parsing one precondition is that we need to have the entire input in
