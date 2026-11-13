@@ -225,7 +225,7 @@ public interface CharSeq extends CharSequence {
    *     differ only in ASCII case
    * @since 1.14
    */
-  default boolean contentEqualsIgnoreCaseAscii(CharSequence text) {
+  default boolean contentEqualsIgnoreCaseASCII(CharSequence text) {
     int len = length();
     if (len != text.length()) return false;
     for (int i = 0; i < len; i++) {
@@ -448,8 +448,8 @@ public interface CharSeq extends CharSequence {
    * @see Boolean#parseBoolean(String)
    */
   default boolean parseBoolean() {
-    if (contentEqualsIgnoreCaseAscii("true")) return true;
-    if (contentEqualsIgnoreCaseAscii("false")) return false;
+    if (contentEqualsIgnoreCaseASCII("true")) return true;
+    if (contentEqualsIgnoreCaseASCII("false")) return false;
     throw new IllegalArgumentException("Not a boolean: " + this);
   }
 

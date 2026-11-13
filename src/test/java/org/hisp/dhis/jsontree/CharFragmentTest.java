@@ -596,4 +596,35 @@ class CharFragmentTest {
     assertEquals(-1, seq("abc").skip(c -> true, 3, 3));
     assertEquals(-1, seq("abc").skip(c -> true, 3, 100));
   }
+
+  @Test
+  void testContentEqualsIgnoreCaseASCII_Letters() {
+    assertTrue(Text.of("hello").contentEqualsIgnoreCaseASCII("HELLO"));
+    assertTrue(Text.of("TRUE").contentEqualsIgnoreCaseASCII("true"));
+    assertTrue(Text.of("False").contentEqualsIgnoreCaseASCII("fAlSe"));
+  }
+
+  @Test
+  void testContentEqualsIgnoreCaseASCII_NotLetters() {
+    // the | 0x20 trick must not collapse punctuation
+    assertFalse(Text.of("[").contentEqualsIgnoreCaseASCII("{"));
+    assertFalse(Text.of("_").contentEqualsIgnoreCaseASCII("\u007f"));
+    assertFalse(Text.of("1").contentEqualsIgnoreCaseASCII("!"));
+    // non-ASCII compared exactly
+    assertFalse(Text.of("É").contentEqualsIgnoreCaseASCII("é"));
+  }
+
+  @Test
+  void testContentEqualsIgnoreCaseASCII_Lengths() {
+    assertFalse(Text.of("true").contentEqualsIgnoreCaseASCII("truex"));
+    assertFalse(Text.of("").contentEqualsIgnoreCaseASCII("a"));
+  }
+
+  @Test
+  void testParseBoolean_TrailingGarbage_Throws() {
+    // regression: the previous implementation returned true for any 5-char
+    // input starting with "true" (it never checked charAt(4))
+    assertThrows(IllegalArgumentException.class, () -> Text.of("truex").parseBoolean());
+    assertThrows(IllegalArgumentException.class, () -> Text.of("TRUE!").parseBoolean());
+  }
 }
