@@ -85,7 +85,7 @@ public sealed interface Text extends CharFragment<Text> permits TextSlice {
   static Text of(Path file, Charset encoding) {
     try {
       byte[] bytes = Files.readAllBytes(file);
-      char[] chars = Chars.decode(bytes, encoding);
+      char[] chars = CharDecoder.decode(bytes, encoding);
       return of(chars, 0, chars.length);
     } catch (IOException e) {
       throw new UncheckedIOException(e);

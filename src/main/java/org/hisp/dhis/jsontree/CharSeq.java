@@ -419,7 +419,7 @@ public interface CharSeq extends CharSequence {
    * @see Boolean#parseBoolean(String)
    */
   default boolean parseBoolean() {
-    return Chars.parseBoolean(toCharArray());
+    return CharDecoder.parseBoolean(toCharArray());
   }
 
   /**

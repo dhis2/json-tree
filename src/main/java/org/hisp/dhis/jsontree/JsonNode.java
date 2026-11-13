@@ -29,7 +29,6 @@ package org.hisp.dhis.jsontree;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
-import static java.util.stream.IntStream.range;
 import static org.hisp.dhis.jsontree.JsonNodeType.ARRAY;
 import static org.hisp.dhis.jsontree.JsonNodeType.BOOLEAN;
 import static org.hisp.dhis.jsontree.JsonNodeType.NUMBER;
@@ -252,7 +251,7 @@ public interface JsonNode
 
   static JsonNode of(
       byte[] bytes, Charset encoding, @CheckNull GetListener onGet, Index auto) {
-    return JsonTree.of(Chars.decode(bytes, encoding), onGet, auto);
+    return JsonTree.of(CharDecoder.decode(bytes, encoding), onGet, auto);
   }
 
   /**

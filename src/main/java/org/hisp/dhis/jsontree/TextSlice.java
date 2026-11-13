@@ -121,7 +121,7 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public boolean parseBoolean() {
-    return Chars.parseBoolean(buffer, offset, length);
+    return CharDecoder.parseBoolean(buffer, offset, length);
   }
 
   @Override
