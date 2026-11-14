@@ -1170,4 +1170,30 @@ class CharFragmentTest {
     assertEquals("ΑΒΓ", seq("ΑΒΓ").toLowerCase().toString());
     assertEquals("абв", seq("абв").toUpperCase().toString());
   }
+
+  @DisplayName("matches(CharSequence): this is the pattern, argument is the subject")
+  @Test
+  void testMatches_RolesArePatternAndSubject() {
+    // pattern on the left, subject on the right — the reverse of String.matches(regex)
+    Text pattern = Text.of("foo");
+    assertTrue(pattern.matches("foo"));
+    assertFalse(pattern.matches("foobar"));    // must match all of the input
+    assertFalse(pattern.matches("xfoo"));      // anchored at the start
+    assertFalse(pattern.matches("fo"));        // too short
+
+    // if the roles were reversed, this would pass; it must not
+    assertFalse(Text.of("foobar").matches("foo"));
+  }
+
+  @DisplayName("matches: receiver is the pattern, argument is the subject")
+  @Test
+  void testMatches_Roles() {
+    // Use any InputExpression pattern whose metacharacters are exercised by testSlicePattern,
+    // e.g. "~." matches up to and including a '.' — verify the exact semantics against
+    // InputExpression's docs.
+    assertTrue(Text.of("~.").matches("foo."),
+        "receiver must be the pattern");
+    assertFalse(Text.of("foo.").matches("~."),
+        "argument must not be the pattern");
+  }
 }

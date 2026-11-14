@@ -320,15 +320,16 @@ public interface CharSeq extends CharSequence {
    * the entirety of the given input.
    *
    * <p>Note the role assignment: <em>this sequence is the pattern</em>, and {@code input} is
-   * the text being tested. This is the reverse of {@link String#matches(String)}, where the
-   * string is the subject and the argument is the pattern — and it is not regex, but the
-   * {@link InputExpression} syntax (see {@link InputExpression} for the pattern language).
+   * the subject being tested. This is the reverse of {@link String#matches(String)}, where
+   * the string is the subject and the argument is the pattern. It is also not regex — the
+   * pattern language is {@link InputExpression} (see that type for the metacharacters and
+   * operators it accepts).
    *
-   * <p>Anchored at both ends: the pattern must match all of {@code input}, from the first
-   * character to the last. It is not a find/search operation; a partial match is a
+   * <p>Anchored at both ends: the pattern must consume all of {@code input}. A pattern that
+   * would match only a prefix, or require more characters than {@code input} contains, is a
    * non-match. Equivalent to {@code matches(input, 0, input.length())}.
    *
-   * @param input the text to test against this pattern
+   * @param input the subject to test against this pattern
    * @return {@code true} if this pattern matches all of {@code input}
    * @see #matches(CharSequence, int, int)
    * @see InputExpression
@@ -343,17 +344,17 @@ public interface CharSeq extends CharSequence {
    *
    * <p>Same role assignment as {@link #matches(CharSequence)}: this sequence is the pattern,
    * {@code input} is the subject. The {@code offset} and {@code len} select a region of
-   * <em>{@code input}</em>, not of this pattern — the whole pattern is always used, and it
+   * <em>{@code input}</em>, not of this pattern. The whole pattern is always used, and it
    * must match that region in full.
    *
-   * <p>{@code len} is an assertion on the endpoint, not a limit on the match. The
-   * {@link InputExpression} match runs unconstrained from {@code offset}; it succeeds here
-   * only when it happens to stop at exactly {@code offset + len}. A pattern that would match
-   * a prefix of the region (stopping early) or extend past its end (a greedy step reading
-   * beyond {@code offset + len}) returns {@code false}. Callers who want to know how far a
-   * pattern matched should not use this method.
+   * <p>{@code len} asserts where the match must end; it is not a limit on how far the match
+   * may look. The underlying {@link InputExpression} match runs from {@code offset} without
+   * being told about {@code len}, and succeeds here only when it happens to stop at exactly
+   * {@code offset + len}. A pattern that stops early, or a greedy step that would extend past
+   * the region, both return {@code false}. Callers who want to know how far a pattern matched
+   * should not use this method.
    *
-   * @param input the text whose region is tested
+   * @param input the subject whose region is tested
    * @param offset first index of the region to test in {@code input}
    * @param len number of characters of {@code input} to test starting at {@code offset}
    * @return {@code true} if this pattern matches exactly {@code input[offset..offset + len)}
