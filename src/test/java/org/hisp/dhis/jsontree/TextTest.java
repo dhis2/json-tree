@@ -1134,6 +1134,15 @@ class TextTest {
     assertEquals(0, Text.EMPTY.concat("").offsetIn(Text.EMPTY));
   }
 
+  @DisplayName("offsetIn after directional strip to empty")
+  @Test
+  void testOffsetIn_DirectionalStripToEmpty() {
+    Text spaces = Text.of("   ");
+    assertEquals(3, spaces.stripLeading().offsetIn(spaces));   // empty tail at end
+    assertEquals(0, spaces.stripTrailing().offsetIn(spaces));  // empty head at start
+    assertEquals(3, spaces.strip().offsetIn(spaces));          // existing contract
+  }
+
   @DisplayName("count(CharSequence): Text path and int-cache backing")
   @Test
   void testCount_Text() {
@@ -1376,5 +1385,36 @@ class TextTest {
         assertEquals(s.repeat(n).length(), t.length());
       }
     }
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: Text path and slices")
+  @Test
+  void testCaseTransform_Text() {
+    assertEquals(Text.of("abc"), Text.of("ABC").toLowerCase());
+    assertEquals(Text.of("ABC"), Text.of("abc").toUpperCase());
+    assertSame(Text.of("abc"), Text.of("abc").toLowerCase());
+    assertSame(Text.EMPTY, Text.EMPTY.toLowerCase());
+    assertSame(Text.EMPTY, Text.EMPTY.toUpperCase());
+
+    // slice of a larger buffer: result has fresh buffer, source untouched
+    Text parent = Text.of("xxAbCxx");
+    Text slice = parent.subSequence(2, 5); // "AbC"
+    Text lowered = slice.toLowerCase();
+    assertEquals(Text.of("abc"), lowered);
+    assertFalse(lowered.contentMemoryEquals(parent));
+    assertEquals(-1, lowered.offsetIn(parent));
+    assertEquals(Text.of("AbC"), slice);
+    assertEquals(Text.of("xxAbCxx"), parent);
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: int-cache path")
+  @Test
+  void testCaseTransform_IntCache() {
+    // digits never change; identity preserved
+    Text _123 = Text.of(123);
+    assertSame(_123, _123.toLowerCase());
+    assertSame(_123, _123.toUpperCase());
+    // 123 stays in the cache after the no-op calls
+    assertEquals("123", _123.toString());
   }
 }

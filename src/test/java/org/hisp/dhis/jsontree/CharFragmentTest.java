@@ -214,6 +214,32 @@ class CharFragmentTest {
     assertEquals("hello", seq(" hello ").shrink(CharFragment::isTrim).toString());
   }
 
+  @DisplayName("shrink(test, left, right): stripTrailing on all-whitespace is empty")
+  @Test
+  void testShrink_StripTrailingAllWhitespace() {
+    assertEquals("", seq("   ").stripTrailing().toString());   // Bug: was " "
+    assertTrue(seq("   ").stripTrailing().isEmpty());
+    assertTrue(seq("\t\n\r ").stripTrailing().isEmpty());
+    // mirror
+    assertEquals("", seq("   ").stripLeading().toString());
+    assertEquals("", seq("   ").strip().toString());
+  }
+
+  @DisplayName("stripTrailing / stripLeading agree with String on content")
+  @Test
+  void testStripDirections_AgreeWithString() {
+    String[] samples = {
+        "", " ", "   ", "\t\n\r ", "a", " a", "a ", " a ",
+        "  x  ", "x  ", "  x", "abc", "  abc  def  "
+    };
+    for (String s : samples) {
+      assertEquals(s.stripTrailing(), seq(s).stripTrailing().toString(),
+          "stripTrailing(\"" + s + "\")");
+      assertEquals(s.stripLeading(), seq(s).stripLeading().toString(),
+          "stripLeading(\"" + s + "\")");
+    }
+  }
+
   @Test
   void testIsTrimAndIsStrip() {
     assertTrue(CharFragment.isTrim(' '));
@@ -1065,5 +1091,83 @@ class CharFragmentTest {
       for (int n : counts)
         assertEquals(s.repeat(n), seq(s).repeat(n).toString(),
             "\"" + s + "\".repeat(" + n + ")");
+  }
+
+  @DisplayName("isUpperCase / isLowerCase")
+  @Test
+  void testCasePredicates() {
+    // boundary sweep — no letter slips through
+    for (char c = 0; c < 128; c++) {
+      boolean upper = c >= 'A' && c <= 'Z';
+      boolean lower = c >= 'a' && c <= 'z';
+      assertEquals(upper, CharFragment.isUpperCase(c), "isUpperCase(" + (int) c + ")");
+      assertEquals(lower, CharFragment.isLowerCase(c), "isLowerCase(" + (int) c + ")");
+      // mutually exclusive
+      assertFalse(CharFragment.isUpperCase(c) && CharFragment.isLowerCase(c),
+          "both upper and lower for " + (int) c);
+    }
+    // explicit boundary cases (the ones a hand-written range check gets wrong)
+    assertFalse(CharFragment.isUpperCase('@'));   // 'A' - 1
+    assertFalse(CharFragment.isUpperCase('['));   // 'Z' + 1
+    assertFalse(CharFragment.isLowerCase('`'));   // 'a' - 1
+    assertFalse(CharFragment.isLowerCase('{'));   // 'z' + 1
+    // non-ASCII untouched
+    assertFalse(CharFragment.isUpperCase('Ä'));
+    assertFalse(CharFragment.isLowerCase('ä'));
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: basic")
+  @Test
+  void testCaseTransform() {
+    assertEquals("abc", seq("ABC").toLowerCase().toString());
+    assertEquals("abc", seq("aBc").toLowerCase().toString());
+    assertEquals("ABC", seq("abc").toUpperCase().toString());
+    assertEquals("ABC", seq("aBc").toUpperCase().toString());
+    // non-letters pass through unchanged
+    assertEquals("123!@#", seq("123!@#").toLowerCase().toString());
+    assertEquals("123!@#", seq("123!@#").toUpperCase().toString());
+    // punctuation adjacent to letters is untouched
+    assertEquals("a_b-c", seq("A_B-C").toLowerCase().toString());
+    assertEquals("A_B-C", seq("a_b-c").toUpperCase().toString());
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: identity when nothing changes")
+  @Test
+  void testCaseTransform_Identity() {
+    TestSeq lower = seq("abc");
+    assertSame(lower, lower.toLowerCase());
+    TestSeq upper = seq("ABC");
+    assertSame(upper, upper.toUpperCase());
+    TestSeq digits = seq("123");
+    assertSame(digits, digits.toLowerCase());
+    assertSame(digits, digits.toUpperCase());
+    TestSeq empty = seq("");
+    assertSame(empty, empty.toLowerCase());
+    assertSame(empty, empty.toUpperCase());
+    TestSeq punct = seq("!@#");
+    assertSame(punct, punct.toLowerCase());
+    assertSame(punct, punct.toUpperCase());
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: source unmodified")
+  @Test
+  void testCaseTransform_NoMutation() {
+    TestSeq original = seq("AbC");
+    TestSeq lower = original.toLowerCase();
+    TestSeq upper = original.toUpperCase();
+    assertEquals("AbC", original.toString());
+    assertNotSame(original, lower);
+    assertNotSame(original, upper);
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: ASCII-only, Unicode untouched")
+  @Test
+  void testCaseTransform_AsciiOnly() {
+    // accented letters stay as-is (unlike String.toLowerCase with default locale)
+    assertEquals("Ä", seq("Ä").toLowerCase().toString());
+    assertEquals("ä", seq("ä").toUpperCase().toString());
+    // Greek, Cyrillic untouched
+    assertEquals("ΑΒΓ", seq("ΑΒΓ").toLowerCase().toString());
+    assertEquals("абв", seq("абв").toUpperCase().toString());
   }
 }
