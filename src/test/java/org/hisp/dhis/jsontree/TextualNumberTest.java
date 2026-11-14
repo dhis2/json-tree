@@ -600,6 +600,36 @@ class TextualNumberTest {
     assertEquals(Double.NEGATIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
   }
 
+  @Test
+  void testFloatValue_Random() {
+    StringBuilder sb = new StringBuilder(32);
+    for (int k = 0; k < NUM_RANDOM_TESTS; k++) {
+      sb.setLength(0);
+      appendDecimal(sb);
+      assertFloatEquals(sb.toString());
+    }
+  }
+
+  @Test
+  void testFloatValue_DoubleRoundingBoundary() {
+    // just above the float midpoint between 1.0f and nextUp(1.0f)
+    String s = "1.0000000596046448";
+    assertEquals(Float.parseFloat(s), TextualNumber.of(s.toCharArray()).floatValue());
+  }
+
+  @Test
+  void testFloatValue_EdgeCases() {
+    for (String n : new String[] {
+        "1.0000000596046448", "-1.0000000596046448",
+        "2.0000001192092896",  "-2.0000001192092896",
+        "3.4e38", "1.4e-45",   // near Float.MAX_VALUE / MIN_VALUE
+        "0.1", "0.3", "16777217",
+        "NaN", "Infinity", "-Infinity"
+    }) {
+      assertFloatEquals(n);
+    }
+  }
+
   /*
   Asserts
    */
@@ -772,4 +802,12 @@ class TextualNumberTest {
     int expLen = rng.nextInt(3) + 1; // 1..3 digits
     for (int i = 0; i < expLen; i++) sb.append((char) ('0' + rng.nextInt(10)));
   }
+
+  private static void assertFloatEquals(String number) {
+    float expected = Float.parseFloat(number);
+    assertEquals(expected,
+        TextualNumber.of(number.toCharArray()).floatValue(),
+        "Failed floatValue() for: " + number);
+  }
+
 }

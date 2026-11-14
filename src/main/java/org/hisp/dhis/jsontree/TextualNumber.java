@@ -170,7 +170,16 @@ final class TextualNumber extends Number implements Textual, CharSeq {
 
   @Override
   public float floatValue() {
-    return (float) doubleValue();
+    double d = doubleValue();
+    float f = (float) d;
+    // Double rounding hazard: if the correctly-rounded double lands exactly on
+    // a float midpoint, narrowing breaks the tie by round-to-even while the
+    // original decimal may have been on the other side. Float.parseFloat (a
+    // direct decimal -> float rounding) is authoritative there.
+    if (Math.abs(d - (double) f) == Math.ulp(f) / 2.0) {
+      return Float.parseFloat(toString());
+    }
+    return f;
   }
 
   @Override
