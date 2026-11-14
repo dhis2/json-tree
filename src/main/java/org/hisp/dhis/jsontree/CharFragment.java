@@ -137,13 +137,31 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @see String#concat(String)
    */
   default T concat(CharSequence suffix) {
-    if (suffix.isEmpty()) return self();
-    char[] a = toCharArray();
-    int len = suffix.length();
-    char[] res = Arrays.copyOf(a, a.length+ len);
-    for (int i = 0; i < len; i++)
-      res[a.length+i] = suffix.charAt(i);
-    return wrap(res, 0, res.length);
+    return concat(self(), suffix);
+  }
+
+  /**
+   * Common code to concatenate two texts to a specific result type
+   * based on the text a suffix is appended to.
+   *
+   * @param self the text a suffix is appended to
+   * @param suffix the text to append
+   * @return a new instance with the two text fragments concatenated together
+   * @param <T> type of the result fragment
+   * @since 1.14
+   */
+  static <T extends CharFragment<T>> T concat(T self, CharSequence suffix) {
+    if (suffix.isEmpty()) return self;
+    int len = self.length();
+    int sLen = suffix.length();
+    char[] res = new char[len+sLen];
+    self.copyTo(res, 0);
+    if (suffix instanceof  CharSeq cs) {
+      cs.copyTo(res, len);
+    } else {
+      for (int i = 0; i < sLen; i++) res[len + i] = suffix.charAt(i);
+    }
+    return self.wrap(res, 0, res.length);
   }
 
   /**
@@ -225,14 +243,26 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
     if (len == 0) return self();
     boolean negative = charAt(0) == '-';
     int start = (negative || charAt(0) == '+') ? 1 : 0;
-    // The integer part ends at the dot if there is one, otherwise at the end.
     int dot = indexOf('.', start);
     int intEnd = dot < 0 ? len : dot;
     while (start < intEnd - 1 && charAt(start) == '0') start++;
     // An all-zero integer part collapses to "0" regardless of sign.
-    if (intEnd - start == 1 && charAt(start) == '0') return wrap('0');
-    T digits = subSequence(start, intEnd);
-    return negative ? wrap('-').concat(digits) : digits;
+    // Return the current '0' as a view rather than allocating via wrap('0').
+    if (intEnd - start == 1 && charAt(start) == '0') return subSequence(start, start + 1);
+    if (!negative || start == 1) {
+      // non-negative (with or without a consumed '+'): result is the digit slice
+      // negative with no leading zeros stripped: result is [0, intEnd), starting at the '-'
+      int from = negative ? 0 : start;
+      if (from == 0 && intEnd == len) return self();
+      return subSequence(from, intEnd);
+    }
+    // negative with leading zeros stripped from the digits: rebuild as "-"+digits
+    // in a single buffer (previous wrap('-').concat(digits) allocated twice)
+    int digitsLen = intEnd - start;
+    char[] buffer = new char[1 + digitsLen];
+    buffer[0] = '-';
+    copyTo(buffer, 1, start, digitsLen);
+    return wrap(buffer, 0, buffer.length);
   }
 
   /*

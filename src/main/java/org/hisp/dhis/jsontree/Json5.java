@@ -1,6 +1,6 @@
 package org.hisp.dhis.jsontree;
 
-import static org.hisp.dhis.jsontree.Chars.expectChar;
+import static org.hisp.dhis.jsontree.JsonTree.expectChar;
 import static org.hisp.dhis.jsontree.JsonFormatException.expected;
 import static org.hisp.dhis.jsontree.JsonTree.expectColon;
 import static org.hisp.dhis.jsontree.JsonTree.expectCommaOrEnd;

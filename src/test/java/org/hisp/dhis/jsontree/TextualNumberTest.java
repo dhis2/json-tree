@@ -201,6 +201,21 @@ class TextualNumberTest {
   }
 
   @Test
+  void testParseIntCast_FallbackToDouble() {
+    assertIntCastEquals("1e5");
+    assertIntCastEquals("-1e5");
+    assertIntCastEquals("+1e5");
+    assertIntCastEquals("1E5");
+    assertIntCastEquals("1.5e3");
+    assertIntCastEquals(".5");
+    assertIntCastEquals(".99");
+    assertIntCastEquals("1e20");   // (int) 1e20  == Integer.MAX_VALUE
+    assertIntCastEquals("-1e20");  // (int) -1e20 == Integer.MIN_VALUE
+    assertIntCastEquals("1e-20");  // -> 0
+    assertIntCastEquals("1e999");  // -> (int) Infinity == Integer.MAX_VALUE
+  }
+
+  @Test
   void testParseInt_EdgeCasesThrows() {
     assertIntThrows("02147483647.0"); // max with leading zero + 0 fraction
     assertIntThrows("-02147483648.0"); // min with leading zero + 0 fraction
@@ -228,6 +243,28 @@ class TextualNumberTest {
     assertLongCastEquals("100.0");
     assertLongCastEquals("123456.7890");
     assertLongCastEquals("-0.7890");
+  }
+
+  @Test
+  void testParseLongCast_FallbackToDouble() {
+    // exponent form: isIntegerLiteral == false and offsetExponent >= 0 -> fallback
+    assertLongCastEquals("1e5");
+    assertLongCastEquals("-1e5");
+    assertLongCastEquals("+1e5");
+    assertLongCastEquals("1E5");
+    assertLongCastEquals("1.5e3");
+    // leading decimal point: isIntegerLiteral == false, offsetExponent < 0, dpOffset == 0
+    // -> no recursion possible -> fallback
+    assertLongCastEquals(".5");
+    assertLongCastEquals(".99");
+    // cast saturates when parseDoubleDecimal produces a value beyond long range
+    assertLongCastEquals("1e20");   // (long) 1e20  == Long.MAX_VALUE
+    assertLongCastEquals("-1e20");  // (long) -1e20 == Long.MIN_VALUE
+    // cast truncates toward zero
+    assertLongCastEquals("1e-20");  // -> 0L
+    // exponent too large even for the fast path: exercises the innermost
+    // Double.parseDouble fallback in parseDoubleDecimal too
+    assertLongCastEquals("1e999");  // -> (long) Infinity == Long.MAX_VALUE
   }
 
   @Test
@@ -428,6 +465,172 @@ class TextualNumberTest {
   }
 
   /*
+   * Tests for the 310-significant-digit short-circuit in parseDouble.
+   *
+   * A double can hold at most ~1.8e308. Any integer with 310 or more
+   * significant decimal digits is therefore >= 10^309 > Double.MAX_VALUE,
+   * so Double.parseDouble would return +/-Infinity. We short-circuit that
+   * case to avoid the expensive Double.parseDouble.
+   *
+   * The critical tests are the ones that would fail for a naive
+   * `length >= 310` check (which ignores sign, leading spaces and, most
+   * importantly, leading zeros after a sign) and the exact boundary tests
+   * that would fail for a threshold that is one too aggressive (309).
+   */
+
+  @Test
+  void testParseDouble_310SignificantDigits_Unsigned() {
+    String s = "9".repeat(310);
+    assertEquals(Double.POSITIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_310SignificantDigits_Negative() {
+    String s = "-" + "9".repeat(310);
+    assertEquals(Double.NEGATIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_310SignificantDigits_PlusSign() {
+    // guards against mixing up '+' with '-' (must NOT return -Infinity)
+    String s = "+" + "9".repeat(310);
+    assertEquals(Double.POSITIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_310SignificantDigits_AfterLeadingZeros() {
+    // no sign, 100 leading zeros must not count toward the 310 threshold
+    String s = "0".repeat(100) + "9".repeat(310);
+    assertEquals(Double.POSITIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_310SignificantDigits_AfterSignAndLeadingZeros() {
+    // the pathological case for a naive counter: sign + zeros + significant digits
+    String s = "-" + "0".repeat(100) + "9".repeat(310);
+    assertEquals(Double.NEGATIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_ExactBoundary_310vs309() {
+    // 310 significant digits => 10^309 > Double.MAX_VALUE => short-circuit to Infinity
+    String overflow = "1" + "0".repeat(309);
+    assertEquals(Double.POSITIVE_INFINITY, TextualNumber.parseDouble(overflow.toCharArray()));
+    assertDoubleEquals(overflow);
+
+    // 309 significant digits => 10^308 < Double.MAX_VALUE => must NOT short-circuit
+    String finite = "1" + "0".repeat(308);
+    double d = TextualNumber.parseDouble(finite.toCharArray());
+    assertTrue(Double.isFinite(d), "10^308 must remain finite");
+    assertEquals(1e308, d);
+    assertDoubleEquals(finite);
+  }
+
+  @Test
+  void testParseDouble_309SignificantDigits_Negative() {
+    String s = "-1" + "0".repeat(308);
+    double d = TextualNumber.parseDouble(s.toCharArray());
+    assertTrue(Double.isFinite(d));
+    assertTrue(d < 0);
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_Various310DigitPatterns() {
+    for (String s :
+        new String[] {
+            "1" + "0".repeat(309), // 10^309
+            "1".repeat(310),       // ~1.11e309
+            "9".repeat(310),       // ~1e310
+            "1" + "9".repeat(309)  // ~2e309
+        }) {
+      assertEquals(
+          Double.POSITIVE_INFINITY,
+          TextualNumber.parseDouble(s.toCharArray()),
+          "Expected Infinity for " + s.length() + "-digit integer starting with " + s.charAt(0));
+      assertDoubleEquals(s);
+    }
+  }
+
+  @Test
+  void testParseDouble_LongButSmallValue_AfterSign_NoFalsePositive() {
+    // 300 zeros after the sign + 20 significant digits => overflows long
+    // (so it reaches the new code path) but is still a finite double.
+    // A naive length-based check would wrongly return -Infinity here.
+    String s = "-" + "0".repeat(300) + "1".repeat(20);
+    double d = TextualNumber.parseDouble(s.toCharArray());
+    assertTrue(Double.isFinite(d), "300 zeros after sign are not significant digits");
+    assertTrue(d < 0);
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_EvenLongerButSmallValue_NoFalsePositive() {
+    // ~520 chars total but only 20 significant digits
+    String s = "-" + "0".repeat(500) + "1".repeat(20);
+    double d = TextualNumber.parseDouble(s.toCharArray());
+    assertTrue(Double.isFinite(d));
+    assertDoubleEquals(s);
+  }
+
+  @Test
+  void testParseDouble_SignAndExactly310Zeros_Zero() {
+    // all-zero significand: handled by the fitsInLong fast path, must remain -0.0
+    String s = "-" + "0".repeat(310);
+    double d = TextualNumber.parseDouble(s.toCharArray());
+    assertTrue(Double.valueOf(-0.0).equals(d), "Expected -0.0, got " + d);
+  }
+
+  @Test
+  void testParseDouble_LeadingSpacesThen310Digits() {
+    // the initial lengthInsignificantZeros skips spaces; the sign (if any) is
+    // then still at buffer[offset] and must be picked up correctly
+    String s = "   +" + "9".repeat(310);
+    assertEquals(Double.POSITIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
+  }
+
+  @Test
+  void testParseDouble_LeadingSpacesSignAndZerosAnd310Digits() {
+    String s = "   " + "-" + "0".repeat(100) + "9".repeat(310);
+    assertEquals(Double.NEGATIVE_INFINITY, TextualNumber.parseDouble(s.toCharArray()));
+  }
+
+  @Test
+  void testFloatValue_Random() {
+    StringBuilder sb = new StringBuilder(32);
+    for (int k = 0; k < NUM_RANDOM_TESTS; k++) {
+      sb.setLength(0);
+      appendDecimal(sb);
+      assertFloatEquals(sb.toString());
+    }
+  }
+
+  @Test
+  void testFloatValue_DoubleRoundingBoundary() {
+    // just above the float midpoint between 1.0f and nextUp(1.0f)
+    String s = "1.0000000596046448";
+    assertEquals(Float.parseFloat(s), TextualNumber.of(s.toCharArray()).floatValue());
+  }
+
+  @Test
+  void testFloatValue_EdgeCases() {
+    for (String n : new String[] {
+        "1.0000000596046448", "-1.0000000596046448",
+        "2.0000001192092896",  "-2.0000001192092896",
+        "3.4e38", "1.4e-45",   // near Float.MAX_VALUE / MIN_VALUE
+        "0.1", "0.3", "16777217",
+        "NaN", "Infinity", "-Infinity"
+    }) {
+      assertFloatEquals(n);
+    }
+  }
+
+  /*
   Asserts
    */
 
@@ -599,4 +802,12 @@ class TextualNumberTest {
     int expLen = rng.nextInt(3) + 1; // 1..3 digits
     for (int i = 0; i < expLen; i++) sb.append((char) ('0' + rng.nextInt(10)));
   }
+
+  private static void assertFloatEquals(String number) {
+    float expected = Float.parseFloat(number);
+    assertEquals(expected,
+        TextualNumber.of(number.toCharArray()).floatValue(),
+        "Failed floatValue() for: " + number);
+  }
+
 }

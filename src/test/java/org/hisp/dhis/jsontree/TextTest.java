@@ -720,6 +720,116 @@ class TextTest {
             .contentEquals(Text.of("0").trimInteger()));
   }
 
+  @DisplayName("trimInteger(): canonical negative returns self (identity)")
+  @Test
+  void testTrimInteger_CanonicalNegativeReturnsSelf() {
+    Text t = Text.of("-42");
+    assertSame(t, t.trimInteger());
+    Text tLarge = Text.of("-9007199254740993");
+    assertSame(tLarge, tLarge.trimInteger());
+  }
+
+  @DisplayName("trimInteger(): canonical zero returns self")
+  @Test
+  void testTrimInteger_CanonicalZeroReturnsSelf() {
+    Text t = Text.of("0");
+    assertSame(t, t.trimInteger());
+  }
+
+  @DisplayName("trimInteger(): negative slice keeps view + offset")
+  @Test
+  void testTrimInteger_NegativeSlicePreservesView() {
+    Text parent = Text.of("-42.00");
+    Text t = parent.trimInteger();
+    assertEquals(Text.of("-42"), t);
+    assertEquals(0, t.offsetIn(parent));      // [0, 3) is a sub-view of the parent
+    assertTrue(t.contentMemoryEquals(parent));
+  }
+
+  @DisplayName("trimInteger(): negative fraction drops to a view")
+  @Test
+  void testTrimInteger_NegativeFractionIsView() {
+    Text parent = Text.of("-42.00");
+    assertEquals(Text.of("-42"), parent.trimInteger());
+    Text big = Text.of("-9007199254740993.00");
+    assertEquals(Text.of("-9007199254740993"), big.trimInteger());
+    // still a view of the same buffer, not a rebuilt copy
+    assertTrue(big.trimInteger().contentMemoryEquals(big));
+  }
+
+  @DisplayName("trimInteger(): leading zeros after '-' are rebuilt in one buffer")
+  @Test
+  void testTrimInteger_NegativeLeadingZerosRebuilt() {
+    // this is the one case that must allocate a fresh buffer, since the digits
+    // do not form a contiguous view after the '-'
+    assertEquals(Text.of("-7"), Text.of("-007").trimInteger());
+    assertEquals(Text.of("-100"), Text.of("-00100").trimInteger());
+    assertEquals(Text.of("-7"), Text.of("-007.00").trimInteger());
+    assertEquals(Text.of("-9007199254740993"),
+        Text.of("-0009007199254740993.00").trimInteger());
+  }
+
+  @DisplayName("trimInteger(): zero views preserve the source")
+  @Test
+  void testTrimInteger_ZeroView() {
+    // "-0" / "0.0" / "00" all trim to a 1-char view of the source '0'
+    Text minusZero = Text.of("-0");
+    assertEquals(Text.of("0"), minusZero.trimInteger());
+    assertTrue(minusZero.trimInteger().contentMemoryEquals(minusZero));
+
+    Text zeroPointZero = Text.of("0.0");
+    assertEquals(Text.of("0"), zeroPointZero.trimInteger());
+    assertTrue(zeroPointZero.trimInteger().contentMemoryEquals(zeroPointZero));
+
+    Text zeros = Text.of("00");
+    assertEquals(Text.of("0"), zeros.trimInteger());
+    assertTrue(zeros.trimInteger().contentMemoryEquals(zeros));
+
+    Text minusZeroPoint = Text.of("-0.00");
+    assertEquals(Text.of("0"), minusZeroPoint.trimInteger());
+    assertTrue(minusZeroPoint.trimInteger().contentMemoryEquals(minusZeroPoint));
+  }
+
+  @DisplayName("trimInteger(): all forms of the same integer still compare equal")
+  @Test
+  void testTrimInteger_EquivalenceAcrossSignsAndFractions() {
+    // the reason trimInteger exists — must hold for every representation
+    String[] formsOf42 = { "42", "+42", "42.0", "+42.00", "042", "0042.0" };
+    for (String form : formsOf42) {
+      assertTrue(Text.of(form).trimInteger().contentEquals(Text.of("42")), form);
+    }
+    String[] formsOfMinus42 = { "-42", "-42.0", "-042", "-0042.00" };
+    for (String form : formsOfMinus42) {
+      assertTrue(Text.of(form).trimInteger().contentEquals(Text.of("-42")), form);
+    }
+    String[] formsOfZero = { "0", "+0", "-0", "0.0", "+0.00", "-0.00", "00", "-00", "000.000" };
+    for (String form : formsOfZero) {
+      assertTrue(Text.of(form).trimInteger().contentEquals(Text.of("0")), form);
+    }
+  }
+
+  @DisplayName("trimInteger(): empty returns self")
+  @Test
+  void testTrimInteger_EmptyReturnsSelf() {
+    Text empty = Text.of("");
+    assertSame(empty, empty.trimInteger());
+    Text emptySlice = Text.of("hello").subSequence(2, 2);
+    assertSame(emptySlice, emptySlice.trimInteger());
+  }
+
+  @DisplayName("trimInteger(): canonical int-cache values")
+  @Test
+  void testTrimInteger_IntCacheCanonical() {
+    for (int i = 0; i < 1000; i++) {
+      Text t = Text.of(i);
+      assertSame(t, t.trimInteger(), "Text.of(" + i + ").trimInteger() should be self");
+    }
+    for (int i = -999; i < 0; i++) {
+      Text t = Text.of(i);
+      assertSame(t, t.trimInteger(), "Text.of(" + i + ").trimInteger() should be self");
+    }
+  }
+
   @DisplayName("contains(CharPredicate)")
   @Test
   void testContains_CharPredicate() {
