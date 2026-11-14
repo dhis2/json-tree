@@ -20,6 +20,17 @@ import java.math.BigInteger;
 public interface CharSeq extends CharSequence {
 
   /**
+   * @return {@code true} when all characters in this sequence are in the character set that
+   *     {@link CharFragment#strip()} removes — space, tab, {@code \n}, {@code \r};
+   *     {@code true} for an empty sequence. Equivalently, {@code strip().isEmpty()}.
+   *     Deliberately narrower than {@link String#isBlank()} (see {@link #isBlank(char)}).
+   * @since 1.14
+   */
+  default boolean isBlank() {
+    return every(CharSeq::isBlank);
+  }
+
+  /**
    * @see String#indexOf(int)
    */
   default int indexOf(char ch) {
@@ -71,6 +82,19 @@ public interface CharSeq extends CharSequence {
     int len = length();
     for (int i = 0; i < len; i++) if (test.test(charAt(i))) return true;
     return false;
+  }
+
+  /**
+   * @param test returns true for a match
+   * @return {@code true} if every character in this sequence satisfies the given test,
+   *     {@code false} as soon as one does not; {@code true} for an empty sequence
+   *     (vacuously)
+   * @since 1.14
+   */
+  default boolean every(CharPredicate test) {
+    int len = length();
+    for (int i = 0; i < len; i++) if (!test.test(charAt(i))) return false;
+    return true;
   }
 
   /**
@@ -138,6 +162,39 @@ public interface CharSeq extends CharSequence {
       m0 = lastIndexOf(f0, m0 - 1, endIndex);
     }
     return -1;
+  }
+
+  /**
+   * @see #count(CharSequence, int)
+   * @since 1.14
+   */
+  default int count(CharSequence infix) {
+    return count(infix, 0);
+  }
+
+  /**
+   * Counts the non-overlapping occurrences of the given fragment in this sequence,
+   * starting at (and including) {@code startIndex}.
+   *
+   * <p>An empty fragment is defined to have zero occurrences. This keeps the method total
+   * — there is no {@code startIndex} for which the empty fragment "occurs" in a way that
+   * would make the count meaningful, and returning {@code 0} avoids the
+   * {@code indexOf("", k) == k} fixed-point (which would otherwise loop forever).
+   *
+   * @param infix fragment to find
+   * @param startIndex first index from which an occurrence may start; positions before it
+   *     are ignored. Negative or out-of-range values yield {@code 0}, matching
+   *     {@link #indexOf(CharSequence, int)}.
+   * @return number of times the fragment occurs in this sequence (non-overlapping),
+   *     never negative
+   * @since 1.14
+   */
+  default int count(CharSequence infix, int startIndex) {
+    int len = infix.length();
+    if (len == 0) return 0;
+    int c = 0;
+    for (int i = indexOf(infix, startIndex); i >= 0; i = indexOf(infix, i + len)) c++;
+    return c;
   }
 
   /**
@@ -259,25 +316,50 @@ public interface CharSeq extends CharSequence {
   }
 
   /**
-   * @implNote This is not RegEx matching like {@link String#matches(String)} but rather matching
-   *     using this sequence as {@link InputExpression} pattern.
-   * @param input an input string
-   * @return if this text as pattern matches the entirety of the given input
+   * Tests whether this sequence, interpreted as an {@link InputExpression} pattern, matches
+   * the entirety of the given input.
+   *
+   * <p>Note the role assignment: <em>this sequence is the pattern</em>, and {@code input} is
+   * the subject being tested. This is the reverse of {@link String#matches(String)}, where
+   * the string is the subject and the argument is the pattern. It is also not regex — the
+   * pattern language is {@link InputExpression} (see that type for the metacharacters and
+   * operators it accepts).
+   *
+   * <p>Anchored at both ends: the pattern must consume all of {@code input}. A pattern that
+   * would match only a prefix, or require more characters than {@code input} contains, is a
+   * non-match. Equivalent to {@code matches(input, 0, input.length())}.
+   *
+   * @param input the subject to test against this pattern
+   * @return {@code true} if this pattern matches all of {@code input}
+   * @see #matches(CharSequence, int, int)
+   * @see InputExpression
    */
   default boolean matches(CharSequence input) {
     return matches(input, 0, input.length());
   }
 
   /**
-   * Match an input sub-sequence against this text as pattern.
+   * Tests whether this sequence, interpreted as an {@link InputExpression} pattern, matches
+   * exactly the region {@code input[offset..offset + len)}.
    *
-   * @implNote This is not RegEx matching like {@link String#matches(String)} but rather matching
-   *     using this sequence as {@link InputExpression} pattern.
+   * <p>Same role assignment as {@link #matches(CharSequence)}: this sequence is the pattern,
+   * {@code input} is the subject. The {@code offset} and {@code len} select a region of
+   * <em>{@code input}</em>, not of this pattern. The whole pattern is always used, and it
+   * must match that region in full.
+   *
+   * <p>{@code len} asserts where the match must end; it is not a limit on how far the match
+   * may look. The underlying {@link InputExpression} match runs from {@code offset} without
+   * being told about {@code len}, and succeeds here only when it happens to stop at exactly
+   * {@code offset + len}. A pattern that stops early, or a greedy step that would extend past
+   * the region, both return {@code false}. Callers who want to know how far a pattern matched
+   * should not use this method.
+   *
+   * @param input the subject whose region is tested
+   * @param offset first index of the region to test in {@code input}
+   * @param len number of characters of {@code input} to test starting at {@code offset}
+   * @return {@code true} if this pattern matches exactly {@code input[offset..offset + len)}
+   * @see #matches(CharSequence)
    * @see InputExpression
-   * @param input an input string
-   * @param offset the first character to match
-   * @param len length from the first character to match
-   * @return if this text as pattern matches the subsequence of the given input
    */
   default boolean matches(CharSequence input, int offset, int len) {
     return InputExpression.match(toCharArray(), 0, length(), input, offset) == offset + len;
@@ -292,8 +374,9 @@ public interface CharSeq extends CharSequence {
    * @see #copyTo(char[], int) to avoid alocation of the result
    */
   default char[] toCharArray() {
-    char[] arr = new char[length()];
-    for (int i = 0; i < arr.length; i++) arr[i] = charAt(i);
+    int len = length();
+    char[] arr = new char[len];
+    copyTo(arr, 0, 0, len);
     return arr;
   }
 
@@ -305,8 +388,7 @@ public interface CharSeq extends CharSequence {
    * @since 1.10
    */
   default void copyTo(char[] dest, int offset) {
-    int len = length();
-    for (int i = 0; i < len; i++) dest[i + offset] = charAt(i);
+    copyTo(dest, offset, 0, length());
   }
 
   /**
@@ -321,6 +403,23 @@ public interface CharSeq extends CharSequence {
   default void copyTo(char[] dest, int offset, int from, int length) {
     int to = from + length;
     for (int i = from; i < to; i++) dest[offset++] = charAt(i);
+  }
+
+  /**
+   * Copies all characters of {@code src} into {@code dest} starting at {@code dest[offset]}.
+   *
+   * @param src sequence to copy from, copied in full from its first character
+   * @param dest array to write to
+   * @param offset first index to write to in {@code dest}
+   * @since 1.14
+   */
+  static void copyTo(CharSequence src, char[] dest, int offset) {
+    if (src instanceof  CharSeq cs) {
+      cs.copyTo(dest, offset);
+    } else {
+      int len = src.length();
+      for (int i = 0; i < len; i++) dest[offset + i] = src.charAt(i);
+    }
   }
 
   /*
@@ -550,5 +649,14 @@ public interface CharSeq extends CharSequence {
         hash = 31 * hash + text.charAt(i * step >> 3);
     }
     return hash;
+  }
+
+  /**
+   * @param c character to test
+   * @return true if it is an ASCII whitespace character considered blank
+   * @since 1.14
+   */
+  static boolean isBlank(char c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
   }
 }

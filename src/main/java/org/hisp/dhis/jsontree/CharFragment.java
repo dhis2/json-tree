@@ -1,6 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.Arrays;
 import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -117,20 +116,49 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
   }
 
   /**
-   * @param test characters to strip from start/end of this text
-   * @return this text without any leading or trailing characters that satisfied the given test
+   * @see String#stripLeading()
+   * @since 1.14
+   **/
+  default T stripLeading() {
+    return shrink(CharFragment::isStrip, true, false);
+  }
+
+  /**
+   * @see String#stripTrailing()
+   * @since 1.14
+   **/
+  default T stripTrailing() {
+    return shrink(CharFragment::isStrip, false, true);
+  }
+
+  /**
+   * @see #shrink(CharPredicate, boolean, boolean)
    * @since 1.13
    */
   default T shrink(CharPredicate test) {
-    if (isEmpty()) return self();
+    return shrink(test, true, true);
+  }
+
+  /**
+   * @param test characters to strip from start/end of this text
+   * @param left true to shrink form the start or left side
+   * @param right true to shrink form the end or right side
+   * @return this text without any leading or trailing characters that satisfied the given test
+   * @since 1.14
+   */
+  default T shrink(CharPredicate test, boolean left, boolean right) {
+    if (isEmpty() || (!left && !right)) return self();
     int len = length();
-    int left = 0;
-    while (left < len && test.test(charAt(left))) left++;
-    if (left == len) return subSequence(left, left);
-    int right = len-1;
-    while (right > left && test.test(charAt(right))) right--;
-    if (left == 0 && right == len-1) return self();
-    return subSequence(left, right + 1);
+    int l = 0;
+    if (left)
+      while (l < len && test.test(charAt(l))) l++;
+    if (l == len) return subSequence(l, l);
+    int r = len - 1;
+    if (right)
+      while (r >= l && test.test(charAt(r))) r--;
+    if (r < l) return subSequence(l, l);
+    if (l == 0 && r == len - 1) return self();
+    return subSequence(l, r + 1);
   }
 
   /**
@@ -153,15 +181,10 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
   static <T extends CharFragment<T>> T concat(T self, CharSequence suffix) {
     if (suffix.isEmpty()) return self;
     int len = self.length();
-    int sLen = suffix.length();
-    char[] res = new char[len+sLen];
+    char[] res = new char[len+suffix.length()];
     self.copyTo(res, 0);
-    if (suffix instanceof  CharSeq cs) {
-      cs.copyTo(res, len);
-    } else {
-      for (int i = 0; i < sLen; i++) res[len + i] = suffix.charAt(i);
-    }
-    return self.wrap(res, 0, res.length);
+    CharSeq.copyTo(suffix, res, len);
+    return self.wrap(res);
   }
 
   /**
@@ -192,6 +215,127 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
       } while (end >= 0 && end < len);
       segments.accept(subSequence(pos, len));
     }
+  }
+
+  /**
+   * Returns this sequence with every occurrence of {@code oldChar} replaced by
+   * {@code newChar}.
+   *
+   * <p>Like {@link String#replace(char, char)}, returns {@link #self()} (no allocation)
+   * when {@code oldChar == newChar} or when {@code oldChar} does not occur in this
+   * sequence.
+   *
+   * @see String#replace(char, char)
+   * @since 1.14
+   */
+  default T replace(char oldChar, char newChar) {
+    if (oldChar == newChar || !contains(oldChar)) return self();
+    char[] replaced = toCharArray();
+    for (int i = 0; i < replaced.length; i++)
+      if (replaced[i] == oldChar) replaced[i] = newChar;
+    return wrap(replaced, 0, replaced.length);
+  }
+
+  /**
+   * Returns this sequence with every non-overlapping occurrence of {@code target} replaced
+   * by {@code replacement}.
+   *
+   * <p>Returns {@link #self()} without allocating when {@code target} is empty or does not
+   * occur in this sequence. Note that the empty-target case diverges from
+   * {@link String#replace(CharSequence, CharSequence)}, which inserts {@code replacement}
+   * at every position; here an empty target has zero occurrences (matching
+   * {@link #count(CharSequence)}) and is a no-op.
+   *
+   * @see String#replace(CharSequence, CharSequence)
+   * @since 1.14
+   */
+  default T replace(CharSequence target, CharSequence replacement) {
+    if (isEmpty() || target.isEmpty() || !contains(target)) return self();
+    int oldLen = target.length();
+    int newLen = replacement.length();
+    int n = count(target);
+    int delta = n * (newLen - oldLen);
+    int len = length();
+    if (len + delta == 0) return wrap(); // empty
+    char[] dest = new char[len + delta];
+    int offset = 0;
+    int from = 0;
+    int to = indexOf(target, from);
+    while (to >= 0) {
+      int gapLen = to - from;
+      copyTo(dest, offset, from, gapLen);
+      from = to + oldLen;
+      offset += gapLen;
+      CharSeq.copyTo(replacement, dest, offset);
+      offset += newLen;
+      to = indexOf(target, from);
+    }
+    copyTo(dest, offset, from, len - from);
+    return wrap(dest);
+  }
+
+  /**
+   * @see String#repeat(int)
+   * @since 1.14
+   */
+  default T repeat(int count) {
+    if (count < 0) throw new IllegalArgumentException("repeat count is negative: " + count);
+    if (count == 1) return self();
+    if (count == 0 || isEmpty()) return wrap();
+    int len = length();
+    long resultLen = (long) len * count;
+    if (resultLen > Integer.MAX_VALUE)
+      throw new IllegalArgumentException("repeat result too large: " + resultLen);
+    char[] dest = new char[(int) resultLen];
+    for (int offset = 0; offset < dest.length; offset += len)
+      copyTo(dest, offset);
+    return wrap(dest);
+  }
+
+  /**
+   * Returns this sequence with ASCII letters {@code 'A'}..{@code 'Z'} converted to
+   * {@code 'a'}..{@code 'z'}.
+   *
+   * <p>Deliberately ASCII-only, matching {@link #trim()}, {@link #strip()}, and
+   * {@link #isBlank()} in this API. Non-ASCII letters (including accented Latin,
+   * Cyrillic, Greek) and locale-specific case rules (e.g. Turkish dotless {@code ı})
+   * are not touched. This is narrower than {@link String#toLowerCase()}.
+   *
+   * <p>Returns {@link #self()} without allocating when this sequence contains no
+   * uppercase ASCII letters.
+   *
+   * @see String#toLowerCase()
+   * @since 1.14
+   */
+  default T toLowerCase() {
+    return toCase(CharFragment::isUpperCase, 32);
+  }
+
+  /**
+   * Returns this sequence with ASCII letters {@code 'a'}..{@code 'z'} converted to
+   * {@code 'A'}..{@code 'Z'}.
+   *
+   * <p>Deliberately ASCII-only, matching {@link #trim()}, {@link #strip()}, and
+   * {@link #isBlank()} in this API. Non-ASCII letters (including accented Latin,
+   * Cyrillic, Greek) and locale-specific case rules (e.g. Turkish dotless {@code ı})
+   * are not touched. This is narrower than {@link String#toUpperCase()}.
+   *
+   * <p>Returns {@link #self()} without allocating when this sequence contains no
+   * lowercase ASCII letters.
+   *
+   * @see String#toUpperCase()
+   * @since 1.14
+   */
+  default T toUpperCase() {
+    return toCase(CharFragment::isLowerCase, -32);
+  }
+
+  private T toCase(CharPredicate test, int delta) {
+    if (!contains(test)) return self();
+    char[] buf = toCharArray();
+    for (int i = 0; i < buf.length; i++)
+      if (test.test(buf[i])) buf[i] += delta;
+    return wrap(buf);
   }
 
   /**
@@ -262,7 +406,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
     char[] buffer = new char[1 + digitsLen];
     buffer[0] = '-';
     copyTo(buffer, 1, start, digitsLen);
-    return wrap(buffer, 0, buffer.length);
+    return wrap(buffer);
   }
 
   /*
@@ -280,6 +424,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    *
    * @param ch character to test
    * @return true for ASCII indent whitespace
+   * @since 1.13
    */
   static boolean isTrim(char ch) {
     return ch == ' ' || ch == '\t';
@@ -290,9 +435,27 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    *
    * @param ch character to test
    * @return true for ASCII whitespace
+   * @since 1.13
    */
   static boolean isStrip(char ch) {
-    return isTrim(ch) || ch == '\n' || ch == '\r';
+    return CharSeq.isBlank(ch);
   }
 
+  /**
+   * @param ch character to test
+   * @return true for ASCII {@code 'A'}..{@code 'Z'}
+   * @since 1.14
+   */
+  static boolean isUpperCase(char ch) {
+    return 'A' <= ch && ch <= 'Z';
+  }
+
+  /**
+   * @param ch character to test
+   * @return true for ASCII {@code 'a'}..{@code 'z'}
+   * @since 1.14
+   */
+  static boolean isLowerCase(char ch) {
+    return 'a' <= ch && ch <= 'z';
+  }
 }

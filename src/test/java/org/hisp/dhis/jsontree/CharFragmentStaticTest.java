@@ -418,4 +418,108 @@ class CharFragmentStaticTest {
     assertSame(empty, empty.concat(""));
     assertEquals(2, empty.concat("").offsetIn(Text.of("hello world").subSequence(0)));
   }
+
+  // ---------------------------------------------------------------------------
+  // static copyTo(CharSequence, char[], int)
+  // ---------------------------------------------------------------------------
+
+  @DisplayName("static copyTo: CharSeq source uses the copyTo fast path")
+  @Test
+  void testCopyTo_CharSeqFastPath() {
+    TrackingCharSeq src = new TrackingCharSeq("world");
+    char[] dest = new char[10];
+    CharSeq.copyTo(src, dest, 5);
+    assertTrue(src.copyToCalled, "CharSeq.copyTo should be used for CharSeq sources");
+    assertArrayEquals(new char[] {0, 0, 0, 0, 0, 'w', 'o', 'r', 'l', 'd'}, dest);
+  }
+
+  @DisplayName("static copyTo: String source uses the charAt loop")
+  @Test
+  void testCopyTo_StringSource() {
+    char[] dest = new char[10];
+    CharSeq.copyTo("world", dest, 3);
+    assertArrayEquals(new char[] {0, 0, 0, 'w', 'o', 'r', 'l', 'd', 0, 0}, dest);
+  }
+
+  @DisplayName("static copyTo: StringBuilder source (non-CharSeq)")
+  @Test
+  void testCopyTo_StringBuilderSource() {
+    char[] dest = new char[6];
+    CharSeq.copyTo(new StringBuilder("abc"), dest, 2);
+    assertArrayEquals(new char[] {0, 0, 'a', 'b', 'c', 0}, dest);
+  }
+
+  @DisplayName("static copyTo: empty source is a no-op")
+  @Test
+  void testCopyTo_EmptySource() {
+    char[] dest = {'x', 'y', 'z'};
+    CharSeq.copyTo("", dest, 1);
+    CharSeq.copyTo(new TrackingCharSeq(""), dest, 1);
+    CharSeq.copyTo(new StringBuilder(), dest, 1);
+    assertArrayEquals(new char[] {'x', 'y', 'z'}, dest);
+  }
+
+  @DisplayName("static copyTo: source is a slice (offset preserved)")
+  @Test
+  void testCopyTo_SliceSourcePreservesOffset() {
+    Text parent = Text.of("hello world");
+    Text slice = parent.subSequence(6); // "world" at offset 6 of the parent buffer
+    char[] dest = new char[5];
+    CharSeq.copyTo(slice, dest, 0);
+    assertArrayEquals(new char[] {'w', 'o', 'r', 'l', 'd'}, dest);
+  }
+
+  @DisplayName("static copyTo: source is an empty slice")
+  @Test
+  void testCopyTo_EmptySliceSource() {
+    Text parent = Text.of("hello");
+    Text empty = parent.subSequence(2, 2);
+    char[] dest = new char[3];
+    CharSeq.copyTo(empty, dest, 0);
+    assertArrayEquals(new char[] {0, 0, 0}, dest);
+  }
+
+  @DisplayName("static copyTo: source length captured once")
+  @Test
+  void testCopyTo_SourceLengthCapturedOnce() {
+    StringBuilder sb = new StringBuilder("abc");
+    char[] dest = new char[6];
+    CharSeq.copyTo(sb, dest, 0);
+    sb.append("def"); // must not affect what was already copied
+    assertArrayEquals(new char[] {'a', 'b', 'c', 0, 0, 0}, dest);
+  }
+
+  @DisplayName("static copyTo: dest too small throws")
+  @Test
+  void testCopyTo_DestTooSmallThrows() {
+    // both branches must throw, and both via an array-bounds exception
+    assertThrows(ArrayIndexOutOfBoundsException.class,
+        () -> CharSeq.copyTo("abc", new char[2], 0));
+    assertThrows(IndexOutOfBoundsException.class,
+        () -> CharSeq.copyTo(new TrackingCharSeq("abc"), new char[2], 0));
+    assertThrows(ArrayIndexOutOfBoundsException.class,
+        () -> CharSeq.copyTo("abc", new char[4], 2));
+  }
+
+  @DisplayName("static copyTo: agrees with CharSeq.copyTo for CharSeq sources")
+  @Test
+  void testCopyTo_AgreesWithCharSeqCopyTo() {
+    Text src = Text.of("hello").subSequence(1, 4); // "ell"
+    char[] viaStatic = new char[3];
+    char[] viaCharSeq = new char[3];
+    CharSeq.copyTo(src, viaStatic, 0);
+    src.copyTo(viaCharSeq, 0);
+    assertArrayEquals(viaCharSeq, viaStatic);
+  }
+
+  @DisplayName("static copyTo: result matches concat for concatenated slices")
+  @Test
+  void testCopyTo_ConsistentWithConcat() {
+    Text parent = Text.of("hello world");
+    Text suffix = parent.subSequence(6); // "world"
+    char[] dest = new char[11];
+    CharSeq.copyTo(Text.of("hello "), dest, 0);   // String-backed view via CharSeq path
+    CharSeq.copyTo(suffix, dest, 6);
+    assertArrayEquals("hello world".toCharArray(), dest);
+  }
 }

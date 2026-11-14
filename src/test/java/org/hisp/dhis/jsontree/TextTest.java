@@ -1133,4 +1133,288 @@ class TextTest {
     assertSame(Text.EMPTY, Text.EMPTY.concat(""));
     assertEquals(0, Text.EMPTY.concat("").offsetIn(Text.EMPTY));
   }
+
+  @DisplayName("offsetIn after directional strip to empty")
+  @Test
+  void testOffsetIn_DirectionalStripToEmpty() {
+    Text spaces = Text.of("   ");
+    assertEquals(3, spaces.stripLeading().offsetIn(spaces));   // empty tail at end
+    assertEquals(0, spaces.stripTrailing().offsetIn(spaces));  // empty head at start
+    assertEquals(3, spaces.strip().offsetIn(spaces));          // existing contract
+  }
+
+  @DisplayName("count(CharSequence): Text path and int-cache backing")
+  @Test
+  void testCount_Text() {
+    assertEquals(0, Text.of("ababab").count("xx", 0));
+    assertEquals(3, Text.of("ababab").count("ab", 0));
+    assertEquals(2, Text.of("ababab").count("ab", 1));
+    assertEquals(0, Text.of("ababab").count("ab", 100));
+    assertEquals(2, Text.of("aaaa").count("aa", 0));
+    assertEquals(0, Text.of("abc").count("", 0));
+    assertEquals(0, Text.of("abc").count("", 3));
+    assertEquals(0, Text.of("").count("", 0));
+
+    // count() on a slice of a larger buffer goes through the same offset-aware indexOf
+    Text parent = Text.of("xabababz");
+    Text slice = parent.subSequence(1, 7);  // "ababab"
+    assertEquals(3, slice.count("ab"));
+    assertEquals(2, slice.count("ab", 1));
+
+    // count over the 0-999 int-cache contents
+    assertEquals(1, Text.of(101).count("0", 0));
+    assertEquals(2, Text.of(101).count("1", 0));
+    assertEquals(0, Text.of(100).count("2", 0));
+
+    // empty fragment on an int-cache slice
+    assertEquals(0, Text.of(123).count("", 0));
+  }
+
+  @DisplayName("every(CharPredicate): Text path")
+  @Test
+  void testEvery_Text() {
+    assertTrue(Text.of("abc").every(Character::isLetter));
+    assertTrue(Text.of("123").every(Character::isDigit));
+    assertFalse(Text.of("123a").every(Character::isDigit));
+    assertFalse(Text.of("abc").every(c -> false));
+  }
+
+  @DisplayName("every(CharPredicate): empty Text is vacuously true")
+  @Test
+  void testEvery_EmptyText() {
+    assertTrue(Text.of("").every(c -> true));
+    assertTrue(Text.of("").every(c -> false));
+    assertTrue(Text.EMPTY.every(Character::isDigit));
+    // empty slice of a non-empty parent is still vacuous
+    Text emptySlice = Text.of("hello").subSequence(2, 2);
+    assertTrue(emptySlice.every(c -> false));
+  }
+
+  @DisplayName("every(CharPredicate): slice of a larger buffer")
+  @Test
+  void testEvery_Slice() {
+    Text parent = Text.of("x123y");
+    Text digits = parent.subSequence(1, 4);       // "123" at offset 1
+    assertTrue(digits.every(Character::isDigit));
+    Text mixed = parent.subSequence(1, 5);        // "123y"
+    assertFalse(mixed.every(Character::isDigit));
+  }
+
+  @DisplayName("every(CharPredicate): int-cache path")
+  @Test
+  void testEvery_IntCache() {
+    assertTrue(Text.of(123).every(Character::isDigit));
+    assertTrue(Text.of(0).every(Character::isDigit));
+    assertFalse(Text.of(123).every(c -> c != '2'));
+
+    // empty slice of a value in the 0-999 cache
+    Text emptySlice = Text.of(123).subSequence(1, 1);
+    assertTrue(emptySlice.every(c -> false));
+  }
+
+  @DisplayName("isBlank(): Text path and slices")
+  @Test
+  void testIsBlank_Text() {
+    assertTrue(Text.of("   ").isBlank());
+    assertTrue(Text.of(" \t\n\r ").isBlank());
+    assertFalse(Text.of(" a ").isBlank());
+    assertTrue(Text.of("").isBlank());
+    assertTrue(Text.EMPTY.isBlank());
+
+    Text parent = Text.of("a \t \tb");
+    assertTrue(parent.subSequence(1, 4).isBlank());   // " \t "
+    assertFalse(parent.subSequence(0, 4).isBlank());  // "a \t "
+    // "\tb" is not blank
+    assertFalse(Text.of("a \t \tb").subSequence(4, 6).isBlank());
+  }
+
+  @DisplayName("replace(char, char): Text path")
+  @Test
+  void testReplace_Text() {
+    assertEquals(Text.of("bonono"), Text.of("banana").replace('a', 'o'));
+    assertEquals(Text.of("b.n.n."), Text.of("banana").replace('a', '.'));
+    assertEquals(Text.of("banana"), Text.of("banana").replace('z', 'x'));
+  }
+
+  @DisplayName("replace(char, char): identity shortcuts on Text")
+  @Test
+  void testReplace_IdentityOnText() {
+    Text t = Text.of("banana");
+    assertSame(t, t.replace('a', 'a'));
+    assertSame(t, t.replace('z', 'x'));
+    assertSame(t, t.replace('z', 'z'));
+    assertSame(Text.EMPTY, Text.EMPTY.replace('a', 'x'));
+    assertSame(Text.EMPTY, Text.EMPTY.replace('a', 'a'));
+  }
+
+  @DisplayName("replace(char, char): slice of a larger buffer")
+  @Test
+  void testReplace_Slice() {
+    Text parent = Text.of("xxbananaxx");
+    Text slice = parent.subSequence(2, 8); // "banana" at offset 2
+    Text replaced = slice.replace('a', 'o');
+    assertEquals(Text.of("bonono"), replaced);
+
+    // fresh buffer: the result no longer sits in the parent's memory
+    assertFalse(replaced.contentMemoryEquals(parent));
+    assertEquals(-1, replaced.offsetIn(parent));
+    // source is unchanged
+    assertEquals(Text.of("banana"), slice);
+    assertEquals(Text.of("xxbananaxx"), parent);
+  }
+
+  @DisplayName("replace(char, char): int-cache path")
+  @Test
+  void testReplace_IntCache() {
+    // Text.of(123) is backed by ZERO_TO_999; replacing allocates a new buffer
+    Text _123 = Text.of(123);
+    assertEquals(Text.of("923"), _123.replace('1', '9'));
+    assertEquals(Text.of("111"), _123.replace('2', '1').replace('3', '1'));
+
+    // the 123 entry in ZERO_TO_999 itself is untouched
+    assertEquals("123", _123.toString());
+
+    // empty slice of the int cache
+    Text emptySlice = _123.subSequence(1, 1);
+    assertSame(emptySlice, emptySlice.replace('1', '9'));
+  }
+
+  @DisplayName("replace(char, char): agrees with String.replace on content")
+  @Test
+  void testReplace_AgreesWithStringReplace() {
+    String[] samples = { "", "a", "aa", "banana", "abcabc", "hello world", "zzz", "a b a b" };
+    char[] fromChars = { 'a', 'b', 'z', ' ', 'x', '\t' };
+    char[] toChars = { 'A', 'B', 'y', '_', 'x', '\n' };
+    for (String s : samples)
+      for (char f : fromChars)
+        for (char t : toChars)
+          assertEquals(s.replace(f, t), Text.of(s).replace(f, t).toString(),
+              "replace('" + f + "','" + t + "') on \"" + s + "\"");
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): Text path")
+  @Test
+  void testReplaceSeq_Text() {
+    assertEquals(Text.of("bonono"), Text.of("banana").replace("a", "o"));
+    assertEquals(Text.of("xbc"), Text.of("abc").replace("a", "x"));
+    assertEquals(Text.of("heLLo"), Text.of("hello").replace("l", "L"));
+    assertEquals(Text.of("xyy"), Text.of("xyz").replace("z", "y"));
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): identity shortcuts on Text")
+  @Test
+  void testReplaceSeq_IdentityOnText() {
+    Text t = Text.of("banana");
+    assertSame(t, t.replace("", "X"));
+    assertSame(t, t.replace("z", "X"));
+    assertSame(t, t.replace("bananas", "X"));
+    assertSame(Text.EMPTY, Text.EMPTY.replace("a", "b"));
+    assertSame(Text.EMPTY, Text.EMPTY.replace("", "X"));
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): slice of a larger buffer")
+  @Test
+  void testReplaceSeq_Slice() {
+    Text parent = Text.of("xxbananaxx");
+    Text slice = parent.subSequence(2, 8); // "banana" at offset 2
+    Text replaced = slice.replace("an", "AN");
+    assertEquals(Text.of("bANANa"), replaced);
+
+    // fresh buffer: result no longer shares parent memory
+    assertFalse(replaced.contentMemoryEquals(parent));
+    assertEquals(-1, replaced.offsetIn(parent));
+
+    // sources unmodified
+    assertEquals(Text.of("banana"), slice);
+    assertEquals(Text.of("xxbananaxx"), parent);
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): int-cache path")
+  @Test
+  void testReplaceSeq_IntCache() {
+    assertEquals(Text.of("1_3"), Text.of(123).replace("2", "_"));
+    assertEquals(Text.of(123), Text.of(123), "int cache must not be mutated");
+    assertEquals(Text.of("9_3"), Text.of(123).replace("1", "9").replace("2", "_"));
+  }
+
+  @DisplayName("repeat(int): Text path")
+  @Test
+  void testRepeat_Text() {
+    assertEquals(Text.of("ababab"), Text.of("ab").repeat(3));
+    assertEquals(Text.EMPTY, Text.of("abc").repeat(0));
+    assertTrue(Text.of("abc").repeat(0).isEmpty());
+    Text t = Text.of("abc");
+    assertSame(t, t.repeat(1));
+  }
+
+  @DisplayName("repeat(int): slice of a larger buffer")
+  @Test
+  void testRepeat_Slice() {
+    Text parent = Text.of("xxabxx");
+    Text slice = parent.subSequence(2, 4); // "ab" at offset 2
+    Text repeated = slice.repeat(3);
+    assertEquals(Text.of("ababab"), repeated);
+    // fresh buffer, not a view into parent
+    assertFalse(repeated.contentMemoryEquals(parent));
+    assertEquals(-1, repeated.offsetIn(parent));
+    // source unmodified
+    assertEquals(Text.of("ab"), slice);
+    assertEquals(Text.of("xxabxx"), parent);
+  }
+
+  @DisplayName("repeat(int): int-cache path")
+  @Test
+  void testRepeat_IntCache() {
+    Text _12 = Text.of(12);
+    assertEquals(Text.of("121212"), _12.repeat(3));
+    assertEquals(Text.of("111"), Text.of(1).repeat(3));
+    assertEquals(Text.EMPTY, Text.of(123).repeat(0));
+    // the cache entry itself is unchanged
+    assertEquals(_12, Text.of(12));
+    assertEquals("12", _12.toString());
+  }
+
+  @DisplayName("repeat(int): agrees with String.repeat for content and length")
+  @Test
+  void testRepeat_Text_AgreesWithString() {
+    for (int v = 0; v < 1000; v++) {
+      String s = String.valueOf(v);
+      for (int n = 0; n <= 3; n++) {
+        Text t = Text.of(v).repeat(n);
+        assertEquals(s.repeat(n), t.toString(), "Text.of(" + v + ").repeat(" + n + ")");
+        assertEquals(s.repeat(n).length(), t.length());
+      }
+    }
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: Text path and slices")
+  @Test
+  void testCaseTransform_Text() {
+    assertEquals(Text.of("abc"), Text.of("ABC").toLowerCase());
+    assertEquals(Text.of("ABC"), Text.of("abc").toUpperCase());
+    assertSame(Text.of("abc"), Text.of("abc").toLowerCase());
+    assertSame(Text.EMPTY, Text.EMPTY.toLowerCase());
+    assertSame(Text.EMPTY, Text.EMPTY.toUpperCase());
+
+    // slice of a larger buffer: result has fresh buffer, source untouched
+    Text parent = Text.of("xxAbCxx");
+    Text slice = parent.subSequence(2, 5); // "AbC"
+    Text lowered = slice.toLowerCase();
+    assertEquals(Text.of("abc"), lowered);
+    assertFalse(lowered.contentMemoryEquals(parent));
+    assertEquals(-1, lowered.offsetIn(parent));
+    assertEquals(Text.of("AbC"), slice);
+    assertEquals(Text.of("xxAbCxx"), parent);
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: int-cache path")
+  @Test
+  void testCaseTransform_IntCache() {
+    // digits never change; identity preserved
+    Text _123 = Text.of(123);
+    assertSame(_123, _123.toLowerCase());
+    assertSame(_123, _123.toUpperCase());
+    // 123 stays in the cache after the no-op calls
+    assertEquals("123", _123.toString());
+  }
 }

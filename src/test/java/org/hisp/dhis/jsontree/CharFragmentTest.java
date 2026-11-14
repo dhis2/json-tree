@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -211,6 +212,32 @@ class CharFragmentTest {
     assertEquals("", seq("").shrink(c -> true).toString());
     assertEquals("hello", seq(" hello ").shrink(CharFragment::isStrip).toString());
     assertEquals("hello", seq(" hello ").shrink(CharFragment::isTrim).toString());
+  }
+
+  @DisplayName("shrink(test, left, right): stripTrailing on all-whitespace is empty")
+  @Test
+  void testShrink_StripTrailingAllWhitespace() {
+    assertEquals("", seq("   ").stripTrailing().toString());   // Bug: was " "
+    assertTrue(seq("   ").stripTrailing().isEmpty());
+    assertTrue(seq("\t\n\r ").stripTrailing().isEmpty());
+    // mirror
+    assertEquals("", seq("   ").stripLeading().toString());
+    assertEquals("", seq("   ").strip().toString());
+  }
+
+  @DisplayName("stripTrailing / stripLeading agree with String on content")
+  @Test
+  void testStripDirections_AgreeWithString() {
+    String[] samples = {
+        "", " ", "   ", "\t\n\r ", "a", " a", "a ", " a ",
+        "  x  ", "x  ", "  x", "abc", "  abc  def  "
+    };
+    for (String s : samples) {
+      assertEquals(s.stripTrailing(), seq(s).stripTrailing().toString(),
+          "stripTrailing(\"" + s + "\")");
+      assertEquals(s.stripLeading(), seq(s).stripLeading().toString(),
+          "stripLeading(\"" + s + "\")");
+    }
   }
 
   @Test
@@ -626,5 +653,547 @@ class CharFragmentTest {
     // input starting with "true" (it never checked charAt(4))
     assertThrows(IllegalArgumentException.class, () -> Text.of("truex").parseBoolean());
     assertThrows(IllegalArgumentException.class, () -> Text.of("TRUE!").parseBoolean());
+  }
+
+  @DisplayName("count(CharSequence, int)")
+  @Test
+  void testCount() {
+    TestSeq t = seq("ababab");
+    assertEquals(0, t.count("xx", 0));
+    assertEquals(3, t.count("ab", 0));
+    assertEquals(2, t.count("ab", 1));   // skips the match at 0
+    assertEquals(2, t.count("ab", 2));   // skips the match at 0 too
+    assertEquals(1, t.count("ab", 3));   // only the match at 2 remains
+    assertEquals(0, t.count("ab", 5));   // past all matches
+    assertEquals(0, t.count("ab", 6));   // == length
+    assertEquals(0, t.count("ab", 100)); // > length
+    // non-overlapping: the second "ab" in "aaaa" is not counted after consuming the first
+    assertEquals(2, seq("aaaa").count("aa", 0));
+    // adjacency: back-to-back non-overlapping
+    assertEquals(2, seq("abab").count("ab", 0));
+    // fragment longer than subject
+    assertEquals(0, seq("ab").count("abc", 0));
+    // match touching end is counted once, not twice
+    assertEquals(1, seq("abc").count("c", 0));
+    // empty subject
+    assertEquals(0, seq("").count("a", 0));
+  }
+
+  @DisplayName("count(CharSequence, int) with empty fragment")
+  @Test
+  void testCount_EmptyFragment() {
+    // the empty fragment matches at every position; defining it to have 0 occurrences
+    // is the only finite, useful answer (and prevents the indexOf("",k)==k fixed point)
+    assertEquals(0, seq("abc").count("", 0));
+    assertEquals(0, seq("abc").count("", 1));
+    assertEquals(0, seq("abc").count("", 3));   // == length, would otherwise loop forever
+    assertEquals(0, seq("").count("", 0));
+    // a StringBuilder that is empty is the same case
+    assertEquals(0, seq("abc").count(new StringBuilder(), 0));
+  }
+
+  @DisplayName("count(CharSequence) delegates to startIndex 0")
+  @Test
+  void testCount_NoStartIndex() {
+    TestSeq t = seq("ababab");
+    assertEquals(3, t.count("ab"));
+    assertEquals(t.count("ab", 0), t.count("ab"));
+  }
+
+  @DisplayName("count() agrees with a manual loop using indexOf")
+  @Test
+  void testCount_AgreesWithIndexOf() {
+    String[] subjects = { "", "a", "aa", "ab", "aab", "abab", "ababab", "aaaa", "banana" };
+    String[] fragments = { "a", "b", "aa", "ab", "abab", "na", "banana" };
+    for (String s : subjects) {
+      TestSeq seq = seq(s);
+      for (String f : fragments) {
+        int expected = 0;
+        for (int i = s.indexOf(f); i >= 0; i = s.indexOf(f, i + f.length())) expected++;
+        assertEquals(expected, seq.count(f, 0), "count(" + f + ") in \"" + s + "\"");
+        assertEquals(expected, seq.count(f), "count(" + f + ") in \"" + s + "\"");
+      }
+    }
+  }
+
+  @DisplayName("every(CharPredicate)")
+  @Test
+  void testEvery() {
+    // non-empty, all true
+    assertTrue(seq("abc").every(c -> true));
+    assertTrue(seq("abc").every(Character::isLetter));
+    assertTrue(seq("123").every(Character::isDigit));
+    // non-empty, one counterexample
+    assertFalse(seq("abc").every(c -> false));
+    assertFalse(seq("123a").every(Character::isDigit));
+    // counterexample only at the first position
+    assertTrue(seq("zbc").every(Character::isLetter));
+    assertFalse(seq("zbc").every(c -> c == 'z'));
+    // counterexample only at the last position
+    assertFalse(seq("abz").every(c -> c != 'z'));
+    // single character
+    assertTrue(seq("a").every(c -> c == 'a'));
+    assertFalse(seq("a").every(c -> c == 'b'));
+  }
+
+  @DisplayName("every(CharPredicate) on empty is vacuously true")
+  @Test
+  void testEvery_Empty() {
+    assertTrue(seq("").every(c -> true));
+    assertTrue(seq("").every(c -> false));      // no character violates the test
+    assertTrue(seq("").every(c -> c == 'z'));
+    assertTrue(seq("").every(Character::isDigit));
+  }
+
+  @DisplayName("every(CharPredicate) stops at the first counterexample")
+  @Test
+  void testEvery_ShortCircuits() {
+    int[] calls = {0};
+    assertFalse(seq("abcdef").every(c -> { calls[0]++; return false; }));
+    assertEquals(1, calls[0], "must stop after the first failing character");
+
+    calls[0] = 0;
+    assertTrue(seq("abc").every(c -> { calls[0]++; return true; }));
+    assertEquals(3, calls[0], "must inspect every character when all pass");
+
+    // first char passes, second fails -> two calls, not three or six
+    calls[0] = 0;
+    assertFalse(seq("abcdef").every(c -> { calls[0]++; return c != 'b'; }));
+    assertEquals(2, calls[0]);
+  }
+
+  @DisplayName("every(CharPredicate) is the dual of contains(CharPredicate)")
+  @Test
+  void testEvery_DualOfContains() {
+    String[] samples = { "", "a", "ab", "abc", "123", "12a", "  ", "\t\n" };
+    CharPredicate[] predicates = {
+        c -> true,
+        c -> false,
+        Character::isLetter,
+        Character::isDigit,
+        c -> c == 'a',
+        c -> c != 'a',
+        CharFragment::isTrim,
+        CharFragment::isStrip,
+    };
+    for (String s : samples) {
+      TestSeq seq = seq(s);
+      for (CharPredicate p : predicates) {
+        assertEquals(
+            seq.every(p),
+            !seq.contains(c -> !p.test(c)),
+            "every vs contains dual failed for \"" + s + "\"");
+      }
+    }
+  }
+
+  @DisplayName("isBlank() on non-blank sequences")
+  @Test
+  void testIsBlank_False() {
+    assertFalse(seq("a").isBlank());
+    assertFalse(seq(" a ").isBlank());
+    assertFalse(seq("\ta\t").isBlank());
+    assertFalse(seq(" \n x \r ").isBlank());
+    // one non-blank char anywhere is enough
+    assertFalse(seq(" x").isBlank());
+    assertFalse(seq("x ").isBlank());
+    assertFalse(seq("  x  ").isBlank());
+  }
+
+  @DisplayName("isBlank() on blank sequences")
+  @Test
+  void testIsBlank_True() {
+    assertTrue(seq(" ").isBlank());
+    assertTrue(seq("   ").isBlank());
+    assertTrue(seq("\t").isBlank());
+    assertTrue(seq("\n").isBlank());
+    assertTrue(seq("\r").isBlank());
+    assertTrue(seq(" \t\n\r").isBlank());
+    assertTrue(seq("\r\n\t ").isBlank());
+    assertTrue(seq("\n\n\n").isBlank());
+  }
+
+  @DisplayName("isBlank() on empty is vacuously true")
+  @Test
+  void testIsBlank_Empty() {
+    assertTrue(seq("").isBlank());
+  }
+
+  @DisplayName("isBlank() agrees with every(isBlank)")
+  @Test
+  void testIsBlank_AgreesWithEvery() {
+    String[] samples = {
+        "", " ", "\t", "\n", "\r",
+        "  \t\n\r ", "a", " a", "a ", " \ta",
+        "abc", " \u00A0 ",       // NBSP is NOT blank here
+        " \f ",                    // form feed is NOT blank here (String.isBlank would say true)
+        " \u000B "                 // vertical tab is NOT blank here
+    };
+    for (String s : samples) {
+      assertEquals(seq(s).every(CharSeq::isBlank), seq(s).isBlank(),
+          "isBlank mismatch for \"" + s + "\"");
+    }
+  }
+
+  @DisplayName("isBlank() diverges from String.isBlank() on form feed / vertical tab")
+  @Test
+  void testIsBlank_DivergesFromStringOnAsciiControls() {
+    // documented divergence: String.isBlank() says true for these, we say false
+    assertFalse(seq("\f").isBlank());
+    assertFalse(seq("\u000B").isBlank());
+    assertTrue("\f".isBlank(), "String.isBlank still true for form feed");
+
+    // the JDK-canonical blank chars we agree on
+    for (char c : new char[] {' ', '\t', '\n', '\r'}) {
+      assertTrue(seq(String.valueOf(c)).isBlank(), "single char " + (int) c);
+    }
+  }
+
+  @DisplayName("isBlank(char) matches the set used by every(isBlank)")
+  @Test
+  void testIsBlankChar() {
+    assertTrue(CharSeq.isBlank(' '));
+    assertTrue(CharSeq.isBlank('\t'));
+    assertTrue(CharSeq.isBlank('\n'));
+    assertTrue(CharSeq.isBlank('\r'));
+
+    assertFalse(CharSeq.isBlank('a'));
+    assertFalse(CharSeq.isBlank('\f'));
+    assertFalse(CharSeq.isBlank('\u000B'));
+    assertFalse(CharSeq.isBlank('\u001C'));
+    assertFalse(CharSeq.isBlank('\u00A0'));
+  }
+
+  @DisplayName("isStrip(char) agrees with CharSeq.isBlank(char)")
+  @Test
+  void testIsStrip_AgreesWithIsBlank() {
+    // whole ASCII range, so no char slips through a future "improvement" of one
+    // predicate without the other
+    for (int i = 0; i < 128; i++) {
+      char c = (char) i;
+      assertEquals(CharSeq.isBlank(c), CharFragment.isStrip(c),
+          "isStrip/isBlank diverged for char " + i + " ('" + c + "')");
+    }
+    // spot-check the divergence-vs-String cases from the audit still agree
+    assertEquals(CharSeq.isBlank('\f'), CharFragment.isStrip('\f'));        // both false
+    assertEquals(CharSeq.isBlank('\u000B'), CharFragment.isStrip('\u000B')); // both false
+    assertEquals(CharSeq.isBlank('\u00A0'), CharFragment.isStrip('\u00A0')); // both false
+  }
+
+  @DisplayName("isBlank() is equivalent to strip().isEmpty()")
+  @Test
+  void testIsBlank_EquivalentToStripEmpty() {
+    String[] samples = {
+        "", " ", "  ", "\t", "\n", "\r",
+        " \t\n\r ", "\r\n\t ", "\n\n\n",
+        "a", " a", "a ", " a ", "abc",
+        "\f", "\u000B", " \u00A0 "       // ASCII controls that String considers blank
+    };
+    for (String s : samples) {
+      assertEquals(seq(s).strip().isEmpty(), seq(s).isBlank(),
+          "isBlank vs strip().isEmpty() mismatch for \"" + s + "\"");
+    }
+  }
+
+  @DisplayName("replace(char, char): general case")
+  @Test
+  void testReplace() {
+    assertEquals(seq("banana"), seq("banana").replace('a', 'a'));
+    assertEquals(seq("bonono"), seq("banana").replace('a', 'o'));
+    assertEquals(seq("bonono"), seq("banana").replace('a', 'o'));
+    assertEquals(seq("bAnAnA"), seq("banana").replace('a', 'A'));
+    assertEquals(seq("b.n.n."), seq("banana").replace('a', '.'));
+    // replace every occurrence, including adjacent ones
+    assertEquals(seq("xxxx"), seq("aaaa").replace('a', 'x'));
+    // single-char sequence
+    assertEquals(seq("x"), seq("a").replace('a', 'x'));
+    // no match -> unchanged content
+    assertEquals(seq("banana"), seq("banana").replace('z', 'x'));
+  }
+
+  @DisplayName("replace(char, char): no-match returns self (identity)")
+  @Test
+  void testReplace_NoMatchReturnsSelf() {
+    TestSeq t = seq("banana");
+    assertSame(t, t.replace('z', 'x'));
+    assertSame(t, t.replace('Z', 'x'));
+    TestSeq empty = seq("");
+    assertSame(empty, empty.replace('a', 'x'));
+  }
+
+  @DisplayName("replace(char, char): oldChar == newChar returns self (identity)")
+  @Test
+  void testReplace_SameCharReturnsSelf() {
+    TestSeq t = seq("banana");
+    // present
+    assertSame(t, t.replace('a', 'a'));
+    // absent
+    assertSame(t, t.replace('z', 'z'));
+    // empty
+    TestSeq empty = seq("");
+    assertSame(empty, empty.replace('a', 'a'));
+  }
+
+  @DisplayName("replace(char, char): result has fresh buffer")
+  @Test
+  void testReplace_ResultHasFreshBuffer() {
+    TestSeq original = seq("banana");
+    TestSeq replaced = original.replace('a', 'o');
+    assertNotSame(original, replaced);
+    // the source is unmodified
+    assertEquals(seq("banana"), original);
+    assertEquals("bonono", replaced.toString());
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): basic substitution")
+  @Test
+  void testReplaceSeq() {
+    assertEquals(seq("bonono"), seq("banana").replace("a", "o"));
+    assertEquals(seq("heLLo"), seq("hello").replace("l", "L"));           // adjacent
+    assertEquals(seq("bbbb"), seq("aaaa").replace("a", "b"));             // all
+    assertEquals(seq("xx"), seq("abcabc").replace("abc", "x"));           // from start, repeated
+    assertEquals(seq("xbc"), seq("abc").replace("a", "x"));               // match at index 0
+    assertEquals(seq("abx"), seq("abc").replace("c", "x"));               // match at last index
+    assertEquals(seq("x"), seq("abc").replace("abc", "x"));               // whole sequence
+    assertEquals(seq("axyzc"), seq("abc").replace("b", "xyz"));           // grow
+    assertEquals(seq(""), seq("abcabc").replace("abc", ""));              // shrink to empty
+    assertEquals(seq("xx"), seq("xabcabcx").replace("abc", ""));          // shrink to non-empty
+    assertEquals(seq("heLLo world"), seq("hello world").replace("ll", "LL"));
+    assertEquals(seq("ba"), seq("aaa").replace("aa", "b"));               // non-overlap from left
+    assertEquals(seq("Xba"), seq("ababa").replace("aba", "X"));           // non-overlap, tail kept
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): no match returns self")
+  @Test
+  void testReplaceSeq_NoMatchReturnsSelf() {
+    TestSeq t = seq("hello");
+    assertSame(t, t.replace("xyz", "Q"));
+    assertSame(t, t.replace("hx", "Q"));
+    assertSame(t, t.replace("hello world", "Q"));
+    TestSeq empty = seq("");
+    assertSame(empty, empty.replace("a", "b"));
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): empty target returns self")
+  @Test
+  void testReplaceSeq_EmptyTargetReturnsSelf() {
+    TestSeq t = seq("abc");
+    assertSame(t, t.replace("", "X"));       // no insertion at every position (diverges from String)
+    assertSame(t, t.replace("", ""));
+    TestSeq empty = seq("");
+    assertSame(empty, empty.replace("", "X"));
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): empty replacement removes")
+  @Test
+  void testReplaceSeq_EmptyReplacement() {
+    assertEquals(seq("bc"), seq("abc").replace("a", ""));
+    assertEquals(seq("ac"), seq("abc").replace("b", ""));
+    assertEquals(seq("ab"), seq("abc").replace("c", ""));
+    assertEquals(seq(""), seq("aaaa").replace("aa", ""));      // non-overlap
+    assertEquals(seq("a"), seq("aaa").replace("aa", ""));     // first two removed, one remains — wait, "aaa".replace("aa","") in String = "a"
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): result has fresh buffer")
+  @Test
+  void testReplaceSeq_ResultHasFreshBuffer() {
+    TestSeq original = seq("banana");
+    TestSeq replaced = original.replace("an", "AN");
+    assertEquals(seq("bANANa"), replaced);
+    assertEquals(seq("banana"), original, "source must not be mutated");
+  }
+
+  @DisplayName("replace(CharSequence, CharSequence): result agrees with String.replace")
+  @Test
+  void testReplaceSeq_AgreesWithString() {
+    String[] subjects = { "", "a", "aa", "ab", "abc", "aaa", "abab", "abcabc", "banana", "hello world", "ababa" };
+    String[] targets = { "a", "b", "aa", "ab", "abc", "abcabc", "aba", "xyz" };
+    String[] repls = { "", "x", "XY", "abc", "abcd" };
+    for (String s : subjects)
+      for (String tg : targets)
+        for (String r : repls)
+          assertEquals(s.replace(tg, r), seq(s).replace(tg, r).toString(),
+              "replace(\"" + tg + "\",\"" + r + "\") on \"" + s + "\"");
+  }
+
+  @DisplayName("repeat(int): basic repetition")
+  @Test
+  void testRepeat() {
+    assertEquals(seq("ababab"), seq("ab").repeat(3));
+    assertEquals(seq("abcabc"), seq("abc").repeat(2));
+    assertEquals(seq("aaaaa"), seq("a").repeat(5));
+    assertEquals(seq(""), seq("abcabc").repeat(0));
+    assertEquals(seq("x"), seq("x").repeat(1));
+    // count == 2 on a 1-char source exercises buffer sizing and offset advance
+    assertEquals(seq("zz"), seq("z").repeat(2));
+    // count == 2 on a 2-char source — the minimum that catches both Bug 1 and Bug 2
+    assertEquals(seq("abab"), seq("ab").repeat(2));
+  }
+
+  @DisplayName("repeat(int): count 0 returns empty for any input")
+  @Test
+  void testRepeat_Zero() {
+    assertTrue(seq("abc").repeat(0).isEmpty());
+    TestSeq empty = seq("");
+    assertEquals(empty, seq("abc").repeat(0));
+    assertEquals(empty, empty.repeat(0));
+    assertEquals(0, seq("hello").repeat(0).length());
+  }
+
+  @DisplayName("repeat(int): count 1 returns self (identity)")
+  @Test
+  void testRepeat_Identity() {
+    TestSeq t = seq("abc");
+    assertSame(t, t.repeat(1));
+    TestSeq empty = seq("");
+    assertSame(empty, empty.repeat(1));
+  }
+
+  @DisplayName("repeat(int): negative count throws")
+  @Test
+  void testRepeat_Negative() {
+    assertThrows(IllegalArgumentException.class, () -> seq("abc").repeat(-1));
+    assertThrows(IllegalArgumentException.class, () -> seq("").repeat(-1));
+    assertThrows(IllegalArgumentException.class, () -> seq("a").repeat(Integer.MIN_VALUE));
+  }
+
+  @DisplayName("repeat(int): empty source returns empty for any count")
+  @Test
+  void testRepeat_EmptySource() {
+    for (int n : new int[] {0, 1, 2, 100}) {
+      assertTrue(seq("").repeat(n).isEmpty(), "repeat(" + n + ") of empty should be empty");
+    }
+  }
+
+  @DisplayName("repeat(int): overflow guard")
+  @Test
+  void testRepeat_Overflow() {
+    // 3 * Integer.MAX_VALUE overflows int; must not silently return garbage
+    assertThrows(IllegalArgumentException.class, () -> seq("abc").repeat(Integer.MAX_VALUE));
+  }
+
+  @DisplayName("repeat(int): result has fresh buffer")
+  @Test
+  void testRepeat_FreshBuffer() {
+    TestSeq original = seq("ab");
+    TestSeq repeated = original.repeat(3);
+    assertNotSame(original, repeated);
+    assertEquals(seq("ab"), original, "source must not be mutated");
+    assertEquals(seq("ababab"), repeated);
+  }
+
+  @DisplayName("repeat(int): agrees with String.repeat")
+  @Test
+  void testRepeat_AgreesWithString() {
+    String[] samples = { "", "a", "ab", "abc", "aaaa", "hello world" };
+    int[] counts = { 0, 1, 2, 3, 5 };
+    for (String s : samples)
+      for (int n : counts)
+        assertEquals(s.repeat(n), seq(s).repeat(n).toString(),
+            "\"" + s + "\".repeat(" + n + ")");
+  }
+
+  @DisplayName("isUpperCase / isLowerCase")
+  @Test
+  void testCasePredicates() {
+    // boundary sweep — no letter slips through
+    for (char c = 0; c < 128; c++) {
+      boolean upper = c >= 'A' && c <= 'Z';
+      boolean lower = c >= 'a' && c <= 'z';
+      assertEquals(upper, CharFragment.isUpperCase(c), "isUpperCase(" + (int) c + ")");
+      assertEquals(lower, CharFragment.isLowerCase(c), "isLowerCase(" + (int) c + ")");
+      // mutually exclusive
+      assertFalse(CharFragment.isUpperCase(c) && CharFragment.isLowerCase(c),
+          "both upper and lower for " + (int) c);
+    }
+    // explicit boundary cases (the ones a hand-written range check gets wrong)
+    assertFalse(CharFragment.isUpperCase('@'));   // 'A' - 1
+    assertFalse(CharFragment.isUpperCase('['));   // 'Z' + 1
+    assertFalse(CharFragment.isLowerCase('`'));   // 'a' - 1
+    assertFalse(CharFragment.isLowerCase('{'));   // 'z' + 1
+    // non-ASCII untouched
+    assertFalse(CharFragment.isUpperCase('Ä'));
+    assertFalse(CharFragment.isLowerCase('ä'));
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: basic")
+  @Test
+  void testCaseTransform() {
+    assertEquals("abc", seq("ABC").toLowerCase().toString());
+    assertEquals("abc", seq("aBc").toLowerCase().toString());
+    assertEquals("ABC", seq("abc").toUpperCase().toString());
+    assertEquals("ABC", seq("aBc").toUpperCase().toString());
+    // non-letters pass through unchanged
+    assertEquals("123!@#", seq("123!@#").toLowerCase().toString());
+    assertEquals("123!@#", seq("123!@#").toUpperCase().toString());
+    // punctuation adjacent to letters is untouched
+    assertEquals("a_b-c", seq("A_B-C").toLowerCase().toString());
+    assertEquals("A_B-C", seq("a_b-c").toUpperCase().toString());
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: identity when nothing changes")
+  @Test
+  void testCaseTransform_Identity() {
+    TestSeq lower = seq("abc");
+    assertSame(lower, lower.toLowerCase());
+    TestSeq upper = seq("ABC");
+    assertSame(upper, upper.toUpperCase());
+    TestSeq digits = seq("123");
+    assertSame(digits, digits.toLowerCase());
+    assertSame(digits, digits.toUpperCase());
+    TestSeq empty = seq("");
+    assertSame(empty, empty.toLowerCase());
+    assertSame(empty, empty.toUpperCase());
+    TestSeq punct = seq("!@#");
+    assertSame(punct, punct.toLowerCase());
+    assertSame(punct, punct.toUpperCase());
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: source unmodified")
+  @Test
+  void testCaseTransform_NoMutation() {
+    TestSeq original = seq("AbC");
+    TestSeq lower = original.toLowerCase();
+    TestSeq upper = original.toUpperCase();
+    assertEquals("AbC", original.toString());
+    assertNotSame(original, lower);
+    assertNotSame(original, upper);
+  }
+
+  @DisplayName("toLowerCase / toUpperCase: ASCII-only, Unicode untouched")
+  @Test
+  void testCaseTransform_AsciiOnly() {
+    // accented letters stay as-is (unlike String.toLowerCase with default locale)
+    assertEquals("Ä", seq("Ä").toLowerCase().toString());
+    assertEquals("ä", seq("ä").toUpperCase().toString());
+    // Greek, Cyrillic untouched
+    assertEquals("ΑΒΓ", seq("ΑΒΓ").toLowerCase().toString());
+    assertEquals("абв", seq("абв").toUpperCase().toString());
+  }
+
+  @DisplayName("matches(CharSequence): this is the pattern, argument is the subject")
+  @Test
+  void testMatches_RolesArePatternAndSubject() {
+    // pattern on the left, subject on the right — the reverse of String.matches(regex)
+    Text pattern = Text.of("foo");
+    assertTrue(pattern.matches("foo"));
+    assertFalse(pattern.matches("foobar"));    // must match all of the input
+    assertFalse(pattern.matches("xfoo"));      // anchored at the start
+    assertFalse(pattern.matches("fo"));        // too short
+
+    // if the roles were reversed, this would pass; it must not
+    assertFalse(Text.of("foobar").matches("foo"));
+  }
+
+  @DisplayName("matches: receiver is the pattern, argument is the subject")
+  @Test
+  void testMatches_Roles() {
+    // Use any InputExpression pattern whose metacharacters are exercised by testSlicePattern,
+    // e.g. "~." matches up to and including a '.' — verify the exact semantics against
+    // InputExpression's docs.
+    assertTrue(Text.of("~.").matches("foo."),
+        "receiver must be the pattern");
+    assertFalse(Text.of("foo.").matches("~."),
+        "argument must not be the pattern");
   }
 }
