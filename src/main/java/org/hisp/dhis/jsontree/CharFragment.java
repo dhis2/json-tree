@@ -243,14 +243,26 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
     if (len == 0) return self();
     boolean negative = charAt(0) == '-';
     int start = (negative || charAt(0) == '+') ? 1 : 0;
-    // The integer part ends at the dot if there is one, otherwise at the end.
     int dot = indexOf('.', start);
     int intEnd = dot < 0 ? len : dot;
     while (start < intEnd - 1 && charAt(start) == '0') start++;
     // An all-zero integer part collapses to "0" regardless of sign.
-    if (intEnd - start == 1 && charAt(start) == '0') return wrap('0');
-    T digits = subSequence(start, intEnd);
-    return negative ? wrap('-').concat(digits) : digits;
+    // Return the current '0' as a view rather than allocating via wrap('0').
+    if (intEnd - start == 1 && charAt(start) == '0') return subSequence(start, start + 1);
+    if (!negative || start == 1) {
+      // non-negative (with or without a consumed '+'): result is the digit slice
+      // negative with no leading zeros stripped: result is [0, intEnd), starting at the '-'
+      int from = negative ? 0 : start;
+      if (from == 0 && intEnd == len) return self();
+      return subSequence(from, intEnd);
+    }
+    // negative with leading zeros stripped from the digits: rebuild as "-"+digits
+    // in a single buffer (previous wrap('-').concat(digits) allocated twice)
+    int digitsLen = intEnd - start;
+    char[] buffer = new char[1 + digitsLen];
+    buffer[0] = '-';
+    copyTo(buffer, 1, start, digitsLen);
+    return wrap(buffer, 0, buffer.length);
   }
 
   /*
