@@ -1,7 +1,6 @@
 package org.hisp.dhis.jsontree;
 
 import static java.lang.System.Logger.Level.WARNING;
-import static org.hisp.dhis.jsontree.JsonFormatException.expected;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -27,11 +26,18 @@ final class CharDecoder {
    */
   static char[] decode(byte[] bytes, Charset encoding) {
     if (StandardCharsets.UTF_8.equals(encoding)) return decodeUTF8(bytes);
-    if (StandardCharsets.ISO_8859_1.equals(encoding) || StandardCharsets.US_ASCII.equals(encoding)) {
-      return decodeIso88591(bytes);
-    }
-    // fall-back for encodings not directly handled
+    if (StandardCharsets.US_ASCII.equals(encoding)) return decodeAscii(bytes);
+    if (StandardCharsets.ISO_8859_1.equals(encoding)) return decodeIso88591(bytes);
     return new String(bytes, encoding).toCharArray();
+  }
+
+  private static char[] decodeAscii(byte[] src) {
+    char[] dest = new char[src.length];
+    for (int i = 0; i < src.length; i++) {
+      int b = src[i] & 0xFF;
+      dest[i] = (b <= 0x7F) ? (char) b : '\uFFFD'; // US-ASCII is strictly 7‑bit
+    }
+    return dest;
   }
 
   private static char[] decodeIso88591(byte[] src) {
