@@ -216,16 +216,11 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
 
   @Override
   public Text concat(CharSequence suffix) {
+    // these can be no-ops
     if (suffix.isEmpty()) return this;
     if (isEmpty()) return Text.of(suffix);
-    char[] res = new char[length + suffix.length()];
-    System.arraycopy(buffer, offset, res, 0, length);
-    if (suffix instanceof CharSeq cs) {
-      cs.copyTo(res, length);
-    } else {
-      for (int i = 0; i < suffix.length(); i++) res[length + i] = suffix.charAt(i);
-    }
-    return Text.of(res, 0, res.length);
+    // this will allocate
+    return CharFragment.concat(this, suffix);
   }
 
   @Override

@@ -137,13 +137,31 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @see String#concat(String)
    */
   default T concat(CharSequence suffix) {
-    if (suffix.isEmpty()) return self();
-    char[] a = toCharArray();
-    int len = suffix.length();
-    char[] res = Arrays.copyOf(a, a.length+ len);
-    for (int i = 0; i < len; i++)
-      res[a.length+i] = suffix.charAt(i);
-    return wrap(res, 0, res.length);
+    return concat(self(), suffix);
+  }
+
+  /**
+   * Common code to concatenate two texts to a specific result type
+   * based on the text a suffix is appended to.
+   *
+   * @param self the text a suffix is appended to
+   * @param suffix the text to append
+   * @return a new instance with the two text fragments concatenated together
+   * @param <T> type of the result fragment
+   * @since 1.14
+   */
+  static <T extends CharFragment<T>> T concat(T self, CharSequence suffix) {
+    if (suffix.isEmpty()) return self;
+    int len = self.length();
+    int sLen = suffix.length();
+    char[] res = new char[len+sLen];
+    self.copyTo(res, 0);
+    if (suffix instanceof  CharSeq cs) {
+      cs.copyTo(res, len);
+    } else {
+      for (int i = 0; i < sLen; i++) res[len + i] = suffix.charAt(i);
+    }
+    return self.wrap(res, 0, res.length);
   }
 
   /**
