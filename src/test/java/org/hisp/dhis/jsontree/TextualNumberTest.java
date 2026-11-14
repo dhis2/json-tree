@@ -201,6 +201,21 @@ class TextualNumberTest {
   }
 
   @Test
+  void testParseIntCast_FallbackToDouble() {
+    assertIntCastEquals("1e5");
+    assertIntCastEquals("-1e5");
+    assertIntCastEquals("+1e5");
+    assertIntCastEquals("1E5");
+    assertIntCastEquals("1.5e3");
+    assertIntCastEquals(".5");
+    assertIntCastEquals(".99");
+    assertIntCastEquals("1e20");   // (int) 1e20  == Integer.MAX_VALUE
+    assertIntCastEquals("-1e20");  // (int) -1e20 == Integer.MIN_VALUE
+    assertIntCastEquals("1e-20");  // -> 0
+    assertIntCastEquals("1e999");  // -> (int) Infinity == Integer.MAX_VALUE
+  }
+
+  @Test
   void testParseInt_EdgeCasesThrows() {
     assertIntThrows("02147483647.0"); // max with leading zero + 0 fraction
     assertIntThrows("-02147483648.0"); // min with leading zero + 0 fraction
@@ -228,6 +243,28 @@ class TextualNumberTest {
     assertLongCastEquals("100.0");
     assertLongCastEquals("123456.7890");
     assertLongCastEquals("-0.7890");
+  }
+
+  @Test
+  void testParseLongCast_FallbackToDouble() {
+    // exponent form: isIntegerLiteral == false and offsetExponent >= 0 -> fallback
+    assertLongCastEquals("1e5");
+    assertLongCastEquals("-1e5");
+    assertLongCastEquals("+1e5");
+    assertLongCastEquals("1E5");
+    assertLongCastEquals("1.5e3");
+    // leading decimal point: isIntegerLiteral == false, offsetExponent < 0, dpOffset == 0
+    // -> no recursion possible -> fallback
+    assertLongCastEquals(".5");
+    assertLongCastEquals(".99");
+    // cast saturates when parseDoubleDecimal produces a value beyond long range
+    assertLongCastEquals("1e20");   // (long) 1e20  == Long.MAX_VALUE
+    assertLongCastEquals("-1e20");  // (long) -1e20 == Long.MIN_VALUE
+    // cast truncates toward zero
+    assertLongCastEquals("1e-20");  // -> 0L
+    // exponent too large even for the fast path: exercises the innermost
+    // Double.parseDouble fallback in parseDoubleDecimal too
+    assertLongCastEquals("1e999");  // -> (long) Infinity == Long.MAX_VALUE
   }
 
   @Test
