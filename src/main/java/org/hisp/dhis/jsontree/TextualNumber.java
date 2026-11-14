@@ -340,6 +340,18 @@ final class TextualNumber extends Number implements Textual, CharSeq {
         if (val != 0L) return val;
         return buffer[offset] == '-' ? -0d : 0d;
       }
+      int sigOffset = offset;
+      int sigLength = length;
+      char sign = buffer[sigOffset];
+      boolean neg = sign == '-';
+      if (sign == '-' || sign == '+') {
+        sigOffset++;
+        sigLength--;
+        sigLength -= lengthInsignificantZeros(buffer, sigOffset, sigLength);
+      }
+      // 310+ significant decimal digits cannot be finite as a double
+      if (sigLength >= 310)
+        return neg ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
       // 20+ digit integer: cannot fit in long; Double.parseDouble still rounds
       // it correctly (round-to-nearest-even) to the nearest double
       return Double.parseDouble(new String(buffer, offset, length));
