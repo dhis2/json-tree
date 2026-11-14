@@ -55,24 +55,19 @@ Also included, less central: [text templating](docs/spec-text-templating.md), [J
 
     JsonObject root = JsonMixed.of(json);
 
-    String id = root.get("id").stringValue();   // "abc"
-    int roleCount = root.get("roles").size();   // 2
+    String id = root.get("id").string();      // "abc"
+    int roleCount = root.get("roles").size(); // 2
 ```
 
 Navigation never throws. `root.get("a").get("b").get("c")` returns an *undefined*
 node rather than `null` or an exception, and distinguishes three states that
 `Map`-based APIs usually collapse: **missing**, **present but null**, and
-**present with a value**. Validation is eager only when you ask for it:
+**present with a value**. 
 
-```java
-    JsonMixed root = JsonMixed.of(json).getDeclaration();
-    // fail-fast on malformed input
-    // as soon as any value is accessed
-    // which is equivalent to finding the end of a JSON node in accessed the path
-```
+However, on value access (a terminal operation) errors throw eagerly.
 
-Typed access uses interfaces over the tree, so no annotations or reflection pass
-is needed:
+Data can use typed access as interfaces on top of the tree, 
+so no annotations or reflection pass is needed:
 
 ```java
     interface User extends JsonObject {
@@ -81,6 +76,8 @@ is needed:
     }
     User user = root.as(User.class);
 ```
+`default`-methods can be used to implement custom access logic 
+based on the generic tree API inherited from the base-type.
 
 ## Installation
 
