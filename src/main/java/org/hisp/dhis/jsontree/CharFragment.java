@@ -1,6 +1,5 @@
 package org.hisp.dhis.jsontree;
 
-import java.util.Arrays;
 import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
@@ -153,15 +152,10 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
   static <T extends CharFragment<T>> T concat(T self, CharSequence suffix) {
     if (suffix.isEmpty()) return self;
     int len = self.length();
-    int sLen = suffix.length();
-    char[] res = new char[len+sLen];
+    char[] res = new char[len+suffix.length()];
     self.copyTo(res, 0);
-    if (suffix instanceof  CharSeq cs) {
-      cs.copyTo(res, len);
-    } else {
-      for (int i = 0; i < sLen; i++) res[len + i] = suffix.charAt(i);
-    }
-    return self.wrap(res, 0, res.length);
+    CharSeq.copyTo(suffix, res, len);
+    return self.wrap(res);
   }
 
   /**
@@ -192,6 +186,81 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
       } while (end >= 0 && end < len);
       segments.accept(subSequence(pos, len));
     }
+  }
+
+  /**
+   * Returns this sequence with every occurrence of {@code oldChar} replaced by
+   * {@code newChar}.
+   *
+   * <p>Like {@link String#replace(char, char)}, returns {@link #self()} (no allocation)
+   * when {@code oldChar == newChar} or when {@code oldChar} does not occur in this
+   * sequence.
+   *
+   * @see String#replace(char, char)
+   * @since 1.14
+   */
+  default T replace(char oldChar, char newChar) {
+    if (oldChar == newChar || !contains(oldChar)) return self();
+    char[] replaced = toCharArray();
+    for (int i = 0; i < replaced.length; i++)
+      if (replaced[i] == oldChar) replaced[i] = newChar;
+    return wrap(replaced, 0, replaced.length);
+  }
+
+  /**
+   * Returns this sequence with every non-overlapping occurrence of {@code target} replaced
+   * by {@code replacement}.
+   *
+   * <p>Returns {@link #self()} without allocating when {@code target} is empty or does not
+   * occur in this sequence. Note that the empty-target case diverges from
+   * {@link String#replace(CharSequence, CharSequence)}, which inserts {@code replacement}
+   * at every position; here an empty target has zero occurrences (matching
+   * {@link #count(CharSequence)}) and is a no-op.
+   *
+   * @see String#replace(CharSequence, CharSequence)
+   * @since 1.14
+   */
+  default T replace(CharSequence target, CharSequence replacement) {
+    if (isEmpty() || target.isEmpty() || !contains(target)) return self();
+    int oldLen = target.length();
+    int newLen = replacement.length();
+    int n = count(target);
+    int delta = n * (newLen - oldLen);
+    int len = length();
+    if (len + delta == 0) return wrap(); // empty
+    char[] dest = new char[len + delta];
+    int offset = 0;
+    int from = 0;
+    int to = indexOf(target, from);
+    while (to >= 0) {
+      int gapLen = to - from;
+      copyTo(dest, offset, from, gapLen);
+      from = to + oldLen;
+      offset += gapLen;
+      CharSeq.copyTo(replacement, dest, offset);
+      offset += newLen;
+      to = indexOf(target, from);
+    }
+    copyTo(dest, offset, from, len - from);
+    return wrap(dest);
+  }
+
+  /**
+   * @see String#repeat(int)
+   * @since 1.14
+   */
+  default T repeat(int count) {
+    if (count < 0) throw new IllegalArgumentException("repeat count is negative: " + count);
+    if (count == 1) return self();
+    if (count == 0 || isEmpty()) return wrap();
+    int len = length();
+    long resultLen = (long) len * count;
+    if (resultLen > Integer.MAX_VALUE)
+      throw new IllegalArgumentException("repeat result too large: " + resultLen);
+    char[] dest = new char[(int) resultLen];
+    for (int offset = 0; offset < dest.length; offset += len)
+      copyTo(dest, offset);
+    return wrap(dest);
   }
 
   /**
@@ -262,7 +331,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
     char[] buffer = new char[1 + digitsLen];
     buffer[0] = '-';
     copyTo(buffer, 1, start, digitsLen);
-    return wrap(buffer, 0, buffer.length);
+    return wrap(buffer);
   }
 
   /*
@@ -292,7 +361,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @return true for ASCII whitespace
    */
   static boolean isStrip(char ch) {
-    return isTrim(ch) || ch == '\n' || ch == '\r';
+    return CharSeq.isBlank(ch);
   }
 
 }

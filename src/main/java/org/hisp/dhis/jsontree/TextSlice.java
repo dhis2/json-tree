@@ -40,15 +40,10 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
     if (text instanceof String s) return of(s);
     int len = text.length();
     if (len == 0) return EMPTY;
-    if (text instanceof CharSeq cs) {
-      char[] buffer = new char[cs.length()];
-      cs.copyTo(buffer, 0);
-      return new TextSlice(buffer, 0, len);
-    }
     Text cached = cacheGet(text.charAt(0), len);
     if (cached != null && cached.contentEquals(text)) return cached;
     char[] buffer = new char[len];
-    for (int i = 0; i < len; i++) buffer[i] = text.charAt(i);
+    CharSeq.copyTo(text, buffer, 0);
     Text res = new TextSlice(buffer, 0, len);
     cacheUpdate(res);
     return res;
