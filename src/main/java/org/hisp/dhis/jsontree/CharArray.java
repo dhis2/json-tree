@@ -4,20 +4,20 @@ import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
- * Is a {@link CharSeq} that can be mutated to a consistent subtype.
- * A {@linkplain CharArray} represents the group {@link CharSeq} subtypes
- * that provide an API wrapping an immutable {@code char[]}.
- * <p>
- * Similar to {@link CharSeq} it mirrors methods found in {@link String}
- * with the caveat that their logic applies to ASCII range.
+ * Is a {@link CharSeq} that can be mutated to a consistent subtype. A {@linkplain CharArray}
+ * represents the group {@link CharSeq} subtypes that provide an API wrapping a {@code char[]} that
+ * is considered immutable.
  *
- * @implNote It is good practice to derive a sealed sub-interface of a {@link CharArray}
- * so that any call to its API will be monomorphic with a single implementation for said sub-interface.
- * This way the utility inherited from the abstract {@link CharSeq} and {@link CharArray}
- * comes without the overhead of polymorphic calls.
+ * <p>Similar to {@link CharSeq} it mirrors methods found in {@link String} with the caveat that
+ * their logic applies to the ASCII range (e.g. {@link #toUpperCase()} only affects ASCII letters).
  *
+ * @implNote It is good practice to derive a sealed sub-interface of a {@link CharArray} so that any
+ *     call to its API will be monomorphic with a single implementation for said sub-interface. This
+ *     way the utility inherited from the abstract {@link CharSeq} and {@link CharArray} comes
+ *     without the overhead of polymorphic calls.
+ *     <p>A subtype only needs to implement two simple methods, {@link #self()} ({@code return
+ *     this;}) and {@link #wrap(char[], int, int)}.
  * @param <T> the subtype returned by mutations (new immutable instances)
- *
  * @author Jan Bernitt
  * @since 1.13 (methods without since originate from Text in 1.9)
  * @see Text
@@ -365,13 +365,11 @@ public interface CharArray<T extends CharArray<T>> extends CharSeq, Comparable<T
    * Reduces a number's text to its pure value digits so that equivalent integer representations
    * compare equal as text.
    *
-   * <p>The input is expected to be an integer value as per {@link #isIntegerValue()} — a plain
+   * <p>Only affects a text that {@link #isIntegerValue()} — a plain
    * integer, optionally signed, or a decimal with an all-zero fraction. The output is canonical: no
    * sign on zero, no leading zeros, no trailing {@code .0+} fraction. A leading {@code '+'} or
    * {@code '-'} is consumed; a {@code '-'} is preserved on non-zero results, and dropped entirely
    * on zero.
-   *
-   * <p>Behaviour on non-integer input is unspecified: a non-zero fraction is silently dropped.
    *
    * <p>Examples:
    *
@@ -386,9 +384,11 @@ public interface CharArray<T extends CharArray<T>> extends CharSeq, Comparable<T
    *   <li>{@code "0.00"} → {@code "0"}
    * </ul>
    *
+   * @return this text reduced to its canonical integer value if (and only if) it {@link #isIntegerValue()}
    * @since 1.13
    */
   default T trimInteger() {
+    if (!isIntegerValue()) return self();
     int len = length();
     if (len == 0) return self();
     boolean negative = charAt(0) == '-';

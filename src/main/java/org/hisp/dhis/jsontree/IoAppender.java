@@ -2,7 +2,7 @@ package org.hisp.dhis.jsontree;
 
 /**
  * An {@link Appender} that requires to release resources, so it should be used with
- * try-with-resources block.
+ * try-with-resources block. {@linkplain IoAppender#close()} does not throw a checked exception.
  *
  * @since 1.13
  */
