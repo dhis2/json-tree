@@ -66,8 +66,7 @@ import java.io.OutputStream;
  * <h2>Thread safety</h2>
  *
  * <p>{@code Appender} instances are not thread-safe. Each instance should be used from a single
- * thread. Since the interface extends {@link AutoCloseable}, instances can be used in a
- * try-with-resources block; {@link IoAppender#close()} does not throw a checked exception.
+ * thread.
  *
  * @author Jan Bernitt
  * @since 1.9 (revised in 1.12)

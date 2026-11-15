@@ -14,14 +14,14 @@ import java.math.BigInteger;
  *
  * @author Jan Bernitt
  * @since 1.13 (methods without since originate from Text in 1.9)
- * @see CharFragment
+ * @see CharArray
  * @see Text
  */
 public interface CharSeq extends CharSequence {
 
   /**
    * @return {@code true} when all characters in this sequence are in the character set that
-   *     {@link CharFragment#strip()} removes — space, tab, {@code \n}, {@code \r};
+   *     {@link CharArray#strip()} removes — space, tab, {@code \n}, {@code \r};
    *     {@code true} for an empty sequence. Equivalently, {@code strip().isEmpty()}.
    *     Deliberately narrower than {@link String#isBlank()} (see {@link #isBlank(char)}).
    * @since 1.14
