@@ -85,7 +85,7 @@ based on the generic tree API inherited from the base-type.
 <dependency>
     <groupId>org.hisp.dhis</groupId>
     <artifactId>json-tree</artifactId>
-    <version>1.13.0</version>
+    <version>1.14.0</version>
 </dependency>
 ```
 
