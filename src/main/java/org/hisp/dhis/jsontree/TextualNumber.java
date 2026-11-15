@@ -1,7 +1,7 @@
 package org.hisp.dhis.jsontree;
 
 import static java.lang.Math.abs;
-import static org.hisp.dhis.jsontree.CharFragment.checkSubSequence;
+import static org.hisp.dhis.jsontree.CharArray.checkSubSequence;
 
 import org.hisp.dhis.jsontree.internal.NotNull;
 

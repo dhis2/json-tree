@@ -4,20 +4,26 @@ import java.util.function.Consumer;
 import org.hisp.dhis.jsontree.internal.NotNull;
 
 /**
- * Is a {@link CharSeq} with manipulation methods all returning a consistent subtype.
+ * Is a {@link CharSeq} that can be mutated to a consistent subtype.
+ * A {@linkplain CharArray} represents the group {@link CharSeq} subtypes
+ * that provide an API wrapping an immutable {@code char[]}.
+ * <p>
+ * Similar to {@link CharSeq} it mirrors methods found in {@link String}
+ * with the caveat that their logic applies to ASCII range.
  *
- * @implNote It is good practice to derive a sealed sub-interface of a {@link CharFragment}
+ * @implNote It is good practice to derive a sealed sub-interface of a {@link CharArray}
  * so that any call to its API will be monomorphic with a single implementation for said sub-interface.
- * This way the utility inherited from the abstract {@link CharSeq} and {@link CharFragment}
+ * This way the utility inherited from the abstract {@link CharSeq} and {@link CharArray}
  * comes without the overhead of polymorphic calls.
  *
- * @param <T> the subtype returned by manipulation (new immutable instances)
+ * @param <T> the subtype returned by mutations (new immutable instances)
  *
  * @author Jan Bernitt
  * @since 1.13 (methods without since originate from Text in 1.9)
  * @see Text
+ * @apiNote renamed from {@code CharFragment} to {@code CharArray} in 1.14
  */
-public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Comparable<T> {
+public interface CharArray<T extends CharArray<T>> extends CharSeq, Comparable<T> {
 
   /*
   The essential methods
@@ -103,7 +109,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @return this text without left and right inline whitespace (tabs and spaces removed)
    */
   default T trim() {
-    return shrink(CharFragment::isTrim);
+    return shrink(CharArray::isTrim);
   }
 
   /**
@@ -112,7 +118,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @since 1.13
    */
   default T strip() {
-    return shrink(CharFragment::isStrip);
+    return shrink(CharArray::isStrip);
   }
 
   /**
@@ -120,7 +126,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @since 1.14
    **/
   default T stripLeading() {
-    return shrink(CharFragment::isStrip, true, false);
+    return shrink(CharArray::isStrip, true, false);
   }
 
   /**
@@ -128,7 +134,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @since 1.14
    **/
   default T stripTrailing() {
-    return shrink(CharFragment::isStrip, false, true);
+    return shrink(CharArray::isStrip, false, true);
   }
 
   /**
@@ -178,7 +184,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @param <T> type of the result fragment
    * @since 1.14
    */
-  static <T extends CharFragment<T>> T concat(T self, CharSequence suffix) {
+  static <T extends CharArray<T>> T concat(T self, CharSequence suffix) {
     if (suffix.isEmpty()) return self;
     int len = self.length();
     char[] res = new char[len+suffix.length()];
@@ -308,7 +314,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @since 1.14
    */
   default T toLowerCase() {
-    return toCase(CharFragment::isUpperCase, 32);
+    return toCase(CharArray::isUpperCase, 32);
   }
 
   /**
@@ -327,7 +333,7 @@ public interface CharFragment<T extends CharFragment<T>> extends CharSeq, Compar
    * @since 1.14
    */
   default T toUpperCase() {
-    return toCase(CharFragment::isLowerCase, -32);
+    return toCase(CharArray::isLowerCase, -32);
   }
 
   private T toCase(CharPredicate test, int delta) {

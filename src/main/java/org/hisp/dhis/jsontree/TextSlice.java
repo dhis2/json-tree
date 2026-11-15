@@ -6,7 +6,7 @@ import java.math.BigDecimal;
 import java.util.Arrays;
 
 import static java.lang.Math.abs;
-import static org.hisp.dhis.jsontree.CharFragment.checkSubSequence;
+import static org.hisp.dhis.jsontree.CharArray.checkSubSequence;
 
 /**
  * A no-defensive-copy view of a slice from a {@code char[]} text sequence.
@@ -215,7 +215,7 @@ record TextSlice(char[] buffer, int offset, int length) implements Text {
     if (suffix.isEmpty()) return this;
     if (isEmpty()) return Text.of(suffix);
     // this will allocate
-    return CharFragment.concat(this, suffix);
+    return CharArray.concat(this, suffix);
   }
 
   @Override

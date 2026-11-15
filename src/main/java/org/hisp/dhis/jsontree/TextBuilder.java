@@ -8,7 +8,7 @@ import static java.util.Objects.requireNonNull;
 import static org.hisp.dhis.jsontree.Appender.checkCodePoint;
 import static org.hisp.dhis.jsontree.Appender.checkRange;
 import static org.hisp.dhis.jsontree.Appender.needsJsonEscaping;
-import static org.hisp.dhis.jsontree.CharFragment.checkSubSequence;
+import static org.hisp.dhis.jsontree.CharArray.checkSubSequence;
 
 import java.util.Arrays;
 import org.hisp.dhis.jsontree.internal.NotNull;
@@ -22,7 +22,7 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @author Jan Bernitt
  * @since 1.9
  */
-public final class TextBuilder implements Appender, Textual, CharFragment<Text> {
+public final class TextBuilder implements Appender, Textual, CharArray<Text> {
 
   private char[] buffer;
   private int length = 0;
@@ -92,13 +92,13 @@ public final class TextBuilder implements Appender, Textual, CharFragment<Text> 
 
   /**
    * @implNote this will make a copy of this builders buffer to that it does not expose its internal
-   *     buffer to the {@link CharFragment#wrap(char[], int, int)} receiver.
+   *     buffer to the {@link CharArray#wrap(char[], int, int)} receiver.
    * @param proto the prototype used to create a new instance
    * @return this builders content as the given type
    * @param <T> type of result
    * @since 1.13
    */
-  public <T extends CharFragment<T>> T wrap(T proto) {
+  public <T extends CharArray<T>> T wrap(T proto) {
     return proto.wrap(toCharArray(), 0, length);
   }
 
