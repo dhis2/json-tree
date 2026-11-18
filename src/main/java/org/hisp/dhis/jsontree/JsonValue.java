@@ -60,9 +60,9 @@ import static java.util.Objects.requireNonNull;
  *   <li>{@link JsonBoolean}
  * </ul>
  *
- * In addition, there is {@link JsonContainer} as a common base type of {@link JsonObject}
- * and {@link JsonArray}, as well as {@link JsonPrimitive} as common base type of {@link
- * JsonString}, {@link JsonNumber} and {@link JsonBoolean}.
+ * In addition, there is {@link JsonContainer} as a common base type of {@link JsonObject} and
+ * {@link JsonArray}, as well as {@link JsonPrimitive} as common base type of {@link JsonString},
+ * {@link JsonNumber} and {@link JsonBoolean}.
  *
  * <p>In addition {@link JsonList} is a typed JSON array of uniform elements (which can be
  * understood as a typed wrapper around a {@link JsonArray}).
@@ -90,7 +90,8 @@ import static java.util.Objects.requireNonNull;
  * @see JsonMixed
  */
 @Validation.Ignore
-public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Entry<Text, JsonValue> {
+public interface JsonValue
+    extends JsonProbe, JsonCheck<JsonValue>, JsonSelectable<JsonMixed>, Map.Entry<Text, JsonValue> {
 
   /**
    * Lift an actual {@link JsonNode} tree to a virtual {@link JsonValue}.
@@ -278,9 +279,9 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    */
   @TerminalOp(canBeUndefined = true)
   default boolean isInfinity() {
-    return isString()
-        && (node().textValue().contentEquals("Infinity")
-            || node().textValue().contentEquals("-Infinity"));
+    if (!isString()) return false;
+    Text text = node().textValue();
+    return (text.contentEquals("Infinity") || text.contentEquals("-Infinity"));
   }
 
   /**
@@ -329,6 +330,14 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
    */
   default JsonArray asArray() {
     return as(JsonArray.class);
+  }
+
+  /**
+   * @return This value as {@link JsonMixed} (same as {@code as(JsonMixed.class)})
+   * @since 1.15
+   */
+  default JsonMixed asMixed() {
+    return as(JsonMixed.class);
   }
 
   /**
