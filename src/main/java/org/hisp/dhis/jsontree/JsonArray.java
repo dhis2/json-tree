@@ -85,6 +85,21 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
+   * <p>JSON {@code null} elements are preserved as Java {@code null} for
+   * reference types (for example {@link Integer}, {@link BigInteger},
+   * {@link BigDecimal}). For primitive {@code T} (such as {@code int.class})
+   * null cannot be represented and the conversion throws.
+   *
+   * @see #values()
+   * @see JsonValue#to(Class)
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default <T> Streamable<T> values(Class<T> to) {
+    return values().map(e -> e.to(to));
+  }
+
+  /**
    * @see #values(Index)
    * @since 1.9
    */
@@ -94,66 +109,65 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
-   * <p>JSON {@code null} elements are preserved as Java {@code null} for
-   * reference types (for example {@link Integer}, {@link BigInteger},
-   * {@link BigDecimal}). For primitive {@code T} (such as {@code int.class})
-   * null cannot be represented and the conversion throws.
-   *
-   * @see #values()
-   * @since 1.9
-   */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default <T> Streamable<T> values(Class<T> to) {
-    return values().map(e -> e.to(to));
-  }
-
-  /**
    * @return this arrays values as {@link org.hisp.dhis.jsontree.Streamable}
-   * @throws JsonTreeException if this node exist but is not an array or null node
+   * @throws JsonTreeException if this node exists but is not an array or null node
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Streamable<JsonMixed> values(JsonNode.Index index) {
+    JsonAccessors accessors = getAccessors();
+    return nodes(index).map(n -> n.lift(accessors));
+  }
+
+  /**
+   * @return this arrays elements as {@link JsonNode}s (mostly useful for performance of skipping
+   *     the {@link JsonNode#lift(JsonAccessors)} to a {@link JsonMixed} if that API would just be
+   *     used to go down to {@link JsonNode} again)
+   * @throws JsonTreeException if this node exists but is not an array or null node
+   * @since 1.15
+   */
+  default Streamable<JsonNode> nodes(JsonNode.Index index) {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return Streamable.empty();
-    JsonAccessors accessors = getAccessors();
-    return node.elements(index).map(n -> n.lift(accessors));
+    return node.elements(index);
   }
 
   /**
    * @return the array elements as a uniform list of {@link Boolean}
-   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   * @throws JsonTreeException in case the node is not an array or any element cannot be accessed as
+   *     {@link Boolean} using {@link JsonBoolean#booleanValue()}
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<Boolean> booleanValues() {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.elements(SKIP).map(JsonNode::booleanValue).toList();
+    return nodes(SKIP).map(JsonNode::booleanValue).toList();
   }
 
   /**
    * Note that elements are not restricted to JSON-strings only.
    *
-   * @return the array elements as a uniform list of {@link String}
-   * @throws JsonTreeException in case the node is not an array
+   * @return the array elements as a uniform list of {@link String} (JSON null becomes Java null)
+   * @throws JsonTreeException in case the node is not an array or any element cannot be accessed as
+   *     {@link String} using {@link JsonString#string()}
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<String> stringValues() {
-    return textValues().map(Text::toString).toList();
+    // use node level to avoid extra lift for each element
+    return nodes(SKIP).map(n -> n.isNull() ? null : n.textValue().toString()).toList();
   }
 
   /**
    * Note that elements are not restricted to JSON-strings only.
    *
-   * @return all elements of this array as their underlying raw JSON {@link Text}
-   * @throws JsonTreeException in case the node is not an array
+   * @return all elements of this array as their underlying raw JSON {@link Text} (JSON null becomes
+   *     Java null)
+   * @throws JsonTreeException in case the node is not an array or any element cannot be accessed as
+   *     {@link Text} using {@link JsonString#text()}
    * @since 1.14
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Streamable<Text> textValues() {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return Streamable.empty();
-    return node.values();
+    // use node level to avoid extra lift for each element
+    return nodes(SKIP).map(n -> n.isNull() ? null : n.textValue());
   }
 
   /**

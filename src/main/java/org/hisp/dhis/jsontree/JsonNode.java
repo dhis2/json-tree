@@ -81,7 +81,12 @@ import org.hisp.dhis.jsontree.internal.NotNull;
  * @author Jan Bernitt
  */
 public interface JsonNode
-    extends JsonProbe, JsonSelectable<JsonNode>, Serializable, Textual, Map.Entry<Text, JsonNode> {
+    extends JsonProbe,
+    JsonCheck<JsonNode>,
+        JsonSelectable<JsonNode>,
+        Serializable,
+        Textual,
+        Map.Entry<Text, JsonNode> {
 
   /**
    * Behaviour requested by the caller of how to utilise the internal node cache

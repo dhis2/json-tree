@@ -387,4 +387,21 @@ class JsonValueTest {
     assertEquals("(1,2,f,n,n)", JsonMixed.of("[1,2,false,null,{}]").toJurl(Jurl.MINIMAL));
   }
 
+  @Test
+  void testTo_Function() {
+    JsonMixed data = JsonMixed.of("[true, 0, \"yes\"]");
+    assertFalse(data.get(1).to(JsonValueTest::fuzzyBoolean));
+    assertTrue(data.get(2).to(JsonValueTest::fuzzyBoolean));
+    // the array way of doing that is using map
+    assertEquals(
+        List.of(true, false, true),
+        data.values().map(JsonValueTest::fuzzyBoolean).toList()
+    );
+  }
+
+  private static Boolean fuzzyBoolean(JsonMixed val) {
+    Text str = val.text();
+    return str.contentEqualsIgnoreCaseASCII("true") || str.contentEqualsIgnoreCaseASCII("yes");
+  }
+
 }
