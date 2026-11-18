@@ -85,26 +85,27 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   }
 
   /**
-   * @see #values(Index)
-   * @since 1.9
-   */
-  @TerminalOp(canBeUndefined = true, mustBeArray = true)
-  default Streamable<JsonMixed> values() {
-    return values(SKIP);
-  }
-
-  /**
    * <p>JSON {@code null} elements are preserved as Java {@code null} for
    * reference types (for example {@link Integer}, {@link BigInteger},
    * {@link BigDecimal}). For primitive {@code T} (such as {@code int.class})
    * null cannot be represented and the conversion throws.
    *
    * @see #values()
+   * @see JsonValue#to(Class)
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default <T> Streamable<T> values(Class<T> to) {
     return values().map(e -> e.to(to));
+  }
+
+  /**
+   * @see #values(Index)
+   * @since 1.9
+   */
+  @TerminalOp(canBeUndefined = true, mustBeArray = true)
+  default Streamable<JsonMixed> values() {
+    return values(SKIP);
   }
 
   /**

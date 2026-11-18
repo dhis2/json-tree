@@ -208,6 +208,21 @@ public interface JsonValue extends JsonProbe, JsonSelectable<JsonMixed>, Map.Ent
   <T> T to(Class<T> type) throws JsonAccessException;
 
   /**
+   * Access this nodes value mapped.
+   *
+   * @apiNote This method mostly exists to allow fluent API of custom converter logic where
+   *     otherwise such logic would be located in a static helper to which the node is passed as
+   *     argument.
+   * @param f mapping function
+   * @return this value mapped by the given function
+   * @param <T> target Java type
+   * @since 1.15
+   */
+  default <T> T to(Function<JsonMixed, T> f) {
+    return f.apply(as(JsonMixed.class));
+  }
+
+  /**
    * @return this node's type or null if this node does not exist in the actual tree
    * @since 0.11
    */
