@@ -109,15 +109,26 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
 
   /**
    * @return this arrays values as {@link org.hisp.dhis.jsontree.Streamable}
-   * @throws JsonTreeException if this node exist but is not an array or null node
+   * @throws JsonTreeException if this node exists but is not an array or null node
    * @since 1.9
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Streamable<JsonMixed> values(JsonNode.Index index) {
+    JsonAccessors accessors = getAccessors();
+    return nodes(index).map(n -> n.lift(accessors));
+  }
+
+  /**
+   * @return this arrays elements as {@link JsonNode}s (mostly useful for performance of skipping
+   *     the {@link JsonNode#lift(JsonAccessors)} to a {@link JsonMixed} if that API would just be
+   *     used to go down to {@link JsonNode} again)
+   * @throws JsonTreeException if this node exists but is not an array or null node
+   * @since 1.15
+   */
+  default Streamable<JsonNode> nodes(JsonNode.Index index) {
     JsonNode node = nodeIfExists();
     if (node == null || node.isNull()) return Streamable.empty();
-    JsonAccessors accessors = getAccessors();
-    return node.elements(index).map(n -> n.lift(accessors));
+    return node.elements(index);
   }
 
   /**
@@ -127,7 +138,7 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<Boolean> booleanValues() {
-    return values().map(JsonBoolean::booleanValue).toList();
+    return nodes(SKIP).map(JsonNode::booleanValue).toList();
   }
 
   /**
@@ -139,7 +150,8 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<String> stringValues() {
-    return values().map(JsonString::string).toList();
+    // use node level to avoid extra lift for each element
+    return nodes(SKIP).map(n -> n.isNull() ? null : n.textValue().toString()).toList();
   }
 
   /**
@@ -153,7 +165,8 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Streamable<Text> textValues() {
-    return values().map(JsonString::text);
+    // use node level to avoid extra lift for each element
+    return nodes(SKIP).map(n -> n.isNull() ? null : n.textValue());
   }
 
   /**

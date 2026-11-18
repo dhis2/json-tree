@@ -52,10 +52,15 @@ class JsonArrayTest {
 
   @Test
   void testStringValues_ThrowsForNonPrimitives() {
-    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("[1, []]").stringValues());
-    assertEquals("ARRAY node at path .1 is not a STRING and does not support #textValue(): []", ex.getMessage());
+    JsonTreeException ex =
+        assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("[1, []]").stringValues());
+    assertEquals(
+        "ARRAY node at path .1 is not a STRING and does not support #textValue(): []",
+        ex.getMessage());
     ex = assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("[2, {}]").stringValues());
-    assertEquals("OBJECT node at path .1 is not a STRING and does not support #textValue(): {}", ex.getMessage());
+    assertEquals(
+        "OBJECT node at path .1 is not a STRING and does not support #textValue(): {}",
+        ex.getMessage());
   }
 
   @Test
@@ -330,10 +335,32 @@ class JsonArrayTest {
 
   @Test
   void testTextValues_Mixed() {
-    // raw for numbers/booleans, decoded for strings (this is the shape stringValues() relied on)
     List<String> values =
         JsonMixed.of("[\"a\", 1, true, 1.50]").textValues().map(Text::toString).toList();
     assertEquals(List.of("a", "1", "true", "1.50"), values);
+  }
+
+  @Test
+  void testTextValues_NullPassesThrough() {
+    List<Text> values =
+        JsonMixed.of("[1, null, 2]").textValues().toList();
+    assertEquals(Arrays.asList(Text.of(1), null, Text.of(2)), values);
+  }
+
+  @Test
+  void testTextValues_ThrowsForNonPrimitives() {
+    JsonTreeException ex =
+        assertThrowsExactly(
+            JsonTreeException.class, () -> JsonMixed.of("[1, []]").textValues().toList());
+    assertEquals(
+        "ARRAY node at path .1 is not a STRING and does not support #textValue(): []",
+        ex.getMessage());
+    ex =
+        assertThrowsExactly(
+            JsonTreeException.class, () -> JsonMixed.of("[2, {}]").textValues().toList());
+    assertEquals(
+        "OBJECT node at path .1 is not a STRING and does not support #textValue(): {}",
+        ex.getMessage());
   }
 
   @Test
