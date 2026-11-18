@@ -45,6 +45,20 @@ class JsonArrayTest {
   }
 
   @Test
+  void testStringValues_Null() {
+    assertEquals(Arrays.asList("a", null, "1", "null", "true"),
+        JsonMixed.of("[\"a\", null, 1, \"null\", true]").stringValues());
+  }
+
+  @Test
+  void testStringValues_ThrowsForNonPrimitives() {
+    JsonTreeException ex = assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("[1, []]").stringValues());
+    assertEquals("ARRAY node at path .1 is not a STRING and does not support #textValue(): []", ex.getMessage());
+    ex = assertThrowsExactly(JsonTreeException.class, () -> JsonMixed.of("[2, {}]").stringValues());
+    assertEquals("OBJECT node at path .1 is not a STRING and does not support #textValue(): {}", ex.getMessage());
+  }
+
+  @Test
   void testBooleanValues_NoArray() {
     JsonMixed value = JsonMixed.of("1");
     assertThrowsExactly(JsonTreeException.class, value::booleanValues);

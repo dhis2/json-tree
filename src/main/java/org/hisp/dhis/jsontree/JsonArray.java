@@ -134,12 +134,13 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   /**
    * Note that elements are not restricted to JSON-strings only.
    *
-   * @return the array elements as a uniform list of {@link String}
-   * @throws JsonTreeException in case the node is not an array
+   * @return the array elements as a uniform list of {@link String} (JSON null becomes Java null)
+   * @throws JsonTreeException in case the node is not an array or any element cannot be accessed as
+   *     {@link String} using {@link JsonString#string()}
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<String> stringValues() {
-    return textValues().map(Text::toString).toList();
+    return values().map(JsonString::string).toList();
   }
 
   /**
