@@ -125,7 +125,7 @@ public interface Streamable<T> extends Iterable<T> {
 
     default <E> Sized<E> map(Function<T, E> f) {
       Sized<T> self = this;
-      return new Sized<E>() {
+      return new Sized<>() {
         @Override
         public long getExactSizeIfKnown() {
           return self.getExactSizeIfKnown();
@@ -138,7 +138,8 @@ public interface Streamable<T> extends Iterable<T> {
 
         @Override
         public E next() {
-          return f.apply(self.next());
+          T e = self.next();
+          return e == null ? null : f.apply(e);
         }
       };
     }

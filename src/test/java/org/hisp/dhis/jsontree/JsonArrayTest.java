@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
-import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -607,47 +607,20 @@ class JsonArrayTest {
         JsonMixed.of("[null]").values(BigDecimal.class).toList());
   }
 
-  // ---------------------------------------------------------------------------
-  // bigIntegerValues() / bigDecimalValues() are STRICT text parsers: a JSON
-  // null element comes through textValues() as the literal text "null", which
-  // does not parse as a number. This is the same contract as intValues() /
-  // longValues() / doubleValues() — the whole *Values() family is strict.
-  //
-  // The null-aware variant is values(BigInteger.class) / values(BigDecimal.class),
-  // tested separately above, which goes through the node type system and
-  // preserves Java null via @TerminalOp(canBeUndefined = true).
-  // ---------------------------------------------------------------------------
-
   @Test
-  void testBigIntegerValues_WithNullThrows() {
-    Streamable<BigInteger> values = JsonMixed.of("[1, null, 2]").bigIntegerValues();
-    assertThrows(NumberFormatException.class, values::toList);
+  void testBigIntegerValues_NullPassesThrough() {
+    List<BigInteger> expected = Arrays.asList(BigInteger.ONE, null, BigInteger.valueOf(2));
+    JsonMixed actual = JsonMixed.of("[1, null, 2]");
+    assertEquals(expected, actual.bigIntegerValues().toList());
+    assertEquals(expected, actual.values(BigInteger.class).toList());
   }
 
   @Test
-  void testBigDecimalValues_WithNullThrows() {
-    Streamable<BigDecimal> values = JsonMixed.of("[1.5, null, 2.5]").bigDecimalValues();
-    assertThrows(NumberFormatException.class, values::toList);
-  }
-
-  @Test
-  void testNullElement_StrictParseVsNodeConversion() {
-    // Same input, two entry points, two deliberate behaviours:
-    //
-    //   *Values() family: parses raw text => "null" doesn't parse => throws
-    //   values(Class):     converts nodes    => JSON null becomes Java null
-    //
-    // The split is by abstraction level, not by type. It matches the
-    // intValue()-vs-intValues() split documented on intValues().
-    String json = "[1, null, 2]";
-
-    assertThrows(
-        NumberFormatException.class,
-        () -> JsonMixed.of(json).bigIntegerValues().toList());
-
-    assertEquals(
-        Arrays.asList(BigInteger.ONE, null, BigInteger.valueOf(2)),
-        JsonMixed.of(json).values(BigInteger.class).toList());
+  void testBigDecimalValues_NullPassesThrough() {
+    List<BigDecimal> expected = Arrays.asList(BigDecimal.valueOf(1.5d), null, BigDecimal.valueOf(2.5d));
+    JsonMixed actual = JsonMixed.of("[1.5, null, 2.5]");
+    assertEquals(expected, actual.bigDecimalValues().toList());
+    assertEquals(expected, actual.values(BigDecimal.class).toList());
   }
 
   // ---------------------------------------------------------------------------

@@ -122,13 +122,12 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
 
   /**
    * @return the array elements as a uniform list of {@link Boolean}
-   * @throws JsonTreeException in case the node is not an array or the array has mixed elements
+   * @throws JsonTreeException in case the node is not an array or any element cannot be accessed as
+   *     {@link Boolean} using {@link JsonBoolean#booleanValue()}
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default List<Boolean> booleanValues() {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return List.of();
-    return node.elements(SKIP).map(JsonNode::booleanValue).toList();
+    return values().map(JsonBoolean::booleanValue).toList();
   }
 
   /**
@@ -146,15 +145,15 @@ public interface JsonArray extends JsonAbstractArray<JsonMixed> {
   /**
    * Note that elements are not restricted to JSON-strings only.
    *
-   * @return all elements of this array as their underlying raw JSON {@link Text}
-   * @throws JsonTreeException in case the node is not an array
+   * @return all elements of this array as their underlying raw JSON {@link Text} (JSON null becomes
+   *     Java null)
+   * @throws JsonTreeException in case the node is not an array or any element cannot be accessed as
+   *     {@link Text} using {@link JsonString#text()}
    * @since 1.14
    */
   @TerminalOp(canBeUndefined = true, mustBeArray = true)
   default Streamable<Text> textValues() {
-    JsonNode node = nodeIfExists();
-    if (node == null || node.isNull()) return Streamable.empty();
-    return node.values();
+    return values().map(JsonString::text);
   }
 
   /**
